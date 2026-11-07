@@ -259,3 +259,16 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Step 9 L4 `HeartScreenClientTests` with 4 screenshots (looked at), UI fire, scrolling, ellipsis; docs (TESTING, DESIGN 10, ROADMAP deferrals, BACKLOG tick).
 - Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
 - Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.
+
+## 2026-11-07: M24 plan (ranks and multiplayer), branch m24-plan
+- Plan: docs/plans/M24.md, 11 steps. `Permission(minimum rank)` + new OPEN_CONTAINERS/MANAGE_RANKS/TRANSFER_OWNERSHIP/BREAK_HEART/START_BLUEPRINT;
+  `VillageState.known` name book (64, ranked never evicted, save key `known_players`, lenient + repaired on load); `RankRules`; transfer to a
+  Steward/Resident (old owner becomes Steward); op commands `villageheart owner|rank|members` (ticks BACKLOG M1 "absent owner").
+- Chest guard (v1 scope): Visitors cannot open (Fabric `UseBlockCallback`, server FAIL, sneak-place passes) or break (`PlayerBlockBreakEvents.BEFORE`)
+  any `Container` block inside a room building's last enclosed scan (16-block fail-closed box until the first scan), nor break markers.
+  Hoppers, explosions, golems, wall breaking: out of scope, documented.
+- Ranks tab (Owner only, 5th tab) with a two-click transfer confirm; payloads `heart_set_rank`, `heart_transfer_ownership` through M8's gate.
+- Release-gate harness sketched and scheduled (step 10): Fabric `createServer()` dedicated server + real client + a server-side fake Owner,
+  desync checks per step; M24 does not tick the gate (it is 1 real client + 1 server-side player).
+- Assumes M12 lands first (withdraw L2 waits for it; step 6 starts with a checkpoint against M12's real code). Critique: 30 findings, 25 taken.
+- Top risk: the guard depends on cached room scans (windows after a restart and before a new chest is rescanned).
