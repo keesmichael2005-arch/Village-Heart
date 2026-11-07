@@ -68,3 +68,9 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## Cross-milestone (from the M12 plan)
 - [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+
+## From M8-r1
+- [ ] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
+- [ ] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
+- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
