@@ -93,6 +93,18 @@ public final class LumberJob {
 		guard(level, v, ws, now);
 		if (ws.decision == null || ws.needsPlan || (now - ws.lastPlan >= PLAN_INTERVAL && ws.action != Action.CONTINUE_FELL)) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
+		backgroundSearch(level, v, data, rt, ws, now);
+	}
+
+	/**
+	 * The tree search goes on every tick whatever the worker is doing (it is a few thousand cell reads in all): a worker that always has a
+	 * drop to collect or a spot to replant would otherwise never get past the nearest trees and miss the rest of the day's trees.
+	 */
+	private static void backgroundSearch(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
+		if (ws.action == Action.SEARCH) return; // run() just did it
+		LumberRuntime.CampState camp = rt.camps.get(data.building());
+		if (camp == null || camp.finder == null || camp.exhausted || level.getDayTime() % Balance.DAY_TICKS >= Balance.LUMBER_LAST_FELL) return;
+		search(level, v, data, rt, now);
 	}
 
 	/** The worker was fired or died: its claims and running task are forgotten (the saved tree task stays for the next lumberjack). */

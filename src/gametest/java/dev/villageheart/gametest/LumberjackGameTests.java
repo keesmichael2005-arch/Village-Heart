@@ -545,17 +545,21 @@ public class LumberjackGameTests {
 		net.minecraft.resources.ResourceKey<net.minecraft.world.level.levelgen.feature.ConfiguredFeature<?, ?>>[] keys = new net.minecraft.resources.ResourceKey[] {
 				net.minecraft.data.worldgen.features.TreeFeatures.ACACIA, net.minecraft.data.worldgen.features.TreeFeatures.CHERRY,
 				net.minecraft.data.worldgen.features.TreeFeatures.FANCY_OAK, net.minecraft.data.worldgen.features.TreeFeatures.DARK_OAK};
-		BlockPos[] spots = {new BlockPos(3, 0, 14), new BlockPos(3, 0, 22), new BlockPos(5, 0, 29), new BlockPos(18, 0, 18)};
+		// nearest first: the 40-log dark oak (and its replanting) comes last, so the day does not run out before the others are felled
+		BlockPos[] spots = {new BlockPos(3, 0, 13), new BlockPos(17, 0, 13), new BlockPos(6, 0, 25), new BlockPos(22, 0, 24)};
 		long[] seeds = {21, 22, 23, 24};
 		Set<BlockPos>[] logs = new Set[4];
 		java.util.List<BlockPos> darkBase = new java.util.ArrayList<>();
 		Villager[] v = new Villager[1];
 		long[] lastLogAt = new long[1], saplingsAt = new long[1];
+		long[] goneAt = new long[4];
 		boolean[] started = new boolean[1];
-		// the dark oak's last log and the moment its four base cells hold saplings (a sampler: the saplings may grow later)
+		// when each tree's initial logs were first all gone, and the moment the dark oak's four base cells hold saplings (a sampler: a
+		// replanted sapling may grow into a new tree later, so "gone" is sticky)
 		h.onEachTick(() -> {
 			if (!started[0]) return;
-			if (lastLogAt[0] == 0 && standing(h, logs[3]) == 0) lastLogAt[0] = h.getTick();
+			for (int i = 0; i < 4; i++) if (goneAt[i] == 0 && standing(h, logs[i]) == 0) goneAt[i] = h.getTick();
+			lastLogAt[0] = goneAt[3];
 			if (saplingsAt[0] == 0) {
 				boolean all = true;
 				for (BlockPos p : darkBase) all &= h.getLevel().getBlockState(p).is(Blocks.DARK_OAK_SAPLING);
@@ -579,8 +583,8 @@ public class LumberjackGameTests {
 			started[0] = true;
 		});
 		seq = seq.thenWaitUntil(() -> {
-			for (int i = 0; i < 4; i++) h.assertValueEqual(0, standing(h, logs[i]), "logs left of tree " + i + " ("
-					+ keys[i].identifier().getPath() + "); " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
+			for (int i = 0; i < 4; i++) h.assertTrue(goneAt[i] != 0, "tree " + i + " (" + keys[i].identifier().getPath() + ") is felled whole, " + standing(h, logs[i])
+					+ " logs stand; " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(saplingsAt[0] != 0, "the four dark oak saplings were planted; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
