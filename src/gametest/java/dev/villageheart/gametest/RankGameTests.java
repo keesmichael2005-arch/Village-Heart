@@ -9,6 +9,8 @@ import dev.villageheart.building.BuildingSystem;
 import dev.villageheart.building.Buildings;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.heart.Rejection;
+import dev.villageheart.gametest.RankTestSupport.Console;
 import dev.villageheart.gametest.HeartTestSupport.OverlayPlayer;
 import dev.villageheart.world.VillageClaims;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -153,6 +155,94 @@ public class RankGameTests {
 		seq.thenExecute(() -> {
 			h.assertFalse(opens(h, v[0], chest1()), "with a fresh enclosed scan the chest is protected");
 			h.assertTrue(opens(h, v[0], near), "a chest 10 blocks outside the room is free: the box is no longer used");
+			done(h);
+		});
+	}
+
+	// ---- T-L2-7 -------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:ranks_cmd", structure = YARD, skyAccess = true, maxTicks = 300)
+	public void opCommandsHandAnAbandonedVillage(GameTestHelper h) {
+		begin(h).thenExecute(() -> {
+			MinecraftServer server = server(h);
+			ServerPlayer a = owner();
+			ServerPlayer b = ranked(h, "bee", Rank.VISITOR);
+			ServerPlayer c = ranked(h, "cee", Rank.VISITOR);
+			ServerPlayer d = ranked(h, "dee", Rank.VISITOR);
+			Console out = new Console();
+			h.assertTrue(VillageClaims.current(server).orElseThrow().knownPlayer(b.getUUID()).isPresent(), "the join recorded a visitor");
+
+			out.run(h, "villageheart owner Nobody");
+			h.assertValueEqual("message.villageheart.rank.cmd.unknown", out.lastKey(), "never seen");
+			h.assertValueEqual(a.getUUID(), VillageClaims.current(server).orElseThrow().owner(), "owner unchanged");
+
+			out.runAs(b, "villageheart owner bee");
+			h.assertValueEqual(a.getUUID(), VillageClaims.current(server).orElseThrow().owner(), "a non-op cannot take the village");
+
+			out.run(h, "villageheart rank owner visitor");
+			h.assertValueEqual(Rejection.OWNER_RANK_FIXED.langKey(), out.lastKey(), "the owner's rank is fixed");
+
+			out.run(h, "villageheart rank cee resident");
+			h.assertValueEqual(Rank.RESIDENT, VillageClaims.current(server).orElseThrow().rankOf(c.getUUID()), "rank works for an online player");
+
+			leave(h, a);
+			out.run(h, "villageheart owner bee");
+			VillageState v = VillageClaims.current(server).orElseThrow();
+			h.assertValueEqual(b.getUUID(), v.owner(), "owner is bee, while the old owner is offline");
+			h.assertValueEqual(Rank.STEWARD, v.rankOf(a.getUUID()), "the old owner is a Steward");
+			h.assertTrue(b.gameMode.destroyBlock(heartPos(h)),
+					"the new owner can break the Heart");
+			h.assertTrue(VillageClaims.current(server).isEmpty(), "...and the claim is released");
+			done(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:ranks_cap", structure = YARD, skyAccess = true, maxTicks = 300)
+	public void rankCommandHonoursTheCapWithoutPartialChange(GameTestHelper h) {
+		begin(h).thenExecute(() -> {
+			MinecraftServer server = server(h);
+			ServerPlayer d = ranked(h, "dee", Rank.VISITOR);
+			VillageClaims.data(server).update(v -> {
+				VillageState s = v;
+				for (int i = 1; i <= dev.villageheart.core.Balance.MAX_KNOWN_PLAYERS - 1; i++) {
+					s = s.withRank(new java.util.UUID(0, i), "m" + i, Rank.RESIDENT, i);
+				}
+				return s;
+			});
+			VillageState before = VillageClaims.current(server).orElseThrow();
+			Console out = new Console();
+			out.run(h, "villageheart rank dee resident");
+			h.assertValueEqual(Rejection.TOO_MANY_MEMBERS.langKey(), out.lastKey(), "at the cap");
+			h.assertValueEqual(before.ranks(), VillageClaims.current(server).orElseThrow().ranks(), "no partial change");
+			h.assertValueEqual(Rank.VISITOR, VillageClaims.current(server).orElseThrow().rankOf(d.getUUID()), "still a visitor");
+			done(h);
+		});
+	}
+
+	// ---- T-L2-8 -------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:ranks_names", structure = YARD, skyAccess = true, maxTicks = 300)
+	public void namesFollowRenames(GameTestHelper h) {
+		begin(h).thenExecute(() -> {
+			MinecraftServer server = server(h);
+			ServerPlayer r = ranked(h, "Rae", Rank.RESIDENT);
+			h.assertValueEqual("Rae", VillageClaims.current(server).orElseThrow().name(r.getUUID()), "ranking recorded the name");
+			leave(h, r);
+			ServerPlayer r2 = joinAs(h, r.getUUID(), "Rae2");
+			h.assertValueEqual("Rae2", VillageClaims.current(server).orElseThrow().name(r.getUUID()), "the JOIN listener recorded the rename");
+			h.assertValueEqual(Rank.RESIDENT, VillageClaims.current(server).orElseThrow().rankOf(r.getUUID()), "...and the rank stayed");
+
+			ServerPlayer o = owner();
+			leave(h, o);
+			ServerPlayer o2 = joinAs(h, o.getUUID(), "Olga2");
+			h.assertValueEqual("Olga2", VillageClaims.current(server).orElseThrow().ownerName(), "the owner's rename updates ownerName");
+			h.assertTrue(snapshot(h, Rank.OWNER).overview().ownerName().equals("Olga2"), "...and the Overview shows it");
+
+			ServerPlayer v = joinAs(h, java.util.UUID.randomUUID(), "Vera");
+			h.assertTrue(VillageClaims.current(server).orElseThrow().knownPlayer(v.getUUID()).isPresent(), "a visitor joining is in the name book");
+			leave(h, r2);
+			leave(h, o2);
+			leave(h, v);
 			done(h);
 		});
 	}
