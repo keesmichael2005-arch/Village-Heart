@@ -7,10 +7,12 @@ import dev.villageheart.block.MarkerStatus;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.JobBlockType;
+import dev.villageheart.core.worker.HireRefusal;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.SiteView;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.world.VillageClaims;
+import dev.villageheart.worker.HireResult;
 import dev.villageheart.worker.JobSiteSource;
 import dev.villageheart.worker.Workers;
 import java.util.List;
@@ -35,6 +37,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.Blocks;
@@ -437,6 +440,183 @@ public class WorkerGameTests {
 			} catch (java.io.IOException e) {
 				throw new RuntimeException(e);
 			}
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- hire and fire (step 6) ----------------------------------------------------------------
+
+	private static final BlockPos ORIGIN_NORTH = new BlockPos(8, 0, 10);
+
+	private static HireResult hire(GameTestHelper h, net.minecraft.world.entity.Entity e, JobType job) {
+		return Workers.hire(h.getLevel(), e, job, java.util.Optional.empty());
+	}
+
+	private static void assertRefused(GameTestHelper h, HireResult r, HireRefusal expected, String what) {
+		h.assertTrue(r instanceof HireResult.Refused, what + ": refused, got " + r);
+		h.assertValueEqual(expected, ((HireResult.Refused) r).reason(), what);
+	}
+
+	private static java.util.Optional<dev.villageheart.core.WorkerRecord> record(GameTestHelper h, Villager v) {
+		return VillageClaims.current(h.getLevel().getServer()).flatMap(s -> s.worker(v.getUUID()));
+	}
+
+	/**
+	 * T-L2-2 (roadmap): hired through the real path into a real Farmhouse. The Farmhouse has an iron door that the test opens at day
+	 * time 1000, so "not before work hours" is exact; the worker then reaches the composter well before 3000.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_hired", structure = YARD, skyAccess = true, maxTicks = 4400)
+	public void hiredWorkerReachesJobBlock(GameTestHelper h) {
+		begin(h);
+		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_NORTH, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_NORTH, 0, 0, 0);
+		BlockPos[] door = new BlockPos[1];
+		Villager[] v = new Villager[1];
+		int[] near = {0};
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			floor(h, 4, 0, 20, 9);
+			farmhouse(h, ORIGIN_NORTH, 1);
+			door[0] = ironDoor(h, ORIGIN_NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, marker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, marker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, comp), "the composter is reserved");
+		});
+		seq = seq.thenExecute(() -> {
+			h.getLevel().setDayTime(0);
+			v[0] = spawnVillager(h, new BlockPos(11, 1, 4));
+			HireResult r = hire(h, v[0], JobType.FARMER);
+			h.assertTrue(r instanceof HireResult.Hired, "hired: " + r);
+			h.assertValueEqual("villageheart:farmer", v[0].getVillagerData().profession().unwrapKey().orElseThrow().identifier().toString(), "profession");
+			h.assertTrue(v[0].getOffers().isEmpty(), "no trades");
+			h.assertTrue(WorkerAttachments.isWorker(v[0]), "attachment");
+			var rec = record(h, v[0]);
+			h.assertTrue(rec.isPresent(), "record present");
+			h.assertValueEqual(loc(h, comp), rec.get().jobBlock(), "the record's job block is the composter");
+			h.assertValueEqual(loc(h, marker), rec.get().building(), "the record's building is the Farmhouse marker");
+		});
+		seq = seq.thenExecuteFor(900, () -> {
+			h.assertFalse(v[0].getBrain().isActive(Activity.WORK), "WORK before work hours, day time " + h.getLevel().getDayTime());
+			h.assertTrue(distance(h, v[0], comp) > REACH, "at the composter before work hours");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 1000, "waiting for work hours"));
+		seq = seq.thenExecute(() -> openDoor(h, door[0]));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "reaching the composter after work started",
+				() -> h.assertTrue(distance(h, v[0], comp) <= REACH, "distance " + distance(h, v[0], comp)));
+		seq = seq.thenExecute(() -> {
+			long day = h.getLevel().getDayTime();
+			h.assertTrue(day >= 1000 && day <= 3000, "arrived at day time " + day);
+		});
+		for (int i = 0; i < 10; i++) {
+			seq = seq.thenExecuteAfter(100, () -> {
+				if (distance(h, v[0], comp) <= 2.0) near[0]++;
+			});
+		}
+		seq.thenExecute(() -> {
+			h.assertTrue(near[0] >= 8, "stayed at the composter in " + near[0] + " of 10 samples");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-6: refusals, through the API and through the command. */
+	@GameTest(environment = "villageheart-gametest:workers_refusals", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void hireRefusedWithoutFreeSlot(GameTestHelper h) {
+		begin(h);
+		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, ORIGIN_A, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, marker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, marker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, comp), "reserved");
+		});
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			MinecraftServer server = level.getServer();
+			BlockPos spot = BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1);
+			Villager a = spawnVillager(h, spot), b = spawnVillager(h, spot), baby = spawnVillager(h, spot);
+			Villager nitwit = spawnVillager(h, spot), traded = spawnVillager(h, spot);
+			baby.setAge(-24000);
+			nitwit.setVillagerData(nitwit.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.NITWIT));
+
+			h.assertTrue(hire(h, a, JobType.FARMER) instanceof HireResult.Hired, "A hired");
+			assertRefused(h, hire(h, b, JobType.FARMER), HireRefusal.NO_FREE_SLOT, "B has no slot");
+			h.assertTrue(isUnemployed(b) && !WorkerAttachments.isWorker(b) && record(h, b).isEmpty(), "B unchanged");
+			assertRefused(h, hire(h, a, JobType.FARMER), HireRefusal.ALREADY_EMPLOYED, "A again");
+			assertRefused(h, hire(h, baby, JobType.FARMER), HireRefusal.NOT_ADULT, "baby");
+			assertRefused(h, hire(h, nitwit, JobType.FARMER), HireRefusal.NITWIT, "nitwit");
+			assertRefused(h, Workers.hire(level, a, JobType.MINER, java.util.Optional.empty()), HireRefusal.ALREADY_EMPLOYED, "employed asks for a tier-locked job");
+			assertRefused(h, hire(h, b, JobType.MINER), HireRefusal.TIER_LOCKED, "Miner at Hamlet");
+			net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader trader = h.spawn(EntityType.WANDERING_TRADER, spot);
+			assertRefused(h, hire(h, trader, JobType.FARMER), HireRefusal.NOT_A_VILLAGER, "wandering trader");
+
+			var source = server.createCommandSourceStack().withLevel(level);
+			server.getCommands().performPrefixedCommand(source, "villageheart hire " + trader.getUUID() + " farmer");
+			h.assertFalse(WorkerAttachments.isWorker(trader), "the command did not make a trader a worker");
+			server.getCommands().performPrefixedCommand(source, "villageheart hire " + b.getUUID() + " wizard");
+			h.assertTrue(record(h, b).isEmpty(), "unknown job: nothing happened");
+
+			// firing frees the slot; a villager that has traded is hired with xp 0 and no trades
+			server.getCommands().performPrefixedCommand(source, "villageheart fire " + a.getUUID());
+			h.assertTrue(record(h, a).isEmpty() && !WorkerAttachments.isWorker(a) && isUnemployed(a), "A fired through the command");
+			traded.setVillagerData(traded.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.FARMER));
+			traded.setVillagerXp(10);
+			h.assertFalse(traded.getOffers().isEmpty(), "the traded villager has trades before it is hired");
+			server.getCommands().performPrefixedCommand(source, "villageheart hire " + traded.getUUID() + " farmer");
+			h.assertTrue(record(h, traded).isPresent(), "hired through the command");
+			h.assertValueEqual(0, traded.getVillagerXp(), "xp");
+			h.assertTrue(traded.getOffers().isEmpty(), "trades are gone");
+			h.assertTrue(WorkerAttachments.isWorker(traded), "attachment");
+			assertRefused(h, hire(h, a, JobType.FARMER), HireRefusal.NO_FREE_SLOT, "the slot is the traded villager's now");
+			h.assertValueEqual(1, VillageClaims.current(server).orElseThrow().workers().size(), "one record");
+			trader.discard();
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-7 (roadmap): firing restores a vanilla villager; the slot is free; the vanilla brain takes a free composter again. */
+	@GameTest(environment = "villageheart-gametest:workers_fire", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void firingRestoresVanilla(GameTestHelper h) {
+		begin(h);
+		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		BlockPos free = new BlockPos(26, 1, 12);
+		Villager[] a = new Villager[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, ORIGIN_A, 1);
+			floor(h, 22, 8, 30, 16);
+			h.setBlock(free, Blocks.COMPOSTER);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, marker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, marker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, comp) && poiPresent(h, free), "reserved, and the free composter has its POI");
+		});
+		seq = seq.thenExecute(() -> {
+			h.getLevel().setDayTime(2000);
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			h.assertTrue(Workers.fire(h.getLevel(), a[0]), "fired");
+			h.assertTrue(isUnemployed(a[0]), "profession none");
+			h.assertFalse(WorkerAttachments.isWorker(a[0]), "no attachment");
+			h.assertFalse(WorkerBrain.isWorkerBrain(a[0]), "vanilla brain");
+			h.assertTrue(record(h, a[0]).isEmpty(), "no record");
+			Villager b = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 3, 0, 1));
+			h.assertTrue(hire(h, b, JobType.FARMER) instanceof HireResult.Hired, "the slot is free again: B hired");
+			Workers.fire(h.getLevel(), b);
+			b.discard();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "the fired villager takes the free composter", () -> {
+			h.assertTrue(isFarmer(a[0]), "profession " + a[0].getVillagerData().profession().getRegisteredName());
+			h.assertTrue(claims(h, a[0], free), "claims the free composter");
+		});
+		seq.thenExecute(() -> {
 			VillageTestSupport.done(h);
 			end(h);
 		});

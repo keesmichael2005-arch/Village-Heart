@@ -100,6 +100,21 @@ public final class WorkerTestSupport {
 		return marker;
 	}
 
+	/** Swaps the oak door of {@link #farmhouse} (lower half at the door cell) for an iron door that villagers cannot open. */
+	public static BlockPos ironDoor(GameTestHelper h, BlockPos origin) {
+		BlockPos lower = new BlockPos(origin.getX() + 3, origin.getY() + 1, origin.getZ());
+		BlockState iron = Blocks.IRON_DOOR.defaultBlockState().setValue(DoorBlock.FACING, Direction.NORTH);
+		h.setBlock(lower, iron.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER));
+		h.setBlock(lower.above(), iron.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+		return lower;
+	}
+
+	/** Opens both halves of the door at {@code lower}. */
+	public static void openDoor(GameTestHelper h, BlockPos lower) {
+		h.setBlock(lower, h.getBlockState(lower).setValue(DoorBlock.OPEN, true));
+		h.setBlock(lower.above(), h.getBlockState(lower.above()).setValue(DoorBlock.OPEN, true));
+	}
+
 	public static boolean isHeld(GameTestHelper h, BlockPos rel) {
 		return VillageClaims.data(h.getLevel().getServer()).reservedJobBlocks().contains(loc(h, rel));
 	}

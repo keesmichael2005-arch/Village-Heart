@@ -1,7 +1,20 @@
 package dev.villageheart.worker;
 
+import dev.villageheart.core.ClaimGeometry;
+import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.VillageState;
+import dev.villageheart.core.WorkerRecord;
+import dev.villageheart.core.worker.HireDecision;
+import dev.villageheart.core.worker.HireRefusal;
+import dev.villageheart.core.worker.JobSlots;
+import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.world.VillageClaims;
+import java.util.Optional;
+import java.util.UUID;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
@@ -26,6 +39,49 @@ public final class Workers {
 	public static net.minecraft.server.level.ServerLevel levelOf(net.minecraft.server.MinecraftServer server, dev.villageheart.core.HeartLocation loc) {
 		return server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
 				net.minecraft.resources.Identifier.parse(loc.dimension())));
+	}
+
+	/**
+	 * Hires {@code entity} (a command can name anything) for {@code job}. Refusals in order: no village, not a villager (or dead),
+	 * baby, nitwit, outside the claim sphere, then {@link JobSlots#decide} (already employed, tier, preferred building, no free slot).
+	 * On success the record is appended (hiring order) and the villager becomes a worker (see {@link #install}). Server thread only.
+	 */
+	public static HireResult hire(ServerLevel level, Entity entity, JobType job, Optional<HeartLocation> preferredBuilding) {
+		MinecraftServer server = level.getServer();
+		Optional<VillageState> village = VillageClaims.current(server);
+		if (village.isEmpty()) return new HireResult.Refused(HireRefusal.NO_VILLAGE);
+		if (!(entity instanceof Villager villager) || !villager.isAlive()) return new HireResult.Refused(HireRefusal.NOT_A_VILLAGER);
+		if (villager.isBaby()) return new HireResult.Refused(HireRefusal.NOT_ADULT);
+		if (villager.getVillagerData().profession().is(VillagerProfession.NITWIT)) return new HireResult.Refused(HireRefusal.NITWIT);
+		VillageState v = village.get();
+		if (!ClaimGeometry.inClaim(v.heart(), VillageClaims.locate(level, villager.blockPosition()))) {
+			return new HireResult.Refused(HireRefusal.OUTSIDE_CLAIM);
+		}
+		HireDecision decision = JobSlots.decide(jobSites.sites(server, job), v.workers(), v.tier(), villager.getUUID(), job, preferredBuilding);
+		if (decision instanceof HireDecision.Refused r) return new HireResult.Refused(r.reason());
+		HireDecision.Hired hired = (HireDecision.Hired) decision;
+		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock());
+		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock());
+		install(level, villager, data);
+		VillageClaims.data(server).update(s -> s.withWorker(record));
+		return new HireResult.Hired(record);
+	}
+
+	/** Fires a loaded worker: record and attachment removed, vanilla brain back. False when it was neither registered nor attached. */
+	public static boolean fire(ServerLevel level, Villager villager) {
+		MinecraftServer server = level.getServer();
+		boolean registered = VillageClaims.current(server).flatMap(v -> v.worker(villager.getUUID())).isPresent();
+		if (registered) VillageClaims.data(server).update(s -> s.withoutWorker(villager.getUUID()));
+		boolean attached = WorkerAttachments.isWorker(villager);
+		if (attached || registered) restoreVanilla(level, villager);
+		return attached || registered;
+	}
+
+	/** Fires a worker that may be unloaded: only the record can be removed now (the attachment is cleaned when it loads). */
+	public static boolean fireById(MinecraftServer server, UUID villager) {
+		if (VillageClaims.current(server).flatMap(v -> v.worker(villager)).isEmpty()) return false;
+		VillageClaims.data(server).update(s -> s.withoutWorker(villager));
+		return true;
 	}
 
 	/**
