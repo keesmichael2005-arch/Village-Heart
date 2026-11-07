@@ -284,3 +284,12 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
+
+## 2026-11-07: backlog hardening batch 1, branch backlog-1
+- Zero-test guard: `scripts/check-gametest-log.sh` (run by verify.sh, self-tested by `test-check-gametest-log.sh`) fails on "All 0 required tests passed"; TESTING.md says filters must be exact ids. Checked against a real partial-filter run (exit 0, 0 tests) which it rejects.
+- `sweepStrayMarkers` guard: TESTING.md rule + `BuildingTestSupport.assertOwnEnvironment` (reads the test's environment by reflection; fails on the default environment or a shared one). Mutation: removing the environment from `outsideClaimAndNoClaim` goes red.
+- `villageTickerTimesSystems`: wall-clock `< 0.5 ms` assert replaced by a run counter (mutation: unregister no-op goes red); the timing bound is `VillageTickerPerfTest` (perfTest).
+- New tests (each mutation-checked, see BACKLOG): `claimRefusalAndReleaseMessages`, `oldMenuAfterReplaceIsStaleInTheSameTick`, `actionFromOutOfReachRejectedInTheSameTick`, `doubleChestOuterHalfIsProtectedThroughItsPartner`, `readableFullPlusUnknownStorageIsFullWithOneUnknown`; stronger: `depositMarksChestChanged` (partial shrink; the old test did NOT catch a missing `changed()` on withdraw, it survived), the sticky-piston test (wall moved), `outsideClaimAndNoClaim` (non-empty asserts), save/reload release (`destroyBlock` result).
+- `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
+- marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
+- Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).

@@ -55,7 +55,10 @@ An operator can take over an abandoned village with `/villageheart owner <player
 jukeboxes, decorated pots, ... but not the personal ender chest) inside a room building (the last enclosed room scan; a 16-block box around the marker
 until the first scan), and cannot break a registered building marker. Sneak-placing a block against a chest still works. **This is not grief
 protection:** a Visitor can still break a wall or floor, put a hopper under a Storage chest, and hoppers, pistons, explosions, copper golems, chest
-minecarts and creative pick-block are not stopped; outdoor sites have no protection. Servers that need more run a claim mod.
+minecarts and creative pick-block are not stopped. Also not stopped, because none of them goes through a player open or break: a Visitor's projectile
+(arrow, snowball, trident, wind charge) breaking a protected decorated pot (vanilla `onProjectileHit` destroys it without the player-break event);
+a button sneak-placed on a protected dispenser, dropper or crafter (sneak-placing against a container is allowed) that fires items out; and lectern
+books, item frames and armor stands (not `Container` block entities, or entities). Outdoor sites have no protection. Servers that need more run a claim mod.
 
 ## 3. Buildings
 

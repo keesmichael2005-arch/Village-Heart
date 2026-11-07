@@ -154,6 +154,14 @@ public class StockpileGameTests {
 			h.assertValueEqual(27 * 32, s.withdraw(pos(h, chest), cobble, 27 * 32, null), "half taken out (shrink path)");
 		}).thenIdle(5).thenExecute(() -> {
 			h.assertValueEqual(8, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "signal after the shrink");
+			// The big withdraw above empties whole slots, and emptying a slot calls vanilla setItem -> setChanged by itself, so on its
+			// own it would not notice a missing changed(). A withdraw that only shrinks a part-filled stack (ItemStack.shrink, no vanilla
+			// notification) does: 10 off the 32-stack leaves no slot empty and moves the signal 8 -> 7.
+			long nonEmpty = slots(h, chest).stream().filter(st -> !st.isEmpty()).count();
+			h.assertValueEqual(10, s.withdraw(pos(h, chest), cobble, 10, null), "10 taken from a part-filled stack (partial shrink path)");
+			h.assertValueEqual(nonEmpty, slots(h, chest).stream().filter(st -> !st.isEmpty()).count(), "no slot was emptied by the partial shrink");
+		}).thenIdle(5).thenExecute(() -> {
+			h.assertValueEqual(7, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "signal after the partial shrink");
 		}).thenSucceed();
 	}
 

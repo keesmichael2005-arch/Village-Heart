@@ -26,9 +26,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `world.save_bytes` lags the autosave (fine for the soak, not for per-day trends)
 
 ## From M3-r1/r2
-- [ ] The sticky-piston test should assert that the wall block actually moved
+- [x] The sticky-piston test should assert that the wall block actually moved
+  - Fixed (backlog-1): asserts the wall block now stands at z=4 and its old spot is vacated.
 - [ ] Art polish: the Farmhouse sheaf glyph and the small Chopping Block axe head
-- [ ] The marker_items screenshot background is night; set noon before the shot
+- [x] The marker_items screenshot background is night; set noon before the shot
+  - Done (backlog-1): `time set noon` + `weather clear` right before the shot, looked at. Finding: the test already set noon at the start; the dark backdrop is vanilla's screen dimming of a noon sky (the marker_wall shot, same time, is bright), not night.
 
 ## From M4-r1..r3
 - [ ] `verify.sh` header comment says `--fast` runs "layers 1, 2 only"; it also runs L3 self-test, model-log gate, perfTest
@@ -56,13 +58,15 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From M6-r1/r2
 - [ ] Treat `unreadContainers > 0` like an unknown Storage when noting a short deposit (up to 10 s false FULL after a hidden chest loads)
-- [ ] "Readable full + unknown" alert case is tested at L1 only; a glue mutation passing 0 for unknownSites survives. Add an L2 test
+- [x] "Readable full + unknown" alert case is tested at L1 only; a glue mutation passing 0 for unknownSites survives. Add an L2 test
+  - Fixed (backlog-1): `readableFullPlusUnknownStorageIsFullWithOneUnknown` (restart-like scan loss, polls for the one-readable/one-unknown window).
 - [ ] StockpilePerfTest has 4–10× headroom (a 3× slowdown stays green); tighten the limits or document StockpileCostTest as the regression guard
 - [x] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
   - Fixed (backlog-1).
 - [x] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
   - Fixed (backlog-1): the GameTest now counts runs (deterministic); the idle-tick wall-clock bound is `VillageTickerPerfTest` in perfTest.
-- [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
+- [x] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
+  - Fixed (backlog-1): a 10-item withdraw from a part-filled stack that empties no slot, comparator 8 -> 7. Mutation: dropping `touched.add` in `take` is now caught (survived before).
 - [x] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so (done in M8: "... (1 Storage not checked yet)")
 
 ## From M7-r1/r2
@@ -78,8 +82,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
 
 ## From M8-r1
-- [ ] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
-- [ ] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
+- [x] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
+  - Fixed (backlog-1): `oldMenuAfterReplaceIsStaleInTheSameTick`.
+- [x] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
+  - Fixed (backlog-1): `actionFromOutOfReachRejectedInTheSameTick`.
 - [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
 
@@ -94,7 +100,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
 
 ## From M24-r1
-- [ ] Add a dedicated GameTest for the double-chest partner check (a ready-to-copy test is in docs/reviews/M24-r1.md); the demotion double-chest close branch is also untested
-- [ ] Add to DESIGN's "not stopped" list: a Visitor's projectile breaking a protected decorated pot (vanilla onProjectileHit skips the break event); a button sneak-placed on a protected dispenser/dropper/crafter; lectern books, item frames, armor stands
+- [x] Add a dedicated GameTest for the double-chest partner check (a ready-to-copy test is in docs/reviews/M24-r1.md); the demotion double-chest close branch is also untested
+  - Fixed (backlog-1): `doubleChestOuterHalfIsProtectedThroughItsPartner` (the demotion close branch `compoundIsProtected` is still untested).
+- [x] Add to DESIGN's "not stopped" list: a Visitor's projectile breaking a protected decorated pot (vanilla onProjectileHit skips the break event); a button sneak-placed on a protected dispenser/dropper/crafter; lectern books, item frames, armor stands
+  - Fixed (backlog-1): DESIGN section 2 now names them.
 - [ ] Heart snapshot headroom is now 31 KiB (481/512 KiB); recheck the caps when adding fields
 - [ ] MP_SESSION end is logged before the fake player leaves, so the gate misses shutdown errors
