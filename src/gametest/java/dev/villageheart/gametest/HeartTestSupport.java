@@ -8,6 +8,16 @@ import dev.villageheart.core.heart.HeartSnapshotBuilder;
 import dev.villageheart.core.Rank;
 import dev.villageheart.heart.HeartFacts;
 import com.mojang.authlib.GameProfile;
+import dev.villageheart.heart.net.AssignJobPayload;
+import dev.villageheart.heart.net.FireWorkerPayload;
+import dev.villageheart.heart.net.HeartActionResultPayload;
+import dev.villageheart.heart.net.RecheckBuildingPayload;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import java.util.Optional;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import dev.villageheart.heart.HeartActions;
 import dev.villageheart.heart.HeartMenu;
 import dev.villageheart.heart.net.HeartNetwork;
 import dev.villageheart.heart.net.HeartSnapshotPayload;
@@ -75,6 +85,7 @@ public final class HeartTestSupport {
 
 	public static void done(GameTestHelper h) {
 		HeartNetwork.setSenderForTest(null);
+		HeartActions.reset();
 		VillageTestSupport.done(h);
 		WorkerTestSupport.end(h);
 	}
@@ -119,6 +130,46 @@ public final class HeartTestSupport {
 	public static List<HeartSnapshotPayload> snapshotsTo(List<Sent> sent, ServerPlayer p) {
 		return sent.stream().filter(s -> s.player().equals(p.getUUID()) && s.payload() instanceof HeartSnapshotPayload)
 				.map(s -> (HeartSnapshotPayload) s.payload()).toList();
+	}
+
+	public static List<HeartActionResultPayload> resultsTo(List<Sent> sent, ServerPlayer p) {
+		return sent.stream().filter(s -> s.player().equals(p.getUUID()) && s.payload() instanceof HeartActionResultPayload)
+				.map(s -> (HeartActionResultPayload) s.payload()).toList();
+	}
+
+	public static HeartActionResultPayload lastResult(List<Sent> sent, ServerPlayer p) {
+		List<HeartActionResultPayload> r = resultsTo(sent, p);
+		if (r.isEmpty()) throw new AssertionError("no action result was sent to " + p.getName().getString());
+		return r.get(r.size() - 1);
+	}
+
+	/**
+	 * Sends {@code payload} the way a client does: encoded with its registered codec, decoded again, then handed to the player's
+	 * connection, which Fabric dispatches to our global receiver (synchronously on the server thread).
+	 */
+	public static <T extends CustomPacketPayload> void send(ServerPlayer p, StreamCodec<ByteBuf, T> codec, T payload) {
+		ByteBuf buf = Unpooled.buffer();
+		codec.encode(buf, payload);
+		T decoded = codec.decode(buf);
+		p.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(decoded));
+	}
+
+	public static void assign(ServerPlayer p, Villager v, String job, Optional<BlockPos> building) {
+		send(p, AssignJobPayload.CODEC, new AssignJobPayload(p.containerMenu.containerId, v.getUUID(), job, building));
+	}
+
+	public static void fire(ServerPlayer p, java.util.UUID villager) {
+		send(p, FireWorkerPayload.CODEC, new FireWorkerPayload(p.containerMenu.containerId, villager));
+	}
+
+	public static void recheck(ServerPlayer p, BlockPos abs) {
+		send(p, RecheckBuildingPayload.CODEC, new RecheckBuildingPayload(p.containerMenu.containerId, abs));
+	}
+
+	/** True when the villager is a worker (attachment) or has a registry record. */
+	public static boolean isWorker(GameTestHelper h, Villager v) {
+		return dev.villageheart.worker.WorkerAttachments.isWorker(v)
+				|| VillageClaims.current(h.getLevel().getServer()).flatMap(s -> s.worker(v.getUUID())).isPresent();
 	}
 
 	/** A player that records the action-bar messages sent to it. */

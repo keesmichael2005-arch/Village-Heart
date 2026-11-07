@@ -116,11 +116,20 @@ public class HeartMenu extends AbstractContainerMenu {
 		}
 	}
 
+	/** Server: the village this menu was opened in is still the current one (no release or re-claim since). */
+	public boolean epochCurrent() {
+		return level != null && epoch == VillageClaims.data(level.getServer()).epoch();
+	}
+
+	/** Server: the Heart block is still there and the player is within reach of it. */
+	public boolean nearHeart(Player player) {
+		return level != null && stillValid(ContainerLevelAccess.create(level, heart), player, ModBlocks.VILLAGE_HEART);
+	}
+
 	@Override
 	public boolean stillValid(Player player) {
 		if (level == null) return true;
-		if (epoch != VillageClaims.data(level.getServer()).epoch()) return false;
-		return stillValid(ContainerLevelAccess.create(level, heart), player, ModBlocks.VILLAGE_HEART);
+		return epochCurrent() && nearHeart(player);
 	}
 
 	@Override

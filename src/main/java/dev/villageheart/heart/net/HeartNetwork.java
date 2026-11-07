@@ -7,6 +7,7 @@ import dev.villageheart.heart.HeartActions;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.heart.HeartFacts;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -38,8 +39,10 @@ public final class HeartNetwork {
 	public static void register() {
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			HeartFacts.reset();
+			HeartActions.reset();
 			sender = DEFAULT_SENDER;
 		});
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> HeartActions.forget(handler.getPlayer().getUUID()));
 		PayloadTypeRegistry.playS2C().register(HeartSnapshotPayload.TYPE, HeartSnapshotPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(HeartActionResultPayload.TYPE, HeartActionResultPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(AssignJobPayload.TYPE, AssignJobPayload.CODEC);

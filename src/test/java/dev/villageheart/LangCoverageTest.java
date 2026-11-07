@@ -26,7 +26,7 @@ class LangCoverageTest {
 	void heartScreenServerTexts() throws Exception {
 		Map<String, Object> lang = lang();
 		for (dev.villageheart.core.heart.Rejection r : dev.villageheart.core.heart.Rejection.values()) {
-			assertTrue(lang.containsKey(r.langKey()), r.langKey());
+			assertEquals(r.message(), lang.get(r.langKey()), r.langKey());
 		}
 		assertTrue(lang.containsKey("message.villageheart.heart.not_this_village"));
 		// Every alert text the builder can produce.
