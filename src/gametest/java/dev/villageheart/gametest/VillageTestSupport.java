@@ -50,15 +50,18 @@ public final class VillageTestSupport {
 	/**
 	 * Bells (and their POIs) from other tests, including failed ones that never cleaned up, can sit within the
 	 * 16-block claim range of a neighbouring test structure. Each claim test runs alone in its own batch, so it is
-	 * safe to drop every POI around the test before it starts.
+	 * safe to drop every village-bell POI around the test before it starts. Only MEETING POIs are touched: a bell
+	 * block is set to air (vanilla then removes its POI itself); a POI whose block is already gone is an orphan and
+	 * is removed directly. Calling poi.remove while the block still stands would make vanilla log
+	 * "POI data mismatch: never registered" when the block is removed later. Other POI types are left alone.
 	 */
 	private static void purgePoi(GameTestHelper h) {
 		var poi = h.getLevel().getPoiManager();
 		BlockPos centre = h.absolutePos(BlockPos.ZERO);
-		for (var rec : poi.getInRange(t -> true, centre, 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).toList()) {
+		for (var rec : poi.getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING), centre, 48,
+				net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).toList()) {
 			BlockPos p = rec.getPos().immutable();
 			if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.BELL)) {
-				// vanilla removes the POI itself when the block goes; removing it here too logs "never registered"
 				h.getLevel().setBlock(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
 			} else {
 				poi.remove(p);

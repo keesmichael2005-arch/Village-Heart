@@ -28,3 +28,7 @@ Per-test GameTest environments worked first time (see docs/TESTING.md). Next: M2
 ## 2026-11-07: M1 review round 1 fixes (builder)
 T-L4-1 now teleports to a block centre and asserts the client can predict the placement; verified red without `sendAllDataToRemote()`.
 `purgePoi` lets vanilla remove bell POIs (set to air) and only calls `poi.remove` for non-bell POIs: no more "POI data mismatch" errors.
+
+## 2026-11-07: M1 review round 2 fixes (builder)
+`purgePoi` now touches only MEETING POIs (bell block to air; orphan POIs removed), plus regression test `resetLeavesOtherPoisAlone` (composter POI survives reset).
+T-L2-6 now re-claims, reloads, clears and reloads again, so a missing `setDirty()` in `clear()` goes red (mutation-checked).

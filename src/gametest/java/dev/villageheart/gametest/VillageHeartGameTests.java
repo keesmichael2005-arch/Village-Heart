@@ -116,6 +116,12 @@ public class VillageHeartGameTests {
 
 					alice.gameMode.destroyBlock(abs);
 					h.assertTrue(reload(server).village().isEmpty(), "release persisted");
+
+					// clear(): needs a non-empty claim on disk first, or an empty file would mask a missing setDirty
+					VillageTestSupport.place(h, alice, new BlockPos(2, 0, 2));
+					h.assertTrue(reload(server).village().isPresent(), "re-claim persisted");
+					VillageClaims.data(server).clear();
+					h.assertTrue(reload(server).village().isEmpty(), "clear() persisted (non-empty file became empty)");
 					VillageTestSupport.done(h);
 				} catch (java.io.IOException e) {
 					throw new RuntimeException(e);
@@ -326,5 +332,25 @@ public class VillageHeartGameTests {
 		h.assertTrue(state.is(BlockTags.DRAGON_IMMUNE), "dragon_immune tag");
 		h.assertValueEqual(PushReaction.BLOCK, state.getPistonPushReaction(), "push reaction");
 		h.succeed();
+	}
+
+	/** Regression: reset must not drop POIs of non-bell blocks (that made vanilla log "POI data mismatch" later). */
+	@GameTest(environment = "villageheart-gametest:composter_poi", maxTicks = 100)
+	public void resetLeavesOtherPoisAlone(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		BlockPos composter = new BlockPos(3, 1, 3);
+		h.setBlock(composter, Blocks.COMPOSTER);
+		h.runAfterDelay(3, () -> {
+			var poi = h.getLevel().getPoiManager();
+			BlockPos abs = h.absolutePos(composter);
+			h.assertTrue(poi.getType(abs).isPresent(), "precondition: composter POI registered");
+			VillageTestSupport.reset(h);
+			h.assertTrue(poi.getType(abs).isPresent(), "composter POI still registered after reset");
+			h.setBlock(composter, Blocks.AIR);
+			h.runAfterDelay(2, () -> {
+				h.assertTrue(poi.getType(abs).isEmpty(), "composter POI removed by vanilla with its block");
+				VillageTestSupport.done(h);
+			});
+		});
 	}
 }
