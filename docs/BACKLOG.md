@@ -56,3 +56,12 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
 - [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
 - [ ] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so
+
+## From M7-r1/r2
+- [ ] Deterministic regression tests for the deposit-trip guards: (a) erase the walk target mid-trip and assert it is re-pointed at Storage, not the job block; (b) only one of the WORK/go_home trips starts
+- [ ] processPending "skip blocks the current village holds" branch has no test
+- [ ] Tiny window: a pending release runs up to 20 ticks after the chunk loads; a break/re-place plus a vanilla claim in that window would free the new ticket
+- [ ] Crash between the POI save and the saved-data save can leave a stale ticket (documented in TESTING.md)
+- [ ] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic)
+- [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
+- [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold

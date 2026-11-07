@@ -1,9 +1,9 @@
-status: RUNNING         # RUNNING | PAUSED | DONE
+status: PAUSED          # RUNNING | PAUSED | DONE
 budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after this"
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
-run_cost_usd: "~156 at 15:50Z (orchestrator session usage incl. all workers); 5h window never hit"
-current: "M6 PASS r2 merged | M7 BUILD (m7), step 9 now unblocked"
+run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
+current: "Run 1 ended 2026-11-07T17:45Z (06:45 NZ). Merged on dev: M1-M7 + sim-fix + l4-flake. Next run: resume M8 builder (steps 4-9 on branch m8), then M9 build, M10, M11 (plans ready on m9-plan/m10-plan/m11-plan)"
 blocked: []
 open_questions_for_human:
   - "M11 starter sim: if a zombie kills a hired worker, food or logs stop for the rest of the 10-day run. Choose: (a) peaceful difficulty for the `starter` scenario, or (b) a scenario re-hire action. Default if unanswered: (b)"
