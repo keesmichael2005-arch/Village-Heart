@@ -164,3 +164,16 @@ Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().p
 - Assumes M4's `#chest` per block + `minecraft:barrel` ids and M5's `Buildings.valid/all` with `latestScan` (A1-A7 in the plan); steps 1-4 do not need M5.
 Revised after a fresh critique (20 findings, 3 blockers: contradictory test numbers, fill-order expectation, false FULL for unloaded Storage).
 Next: BUILD M6 once M4 is merged (steps 1-4), step 5 after M5. Top risk: the stockpile sees chests only through M5's cached scans (lag and restart window).
+
+## 2026-11-07: M6 built (builder): stockpile backed by Storage chests
+Core (`core.stock`, pure, L1): `Inventory<K>`, `ContainerRef`, `StorageSite`, `Stockpile<K>` (a live view: `count`, `deposit` nearest-first with spill, `depositInto`, `withdraw`, `withdrawFirst`,
+`nearestWithSpace`, `hasSpaceFor`, `snapshot`), `Reservations` (UUID holders, claims not locks), `StorageAlertTracker` (OK / FULL / NO_STORAGE, 200-tick hold), `StorageSet.resolve` (dedupe, chests of other room
+buildings excluded, Storage unknown while an unscanned neighbour is within 32 blocks); the unused M0 string counter `core.Stockpile` is gone and its 3 tests are ported. Three `Balance` values.
+Glue (`dev.villageheart.stock`): `StackKey` (item + component patch), `ContainerInventory` (one chest half or barrel, `setChanged` per touched container), `StorageContainers.at` (never loads a chunk),
+`ContainerBinder`, `StorageSites.collect` (reads `Buildings.all`), `Stockpiles` facade (server thread only), `StockpileSystem` registered as `villageheart:stockpile`; `SimMetricsCollector` now reports `stockpile.items.*`.
+Tests: L1 `StockpileTest` (17), `StorageSetTest`, `StorageAlertTest`, `StockpileCostTest` (slot-read counts), `StockpilePerfTest` (perf tag: snapshot of 13 824 slots ~0.3 ms, spill across 64 sites ~0.4-1.2 ms);
+L2 `StockpileGameTests` (double chest halves, components vs `isSameItemSameComponents`, comparator, unloaded/replaced) and `StockpileFacadeGameTests` (totals of two Storages, House chest in a shared wall,
+spill into a second Storage, no-storage / full alerts, off-thread refusal, real snapshot cost 32 chests ~0.26 ms, new/removed chest, invalid Storage, collector metric). Mutation check: no exclusion set -> shared-wall test red.
+Interface check vs merged M4 / M5 and all deviations: plan section 9. Docs: DESIGN section 6 (rules as built), TESTING "Stockpile tests".
+Next: M7 (workers deposit with `Stockpiles.deposit`/`nearestWithSpace`, stop gathering on `!hasSpaceFor`), M8 (Stockpile tab reads `Stockpiles.snapshot`, alert text), M20 (build reservations).
+Blockers: none. Doubts: the stockpile sees chests only through the building scans (up to 1 s per building behind a change; unknown right after a restart).
