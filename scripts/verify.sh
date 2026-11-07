@@ -37,5 +37,9 @@ if [ "${1:-}" != "--fast" ]; then
   echo "- Screenshots: $(ls reports/screenshots | tr '\n' ' ')" >> "$SUMMARY"
 fi
 
+# Wall-clock perf limits: alone, after every other Gradle step, so nothing competes for the CPU.
+step "Perf limits (perfTest, runs alone)" perftest.log ./gradlew --no-daemon --no-parallel perfTest
+grep -h "perf " reports/perftest.log | sed 's/^/    /' >> "$SUMMARY"
+
 cat "$SUMMARY"
 exit $STATUS

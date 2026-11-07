@@ -87,3 +87,30 @@ the 3:1 contrast rule. Next: M4. Blockers: none.
 On a clean checkout, `scripts/verify.sh` exited 0 twice (L2 38/38, L4 green, no synchronizer flake). The model-log fixtures are now tracked, and no other test reads an ignored file.
 Two mutations went red as expected (a storage recipe ingredient, and the kitchen marker's loot item). Both screenshots were looked at: the marker_items shot is clean now.
 M3 ticked in ROADMAP. 3 non-blocking notes in `docs/reviews/M3-r2.md`. Next: M4. Blockers: none.
+## 2026-11-07: M4 plan written (docs/plans/M4.md, branch m4)
+7-step plan for the room flood fill, with APIs checked against the 1.21.11 sources. No gradle run, because the M3 builder was using the CPU.
+- Core `core.room`: `Pos`, `Dir`, `Cell` (OPEN/SOLID/UNLOADED, door half, partner, content keys), `BlockView`, `RoomScanner`
+  (door search from marker position + outward direction, BFS with a 4096 cap, floor area = distinct columns with a standable cell,
+  contents from interior + shell), `RoomProblem` with exact messages, `RoomScan`, `SharedRooms` (same `roomKey` → both SHARED).
+- Glue `dev.villageheart.room`: `RoomCells` (wall = any collision box, plus fence gates; cached per state, cleared on datapack reload),
+  `LevelBlockView` (`getChunkNow`, never loads chunks; the sky test walks down from `WORLD_SURFACE` with the same rule), `RoomScans` facade.
+- No dependency on M3 code: the scanner takes the marker position and M3's `FACING` (out of the wall); the marker cell is forced OPEN.
+- Verified gotcha: GameTests are encased in barriers, on top as well unless `skyAccess = true`, so every room test sets `skyAccess = true`.
+Revised after a fresh critique: 17 findings, including 2 blockers (the heightmap sky test, and localising a hole above the start). Next: BUILD M4.
+Top risk: leak localisation (roof hole vs wall gap, and its position) is a pinned heuristic, so irregular holes can get the wrong word.
+
+## 2026-11-07: M4 built (builder): room detection
+Core `core.room` (`Pos`, `Dir`, `Cell`, `BlockView`, `RoomScanner`, `RoomScan`, `RoomProblem`, `SharedRooms`, package-private `LongMap`; `Balance.ROOM_MAX_AIR = 4096`): flood fill from just inside the door the marker
+marks, floor area = distinct standable columns, contents from interior + shell (two-block things via `partner`), and one reason with a position (`Roof missing at`, `Wall gap at`, `Doorway blocked`, `Room too big`, shared, ...).
+Glue `dev.villageheart.room`: `RoomCells` (wall = any collision box, plus fence gates; cache cleared on reload), `LevelBlockView` (never loads chunks; sky test = walk down from `WORLD_SURFACE` with the same rule), `RoomScans.scan`
+(server thread only). Tests: L1 `PosTest`, `DirTest`, `RoomProblemTest`, `FakeGridTest`, `RoomScannerTest` (every roof cell, every wall cell, porch, inset roof, gable roof, door search, partners, floor area...), `SharedRoomsTest`,
+`RoomScannerPerfTest` (16x16x8 median ~2.7 ms vs 5 ms; 4097-cell worst case ~2.5-3 ms vs 10 ms); L2 `RoomGameTests` (real room, roof hole + repair, 16 wall materials + 7 hole blocks + water, shared room, unloaded chunk, sky test, off-thread, classifier).
+Mutation checks: removing `skyAccess` from `brokenRoofBlockReported` -> red ("expected a failing scan"); `blocked(H) >= 2` -> `>= 5` made 4 L1 tests red.
+Deviations (see the plan): the roof test also tries the ceilings of E's other covered neighbours (gable roofs), primitive hash tables for speed, `scripts/testdata/*.log` un-ignored and committed.
+Next: M5 (markers validate rooms: call `RoomScans.scan(level, pos, state.getValue(MarkerBlock.FACING))`, wrap in a VillageSystem, map `RoomProblem` to translation keys). Blockers: none.
+
+## 2026-11-07: M4 review round 1 fixed (builder)
+Perf tests assert the best of 5 batch medians (absolute 5 ms / 10 ms kept) and T-L1-17 adds a deterministic call-count guard. The extra roof-test candidates only consider neighbours inside the room (porch slot, pergola and y=8 regression tests added; gable test still passes). Larger roof holes now pin the exact cell.
+
+## 2026-11-07: M4 review round 2 fixed (builder)
+Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by verify.sh (retrying batches up to 5 s); deterministic call-count guards (tightened to 2x) stay in `test`. TESTING.md updated.

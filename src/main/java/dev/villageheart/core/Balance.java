@@ -9,4 +9,7 @@ public final class Balance {
 
 	/** Blank Markers crafted from 8 planks around an item frame (DESIGN section 3.1, tunable). */
 	public static final int BLANK_MARKER_YIELD = 1;
+
+	/** Largest room (air cells) a building may enclose (DESIGN section 3.2, tunable). */
+	public static final int ROOM_MAX_AIR = 4096;
 }
