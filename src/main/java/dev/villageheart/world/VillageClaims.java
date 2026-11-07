@@ -79,8 +79,10 @@ public final class VillageClaims {
 
 	/** Releases the claim if pos is the claimed Heart; drops the treasury there and tells the owner. */
 	public static Optional<VillageState> releaseAt(ServerLevel level, BlockPos pos) {
+		java.util.Set<HeartLocation> held = data(level.getServer()).reservedJobBlocks();
 		Optional<VillageState> released = data(level.getServer()).releaseAt(locate(level, pos));
 		released.ifPresent(v -> {
+			dev.villageheart.worker.JobSiteReservations.releaseAll(level.getServer(), held);
 			dev.villageheart.building.MarkerAdoption.resetReleased(level.getServer(), v);
 			dropTreasury(level, pos, v.treasury());
 			ServerPlayer owner = level.getServer().getPlayerList().getPlayer(v.owner());

@@ -8,7 +8,25 @@ import net.minecraft.world.entity.npc.villager.VillagerProfession;
 
 /** Server-thread operations on workers. The registry-aware hire / fire API (with slot checks) is built on these two primitives. */
 public final class Workers {
+	private static JobSiteSource jobSites = JobSiteSource.DEFAULT;
+
 	private Workers() {}
+
+	/** The building registry seam (M5), or the fixed source a GameTest installed. */
+	public static JobSiteSource jobSites() { return jobSites; }
+
+	/** Test hook: swap the source; pass the previous one (or {@code JobSiteSource.DEFAULT}) back to restore. */
+	public static JobSiteSource setJobSiteSourceForTest(JobSiteSource source) {
+		JobSiteSource previous = jobSites;
+		jobSites = source == null ? JobSiteSource.DEFAULT : source;
+		return previous;
+	}
+
+	/** The loaded level named by a stored location, or null. Never loads anything. */
+	public static net.minecraft.server.level.ServerLevel levelOf(net.minecraft.server.MinecraftServer server, dev.villageheart.core.HeartLocation loc) {
+		return server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+				net.minecraft.resources.Identifier.parse(loc.dimension())));
+	}
 
 	/**
 	 * Turns {@code villager} into a worker with {@code data}: drops its job-site claims (while the old profession is still set, because
