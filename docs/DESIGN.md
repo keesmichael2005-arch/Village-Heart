@@ -327,6 +327,14 @@ The tier never goes down in v1. The Overview tab shows each goal's progress.
   villager brain via mixin, or (b) a separate mod-driven task runner that suspends the brain while
   working. Write the decision down in this file. Either way, reserving workstations means handling the
   POI system so that vanilla villagers cannot claim job blocks inside mod buildings.
+  **Decision (M7 spike, 2026-11-07): (a), a brain mixin.** One mixin at the head of `Villager.registerBrainGoals` gives
+  hired villagers a mod-built brain: the vanilla door, panic, raid, bell, home and sleep behaviours, plus mod work
+  activities, and none of vanilla's job-site/profession behaviours (`ResetProfession` otherwise resets a mod profession
+  within 200 ticks). Unhired villagers keep the untouched vanilla brain. The day shape stays in `core` (no data timeline).
+  (b) was rejected: with the brain suspended a worker cannot open doors (stuck at a closed door in the spike), and it
+  would still need a mixin. Workstations in valid buildings are reserved by the mod holding their POI ticket, with a
+  retrying reconcile that evicts vanilla claimants (POI updates are deferred by the server). Mod professions have
+  `heldJobSite`/`acquirableJobSite` = none and no trade table. Evidence and details: `docs/plans/M7.md` §3.1.
 - Worker data uses Fabric data attachments on the entity. Village data uses world saved data.
 - **Performance budget**: village logic averages under **1 ms per tick** with 20 villagers, measured by layer 3.
 - Every number marked *(tunable)* belongs in one `core` balance class.

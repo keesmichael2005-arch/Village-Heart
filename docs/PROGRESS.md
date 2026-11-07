@@ -150,3 +150,21 @@ Screenshot looked at: green Storage plaque (left) and red one (right, crosshair 
 Interface check vs merged M3/M4 and every deviation: plan section 9. Notable: the in-tick click-spam reuse was dropped (it contradicts the same-tick re-check test); `Verdict.slots` for Storage is its container count; `yard.snbt` needs a palette;
 tests sweep stray markers of neighbouring test structures before claiming (they otherwise adopt them and the measured bounds fail).
 Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().positions("#chest")` + barrels), M7 (job slots from `verdict().slots()`), M14 calls `Buildings.requestAll` after a tier-up. Blockers: none.
+
+## 2026-11-07: M7 plan written (docs/plans/M7.md), villager-control spike decided
+11-step plan for hiring and the worker framework, written ahead of M4-M6. It talks to them only through a narrow `JobSiteSource`
+(`sites(job)`, `isRegistered(building)`, `reservable()`), plus M6's `Stockpiles.depositTarget/deposit`, which is needed for step 9 only.
+**Spike decision: (a), a brain mixin** (recorded in DESIGN §12). A throwaway GameTest spike (8 tests, deleted) gave this evidence:
+- With a mixin at the head of `Villager.registerBrainGoals`, a mod-built brain walked through a closed door to its job block in 60 ticks,
+  slept in a bed at night, worked after dawn, and survived an NBT reload. A mod profession with no trades gives 0 offers.
+- (b), the runner with the brain suspended, got stuck at the closed door (no `InteractWithDoor`).
+- With the vanilla brain kept, `ResetProfession` cleared the mod profession within 200 ticks.
+- The mod holding a composter's POI ticket blocked vanilla for 1200 ticks; a free composter was taken by tick 200.
+Findings for later milestones:
+- 1.21.11's villager schedule is a timeline-driven `EnvironmentAttribute`.
+- POI add/remove is deferred through `server.execute`, so reservations retry and evict.
+- Calling `runAfterDelay` inside a `runAfterDelay` callback crashes the GameTest server.
+Revised after a fresh critique (26 findings): a stable slot cut, reserving every mod-job workstation, no chunk loading, real zombie
+conversion in tests, stronger L2 assertions and isolation, breeding kept.
+Next: BUILD M7 steps 1-4 (no dependencies); steps 5-8 after M5, step 9 after M6. Top risk: brain ownership (one mixin into a private
+vanilla method; vanilla behaviours reused by hand).
