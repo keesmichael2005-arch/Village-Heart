@@ -622,47 +622,300 @@ public class WorkerGameTests {
 		});
 	}
 
-	// ---- T-L2-9 (entity part) ------------------------------------------------------------------
+	// ---- lifecycle (step 7) --------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:workers_reload", structure = YARD, maxTicks = 700)
+	/** Saves {@code v} to NBT, discards it and loads a copy (the spike recipe for "the chunk unloaded and loaded again"). */
+	private static Villager reloadEntity(ServerLevel level, Villager v) {
+		TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		v.saveWithoutId(out);
+		CompoundTag tag = out.buildResult();
+		v.discard();
+		Entity e = EntityType.create(EntityType.VILLAGER, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag),
+				level, EntitySpawnReason.LOAD).orElseThrow();
+		level.addFreshEntity(e);
+		track((Villager) e);
+		return (Villager) e;
+	}
+
+	/** Builds a valid Farmhouse (1 composter), waits until it is valid and reserved, then continues with {@code next}. */
+	private static GameTestSequence validFarmhouse(GameTestHelper h, BlockPos origin) {
+		BlockPos marker = BuildingTestSupport.markerPos(origin, 5);
+		BlockPos comp = BuildingTestSupport.inside(origin, 0, 0, 0);
+		return BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, origin, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, marker, Direction.NORTH);
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, marker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, comp) && !poiHasSpace(h, comp), "the composter is reserved");
+		});
+	}
+
+	/** T-L2-9 (roadmap): a worker survives an entity reload and a village reload, with its reservation. */
+	@GameTest(environment = "villageheart-gametest:workers_reload", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void workerSurvivesReload(GameTestHelper h) {
 		begin(h);
-		floor(h, 0, 0, 14, 8);
-		BlockPos block = new BlockPos(10, 1, 4);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
 		Villager[] a = new Villager[1];
 		Villager[] b = new Villager[1];
 		WorkerData[] data = new WorkerData[1];
-		GameTestSequence seq = h.startSequence().thenExecute(() -> {
-			h.setBlock(block, Blocks.COMPOSTER);
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
 			h.getLevel().setDayTime(2000);
-			a[0] = spawnVillager(h, new BlockPos(3, 1, 4));
-			hireDirect(h, a[0], JobType.FARMER, block);
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
 			data[0] = a[0].getAttached(WorkerAttachments.WORKER);
 			h.assertTrue(data[0] != null, "attachment present");
 		});
 		seq = seq.thenIdle(2).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
-			TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
-			a[0].saveWithoutId(out);
-			CompoundTag tag = out.buildResult();
-			a[0].discard();
-			Entity e = EntityType.create(EntityType.VILLAGER, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag),
-					level, EntitySpawnReason.LOAD).orElseThrow();
-			level.addFreshEntity(e);
-			b[0] = (Villager) e;
-			track(b[0]);
+			b[0] = reloadEntity(level, a[0]);
 			h.assertValueEqual(data[0], b[0].getAttached(WorkerAttachments.WORKER), "worker data after reload");
 			h.assertValueEqual("villageheart:farmer", b[0].getVillagerData().profession().unwrapKey().orElseThrow().identifier().toString(), "profession");
 			h.assertTrue(b[0].getOffers().isEmpty(), "no trades");
 			h.assertTrue(WorkerBrain.isWorkerBrain(b[0]), "worker brain after reload");
 			h.assertTrue(b[0].getBrain().isActive(Activity.WORK), "WORK right after load");
+			h.assertFalse(poiHasSpace(h, comp), "the composter's POI still has no free ticket after the entity reload");
+		});
+		seq = seq.thenIdle(45).thenExecute(() -> {
+			h.assertTrue(WorkerAttachments.isWorker(b[0]), "the reloaded worker is still a worker 45 ticks later (not treated as an orphan)");
+			h.assertTrue(record(h, b[0]).isPresent(), "its record is still there");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "reaching the job block after the reload",
-				() -> h.assertTrue(distance(h, b[0], block) <= REACH, "distance " + distance(h, b[0], block)));
+				() -> h.assertTrue(distance(h, b[0], comp) <= REACH, "distance " + distance(h, b[0], comp)));
 		seq.thenExecute(() -> {
+			try {
+				var onDisk = VillageTestSupport.reload(h.getLevel().getServer());
+				var live = VillageClaims.current(h.getLevel().getServer()).orElseThrow();
+				h.assertValueEqual(live.workers(), onDisk.village().orElseThrow().workers(), "saved workers equal the live ones");
+				h.assertTrue(onDisk.reservedJobBlocks().contains(loc(h, comp)), "the saved reservations hold the composter");
+			} catch (java.io.IOException e) {
+				throw new RuntimeException(e);
+			}
+			VillageTestSupport.done(h);
 			end(h);
-			h.succeed();
 		});
 	}
 
+	/** T-L2-8: death and zombie conversion free the slot and never leave a mod profession on the zombie, in either event order. */
+	@GameTest(environment = "villageheart-gametest:workers_death", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void workerDeathAndConversion(GameTestHelper h) {
+		begin(h);
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A);
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			MinecraftServer server = level.getServer();
+			BlockPos spot = BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1);
+			net.minecraft.world.entity.monster.zombie.Zombie zombie = h.spawn(EntityType.ZOMBIE, spot);
+			zombie.setNoAi(true);
+
+			// death
+			Villager a = spawnVillager(h, spot);
+			h.assertTrue(hire(h, a, JobType.FARMER) instanceof HireResult.Hired, "A hired");
+			for (int i = 0; i < 5 && a.isAlive(); i++) a.hurtServer(level, level.damageSources().genericKill(), 1000.0F);
+			h.assertFalse(a.isAlive(), "A is dead");
+			h.assertTrue(record(h, a).isEmpty(), "death removed the record");
+
+			// positive controls: the conversion path copies VillagerData
+			Villager farmer = spawnVillager(h, spot);
+			farmer.setVillagerData(farmer.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.FARMER));
+			Villager modNoAttachment = spawnVillager(h, spot);
+			modNoAttachment.setVillagerData(modNoAttachment.getVillagerData().withProfession(ModProfessions.holder(JobType.FARMER)));
+			h.assertTrue(zombie.convertVillagerToZombieVillager(level, farmer), "control conversion 1");
+			h.assertTrue(zombie.convertVillagerToZombieVillager(level, modNoAttachment), "control conversion 2");
+			var zombies = level.getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.ZombieVillager.class, new net.minecraft.world.phys.AABB(h.absolutePos(spot)).inflate(3));
+			h.assertValueEqual(2, zombies.size(), "two zombie villagers from the controls");
+			boolean sawFarmer = false;
+			for (var z : zombies) {
+				if (z.getVillagerData().profession().is(VillagerProfession.FARMER)) sawFarmer = true;
+				else h.assertTrue(z.getVillagerData().profession().is(VillagerProfession.NONE), "a mod profession survived the conversion: "
+						+ z.getVillagerData().profession().getRegisteredName());
+				z.discard();
+			}
+			h.assertTrue(sawFarmer, "a vanilla farmer keeps its profession (so the path copies VillagerData)");
+
+			// B: hired, converted by the real path
+			Villager b = spawnVillager(h, spot);
+			h.assertTrue(hire(h, b, JobType.FARMER) instanceof HireResult.Hired, "the slot was free again: B hired");
+			h.assertTrue(zombie.convertVillagerToZombieVillager(level, b), "conversion of B");
+			h.assertTrue(VillageClaims.current(server).orElseThrow().workers().isEmpty(), "conversion removed the record: slot free");
+			zombies = level.getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.ZombieVillager.class, new net.minecraft.world.phys.AABB(h.absolutePos(spot)).inflate(3));
+			h.assertValueEqual(1, zombies.size(), "one zombie villager from B");
+			h.assertTrue(zombies.get(0).getVillagerData().profession().is(VillagerProfession.NONE), "zombie profession is none, not "
+					+ zombies.get(0).getVillagerData().profession().getRegisteredName());
+			zombies.get(0).discard();
+
+			// C: the record is already gone when the conversion happens (as if the death/convert handler ran first)
+			Villager c = spawnVillager(h, spot);
+			h.assertTrue(hire(h, c, JobType.FARMER) instanceof HireResult.Hired, "C hired");
+			Workers.fireById(server, c.getUUID());
+			h.assertTrue(WorkerAttachments.isWorker(c), "C still carries the attachment");
+			h.assertTrue(zombie.convertVillagerToZombieVillager(level, c), "conversion of C");
+			zombies = level.getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.ZombieVillager.class, new net.minecraft.world.phys.AABB(h.absolutePos(spot)).inflate(3));
+			h.assertValueEqual(1, zombies.size(), "one zombie villager from C");
+			h.assertTrue(zombies.get(0).getVillagerData().profession().is(VillagerProfession.NONE), "zombie profession is none (record removed first)");
+			zombies.get(0).discard();
+			zombie.discard();
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-10: a villager that carries worker data but has no record is restored to vanilla when it loads. */
+	@GameTest(environment = "villageheart-gametest:workers_orphan", structure = YARD, maxTicks = 300)
+	public void orphanAttachmentRestored(GameTestHelper h) {
+		begin(h);
+		BlockPos block = new BlockPos(10, 1, 4);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = h.startSequence().thenExecute(() -> {
+			floor(h, 0, 0, 14, 8);
+			v[0] = spawnVillager(h, new BlockPos(3, 1, 4));
+			dev.villageheart.worker.WorkerSystem.exemptFromOrphanSweepForTest(v[0].getUUID()); // simulate "fired while unloaded"
+			Workers.install(h.getLevel(), v[0], WorkerData.hired(JobType.FARMER, loc(h, block), loc(h, block)));
+			h.assertTrue(WorkerAttachments.isWorker(v[0]) && !isUnemployed(v[0]), "a worker with no record");
+		});
+		seq = seq.thenIdle(3).thenExecute(() -> {
+			Villager copy = reloadEntity(h.getLevel(), v[0]);
+			dev.villageheart.worker.WorkerSystem.clearOrphanExemptionsForTest();
+			v[0] = copy;
+			// the copy was created with the attachment and the mod profession; the load handler runs at the end of this tick
+			h.assertTrue(WorkerAttachments.isWorker(copy), "the copy carries the attachment right after loading");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the orphan is restored", () -> {
+			h.assertFalse(WorkerAttachments.isWorker(v[0]), "attachment gone");
+			h.assertTrue(isUnemployed(v[0]), "profession none, not " + v[0].getVillagerData().profession().getRegisteredName());
+			h.assertFalse(WorkerBrain.isWorkerBrain(v[0]), "vanilla brain");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-11: releasing the village (breaking the Heart) frees every reserved block and every worker. */
+	@GameTest(environment = "villageheart-gametest:workers_release", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void heartReleaseFreesEverything(GameTestHelper h) {
+		begin(h);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		Villager[] a = new Villager[1];
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			BuildingTestSupport.owner().gameMode.destroyBlock(h.absolutePos(new BlockPos(3, 1, 1)));
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isEmpty(), "released");
+			h.assertFalse(WorkerAttachments.isWorker(a[0]), "the worker is a vanilla villager again");
+			h.assertTrue(isUnemployed(a[0]), "profession none");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the composter's ticket is free again", () -> h.assertTrue(poiHasSpace(h, comp), "POI has space"));
+		seq.thenExecute(() -> {
+			h.assertTrue(VillageClaims.data(h.getLevel().getServer()).reservedJobBlocks().isEmpty(), "no reservations left");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-15: removing the building's marker fires its workers. */
+	@GameTest(environment = "villageheart-gametest:workers_marker_removed", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void markerRemovedFiresWorker(GameTestHelper h) {
+		begin(h);
+		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		Villager[] a = new Villager[1];
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			breakMarker(h, marker);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the worker is fired after the marker is gone", () -> {
+			h.assertTrue(record(h, a[0]).isEmpty(), "record gone");
+			h.assertFalse(WorkerAttachments.isWorker(a[0]), "attachment gone");
+			h.assertTrue(isUnemployed(a[0]), "profession none");
+			h.assertFalse(isHeld(h, comp), "composter not held");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-16: an invalid (but still registered) building keeps its workers; the reservation is released until it is valid again. */
+	@GameTest(environment = "villageheart-gametest:workers_invalid", structure = YARD, skyAccess = true, maxTicks = 800)
+	public void invalidBuildingKeepsWorker(GameTestHelper h) {
+		begin(h);
+		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		BlockPos roof = ORIGIN_A.offset(3, 4, 2);
+		Villager[] a = new Villager[1];
+		dev.villageheart.core.WorkerRecord[] rec = new dev.villageheart.core.WorkerRecord[1];
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			rec[0] = record(h, a[0]).orElseThrow();
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status while valid");
+			h.destroyBlock(roof);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, marker, MarkerStatus.INVALID));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "the reservation is released while invalid", () -> {
+			h.assertFalse(isHeld(h, comp), "composter not held");
+			h.assertTrue(poiHasSpace(h, comp), "composter free");
+		});
+		seq = seq.thenIdle(45).thenExecute(() -> {
+			h.assertValueEqual(java.util.Optional.of(rec[0]), record(h, a[0]), "the worker keeps its record");
+			h.assertTrue(WorkerAttachments.isWorker(a[0]) && !isUnemployed(a[0]), "attachment and mod profession kept");
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.WORKPLACE_INVALID, Workers.status(h.getLevel().getServer(), rec[0]), "status while invalid");
+			h.setBlock(roof, Blocks.OAK_PLANKS);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, marker, MarkerStatus.VALID));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "reserved again after the roof is fixed", () -> {
+			h.assertTrue(isHeld(h, comp) && !poiHasSpace(h, comp), "composter reserved again");
+		});
+		seq.thenExecute(() -> {
+			h.assertValueEqual(java.util.Optional.of(rec[0]), record(h, a[0]), "same record, same slot");
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status after the fix");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-17: a worker running a vanilla brain gets the worker brain back; a returning vanilla holder of a reserved block loses it. */
+	@GameTest(environment = "villageheart-gametest:workers_heal", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void brainSelfHealAndLoadEviction(GameTestHelper h) {
+		begin(h);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		Villager[] a = new Villager[1];
+		Villager[] holder = new Villager[1];
+		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			level.setDayTime(2000);
+			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			WorkerData data = a[0].getAttached(WorkerAttachments.WORKER);
+			// a vanilla brain on a worker: refresh with the attachment removed (the mixin does not fire), then put the attachment back
+			a[0].removeAttached(WorkerAttachments.WORKER);
+			a[0].refreshBrain(level);
+			a[0].setAttached(WorkerAttachments.WORKER, data);
+			h.assertFalse(WorkerBrain.isWorkerBrain(a[0]), "the villager runs a vanilla brain");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the worker brain is back", () -> {
+			h.assertTrue(WorkerBrain.isWorkerBrain(a[0]), "worker brain");
+			h.assertTrue(a[0].getVillagerData().profession().equals(ModProfessions.holder(JobType.FARMER)), "mod profession "
+					+ a[0].getVillagerData().profession().getRegisteredName());
+			h.assertTrue(a[0].getBrain().isActive(Activity.WORK), "WORK at day time " + h.getLevel().getDayTime());
+		});
+		seq = seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			Villager v = EntityType.VILLAGER.create(level, EntitySpawnReason.LOAD);
+			v.snapTo(h.absoluteVec(Vec3.atBottomCenterOf(BuildingTestSupport.inside(ORIGIN_A, 3, 0, 1))));
+			v.getBrain().setMemory(MemoryModuleType.JOB_SITE, net.minecraft.core.GlobalPos.of(level.dimension(), h.absolutePos(comp)));
+			v.setPersistenceRequired();
+			level.addFreshEntity(v);
+			holder[0] = v;
+			track(v);
+			h.assertTrue(claims(h, v, comp), "the villager arrives claiming the reserved composter");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the claim is erased", () -> h.assertFalse(claims(h, holder[0], comp), "still claims"));
+		seq.thenExecute(() -> {
+			h.assertTrue(isHeld(h, comp) && !poiHasSpace(h, comp), "still reserved (the ticket was not double-released)");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

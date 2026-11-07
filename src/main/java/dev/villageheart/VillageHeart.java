@@ -48,6 +48,8 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageTicker.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:job_reservations", dev.villageheart.worker.JobSiteReservations.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:workers", dev.villageheart.worker.WorkerSystem.INSTANCE);
+		dev.villageheart.worker.WorkerSystem.register();
 		LOG.info("Village Heart loaded");
 	}
 }

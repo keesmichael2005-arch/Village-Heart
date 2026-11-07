@@ -53,6 +53,7 @@ public final class WorkerTestSupport {
 	}
 
 	public static void discardSpawned(ServerLevel level) {
+		dev.villageheart.worker.WorkerSystem.clearOrphanExemptionsForTest();
 		for (UUID id : SPAWNED) {
 			Entity e = level.getEntity(id);
 			if (e != null) e.discard();
@@ -74,6 +75,7 @@ public final class WorkerTestSupport {
 	/** Makes {@code v} a worker with no registry record and no slot checks (the framework tests of step 4). */
 	public static void hireDirect(GameTestHelper h, Villager v, JobType job, BlockPos jobBlockRel) {
 		HeartLocation block = loc(h, jobBlockRel);
+		dev.villageheart.worker.WorkerSystem.exemptFromOrphanSweepForTest(v.getUUID());
 		Workers.install(h.getLevel(), v, WorkerData.hired(job, block, block));
 	}
 

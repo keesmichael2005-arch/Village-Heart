@@ -29,6 +29,12 @@ public final class JobSlots {
 		return List.copyOf(out.subList(0, Math.min(site.slots(), out.size())));
 	}
 
+	/** True when {@code worker}'s job block is currently a slot block of one of {@code sites} (false: building invalid, block gone). */
+	public static boolean holdsSlot(List<SiteView> sites, List<WorkerRecord> workers, WorkerRecord worker) {
+		for (SiteView s : sites) if (slotBlocks(s, workers).contains(worker.jobBlock())) return true;
+		return false;
+	}
+
 	/** Every slot block of every site that no worker holds, in site order then position order. */
 	public static List<HeartLocation> freeSlots(List<SiteView> sites, List<WorkerRecord> workers) {
 		Set<HeartLocation> held = heldBlocks(workers);

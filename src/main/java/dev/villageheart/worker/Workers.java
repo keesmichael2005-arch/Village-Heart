@@ -9,6 +9,7 @@ import dev.villageheart.core.worker.HireRefusal;
 import dev.villageheart.core.worker.JobSlots;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.world.VillageClaims;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,6 +76,29 @@ public final class Workers {
 		boolean attached = WorkerAttachments.isWorker(villager);
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
+	}
+
+	/** Fires the worker of {@code record}, loaded or not. */
+	static void fireRecord(MinecraftServer server, WorkerRecord record) {
+		Villager v = WorkerSystem.findLoaded(server, record.villager());
+		if (v != null && v.level() instanceof ServerLevel level) fire(level, v);
+		else fireById(server, record.villager());
+	}
+
+	/** After the village was released: every worker that is loaded goes back to vanilla (unloaded ones are restored when they load). */
+	public static void restoreAfterRelease(MinecraftServer server, java.util.List<WorkerRecord> workers) {
+		for (WorkerRecord w : workers) {
+			Villager v = WorkerSystem.findLoaded(server, w.villager());
+			if (v != null && v.level() instanceof ServerLevel level) restoreVanilla(level, v);
+		}
+	}
+
+	public static WorkerStatus status(MinecraftServer server, WorkerRecord record) {
+		Optional<JobType> job = JobType.byId(record.jobId());
+		Optional<VillageState> village = VillageClaims.current(server);
+		if (job.isEmpty() || village.isEmpty()) return WorkerStatus.WORKPLACE_INVALID;
+		return JobSlots.holdsSlot(jobSites.sites(server, job.get()), village.get().workers(), record)
+				? WorkerStatus.OK : WorkerStatus.WORKPLACE_INVALID;
 	}
 
 	/** Fires a worker that may be unloaded: only the record can be removed now (the attachment is cleaned when it loads). */

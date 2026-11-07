@@ -100,6 +100,18 @@ class JobSlotsTest {
 	}
 
 	@Test
+	void holdsSlotIsFalseWhenTheBlockIsNoSlotAnymore() {
+		WorkerRecord onA1 = worker(1, MA, A1), stray = worker(2, MA, at(77, 65, 77));
+		List<WorkerRecord> all = List.of(onA1, stray);
+		assertTrue(JobSlots.holdsSlot(List.of(SA), all, onA1));
+		assertFalse(JobSlots.holdsSlot(List.of(SA), all, stray));
+		assertFalse(JobSlots.holdsSlot(List.of(), all, onA1)); // building invalid: no site
+		SiteView shrunk = new SiteView(MA, List.of(A1, A2), 1);
+		assertTrue(JobSlots.holdsSlot(List.of(shrunk), all, onA1));
+		assertFalse(JobSlots.holdsSlot(List.of(shrunk), List.of(onA1, worker(3, MA, A2)), worker(3, MA, A2)), "second worker lost its slot when slots shrank");
+	}
+
+	@Test
 	void slotsCutTheBlockList() {
 		SiteView three = new SiteView(MA, List.of(A1, A2, at(3, 65, 1)), 2);
 		assertEquals(List.of(A1, A2), JobSlots.slotBlocks(three, List.of()));

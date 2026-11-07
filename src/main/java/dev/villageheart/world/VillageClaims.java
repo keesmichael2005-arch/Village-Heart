@@ -83,6 +83,7 @@ public final class VillageClaims {
 		Optional<VillageState> released = data(level.getServer()).releaseAt(locate(level, pos));
 		released.ifPresent(v -> {
 			dev.villageheart.worker.JobSiteReservations.releaseAll(level.getServer(), held);
+			dev.villageheart.worker.Workers.restoreAfterRelease(level.getServer(), v.workers());
 			dev.villageheart.building.MarkerAdoption.resetReleased(level.getServer(), v);
 			dropTreasury(level, pos, v.treasury());
 			ServerPlayer owner = level.getServer().getPlayerList().getPlayer(v.owner());
