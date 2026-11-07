@@ -16,10 +16,11 @@ import java.util.UUID;
  * @param workerSlots  worker slots over all valid workplaces
  * @param villagers    workers (any order, see {@link VillagerFact#hiringIndex}) and unemployed adults
  * @param extraAlerts  alerts of later milestones (M11, M12, M25), appended after the built-in ones
+ * @param members      the owner, every known player and every online player (M24); shown only to viewers who manage ranks
  */
 public record VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 		List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
-		List<AlertLine> extraAlerts) {
+		List<AlertLine> extraAlerts, List<MemberFact> members) {
 	public VillageFacts {
 		Objects.requireNonNull(ownerName, "ownerName");
 		Objects.requireNonNull(tier, "tier");
@@ -28,6 +29,7 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 		jobs = List.copyOf(jobs);
 		buildings = List.copyOf(buildings);
 		extraAlerts = List.copyOf(extraAlerts);
+		members = List.copyOf(members);
 	}
 
 	/**
@@ -49,6 +51,15 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 		}
 
 		public boolean worker() { return hiringIndex >= 0; }
+	}
+
+	/** One player of the Ranks tab: the owner, a known player, or an online player the village has not seen yet. */
+	public record MemberFact(UUID id, String name, dev.villageheart.core.Rank rank, boolean online) {
+		public MemberFact {
+			Objects.requireNonNull(id, "id");
+			Objects.requireNonNull(name, "name");
+			Objects.requireNonNull(rank, "rank");
+		}
 	}
 
 	public record JobFact(String jobId, int freeSlots, boolean tierLocked) {

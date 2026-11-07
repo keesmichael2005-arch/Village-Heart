@@ -98,7 +98,11 @@ public final class VillageClaims {
 	}
 
 	public static void setRank(MinecraftServer server, UUID player, Rank rank) {
-		data(server).update(v -> v.withRank(player, rank));
+		// the online player's profile name; a blank name keeps the one the village already knows (or a placeholder)
+		ServerPlayer online = server.getPlayerList().getPlayer(player);
+		String name = online == null ? "" : online.getGameProfile().name();
+		long now = server.overworld().getGameTime();
+		data(server).update(v -> v.withRank(player, name, rank, now));
 	}
 
 	/**

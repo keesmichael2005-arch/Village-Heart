@@ -14,6 +14,11 @@ E D E      E = emerald
 G E G      D = diamond
 ```
 
+## Ranks
+The one village can be run by several players: **Owner**, **Steward** (hires and fires), **Resident** (opens the village's chests) and **Visitor**
+(the default). The Owner sets ranks in the Ranks tab of the Heart screen and can hand the village to a Steward or Resident. Visitors cannot open or
+break containers inside the village's buildings. **This is not grief protection**: hoppers, explosions, pistons and golems are not stopped.
+
 ## Development
 ```bash
 scripts/verify.sh      # build + all automated tests (see docs/TESTING.md)

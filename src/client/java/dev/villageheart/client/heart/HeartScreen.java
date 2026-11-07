@@ -1,5 +1,6 @@
 package dev.villageheart.client.heart;
 
+import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildingRow;
@@ -7,6 +8,7 @@ import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.heart.HeartTexts;
 import dev.villageheart.core.heart.JobChoice;
+import dev.villageheart.core.heart.MemberRow;
 import dev.villageheart.core.heart.Overview;
 import dev.villageheart.core.heart.Permission;
 import dev.villageheart.core.heart.Permissions;
@@ -21,6 +23,8 @@ import dev.villageheart.heart.net.AssignJobPayload;
 import dev.villageheart.heart.net.FireWorkerPayload;
 import dev.villageheart.heart.net.HeartActionResultPayload;
 import dev.villageheart.heart.net.RecheckBuildingPayload;
+import dev.villageheart.heart.net.SetRankPayload;
+import dev.villageheart.heart.net.TransferOwnershipPayload;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +53,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * The Heart screen (DESIGN section 10): four tabs, all drawn here (no vanilla list widgets), sized for the smallest supported
+ * The Heart screen (DESIGN section 10): five tabs (the Ranks tab only for the Owner), all drawn here (no vanilla list widgets), sized for the smallest supported
  * window, 427 x 240 GUI pixels (854 x 480 at GUI scale 2). The data comes from {@link HeartMenu#snapshot()}; every write is a payload
  * the server checks again. Visitors get the Overview only: the other tabs are not even in their snapshot.
  */
@@ -61,6 +65,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int TAB_H = 24;
 	static final int FOOTER_H = 33;
 	static final int ROW_H = 22;
+	static final int MEMBER_ROW_H = 16;
+	static final int RANKS_HEADER_H = 14;
+	public static final int TAB_RANKS = 4;
 	static final int STOCK_ROW_H = 18;
 	static final int MARGIN = 8;
 	static final int SCROLLBAR_W = 4;
@@ -74,13 +81,15 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int GOLD = 0xFFFFAA00;
 
 	private static final int AREA_HEADER = 0, AREA_BODY = 1, AREA_FOOTER = 2;
-	private static final String[] TAB_KEYS = {"tab.overview", "tab.villagers", "tab.buildings", "tab.stockpile"};
+	private static final String[] TAB_KEYS = {"tab.overview", "tab.villagers", "tab.buildings", "tab.stockpile", "tab.ranks"};
 
 	private final HeartMenu menu;
 	private int tab;
-	private final int[] scroll = new int[4];
+	private final int[] scroll = new int[5];
 	private UUID selectedVillager;
 	private BlockPos selectedBuilding;
+	private UUID selectedMember;
+	private int pendingTransferTicks;
 	private int jobIndex;
 	private boolean pendingConfirm;
 	private boolean actionsDirty = true;
@@ -140,6 +149,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	public void tick() {
 		super.tick();
 		if (statusTicks > 0) statusTicks--;
+		if (pendingTransferTicks > 0 && --pendingTransferTicks == 0) {
+			pendingConfirm = false;
+			actionsDirty = true;
+		}
 		if (menu.version() != seenVersion) {
 			seenVersion = menu.version();
 			onSnapshot();
@@ -151,7 +164,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 
 	private boolean allows(Permission p) { return Permissions.allows(snap().viewerRank(), p); }
 
-	private boolean tabAllowed(int i) { return i == 0 || allows(Permission.VIEW_DETAILS); }
+	private boolean tabAllowed(int i) {
+		if (i == 0) return true;
+		return i == TAB_RANKS ? allows(Permission.MANAGE_RANKS) : allows(Permission.VIEW_DETAILS);
+	}
 
 	/** The one place a tab is chosen: every route (click, key, rank change) ends here, so a locked tab can never be shown. */
 	public void selectTab(int i) {
@@ -173,6 +189,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		HeartSnapshot s = snap();
 		if (selectedVillager != null && s.villagers().stream().noneMatch(v -> v.id().equals(selectedVillager))) selectedVillager = null;
 		if (selectedBuilding != null && s.buildings().stream().noneMatch(b -> pos(b).equals(selectedBuilding))) selectedBuilding = null;
+		if (selectedMember != null && s.members().stream().noneMatch(m -> m.id().equals(selectedMember))) {
+			selectedMember = null;
+			pendingConfirm = false;
+		}
 		actionsDirty = true;
 	}
 
@@ -257,6 +277,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	private boolean actionBarShown() {
 		if (tab == 1) return villagerActionBar();
 		if (tab == 2) return allows(Permission.RECHECK_BUILDING) && selectedBuilding != null;
+		if (tab == TAB_RANKS) return selectedMemberRow() != null && selectedMemberRow().rank() != Rank.OWNER;
 		return false;
 	}
 
@@ -270,6 +291,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int top = bodyTop() + 4;
 		int bottom = bodyBottom() - 4 - (actionBarShown() ? 24 : 0);
 		if (tab == 3) top = bodyTop() + 4 + 40;
+		if (tab == TAB_RANKS) top = bodyTop() + 4 + RANKS_HEADER_H;
 		return new int[] {MARGIN, top, width - 2 * MARGIN, bottom - top};
 	}
 
@@ -281,6 +303,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case 1 -> (s.villagers().size() + (s.moreVillagers() > 0 ? 1 : 0)) * ROW_H;
 			case 2 -> (s.buildings().size() + (s.moreBuildings() > 0 ? 1 : 0)) * ROW_H;
 			case 3 -> ((s.stock().items().size() + 1) / 2 + (s.stock().moreKinds() > 0 ? 1 : 0)) * STOCK_ROW_H;
+			case TAB_RANKS -> (s.members().size() + (s.moreMembers() > 0 ? 1 : 0)) * MEMBER_ROW_H;
 			default -> 0;
 		};
 	}
@@ -297,6 +320,37 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		for (VillagerRow v : snap().villagers()) if (v.id().equals(selectedVillager)) return v;
 		return null;
 	}
+
+	private MemberRow selectedMemberRow() {
+		if (selectedMember == null) return null;
+		for (MemberRow m : snap().members()) if (m.id().equals(selectedMember)) return m;
+		return null;
+	}
+
+	/** GUI coordinates of the middle of the row of player {@code id} in the Ranks tab, scrolling it into view; null when not listed. */
+	public int[] memberRowCentre(UUID id) {
+		List<MemberRow> rows = snap().members();
+		for (int i = 0; i < rows.size(); i++) {
+			if (!rows.get(i).id().equals(id)) continue;
+			int[] r = listRect();
+			int y = i * MEMBER_ROW_H;
+			if (y < scroll[TAB_RANKS]) scroll[TAB_RANKS] = y;
+			else if (y + MEMBER_ROW_H > scroll[TAB_RANKS] + r[3]) scroll[TAB_RANKS] = y + MEMBER_ROW_H - r[3];
+			scroll[TAB_RANKS] = Math.max(0, Math.min(scroll[TAB_RANKS], maxScroll(rows.size() * MEMBER_ROW_H)));
+			return new int[] {r[0] + 60, r[1] + y - scroll[TAB_RANKS] + MEMBER_ROW_H / 2};
+		}
+		return null;
+	}
+
+	/** GUI coordinates of the middle of the last button of the action bar (the Transfer button in the Ranks tab); null when none. */
+	public int[] lastActionCentre() {
+		if (actionWidgets.isEmpty()) return null;
+		AbstractWidget w = actionWidgets.get(actionWidgets.size() - 1);
+		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
+	}
+
+	/** True while the Transfer button asks for its second click. */
+	public boolean transferPending() { return pendingConfirm && tab == TAB_RANKS; }
 
 	/** GUI coordinates of the middle of the row of villager {@code id}, scrolling it into view first; null when not listed. */
 	public int[] villagerRowCentre(UUID id) {
@@ -386,11 +440,49 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 				if (!usable) assign.setTooltip(Tooltip.create(t(c.tierLocked() ? "assign.tier_locked" : "assign.no_slot")));
 				addAction(assign);
 			}
+		} else if (tab == TAB_RANKS && allows(Permission.MANAGE_RANKS)) {
+			MemberRow m = selectedMemberRow();
+			if (m == null || m.rank() == Rank.OWNER) return;
+			UUID id = m.id();
+			Rank current = m.rank();
+			int x = MARGIN;
+			x = rankButton(x, y, "ranks.make_steward", Rank.STEWARD, current, id);
+			x = rankButton(x, y, "ranks.make_resident", Rank.RESIDENT, current, id);
+			x = rankButton(x, y, "ranks.make_visitor", Rank.VISITOR, current, id);
+			boolean member = current == Rank.STEWARD || current == Rank.RESIDENT;
+			Component label = pendingConfirm ? t("ranks.transfer_confirm", m.name()) : t("ranks.transfer");
+			Button transfer = Button.builder(label, b -> {
+				if (!pendingConfirm) {
+					pendingConfirm = true;
+					pendingTransferTicks = 100;
+					actionsDirty = true;
+					return;
+				}
+				pendingConfirm = false;
+				pendingTransferTicks = 0;
+				ClientPlayNetworking.send(new TransferOwnershipPayload(menu.containerId, id, current.ordinal()));
+				actionsDirty = true;
+			}).bounds(x + 4, y, pendingConfirm ? width - MARGIN - (x + 4) : 110, 20).build();
+			transfer.active = member;
+			if (!member) transfer.setTooltip(Tooltip.create(t("ranks.transfer_needs_member")));
+			addAction(transfer);
 		} else if (tab == 2 && allows(Permission.RECHECK_BUILDING) && selectedBuilding != null) {
 			BlockPos p = selectedBuilding;
 			addAction(Button.builder(t("check_now"), b -> ClientPlayNetworking.send(new RecheckBuildingPayload(menu.containerId, p)))
 					.bounds(MARGIN, y, 100, 20).build());
 		}
+	}
+
+	/** One of the three "make them ..." buttons; returns the x where the next one starts. */
+	private int rankButton(int x, int y, String key, Rank target, Rank current, UUID id) {
+		Button b = Button.builder(t(key), btn -> {
+			pendingConfirm = false;
+			ClientPlayNetworking.send(new SetRankPayload(menu.containerId, id, target.ordinal()));
+			actionsDirty = true;
+		}).bounds(x, y, 66, 20).build();
+		b.active = current != target;
+		addAction(b);
+		return x + 70;
 	}
 
 	private void addAction(AbstractWidget w) {
@@ -418,6 +510,22 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			return false;
 		}
 		int[] r = listRect();
+		if (tab() == TAB_RANKS) {
+			if (mx >= r[0] && mx < r[0] + r[2] - SCROLLBAR_W - 4 && my >= r[1] && my < r[1] + r[3]) {
+				int idx = (int) ((my - r[1] + scroll[tab]) / MEMBER_ROW_H);
+				if (idx < snap().members().size()) {
+					UUID id = snap().members().get(idx).id();
+					if (!id.equals(selectedMember)) {
+						pendingConfirm = false;
+						pendingTransferTicks = 0;
+					}
+					selectedMember = id;
+					actionsDirty = true;
+					return true;
+				}
+			}
+			return false;
+		}
 		if (tab() == 1 || tab() == 2) {
 			if (mx >= r[0] && mx < r[0] + r[2] - SCROLLBAR_W - 4 && my >= r[1] && my < r[1] + r[3]) {
 				int idx = (int) ((my - r[1] + scroll[tab]) / ROW_H);
@@ -441,7 +549,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	@Override
 	public boolean mouseScrolled(double mx, double my, double sx, double sy) {
 		if (tab() == 0) return super.mouseScrolled(mx, my, sx, sy);
-		scroll[tab] -= (int) Math.round(sy * (tab == 3 ? STOCK_ROW_H : ROW_H));
+		scroll[tab] -= (int) Math.round(sy * (tab == 3 ? STOCK_ROW_H : tab == TAB_RANKS ? MEMBER_ROW_H : ROW_H));
 		clampScroll();
 		return true;
 	}
@@ -452,7 +560,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			onClose();
 			return true;
 		}
-		if (ev.hasControlDown() && ev.input() >= '1' && ev.input() <= '4') {
+		if (ev.hasControlDown() && ev.input() >= '1' && ev.input() <= '5') {
 			selectTab(ev.input() - '1');
 			return true;
 		}
@@ -484,6 +592,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case 0 -> drawOverview(g, mx, my);
 			case 1 -> drawVillagers(g, mx, my);
 			case 2 -> drawBuildings(g, mx, my);
+			case TAB_RANKS -> drawRanks(g, mx, my);
 			default -> drawStockpile(g, mx, my);
 		}
 		clip = new int[] {0, 0, 0, 0};
@@ -505,7 +614,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			int w = Math.min(font.width(label.getString()), tabW() - 6);
 			text(g, label, x0 + (tabW() - 1 - w) / 2, 10, tabW() - 6, color, AREA_HEADER, -1);
 			if (!allowed && mx >= x0 && mx < x0 + tabW() && my >= 0 && my < TAB_H) {
-				g.setTooltipForNextFrame(font, Component.translatable(HeartTexts.key("tab.locked")), mx, my);
+				g.setTooltipForNextFrame(font, Component.translatable(HeartTexts.key(i == TAB_RANKS ? "tab.ranks_locked" : "tab.locked")), mx, my);
 			}
 		}
 	}
@@ -569,6 +678,46 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int ty = r[1] + range * scroll[tab] / ms;
 		g.fill(x, ty, x + SCROLLBAR_W, ty + thumbH, 0xFFA0A0A0);
 		scrollbarRight = Math.max(scrollbarRight, x + SCROLLBAR_W);
+	}
+
+	private void drawRanks(GuiGraphics g, int mx, int my) {
+		if (lockedBody(g)) return;
+		HeartSnapshot s = snap();
+		int total = s.members().size() + s.moreMembers();
+		text(g, t("ranks.header", total), MARGIN, bodyTop() + 6, width - 2 * MARGIN, GREY, AREA_BODY, groupCounter++);
+		int[] r = listRect();
+		clip = new int[] {r[0], r[1], r[0] + r[2], r[1] + r[3]};
+		g.enableScissor(r[0], r[1], r[0] + r[2], r[1] + r[3]);
+		int rowW = r[2] - SCROLLBAR_W - 4;
+		int y = r[1] - scroll[TAB_RANKS];
+		for (MemberRow m : s.members()) {
+			if (y + MEMBER_ROW_H > r[1] && y < r[1] + r[3]) drawMemberRow(g, m, r[0], y, rowW, mx, my);
+			y += MEMBER_ROW_H;
+		}
+		if (s.moreMembers() > 0 && y + MEMBER_ROW_H > r[1] && y < r[1] + r[3]) {
+			text(g, t("ranks.more", s.moreMembers()), r[0] + 4, y + 4, rowW - 8, GREY, AREA_BODY, groupCounter++);
+		}
+		g.disableScissor();
+		clip = new int[] {0, bodyTop(), width, bodyBottom()};
+		scrollbar(g, r, s.members().size() * MEMBER_ROW_H);
+	}
+
+	private void drawMemberRow(GuiGraphics g, MemberRow m, int x, int y, int w, int mx, int my) {
+		int grp = groupCounter++;
+		boolean selected = m.id().equals(selectedMember);
+		boolean hover = mx >= x && mx < x + w && my >= y && my < y + MEMBER_ROW_H;
+		if (selected) g.fill(x, y, x + w, y + MEMBER_ROW_H - 1, 0x66FFFFFF);
+		else if (hover) g.fill(x, y, x + w, y + MEMBER_ROW_H - 1, 0x33FFFFFF);
+		// a dot: green when the player is on the server now, grey when not
+		g.fill(x + 4, y + 5, x + 9, y + 10, m.online() ? GREEN : DARK_GREY);
+		note(AREA_BODY, grp, x + 4, y + 5, 5, 5);
+		int color = m.rank() == Rank.OWNER ? GOLD : m.online() ? WHITE : GREY;
+		text(g, Component.literal(m.name()), x + 14, y + 4, 180, color, AREA_BODY, grp);
+		Component rank = Component.translatable(HeartTexts.key("rank." + m.rank().name().toLowerCase(Locale.ROOT)));
+		int rankColor = m.rank() == Rank.OWNER ? GOLD : m.rank() == Rank.VISITOR ? DARK_GREY : WHITE;
+		text(g, rank, x + 210, y + 4, 90, rankColor, AREA_BODY, grp);
+		Component state = t(m.online() ? "ranks.online" : "ranks.offline");
+		textRight(g, state, x + w - 4, y + 4, 70, GREY, AREA_BODY, grp);
 	}
 
 	private void drawVillagers(GuiGraphics g, int mx, int my) {

@@ -46,7 +46,7 @@ class VillageStateTest {
 	}
 
 	@Test void treasuryRules() {
-		assertThrows(IllegalArgumentException.class, () -> new VillageState(LOC, owner, "a", 0, Map.of(), -1,
+		assertThrows(IllegalArgumentException.class, () -> new VillageState(LOC, owner, "a", 0, Map.of(), List.of(), -1,
 				Tier.HAMLET, List.of(), List.of()));
 		assertThrows(IllegalArgumentException.class, () -> founded().depositTreasury(-1));
 		VillageState max = founded().depositTreasury(Integer.MAX_VALUE);
@@ -58,7 +58,7 @@ class VillageStateTest {
 		Map<UUID, Rank> ranks = new HashMap<>();
 		List<BuildingRecord> buildings = new ArrayList<>();
 		List<WorkerRecord> workers = new ArrayList<>();
-		VillageState v = new VillageState(LOC, owner, "a", 0, ranks, 0, Tier.HAMLET, buildings, workers);
+		VillageState v = new VillageState(LOC, owner, "a", 0, ranks, List.of(), 0, Tier.HAMLET, buildings, workers);
 		ranks.put(UUID.randomUUID(), Rank.STEWARD);
 		buildings.add(new BuildingRecord("farm", LOC));
 		workers.add(new WorkerRecord(UUID.randomUUID(), "farmer", LOC, LOC));
@@ -87,7 +87,7 @@ class VillageStateTest {
 	}
 
 	@Test void duplicateMarkersThrow() {
-		assertThrows(IllegalArgumentException.class, () -> new VillageState(LOC, owner, "a", 0, Map.of(), 0, Tier.HAMLET,
+		assertThrows(IllegalArgumentException.class, () -> new VillageState(LOC, owner, "a", 0, Map.of(), List.of(), 0, Tier.HAMLET,
 				List.of(new BuildingRecord("storage", LOC), new BuildingRecord("house", LOC)), List.of()));
 	}
 

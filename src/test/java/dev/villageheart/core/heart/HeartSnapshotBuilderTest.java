@@ -41,10 +41,13 @@ class HeartSnapshotBuilderTest {
 		return new StockFacts(List.of(items), 1, unknown, 2, 54, 40, alert);
 	}
 
+	/** Placeholder; M24 member tests build their own facts. */
+	static final List<VillageFacts.MemberFact> MEMBERS = List.of();
+
 	static VillageFacts facts(List<VillagerFact> v, List<BuildingFact> b, StockFacts s, int adults, int babies,
 			List<AlertLine> extra) {
 		return new VillageFacts("Owner", Tier.HAMLET, 7, adults, babies, 2, 1, v, List.of(new JobFact("farmer", 0, false)), b, s,
-				extra);
+				extra, MEMBERS);
 	}
 
 	static VillageFacts basic() {
@@ -84,9 +87,56 @@ class HeartSnapshotBuilderTest {
 		}
 	}
 
+	// ---- M24: members (the Ranks tab) ----------------------------------------------------------------------------
+
+	static VillageFacts.MemberFact member(int n, String name, Rank rank, boolean online) {
+		return new VillageFacts.MemberFact(id(n), name, rank, online);
+	}
+
+	static VillageFacts withMembers(List<VillageFacts.MemberFact> members) {
+		VillageFacts f = basic();
+		return new VillageFacts(f.ownerName(), f.tier(), f.treasury(), f.adults(), f.babies(), f.beds(), f.workerSlots(),
+				f.villagers(), f.jobs(), f.buildings(), f.stock(), f.extraAlerts(), members);
+	}
+
+	@Test void ownerSeesMembersInDocumentedOrder() {
+		VillageFacts f = withMembers(List.of(
+				member(1, "zed", Rank.VISITOR, true), member(2, "Bea", Rank.STEWARD, false), member(3, "olga", Rank.OWNER, true),
+				member(4, "amy", Rank.RESIDENT, false), member(5, "Cal", Rank.RESIDENT, true), member(6, "adam", Rank.STEWARD, true),
+				member(7, "Dee", Rank.RESIDENT, false), member(8, "ann", Rank.VISITOR, false)));
+		HeartSnapshot s = HeartSnapshotBuilder.build(f, Rank.OWNER);
+		assertEquals(List.of("olga", "adam", "Bea", "Cal", "amy", "Dee", "zed", "ann"), s.members().stream().map(MemberRow::name).toList(),
+				"owner; stewards (online first); residents (online first, then case-insensitive name); visitors");
+		assertEquals(0, s.moreMembers());
+	}
+
+	@Test void othersNeverReceiveTheMembers() {
+		VillageFacts f = withMembers(List.of(member(3, "olga", Rank.OWNER, true), member(1, "zed", Rank.VISITOR, true)));
+		for (Rank r : new Rank[] {Rank.STEWARD, Rank.RESIDENT, Rank.VISITOR}) {
+			HeartSnapshot s = HeartSnapshotBuilder.build(f, r);
+			assertTrue(s.members().isEmpty(), r + " gets no member list");
+			assertEquals(0, s.moreMembers());
+		}
+	}
+
+	@Test void hundredAndTwentyMembersAreCapped() {
+		List<VillageFacts.MemberFact> many = new ArrayList<>();
+		many.add(member(0, "o", Rank.OWNER, true));
+		for (int i = 1; i < 120; i++) many.add(member(i, "p" + i, Rank.VISITOR, false));
+		HeartSnapshot s = HeartSnapshotBuilder.build(withMembers(many), Rank.OWNER);
+		assertEquals(HeartLimits.MAX_MEMBERS, s.members().size());
+		assertEquals(20, s.moreMembers());
+		assertEquals(Rank.OWNER, s.members().get(0).rank());
+	}
+
+	@Test void memberNamesAreCut() {
+		HeartSnapshot s = HeartSnapshotBuilder.build(withMembers(List.of(member(0, "n".repeat(80), Rank.OWNER, true))), Rank.OWNER);
+		assertEquals(HeartLimits.MAX_NAME, s.members().get(0).name().length());
+	}
+
 	@Test void tierTownHasNoNext() {
 		VillageFacts f = new VillageFacts("O", Tier.TOWN, 0, 0, 0, 0, 0, List.of(), List.of(), List.of(),
-				stock(StorageAlert.OK, 0), List.of());
+				stock(StorageAlert.OK, 0), List.of(), List.of());
 		assertTrue(HeartSnapshotBuilder.build(f, Rank.OWNER).overview().nextTier().isEmpty());
 	}
 
@@ -213,7 +263,7 @@ class HeartSnapshotBuilderTest {
 		VillageFacts broken = new VillageFacts(many.ownerName(), many.tier(), many.treasury(), many.adults(), many.babies(),
 				many.beds(), many.workerSlots(), List.of(new VillagerFact(id(1), "A", 0, "farmer", "x", 1, 0,
 						NeedsFlags.of(true, true, true), ActivityKind.WORKING, true, false, false, true)),
-				many.jobs(), many.buildings(), many.stock(), List.of());
+				many.jobs(), many.buildings(), many.stock(), List.of(), List.of());
 		Overview o = HeartSnapshotBuilder.build(broken, Rank.OWNER).overview();
 		assertEquals(List.of(AlertCode.STORAGE_FULL, AlertCode.INVALID_BUILDINGS, AlertCode.WORKPLACE_INVALID),
 				o.alerts().stream().map(AlertLine::code).toList());
@@ -226,7 +276,7 @@ class HeartSnapshotBuilderTest {
 		assertEquals(HeartSnapshotBuilder.build(basic(), Rank.OWNER), HeartSnapshotBuilder.build(basic(), Rank.OWNER));
 		VillageFacts f = basic();
 		VillageFacts changed = new VillageFacts(f.ownerName(), f.tier(), f.treasury() + 1, f.adults(), f.babies(), f.beds(),
-				f.workerSlots(), f.villagers(), f.jobs(), f.buildings(), f.stock(), f.extraAlerts());
+				f.workerSlots(), f.villagers(), f.jobs(), f.buildings(), f.stock(), f.extraAlerts(), f.members());
 		assertNotEquals(HeartSnapshotBuilder.build(f, Rank.OWNER), HeartSnapshotBuilder.build(changed, Rank.OWNER));
 	}
 

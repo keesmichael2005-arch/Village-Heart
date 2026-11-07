@@ -30,7 +30,7 @@ final class HeartScreenClientTests {
 	private static final UUID ADA = new UUID(0, 2);
 	private static final UUID BOB = new UUID(0, 3);
 
-	private static HeartScreen screen(net.minecraft.client.Minecraft mc) {
+	static HeartScreen screen(net.minecraft.client.Minecraft mc) {
 		if (!(mc.screen instanceof HeartScreen s)) throw new AssertionError("the Heart screen is not open: " + mc.screen);
 		return s;
 	}
@@ -54,7 +54,7 @@ final class HeartScreenClientTests {
 		srv.runCommand("setblock " + doorX + " " + (y + 2) + " " + (z1 + 1) + " villageheart:" + marker + "[facing=south]");
 	}
 
-	private static void clickAt(ClientGameTestContext context, int[] gui) {
+	static void clickAt(ClientGameTestContext context, int[] gui) {
 		int[] px = context.computeOnClient(mc -> {
 			var w = mc.getWindow();
 			return new int[] {gui[0] * w.getScreenWidth() / w.getGuiScaledWidth(), gui[1] * w.getScreenHeight() / w.getGuiScaledHeight()};
@@ -64,7 +64,7 @@ final class HeartScreenClientTests {
 		context.waitTicks(3);
 	}
 
-	private static void openTab(ClientGameTestContext context, int tab) {
+	static void openTab(ClientGameTestContext context, int tab) {
 		int[] c = context.computeOnClient(mc -> screen(mc).tabButtonCentre(tab));
 		clickAt(context, c);
 		int now = context.computeOnClient(mc -> screen(mc).currentTab());
@@ -72,14 +72,14 @@ final class HeartScreenClientTests {
 		context.waitTicks(2);
 	}
 
-	private static void assertClean(ClientGameTestContext context, String what) {
+	static void assertClean(ClientGameTestContext context, String what) {
 		List<String> problems = context.computeOnClient(mc -> screen(mc).layoutProblems());
 		int clipped = context.computeOnClient(mc -> screen(mc).clippedThisFrame());
 		if (!problems.isEmpty()) throw new AssertionError(what + ": layout problems " + problems);
 		if (clipped != 0) throw new AssertionError(what + ": " + clipped + " texts were cut off");
 	}
 
-	private static HeartSnapshot snapshot(ClientGameTestContext context) {
+	static HeartSnapshot snapshot(ClientGameTestContext context) {
 		return context.computeOnClient(mc -> screen(mc).getMenu().snapshot());
 	}
 

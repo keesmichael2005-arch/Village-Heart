@@ -68,6 +68,7 @@ final class BuildingValidator {
 		if (type.kind() == BuildingKind.ROOM) {
 			RoomScan raw = RoomScans.scan(level, pos, state.getValue(MarkerBlock.FACING));
 			rt.rawScans.put(loc, raw);
+			if (raw.enclosed()) rt.lastEnclosed.put(loc, raw);
 			RoomScan shared = applyShared(rt, loc);
 			RoomProblem notLoaded = shared.problems().stream().filter(p -> p.kind() == RoomProblem.Kind.NOT_LOADED).findFirst().orElse(null);
 			if (notLoaded != null) {

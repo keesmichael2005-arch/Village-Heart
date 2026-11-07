@@ -81,6 +81,10 @@ public class HeartMenu extends AbstractContainerMenu {
 		version++;
 	}
 
+	/** Server: the last snapshot this menu actually sent (or opened with); tests compare the client's copy with it. */
+	@Nullable
+	public HeartSnapshot lastSent() { return lastSent; }
+
 	/** Server: send a fresh snapshot on the next tick, whatever the refresh interval says. */
 	public void markDirty() { dirty = true; }
 

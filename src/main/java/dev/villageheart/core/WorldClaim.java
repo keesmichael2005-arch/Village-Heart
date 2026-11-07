@@ -74,7 +74,9 @@ public final class WorldClaim {
 
 	public BreakDecision mayBreakHeart(HeartLocation at, UUID player) {
 		if (village == null || !village.isHeartAt(at)) return BreakDecision.ALLOWED_UNCLAIMED;
-		return village.owner().equals(player) ? BreakDecision.ALLOWED_OWNER : BreakDecision.DENIED_NOT_OWNER;
+		boolean allowed = dev.villageheart.core.heart.Permissions.allows(village.rankOf(player),
+				dev.villageheart.core.heart.Permission.BREAK_HEART);
+		return allowed ? BreakDecision.ALLOWED_OWNER : BreakDecision.DENIED_NOT_OWNER;
 	}
 
 	public void update(UnaryOperator<VillageState> f) {

@@ -6,6 +6,8 @@ public final class HeartLimits {
 
 	public static final int MAX_VILLAGERS = 100;
 	public static final int MAX_BUILDINGS = 128;
+	/** Rows of the Ranks tab. */
+	public static final int MAX_MEMBERS = 100;
 	public static final int MAX_REASONS = 4;
 	public static final int MAX_STOCK_KINDS = 256;
 	public static final int MAX_JOB_CHOICES = 9;
