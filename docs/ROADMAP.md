@@ -109,6 +109,7 @@ from there instead of hard-coding them.
 - **L1**: wage bill by level. Paid in hiring order when the treasury is short. Strikers produce nothing
 - **L2**: 3 workers and 2 emeralds → after dawn 2 are paid and 1 is on strike. The striking lumberjack chops 0 logs that day
 - **L4**: Overview tab screenshot showing the treasury, wage bill and a strike alert
+- Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
 
 ## M13: Cook / Kitchen
 - [ ] §5.5 recipes, fuel use, rates
@@ -139,6 +140,7 @@ from there instead of hard-coding them.
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
+- Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
       Training Yard XP, level perks for health and damage, best gear from the stockpile, raid call-up
 - **L1**: shift balancing. Gear ranking. Max health by level (20/30/40)
@@ -156,6 +158,7 @@ from there instead of hard-coding them.
 - **L2**: no vanilla golem spawns in the claim over 2 days with 10 gossiping villagers (vanilla would)
 
 ## M20: Builder and blueprints (buildings)
+- Note (M24): gate starting a blueprint with the existing `Permission.START_BLUEPRINT` (Steward and up).
 - [ ] Blueprint data format in core. Builder's Table GUI, Blueprint item placement with particles and rotation, material reservation,
       clearing natural blocks, layer-by-layer build. Small House, Storage Shed and Farm Plot
 - **L1**: blueprint parse, rotation (4 rotations), material list. A site overlap with a player room is refused
@@ -179,11 +182,13 @@ from there instead of hard-coding them.
 - **L1**: breeding conditions (free bed, food days ≥3, ≥2 fed and housed adults)
 - **L2**: a free bed and plenty of food → a baby within 2 days. With no free bed → no baby in 3 days
 
-## M24: Ranks and multiplayer
-- [ ] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer
+## M24: Ranks and multiplayer ✅
+- [x] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer
 - **L1**: permission matrix for every rank × action
 - **L2**: a Visitor fake player cannot open a Storage chest, and a Resident can. A Steward can hire. Only the Owner can withdraw from the treasury
 - **L4**: Ranks tab screenshot with 3 players
+- Pending M12: "Only the Owner can withdraw from the treasury" (plan T-L2-6) is not built or tested yet, because the treasury actions do not exist. M12 adds
+  `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` with their rows in `PermissionsTest` and T-L2-6. Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
@@ -201,5 +206,6 @@ from there instead of hard-coding them.
 - [ ] A 60-day `full` soak: no crash, no error logs from `villageheart`, and the save size grows by less than 1 MB
 - [ ] Save/reload in the middle of each L3 scenario gives the same metrics trend (no lost state)
 - [ ] A dedicated server with 2 players (Owner + Resident) runs a scripted session with no desync errors
+  - Harness (M24): `MultiplayerClientTests` = 1 real networked client + 1 server-side player (the Owner), `scripts/check-mp-log.sh`; a second real client would need a protocol bot. Whether that satisfies this item is decided at release.
 - [ ] L4 screenshot set refreshed and reviewed: every marker state, all Heart tabs, a Builder mid-build, the defence set
 - [ ] README updated (recipes, how to start, the building table). DESIGN.md matches what shipped

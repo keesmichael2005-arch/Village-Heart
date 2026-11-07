@@ -224,7 +224,7 @@ public class WorkerGameTests {
 	// ---- reservations (step 5) -----------------------------------------------------------------
 
 	private static void breakMarker(GameTestHelper h, BlockPos marker) {
-		ServerPlayer breaker = VillageTestSupport.player(h, "breaker", GameType.SURVIVAL);
+		ServerPlayer breaker = BuildingTestSupport.owner(); // M24: Visitors cannot break registered markers
 		breaker.gameMode.destroyBlock(h.absolutePos(marker));
 	}
 

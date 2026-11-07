@@ -27,6 +27,7 @@ step "Layer 3 script self-test (stubbed server)" simulate-selftest.log \
   bash -c 'bash -n scripts/simulate.sh && scripts/test-simulate.sh'
 
 step "Model-log gate self-test" model-log-selftest.log scripts/test-check-model-log.sh
+step "2-player session log gate self-test" mp-log-selftest.log scripts/test-check-mp-log.sh
 
 if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: client GameTests + screenshots (virtual display)" clienttest.log \
@@ -37,6 +38,8 @@ if [ "${1:-}" != "--fast" ]; then
     grep -m1 "LOST_WAKEUP_FIX installed" reports/clienttest.log
   echo "    lost wakeups rescued in layer 4: $(grep -c "LOST_WAKEUP_RESCUED" reports/clienttest.log)" >> "$SUMMARY"
   step "Client log has no villageheart model warnings" model-log-gate.log scripts/check-model-log.sh reports/clienttest.log
+  # The 2-player dedicated-server session (MultiplayerClientTests): no server error and no disconnect between its markers.
+  step "2-player session: no server errors or disconnects" mp-log-gate.log scripts/check-mp-log.sh reports/clienttest.log
   rm -rf reports/screenshots && mkdir -p reports/screenshots
   cp build/run/clientGameTest/screenshots/*.png reports/screenshots/ 2>/dev/null
   echo "- Screenshots: $(ls reports/screenshots | tr '\n' ' ')" >> "$SUMMARY"

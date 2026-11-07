@@ -48,6 +48,12 @@ public final class HeartNetwork {
 		PayloadTypeRegistry.playC2S().register(AssignJobPayload.TYPE, AssignJobPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(FireWorkerPayload.TYPE, FireWorkerPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(RecheckBuildingPayload.TYPE, RecheckBuildingPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(SetRankPayload.TYPE, SetRankPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(TransferOwnershipPayload.TYPE, TransferOwnershipPayload.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(SetRankPayload.TYPE, (p, ctx) -> HeartActions.handle(ctx.player(),
+				p.containerId(), new HeartAction.SetRank(p.player(), p.rank())));
+		ServerPlayNetworking.registerGlobalReceiver(TransferOwnershipPayload.TYPE, (p, ctx) -> HeartActions.handle(ctx.player(),
+				p.containerId(), new HeartAction.Transfer(p.newOwner(), p.expectedRank())));
 
 		ServerPlayNetworking.registerGlobalReceiver(AssignJobPayload.TYPE, (p, ctx) -> HeartActions.handle(ctx.player(),
 				p.containerId(), new HeartAction.Assign(p.villager(), p.jobId(), p.building().map(b -> location(ctx.player(), b)))));

@@ -60,6 +60,34 @@ class ActionGateTest {
 		assertEquals(Optional.empty(), ok(OWNER, RECHECK));
 	}
 
+	@Test void crafted_rank_values_never_reach_the_state_code() {
+		for (int bad : new int[] {0, -1, 4, 99, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+			assertEquals(Optional.of(BAD_RANK), ok(OWNER, new HeartAction.SetRank(VISITOR, bad)), "SetRank " + bad);
+		}
+		for (int good = 1; good <= 3; good++) assertEquals(Optional.empty(), ok(OWNER, new HeartAction.SetRank(VISITOR, good)));
+		assertEquals(Optional.of(BAD_RANK), ok(OWNER, new HeartAction.Transfer(STEWARD, -1)));
+		assertEquals(Optional.of(BAD_RANK), ok(OWNER, new HeartAction.Transfer(STEWARD, 4)));
+		assertEquals(Optional.empty(), ok(OWNER, new HeartAction.Transfer(STEWARD, 1)));
+	}
+
+	@Test void onlyTheOwnerManagesRanksAndTransfers() {
+		assertEquals(Optional.of(NO_PERMISSION), ok(STEWARD, new HeartAction.SetRank(VISITOR, 2)));
+		assertEquals(Optional.of(NO_PERMISSION), ok(RESIDENT, new HeartAction.SetRank(VISITOR, 2)));
+		assertEquals(Optional.of(NO_PERMISSION), ok(VISITOR, new HeartAction.SetRank(VISITOR, 2)));
+		assertEquals(Optional.of(NO_PERMISSION), ok(STEWARD, new HeartAction.Transfer(STEWARD, 1)));
+		assertEquals(Optional.of(NO_PERMISSION), ok(STEWARD, new HeartAction.Transfer(RESIDENT, 2)));
+		assertEquals(Optional.empty(), ok(OWNER, new HeartAction.SetRank(VISITOR, 2)));
+	}
+
+	@Test void malformedComesAfterTheEarlierChecks() {
+		HeartAction bad = new HeartAction.SetRank(VISITOR, 99);
+		assertEquals(Optional.of(RATE_LIMITED), check(false, true, true, VILLAGE, OWNER, bad));
+		assertEquals(Optional.of(NOT_OPEN), check(true, false, true, VILLAGE, OWNER, bad));
+		assertEquals(Optional.of(STALE), check(true, true, false, VILLAGE, OWNER, bad));
+		assertEquals(Optional.of(NO_VILLAGE), check(true, true, true, Optional.empty(), OWNER, bad));
+		assertEquals(Optional.of(BAD_RANK), check(true, true, true, VILLAGE, OWNER, bad));
+	}
+
 	@Test void rankIsReadFromTheCurrentState() {
 		Optional<VillageState> demoted = Optional.of(VILLAGE.get().withRank(STEWARD, Rank.VISITOR));
 		assertEquals(Optional.of(NO_PERMISSION), check(true, true, true, demoted, STEWARD, ASSIGN));

@@ -18,6 +18,9 @@ public final class ActionGate {
 		if (!menuOpen) return Optional.of(Rejection.NOT_OPEN);
 		if (!sameEpoch) return Optional.of(Rejection.STALE);
 		if (village.isEmpty()) return Optional.of(Rejection.NO_VILLAGE);
+		// one place for "no honest client sends this" (M12's BAD_AMOUNT goes here too)
+		Optional<Rejection> malformed = action.malformed();
+		if (malformed.isPresent()) return malformed;
 		if (!Permissions.allows(village.get().rankOf(player), action.permission())) return Optional.of(Rejection.NO_PERMISSION);
 		return Optional.empty();
 	}

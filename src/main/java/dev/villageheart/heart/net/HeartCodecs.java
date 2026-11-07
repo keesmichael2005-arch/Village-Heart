@@ -11,6 +11,7 @@ import dev.villageheart.core.heart.GoalLine;
 import dev.villageheart.core.heart.HeartLimits;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.heart.JobChoice;
+import dev.villageheart.core.heart.MemberRow;
 import dev.villageheart.core.heart.NeedsFlags;
 import dev.villageheart.core.heart.Overview;
 import dev.villageheart.core.heart.RowStatus;
@@ -212,9 +213,21 @@ public final class HeartCodecs {
 	private static final StreamCodec<ByteBuf, List<JobChoice>> JOB_CHOICES = JOB_CHOICE.apply(ByteBufCodecs.list(HeartLimits.MAX_JOB_CHOICES));
 	private static final StreamCodec<ByteBuf, List<BuildingRow>> BUILDINGS = BUILDING_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILDINGS));
 
+	public static final StreamCodec<ByteBuf, MemberRow> MEMBER_ROW = codec(
+			buf -> new MemberRow(UUIDUtil.STREAM_CODEC.decode(buf), NAME.decode(buf), RANK.decode(buf), BOOL.decode(buf)),
+			(buf, m) -> {
+				UUIDUtil.STREAM_CODEC.encode(buf, m.id());
+				NAME.encode(buf, m.name());
+				RANK.encode(buf, m.rank());
+				BOOL.encode(buf, m.online());
+			});
+
+	private static final StreamCodec<ByteBuf, List<MemberRow>> MEMBERS = MEMBER_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_MEMBERS));
+
 	public static final StreamCodec<ByteBuf, HeartSnapshot> SNAPSHOT = codec(
 			buf -> new HeartSnapshot(RANK.decode(buf), OVERVIEW.decode(buf), VILLAGERS.decode(buf), INT.decode(buf),
-					JOB_CHOICES.decode(buf), BUILDINGS.decode(buf), INT.decode(buf), STOCK.decode(buf)),
+					JOB_CHOICES.decode(buf), BUILDINGS.decode(buf), INT.decode(buf), STOCK.decode(buf), MEMBERS.decode(buf),
+					INT.decode(buf)),
 			(buf, s) -> {
 				RANK.encode(buf, s.viewerRank());
 				OVERVIEW.encode(buf, s.overview());
@@ -224,5 +237,7 @@ public final class HeartCodecs {
 				BUILDINGS.encode(buf, s.buildings());
 				INT.encode(buf, s.moreBuildings());
 				STOCK.encode(buf, s.stock());
+				MEMBERS.encode(buf, s.members());
+				INT.encode(buf, s.moreMembers());
 			});
 }

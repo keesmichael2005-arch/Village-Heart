@@ -47,6 +47,16 @@ Still one village per world, but several players can run it together.
 | **Resident** | Open Storage and building chests in the claim, deposit to the treasury, view every tab |
 | **Visitor** (default) | View the Overview tab only. Cannot open chests inside claimed buildings |
 
+As built in M24 (`docs/plans/M24.md`): each permission has one minimum rank (`Permission.minimum()`, cumulative as the table). The Owner gives a rank in the
+Ranks tab (online or offline players the village has seen; at most 63 ranked players, the name book keeps 64) and can **transfer ownership** to a
+Steward or Resident after a second click; the old Owner becomes a Steward and the village, treasury, buildings and workers stay as they are.
+An operator can take over an abandoned village with `/villageheart owner <player>` (and `rank`, `members`); ops get no other bypass.
+**Chest rule:** a Visitor cannot open or break a block that holds items (chests, barrels, furnaces, hoppers, shulker boxes, brewing stands,
+jukeboxes, decorated pots, ... but not the personal ender chest) inside a room building (the last enclosed room scan; a 16-block box around the marker
+until the first scan), and cannot break a registered building marker. Sneak-placing a block against a chest still works. **This is not grief
+protection:** a Visitor can still break a wall or floor, put a hopper under a Storage chest, and hoppers, pistons, explosions, copper golems, chest
+minecarts and creative pick-block are not stopped; outdoor sites have no protection. Servers that need more run a claim mod.
+
 ## 3. Buildings
 
 ### 3.1 Markers and recipes
@@ -330,6 +340,10 @@ The tier never goes down in v1. The Overview tab shows each goal's progress.
   and an active blueprint with its missing materials.
 - **Stockpile**: item totals across Storage, food nutrition total, and surplus reserve settings.
 - **Ranks** (Owner only): players and their ranks.
+
+As built in M24: the fifth tab lists the Owner and every player the village has seen (online ones with a green dot), with their rank; the Owner picks a row, then
+`[Steward] [Resident] [Visitor]` or `[Transfer ownership]` (a second click on `[Confirm: give the village to X]` sends it; only a Steward or Resident can receive it).
+Only the Owner's snapshot carries the list, so other players never receive other players' UUIDs. After a transfer the old Owner's screen drops to the Overview.
 
 As built in M8 (`docs/plans/M8.md`): the screen is a slotless menu (`ExtendedScreenHandlerType`) opened by right-clicking the claimed Heart with any item
 (not while sneaking with an item: vanilla keeps that for placing). The server sends each viewer a full snapshot at most once a second and only when it

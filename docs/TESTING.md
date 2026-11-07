@@ -173,3 +173,22 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **L4** `HeartScreenClientTests.heartTabs`: precondition 427 x 240 GUI (fails loudly otherwise), a seeded village, right-click on the Heart, the four tabs by real clicks (`tabButtonCentre`), `heart_overview/villagers/stockpile/buildings.png`, Fire through the UI (`clickScreenButton`), a 20-villager list that scrolls and a long item name that is cut with an ellipsis. `HeartScreen.recordLayout = true` makes the screen record every drawn rectangle: the test asserts `layoutProblems()` is empty (nothing outside its area, no overlap inside a row, scrollbar inside the window) and `clippedThisFrame() == 0`. NoAI villagers keep their activity (WORKING at noon).
 - Gotchas: `Screen.isPauseScreen()` is true by default (a singleplayer server would pause and never send a refresh); custom names in `summon` NBT are `CustomName:"Ada"` (a text component), not a quoted JSON string.
 
+
+## Rank and multiplayer tests (M24+)
+- **L1**: `PermissionsTest` (a literal table, not computed from `Permission.minimum()`, plus a row for every permission and the monotonic check; `Rank.values()` is pinned),
+  `VillageStateMembersTest`, `RankRulesTest`, `ContainerGuardTest` (`FakeGrid` scans), `VillageCodecsMembersTest` (`known_players`, repair, the 63/64 caps), `ActionGateTest` (crafted rank values),
+  `HeartSnapshotBuilderTest`/`HeartCodecsTest` (member rows only for the Owner, caps, worst case 481 KiB).
+- **L2** `RankGameTests` (helpers `RankTestSupport`): own environment per test (`villageheart-gametest:ranks_<name>`), `seed`/`begin` first, `done` last. Visitors are `OverlayPlayer`s (they record the action bar), chat is
+  recorded by `chatty(...)`. Open through `rightClickAbs` (real `useItemOn`, so Fabric's `UseBlockCallback` runs), break through `player.gameMode.destroyBlock` (never `level.destroyBlock`, which skips the event).
+  **Raw `AssertionError`s thrown inside a `GameTestSequence` tick crash the whole GameTest server**; use `h.assertTrue` there. `joinAs(h, uuid, name)` joins a fresh player with a chosen UUID through `placeNewPlayer`:
+  Fabric's JOIN event does fire for `EmbeddedChannel` players, so `Members.onJoin` is tested through the real path. Ops commands run through `Console` (a `CommandSource` that collects the replies);
+  `lastKey()` looks inside the red wrapper component commands put around failures.
+- **L4** `RanksClientTests.ranksTab` (`heart_ranks.png`, `heart_ranks_confirm.png`): offline members written into the saved data, the tab opened by a real click, a rank set through the buttons, the two-click transfer, and the
+  Ranks tab locking again for the old Owner.
+- **L4 2-player session** `MultiplayerClientTests.ownerAndResident` (`mp_ranks.png`): Fabric's `createServer()` starts an in-process **dedicated** server (random port, offline mode, EULA accepted in `build.gradle`) and `connect()` joins the one real
+  client. The second player is a `FakePlayer` (the Owner "Olga"), a server-side `ServerPlayer` whose connection **drops every packet**: with a queueing `EmbeddedChannel` Fabric's `NetworkSynchronizer` would count them as
+  in flight forever and the client would die after 10 s. So this is 1 real networked client + 1 server-side player, not two real clients. The session: Visitor refused on a chest, a jukebox (disc stays in hand) and the break of one half of a
+  double chest (both halves' client state equals the server's); Resident opens the chest and moves a stack; the Heart screen as Resident, Steward and Owner (the Ranks tab unlocks, Olga online); Olga demoted through the UI.
+  `syncCheck` after every step: still connected, Olga still listed, the client's inventory equals the server's (item, count, components), and with the Heart open the client's snapshot equals `HeartMenu.lastSent()` **and** shows the step's change.
+  The test logs `MP_SESSION begin/end`; `scripts/check-mp-log.sh` (self-test `scripts/test-check-mp-log.sh`, sample logs in `scripts/testdata/mp-log-*.log`) fails when a `Server thread` or `villageheart` ERROR, or "Disconnected", "Connection lost", "Timed out" or "Failed to decode", appears between the markers.
+  Authlib/Yggdrasil errors (no network in the sandbox) come from their own threads and are not matched. It took ~25 s and passed 5 of 5 runs. Whether "1 client + 1 server-side player" satisfies the v1.0 gate item is the release decision; M24 did not tick it.

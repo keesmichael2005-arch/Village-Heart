@@ -1,0 +1,4 @@
+[20:58:49] [Test thread/INFO] (villageheart) MP_SESSION begin
+[20:59:08] [Test thread/INFO] (villageheart) MP_SESSION end
+[20:59:09] [Server thread/ERROR] (Minecraft) something after the session is not this gate's business
+[20:59:09] [Server thread/INFO] (Minecraft) Player0 lost connection: Disconnected

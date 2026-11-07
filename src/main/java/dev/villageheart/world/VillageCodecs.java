@@ -5,6 +5,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.villageheart.core.BuildingRecord;
 import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.KnownPlayer;
+import dev.villageheart.core.MemberRepair;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.TreeTask;
@@ -14,6 +16,9 @@ import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.WorldClaim;
 import dev.villageheart.core.building.BuildingStatus;
 
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.DynamicOps;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,7 +31,34 @@ import java.util.function.Function;
 public final class VillageCodecs {
 	public static final int SCHEMA = 1;
 
+	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("villageheart");
+
 	private VillageCodecs() {}
+
+	/**
+	 * Decodes a list element by element and drops the ones that fail (one WARN each), so a single bad entry never loses
+	 * the village. Encodes like {@code element.listOf()}.
+	 */
+	public static <E> Codec<java.util.List<E>> lenientList(Codec<E> element) {
+		Codec<java.util.List<E>> strict = element.listOf();
+		return new Codec<>() {
+			@Override public <T> DataResult<Pair<java.util.List<E>, T>> decode(DynamicOps<T> ops, T input) {
+				return ops.getList(input).map(each -> {
+					java.util.List<E> out = new ArrayList<>();
+					each.accept(item -> {
+						DataResult<E> r = element.parse(ops, item);
+						if (r.result().isPresent()) out.add(r.result().get());
+						else LOG.warn("Dropping an unreadable list entry: {}", r.error().map(e -> e.message()).orElse("?"));
+					});
+					return Pair.of(out, input);
+				});
+			}
+
+			@Override public <T> DataResult<T> encode(java.util.List<E> input, DynamicOps<T> ops, T prefix) {
+				return strict.encode(input, ops, prefix);
+			}
+		};
+	}
 
 	public static final Codec<UUID> UUID_STRING = Codec.STRING.comapFlatMap(s -> {
 		try {
@@ -80,6 +112,12 @@ public final class VillageCodecs {
 			HEART_LOCATION.fieldOf("job_block").forGetter(WorkerRecord::jobBlock)
 	).apply(i, WorkerRecord::new));
 
+	public static final Codec<KnownPlayer> KNOWN_PLAYER = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("id").forGetter(KnownPlayer::id),
+			Codec.STRING.optionalFieldOf("name", "").forGetter(KnownPlayer::name),
+			Codec.LONG.optionalFieldOf("last_seen", 0L).forGetter(KnownPlayer::lastSeen)
+	).apply(i, KnownPlayer::new));
+
 	public static final Codec<Pos> POS = RecordCodecBuilder.create(i -> i.group(
 			Codec.INT.fieldOf("x").forGetter(Pos::x),
 			Codec.INT.fieldOf("y").forGetter(Pos::y),
@@ -123,7 +161,7 @@ public final class VillageCodecs {
 
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
-			int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
+			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
@@ -132,6 +170,7 @@ public final class VillageCodecs {
 			Codec.STRING.fieldOf("owner_name").forGetter(Raw::ownerName),
 			Codec.LONG.fieldOf("claimed_at").forGetter(Raw::claimedAt),
 			Codec.unboundedMap(UUID_STRING, RANK).optionalFieldOf("ranks", java.util.Map.of()).forGetter(Raw::ranks),
+			lenientList(KNOWN_PLAYER).optionalFieldOf("known_players", java.util.List.of()).forGetter(Raw::known),
 			Codec.INT.optionalFieldOf("treasury", 0).forGetter(Raw::treasury),
 			TIER.optionalFieldOf("tier", Tier.HAMLET).forGetter(Raw::tier),
 			BUILDING.listOf().optionalFieldOf("buildings", java.util.List.of()).forGetter(Raw::buildings),
@@ -141,12 +180,14 @@ public final class VillageCodecs {
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
-			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), r.ranks(),
+			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
+			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
+			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
 					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
-	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(),
+	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
 			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks())));
 
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */

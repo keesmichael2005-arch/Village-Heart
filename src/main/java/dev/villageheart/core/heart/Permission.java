@@ -1,4 +1,26 @@
 package dev.villageheart.core.heart;
 
-/** Things a player can do through the Heart screen. */
-public enum Permission { VIEW_OVERVIEW, VIEW_DETAILS, HIRE, FIRE, RECHECK_BUILDING, SET_GUARD_SHIFT /* M18 */ }
+import static dev.villageheart.core.Rank.*;
+
+import dev.villageheart.core.Rank;
+
+/**
+ * Things a player can do in a village. DESIGN section 2 is cumulative, so each permission has one minimum rank.
+ * Never serialized (saves and the wire carry ranks), so appending in any order is safe. The compiler forces every
+ * new permission to name its minimum rank.
+ */
+public enum Permission {
+	VIEW_OVERVIEW(VISITOR), VIEW_DETAILS(RESIDENT), HIRE(STEWARD), FIRE(STEWARD), RECHECK_BUILDING(STEWARD),
+	/** Defined now, enforced when M18 adds the action: gate the action with this permission. */
+	SET_GUARD_SHIFT(STEWARD),
+	/** Open and break containers inside the village's buildings (the Visitor rule). */
+	OPEN_CONTAINERS(RESIDENT), MANAGE_RANKS(OWNER), TRANSFER_OWNERSHIP(OWNER), BREAK_HEART(OWNER),
+	/** Defined now, enforced when M20 adds the action: gate the action with this permission. */
+	START_BLUEPRINT(STEWARD);
+
+	private final Rank minimum;
+
+	Permission(Rank minimum) { this.minimum = minimum; }
+
+	public Rank minimum() { return minimum; }
+}

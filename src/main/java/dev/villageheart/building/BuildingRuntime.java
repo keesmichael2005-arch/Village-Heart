@@ -29,6 +29,11 @@ final class BuildingRuntime {
 			Balance.VALIDATION_INTERVAL_TICKS, Balance.MAX_PRIORITY_CHECKS_PER_TICK);
 	/** Latest raw room scan (without SHARED) per room building. */
 	final Map<HeartLocation, RoomScan> rawScans = new HashMap<>();
+	/**
+	 * The last scan per room building that was enclosed (M24's container guard reads it: a leaking scan's interior is partial
+	 * garbage, so the guard keeps the last good room). Runtime only, empty after a restart.
+	 */
+	final Map<HeartLocation, RoomScan> lastEnclosed = new HashMap<>();
 	final Map<HeartLocation, Verdict> verdicts = new HashMap<>();
 	/** The markers each building shared its room with at its last check (edge-triggered re-checks). */
 	final Map<HeartLocation, Set<HeartLocation>> sharedWith = new HashMap<>();
@@ -57,6 +62,7 @@ final class BuildingRuntime {
 
 	void forget(HeartLocation loc) {
 		rawScans.remove(loc);
+		lastEnclosed.remove(loc);
 		verdicts.remove(loc);
 		sharedWith.remove(loc);
 	}

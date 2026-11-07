@@ -69,6 +69,16 @@ class WorldClaimTest {
 		assertEquals(BreakDecision.ALLOWED_UNCLAIMED, w.mayBreakHeart(B, bob));
 		assertEquals(BreakDecision.ALLOWED_OWNER, w.mayBreakHeart(A, alice));
 		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, bob));
+		w.update(v -> v.withRank(carol, Rank.STEWARD).withRank(bob, Rank.RESIDENT));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, carol));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, bob));
+	}
+
+	@Test void breakRuleFollowsOwnershipTransfer() {
+		WorldClaim w = claimedByAlice();
+		w.update(v -> v.withRank(bob, "bob", Rank.RESIDENT, 5).transferOwnership(bob, 6));
+		assertEquals(BreakDecision.ALLOWED_OWNER, w.mayBreakHeart(A, bob));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, alice), "the old owner is a Steward now");
 	}
 
 	@Test void dimensionIsPartOfLocation() {
