@@ -42,6 +42,7 @@ replay_*.log
 # local runs / logs
 run/
 *.log
+!scripts/testdata/*.log
 reports/
 
 # agent worktrees / local Claude state

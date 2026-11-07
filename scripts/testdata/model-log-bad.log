@@ -1,0 +1,4 @@
+[10:00:01] [Render thread/INFO] (Minecraft) Reloading ResourceManager: vanilla, fabric, villageheart
+[10:00:03] [Worker-Main-2/WARN] (Minecraft) Missing textures in model villageheart:block/marker/house_unchecked:
+    villageheart:textures/block/marker/house_unchecked.png
+[10:00:04] [Render thread/INFO] (Minecraft) Loaded 2000 models

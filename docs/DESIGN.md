@@ -89,7 +89,7 @@ Each **job block** inside a building is one worker slot.
 | **Farmhouse** | Hamlet | dirt / wheat | 9 | composter(s), chest | Farmer (per composter) |
 | **Lumber Camp** | Hamlet | log / stone axe ×1 + sticks | 9 | **Chopping Block**(s), chest | Lumberjack |
 | **Kitchen** | Hamlet | cobblestone / coal | 9 | smoker(s), chest, crafting table | Cook |
-| **Builder's Hut** | Village | bricks / ladder | 9 | **Builder's Table**(s), chest | Builder |
+| **Builder's Hut** | Village | brick (the item) / ladder | 9 | **Builder's Table**(s), chest | Builder |
 | **Mine** | Village | cobblestone / stone pickaxe ×1 + rail | 9 | stonecutter(s), chest, linked Mineshaft | Miner |
 | **Hunting Lodge** | Village | leather / arrow | 9 | fletching table(s), chest, linked Hunting Ground | Hunter |
 | **Barracks** | Village | cobblestone / iron ingot | 16 | grindstone(s), 1 bed per guard slot, chest | Guard |

@@ -132,6 +132,8 @@ final class MarkerClientTests {
 			if (!missing.isEmpty()) throw new AssertionError("items with the missing item model: " + missing);
 			context.setScreen(() -> new InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
 			context.waitForScreen(InventoryScreen.class);
+			context.getInput().setCursorPos(2, 2);
+			context.runOnClient(mc -> mc.getToastManager().clear());
 			context.waitTicks(5);
 			context.takeScreenshot("marker_items");
 			context.setScreen(() -> null);
