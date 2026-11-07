@@ -54,4 +54,41 @@ public final class Balance {
 	public static final int STORAGE_FULL_HOLD_TICKS = 200;
 	/** A Storage is "unknown" while a room building within this many blocks has no cached scan yet (after a restart). */
 	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
+
+	// ---- jobs (M9) ----
+	/** Work speed multiplier per tool tier, indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
+	public static final double[] TOOL_SPEED = {1.0, 1.25, 1.375, 1.0, 1.5, 1.75, 2.0};
+	/** Work speed multiplier per worker level 1..3 (M15 raises levels). */
+	public static final double[] LEVEL_SPEED = {1.0, 1.25, 1.5};
+	/** Speed of a job whose tool is optional and missing. */
+	public static final double NO_TOOL_SPEED = 0.5;
+	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x1.25) fells a log in 40 ticks. */
+	public static final double BASE_TICKS_PER_LOG = 50;
+	/** A tree counts only with this many face contacts with natural (non-persistent) leaves. */
+	public static final int TREE_MIN_LEAF_CONTACTS = 3;
+	public static final int MAX_TREE_LOGS = 192;
+	public static final int MAX_TREE_WIDTH = 17;
+	public static final int MAX_TREE_HEIGHT = 48;
+	/** Trees within this many blocks (xz) of the Chopping Block, and within +-LUMBER_DY in y. */
+	public static final int LUMBER_RADIUS = 32;
+	public static final int LUMBER_DY = 16;
+	/** The lumberjack stands within this many blocks of the tree base to chop (3D). */
+	public static final double CHOP_REACH = 3.0;
+	/** Drops within this many blocks of the lumberjack are collected (and inside its work area). */
+	public static final double COLLECT_RADIUS = 12.0;
+	/** No new tree is started after this day time (drops would despawn before they are collected). */
+	public static final int LUMBER_LAST_FELL = 5000;
+	public static final int REPLANT_FALLBACK_TICKS = 6000;
+	public static final int REPLANT_EXPIRY_DAYS = 3;
+	/** Saplings a lumberjack keeps besides the ones the open replant spots need. */
+	public static final int SAPLING_RESERVE = 4;
+	/** Cell reads a tree search may spend per worker tick. */
+	public static final int TREE_SEARCH_READS_PER_TICK = 2048;
+	/** A swept tree list is reused for this many ticks. */
+	public static final int TREE_INDEX_TTL = 1200;
+	/** A tree the worker could not reach is skipped for this many ticks. */
+	public static final int TREE_BLACKLIST_TICKS = 6000;
+	/** Unreachable: the best distance did not improve by 1 block in this many ticks, or this many ticks in total. */
+	public static final int WALK_STALL_TICKS = 200;
+	public static final int WALK_TOTAL_TICKS = 800;
 }

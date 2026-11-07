@@ -3,6 +3,8 @@ package dev.villageheart.core.worker;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.building.BuildingRequirements;
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.job.ToolKind;
+import dev.villageheart.core.job.ToolRequirement;
 import java.util.Optional;
 
 /** The nine jobs of DESIGN section 3.4: id, display name, the building that offers it and the content key of its job block. */
@@ -36,6 +38,17 @@ public enum JobType {
 	/** Namespaced block id of the job block, the room scanner's content key. */
 	public String jobBlockKey() { return jobBlockKey; }
 	public Tier tier() { return building.tier(); }
+
+	/** The tool this job works with (DESIGN section 5), or empty for jobs that need none. */
+	public Optional<ToolRequirement> tool() {
+		return switch (this) {
+			case LUMBERJACK -> Optional.of(new ToolRequirement(ToolKind.AXE, true));
+			case MINER -> Optional.of(new ToolRequirement(ToolKind.PICKAXE, true));
+			case HUNTER -> Optional.of(new ToolRequirement(ToolKind.BOW_OR_SWORD, true));
+			case FARMER -> Optional.of(new ToolRequirement(ToolKind.HOE, false));
+			default -> Optional.empty();
+		};
+	}
 
 	public static Optional<JobType> byId(String id) {
 		for (JobType t : values()) if (t.id.equals(id)) return Optional.of(t);
