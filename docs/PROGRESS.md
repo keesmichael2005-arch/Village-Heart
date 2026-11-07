@@ -292,5 +292,5 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Level perks are permanent attribute modifiers. Guards heal while asleep, and a wounded guard retreats to its bed.
 - Shift pins are saved in `VillageState`; the Heart screen gets a `SetGuardShift` action gated by `SET_GUARD_SHIFT`. L3 `defended` sits on M11's `starter`.
 - Assumes M9 (WalkTo, without relying on its give-up timings), M11, M15 (else a minimal Leveling) and M12 (strike = no duty).
-- Critique session gave no answer in time; self-review is in plan section 7. A fresh critique is owed before the build.
+- Critique: my session never answered; the orchestrator ran a fresh critic (1 BLOCKER, 10 MAJOR, 9 MINOR), all 20 taken (plan section 7): combat in CORE with a DEFEND override, night OFF after duty, auto shifts stored, real-raid L2, HOME/ticket fixes, scripted threat in `defended`.
 - Top risk: L3 `defended` (≤ 1 mob death in 10 unseeded days) depends on the unbuilt M11 harness and on vanilla villager night behaviour.
