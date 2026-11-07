@@ -918,4 +918,124 @@ public class WorkerGameTests {
 			end(h);
 		});
 	}
+
+	// ---- going home and breeding (step 8) -------------------------------------------------------
+
+	/** A valid House (5x4) at {@code origin} with {@code beds} beds (foot z=1, head z=2) and a torch. Returns its marker position. */
+	private static BlockPos house(GameTestHelper h, BlockPos origin, int beds) {
+		BlockPos marker = BuildingTestSupport.room(h, origin, 5, 4);
+		h.setBlock(BuildingTestSupport.inside(origin, 2, 0, 3), Blocks.TORCH);
+		for (int i = 0; i < beds; i++) bed(h, BuildingTestSupport.inside(origin, i * 2, 0, 1));
+		return marker;
+	}
+
+	/** T-L2-12: GO_HOME walks the worker to a bed in a House before 12000; at night it sleeps in that bed. */
+	@GameTest(environment = "villageheart-gametest:workers_home", structure = YARD, skyAccess = true, maxTicks = 2400)
+	public void workerSleepsInHouseBed(GameTestHelper h) {
+		begin(h);
+		BlockPos farmMarker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos houseMarker = BuildingTestSupport.markerPos(ORIGIN_B, 5);
+		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		BlockPos bedFoot = BuildingTestSupport.inside(ORIGIN_B, 0, 0, 1);
+		BlockPos bedHead = bedFoot.south();
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, ORIGIN_A, 1);
+			house(h, ORIGIN_B, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker, Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, farmMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, houseMarker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, comp) && poiPresent(h, bedHead), "composter reserved, bed POI exists");
+		});
+		seq = seq.thenExecute(() -> {
+			h.getLevel().setDayTime(2000);
+			v[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, v[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "reaching the composter", () -> h.assertTrue(distance(h, v[0], comp) <= REACH, "at the job block"));
+		seq = seq.thenExecute(() -> h.getLevel().setDayTime(11000));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(distance(h, v[0], bedHead) <= 2.0, "distance to the bed " + distance(h, v[0], bedHead)));
+		seq = seq.thenExecute(() -> {
+			long day = h.getLevel().getDayTime();
+			h.assertTrue(day < 12000, "home before sleeping time: day time " + day);
+			h.assertFalse(v[0].isSleeping(), "not asleep yet: go_home must not include sleeping");
+			h.assertTrue(v[0].getBrain().isActive(WorkerBrain.GO_HOME), "go_home activity");
+			h.getLevel().setDayTime(13000);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "asleep after 13000", () -> h.assertTrue(v[0].isSleeping(), "sleeping"));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(java.util.Optional.of(h.absolutePos(bedHead)), v[0].getSleepingPos(), "sleeping in the House's bed");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-14: hired workers can still breed (the IDLE package keeps VillagerMakeLove), in the wake-up hours. */
+	@GameTest(environment = "villageheart-gametest:workers_breed", structure = YARD, skyAccess = true, maxTicks = 3200)
+	public void workersCanBreed(GameTestHelper h) {
+		begin(h);
+		BlockPos farmMarker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos houseMarker = BuildingTestSupport.markerPos(ORIGIN_B, 5);
+		BlockPos bed3 = BuildingTestSupport.inside(ORIGIN_B, 4, 0, 2);
+		BlockPos spot = BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1);
+		Villager[] v = new Villager[2];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, ORIGIN_A, 2);
+			house(h, ORIGIN_B, 3); // two beds for the workers' homes and free ones for the baby
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker, Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, farmMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, houseMarker, MarkerStatus.VALID);
+			h.assertTrue(poiPresent(h, bed3), "the bed POIs exist");
+		});
+		seq = seq.thenExecute(() -> {
+			h.getLevel().setDayTime(100);
+			for (int i = 0; i < 2; i++) {
+				v[i] = spawnVillager(h, spot);
+				v[i].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 4));
+				v[i].setAge(0);
+				h.assertTrue(hire(h, v[i], JobType.FARMER) instanceof HireResult.Hired, "worker " + i + " hired");
+			}
+			h.assertTrue(v[0].canBreed() && v[1].canBreed(), "both can breed");
+		});
+		// Finding each other is vanilla's InteractWith (random, and only in the 900 wake-up ticks) and vanilla's gate can lose its
+		// target when the pair drifts apart. Seed the pair again every 50 ticks while they are in IDLE, so the test measures the part
+		// M7 owns: the worker IDLE package still runs VillagerMakeLove for a BREED_TARGET.
+		// Vanilla's breeding sometimes aborts for reasons outside M7 (the pair drifts apart, no reachable bed at that moment), so the
+		// test gets up to three wake-up windows: each one starts by setting the clock back to dawn, unless a baby is already there.
+		for (int w = 0; w < 3; w++) {
+			seq = seq.thenExecute(() -> {
+				if (h.getEntities(EntityType.VILLAGER).stream().noneMatch(Villager::isBaby)) h.getLevel().setDayTime(100);
+			});
+			for (int i = 0; i < 16; i++) {
+				seq = seq.thenExecuteAfter(50, () -> {
+					if (h.getEntities(EntityType.VILLAGER).stream().anyMatch(Villager::isBaby)) return;
+					for (int k = 0; k < 2; k++) {
+						if (v[k].isAlive() && !v[k].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET) && v[k].canBreed()) {
+							v[k].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1 - k]);
+						}
+					}
+				});
+			}
+		}
+		seq = seq.thenWaitUntil(() -> {
+			boolean baby = h.getEntities(EntityType.VILLAGER).stream().anyMatch(Villager::isBaby);
+			StringBuilder d = new StringBuilder();
+			for (Villager x : v) d.append(" [").append(x.getBrain().getActiveActivities()).append(" bt=").append(x.getBrain().getMemory(MemoryModuleType.BREED_TARGET).isPresent())
+					.append(" can=").append(x.canBreed()).append(" age=").append(x.getAge()).append(" home=").append(x.getBrain().getMemory(MemoryModuleType.HOME).isPresent())
+					.append(" sleeping=").append(x.isSleeping()).append(" dist=").append(x.distanceTo(v[0] == x ? v[1] : v[0])).append("]");
+			for (int i = 0; i < 3; i++) d.append(" bed").append(i).append("space=").append(poiHasSpace(h, BuildingTestSupport.inside(ORIGIN_B, i * 2, 0, 2)));
+			h.assertTrue(baby, "no baby yet, day time " + h.getLevel().getDayTime() + d);
+		});
+		seq.thenExecute(() -> {
+			for (Villager b : h.getEntities(EntityType.VILLAGER)) if (b.isBaby()) b.discard();
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }
