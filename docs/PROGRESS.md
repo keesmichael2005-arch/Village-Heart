@@ -284,3 +284,12 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
+
+## 2026-11-07: M14 plan (tiers and unlocks), branch m14-plan
+- Plan: docs/plans/M14.md, 6 steps. Pure `core.tier` (`TierGoals.evaluate(tier, inputs, progress)`, `TierProgress` fed streak / last counted dinner / best dawn treasury, `TierDawn.run`, `TierRules.levelCap/levelFor`, `Population.count`).
+- `VillageState.tierProgress` (saved as lenient `tier_progress`); fed streak updated at M11's dinner (`Tiers.onDinner`, everyone fed = fed day, anything else resets); tier checked at M12's dawn (`VillageDawn` listener, after wages, one step per dawn, never down).
+- Tier-up effects: `Buildings.requestAll`, `HeartFacts.invalidate`, chat to Residents+ and a level-up sound. Hiring and blueprint unlocks need no code; level caps are a pure rule for M15.
+- Overview checklist fills M8's existing `GoalLine` list (0 new bytes, at most 6 of the 8 budgeted). The screen gets 10 px rows with boxes and alerts below them.
+- Required M12 change: fire dawn listeners on the wages-off branch too (`PayResult.none`).
+- L2 setup is cheap: a seeded streak of 2, one real dinner, one real dawn. A probe dawn listener proves `requestAll` deterministically. The L4 extends `heartTabs` (`heart_overview.png`).
+- Critique: 22 findings, 18 taken, 4 refuted (section 7). Build after M11 and M12 are on dev. Top risk: M11/M12 seam names and the wages-off dawn.
