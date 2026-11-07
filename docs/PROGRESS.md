@@ -293,3 +293,12 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
 - marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
 - Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
+
+## 2026-11-07: M16 plan (Miner + Mineshaft), branch m16-plan
+- Plan: docs/plans/M16.md, 12 steps. Reuses M9's toolkit (`CampTools` PICKAXE lease in the Mine chest, `WalkTo`, `WorkSpeed`, `WorkerStatuses`, `WorkStats`, `DepositTrip` + a `depositNow` hook).
+- "Disappears inside": the villager stays a loaded entity, moved to the shaft's deepest cell and set Invisible + Invulnerable + Silent + NoAI (NoAI freezes the vanilla brain; invulnerable mobs are never targeted); prior flags saved in a new persistent `AwayTrips.AWAY` attachment (separate from `WorkerData`) and restored on surfacing; trade/attack callbacks FAIL; load repair, conversion fix, `restoreVanilla` hook. Heart screen: new `ActivityKind.AWAY_WORKING` "Away (mining)".
+- Haul: 2500 units, stone L1 = 2000 underground ticks, stepped every 20 ticks by `MinerSystem`, progress saved per shaft and kept overnight; 10 durability per haul; tables by `DepthBand` (Y≥40 / 0≤Y<40 / Y<0) with diamonds only for iron+ below 0; `HaulRng` = SplitMix64 of (world seed, UUID, per-worker haul index), so L2 can predict every haul.
+- Shaft depth: `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth` (M5 threw `deepestY` away). Shaft invalid mid-trip → comes up, progress reset, Mine then WORKPLACE_INVALID with M5's reasons.
+- Finding: GameTests run at y ≈ -59, so a shaft in the normal yard is in the Y<0 band (cobbled deepslate). The roadmap's "≥40 cobblestone" test builds its scene high up (relative y computed from the test origin).
+- L1 note: 10k rolls cannot hold 5% for the 2%/10% entries; the plan runs the literal 10k check for fixed and ≥30% entries and a 400k check for all (orchestrator may adjust the ROADMAP wording).
+- Critique: remote critic session, 34 findings, 29 taken, 3 refuted, 2 accepted with reasons. Builds after M9 is on dev. Top risk: hiding a live villager with NoAI (anything else touching those flags or assuming the brain ticks).
