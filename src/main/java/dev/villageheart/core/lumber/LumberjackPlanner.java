@@ -22,7 +22,8 @@ public final class LumberjackPlanner {
 
 	public enum ToolState { PRESENT, NONE, UNKNOWN }
 
-	public enum FinderState { HAS_TREE, PAUSED, EXHAUSTED }
+	/** EXHAUSTED_UNKNOWN: the sweep is done but it met unloaded cells, so "no trees" is not certain. */
+	public enum FinderState { HAS_TREE, PAUSED, EXHAUSTED, EXHAUSTED_UNKNOWN }
 
 	public enum Action { IDLE_AT_CAMP, YIELD, CONTINUE_FELL, REPLANT, COLLECT, FELL_TASK, FELL_NEW, SEARCH }
 

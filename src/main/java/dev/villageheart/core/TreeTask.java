@@ -31,6 +31,10 @@ public record TreeTask(HeartLocation building, Stage stage, List<HeartLocation> 
 		return false;
 	}
 
+	public TreeTask withSince(long newSince) {
+		return new TreeTask(building, stage, base, sapling, newSince, boxMin, boxMax);
+	}
+
 	public TreeTask withStage(Stage s, List<HeartLocation> newBase) {
 		return new TreeTask(building, s, newBase, sapling, since, boxMin, boxMax);
 	}

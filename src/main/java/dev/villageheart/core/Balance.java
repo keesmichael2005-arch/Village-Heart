@@ -74,6 +74,8 @@ public final class Balance {
 	public static final int LUMBER_DY = 16;
 	/** The lumberjack stands within this many blocks of the tree base to chop (3D). */
 	public static final double CHOP_REACH = 3.0;
+	/** A tree behind its own leaves (the canopy blocks the ground up to the trunk) is chopped from the nearest spot a path leads to, within this. */
+	public static final double CHOP_CLOSEST = 8.0;
 	/** Drops within this many blocks of the lumberjack are collected (and inside its work area). */
 	public static final double COLLECT_RADIUS = 12.0;
 	/** No new tree is started after this day time (drops would despawn before they are collected). */

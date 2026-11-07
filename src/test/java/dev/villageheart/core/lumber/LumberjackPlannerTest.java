@@ -123,6 +123,11 @@ class LumberjackPlannerTest {
 	}
 
 	@Test
+	void row10_aSweepThatMetUnloadedCellsDoesNotClaimThereAreNoTrees() {
+		expect(with(BASE, b -> b.finder(FinderState.EXHAUSTED_UNKNOWN)), IDLE_AT_CAMP, CLEAR_NEEDS_TOOL);
+	}
+
+	@Test
 	void row10_anExhaustedFinderMeansNoWork() {
 		expect(with(BASE, b -> b.finder(FinderState.EXHAUSTED)), IDLE_AT_CAMP, NO_WORK);
 	}

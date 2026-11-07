@@ -74,6 +74,8 @@ public final class Workers {
 		boolean registered = VillageClaims.current(server).flatMap(v -> v.worker(villager.getUUID())).isPresent();
 		if (registered) VillageClaims.data(server).update(s -> s.withoutWorker(villager.getUUID()));
 		boolean attached = WorkerAttachments.isWorker(villager);
+		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
+		dev.villageheart.worker.lumber.LumberJob.forget(server, villager.getUUID());
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
 	}
@@ -96,7 +98,7 @@ public final class Workers {
 	private static final java.util.Set<Villager> TRIPS = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
 	/** True while a deposit trip runs for this worker: nothing else may take its walk target, and no second trip may start. */
-	static boolean tripRunning(Villager v) { return TRIPS.contains(v); }
+	public static boolean tripRunning(Villager v) { return TRIPS.contains(v); }
 
 	static void setTripRunning(Villager v, boolean running) {
 		if (running) TRIPS.add(v); else TRIPS.remove(v);
@@ -112,7 +114,10 @@ public final class Workers {
 	public static WorkerStatus status(MinecraftServer server, WorkerRecord record) {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
-		return slot != WorkerStatus.OK || trip == null ? slot : trip;
+		if (slot != WorkerStatus.OK) return slot;
+		if (trip != null) return trip;
+		WorkerStatus job = dev.villageheart.worker.job.WorkerStatuses.get(record.villager());
+		return job == null ? WorkerStatus.OK : job;
 	}
 
 	private static WorkerStatus slotStatus(MinecraftServer server, WorkerRecord record) {
@@ -127,6 +132,8 @@ public final class Workers {
 	public static boolean fireById(MinecraftServer server, UUID villager) {
 		if (VillageClaims.current(server).flatMap(v -> v.worker(villager)).isEmpty()) return false;
 		VillageClaims.data(server).update(s -> s.withoutWorker(villager));
+		dev.villageheart.worker.job.WorkerStatuses.clear(villager);
+		dev.villageheart.worker.lumber.LumberJob.forget(server, villager);
 		return true;
 	}
 
@@ -142,6 +149,7 @@ public final class Workers {
 		villager.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
 		if (villager.isTrading()) villager.setTradingPlayer(null);
 		villager.setAttached(WorkerAttachments.WORKER, data);
+		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
 		villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.holder(data.job())).withLevel(1));
 		villager.setVillagerXp(0);
 		villager.refreshBrain(level);

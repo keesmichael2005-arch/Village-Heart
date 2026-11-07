@@ -48,4 +48,20 @@ class LangCoverageTest {
 			assertTrue(lang.containsKey(k), k);
 		}
 	}
+
+	@Test
+	void everyWorkerStatusHasWordsForEveryJob() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.worker.WorkerStatus st : dev.villageheart.core.worker.WorkerStatus.values()) {
+			for (JobType j : JobType.values()) {
+				String key = dev.villageheart.worker.job.WorkerStatusText.key(st, j);
+				assertTrue(lang.containsKey(key), st + " for " + j.id() + " needs " + key);
+			}
+		}
+		for (dev.villageheart.core.job.ToolKind k : dev.villageheart.core.job.ToolKind.values()) {
+			assertTrue(lang.containsKey("status.villageheart.needs_tool." + k.id()), k.id());
+		}
+		assertEquals("Needs axe", lang.get("status.villageheart.needs_tool.axe"));
+		assertEquals("No trees within 32 blocks", lang.get("status.villageheart.no_work.lumberjack"));
+	}
 }

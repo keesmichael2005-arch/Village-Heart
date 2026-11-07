@@ -49,5 +49,16 @@
 	"message.villageheart.hire.workers_header": "Workers (%s):",
 	"message.villageheart.hire.workers_none": "No workers yet.",
 	"message.villageheart.hire.worker_line": "%s: %s",
+	"status.villageheart.ok": "Working",
+	"status.villageheart.workplace_invalid": "Workplace invalid",
+	"status.villageheart.storage_full": "Storage full",
+	"status.villageheart.storage_unreachable": "Storage unreachable",
+	"status.villageheart.needs_tool.tool": "Needs tool",
+	"status.villageheart.needs_tool.axe": "Needs axe",
+	"status.villageheart.needs_tool.pickaxe": "Needs pickaxe",
+	"status.villageheart.needs_tool.hoe": "Needs hoe",
+	"status.villageheart.needs_tool.bow_or_sword": "Needs bow or sword",
+	"status.villageheart.no_work.lumberjack": "No trees within 32 blocks",
+	"status.villageheart.no_work.generic": "Nothing to do",
 	"itemGroup.villageheart.main": "Village Heart"
 }
