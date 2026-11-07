@@ -238,7 +238,7 @@ public final class RoomScanner {
 		for (Dir d : Dir.values()) {
 			if (!d.horizontal()) continue;
 			Pos q = e.offset(d);
-			if (!q.equals(p) && view.cell(q).kind() == CellKind.OPEN && !view.openToSky(q.x(), q.y(), q.z())) covered.add(q);
+			if (!q.equals(p) && parent.containsKey(q.pack()) && view.cell(q).kind() == CellKind.OPEN && !view.openToSky(q.x(), q.y(), q.z())) covered.add(q);
 		}
 		for (Pos q : covered) {
 			int ceiling = Integer.MIN_VALUE;

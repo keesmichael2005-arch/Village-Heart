@@ -56,20 +56,15 @@ class RoomScannerTest {
 	}
 
 	@Test
-	void largerRoofHolesReportAHoleCell() {
+	void largerRoofHolesReportTheExactCell() {
+		// BFS order is fixed by Dir.values() (DOWN, UP, NORTH, SOUTH, WEST, EAST), so the reported cell is deterministic
 		FakeGrid g = FakeGrid.room5x5x3();
 		g.clear(3, 4, 3).clear(4, 4, 3);
-		RoomScan s = scan(g);
-		assertFalse(s.enclosed());
-		assertEquals(Kind.ROOF_MISSING, s.problems().get(0).kind());
-		assertTrue(List.of(new Pos(3, 4, 3), new Pos(4, 4, 3)).contains(s.problems().get(0).pos()), s.problems().toString());
+		assertProblem(scan(g), Kind.ROOF_MISSING, new Pos(3, 4, 3));
 
 		g = FakeGrid.room5x5x3();
 		g.clear(3, 4, 3).clear(4, 4, 3).clear(3, 4, 4).clear(4, 4, 4);
-		s = scan(g);
-		assertEquals(Kind.ROOF_MISSING, s.problems().get(0).kind());
-		assertTrue(List.of(new Pos(3, 4, 3), new Pos(4, 4, 3), new Pos(3, 4, 4), new Pos(4, 4, 4)).contains(s.problems().get(0).pos()),
-				s.problems().toString());
+		assertProblem(scan(g), Kind.ROOF_MISSING, new Pos(3, 4, 3));
 	}
 
 	@Test
@@ -142,6 +137,37 @@ class RoomScannerTest {
 		g.box(-6, 0, -6, 12, 0, 12, STONE);
 		g.box(-3, 4, 0, -1, 4, 6, STONE);
 		g.clear(0, 2, 3);
+		assertProblem(scan(g), Kind.WALL_GAP, new Pos(0, 2, 3));
+	}
+
+	/** Review r1: outdoor coverings next to a gap must not be mistaken for a hole in the room's roof. */
+	private static FakeGrid gapWithGround() {
+		FakeGrid g = FakeGrid.room5x5x3();
+		g.box(-6, 0, -6, 12, 0, 12, STONE);
+		g.clear(0, 2, 3);
+		return g;
+	}
+
+	@Test
+	void gapUnderAPorchRoofWithASlotIsStillAWallGap() {
+		FakeGrid g = gapWithGround();
+		g.box(-3, 4, 0, -1, 4, 6, STONE);
+		g.clear(-1, 4, 3).clear(-2, 4, 3).clear(-3, 4, 3); // slot in the porch roof
+		assertProblem(scan(g), Kind.WALL_GAP, new Pos(0, 2, 3));
+	}
+
+	@Test
+	void gapUnderAPergolaIsStillAWallGap() {
+		FakeGrid g = gapWithGround();
+		for (int z = 0; z <= 6; z += 2) g.box(-4, 4, z, -1, 4, z, STONE);
+		assertProblem(scan(g), Kind.WALL_GAP, new Pos(0, 2, 3));
+	}
+
+	@Test
+	void gapBesideTwoHighNeighbourRoofsIsStillAWallGap() {
+		FakeGrid g = gapWithGround();
+		g.box(-3, 8, -2, -1, 8, 2, STONE);
+		g.box(-3, 8, 4, -1, 8, 8, STONE);
 		assertProblem(scan(g), Kind.WALL_GAP, new Pos(0, 2, 3));
 	}
 
