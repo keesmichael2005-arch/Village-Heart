@@ -139,4 +139,78 @@ final class MarkerClientTests {
 			context.setScreen(() -> null);
 		}
 	}
+
+	/**
+	 * T-L4-1 (M5): a red and a green Storage marker side by side, and the chat report after a real right-click on the red one.
+	 * The rooms have 3x3x3 interiors (floor 9, the Storage minimum) one block apart; the player stands 4 blocks south of the red
+	 * plaque (inside the block reach) with a wide FOV so both plaques are in the frame.
+	 */
+	static void validationReport(ClientGameTestContext context) {
+		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
+			sp.getClientWorld().waitForChunksRender();
+			var srv = sp.getServer();
+			int y = srv.computeOnServer(server -> server.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0));
+			srv.runCommand("time set noon");
+			srv.runCommand("weather clear");
+			srv.runCommand("gamemode creative @a");
+			srv.runCommand("effect give @a minecraft:night_vision infinite 0 true");
+			srv.runCommand("setblock 0 " + y + " 0 minecraft:bell");
+			srv.runCommand("setblock -2 " + y + " 0 villageheart:village_heart");
+			context.waitTicks(10);
+			final int fy = y;
+			String claim = srv.computeOnServer(server -> dev.villageheart.world.VillageClaims.claim(server.overworld(),
+					new BlockPos(-2, fy, 0), server.getPlayerList().getPlayers().get(0)).name());
+			if (!claim.equals("CLAIMED")) throw new AssertionError("the claim failed: " + claim);
+
+			// two Storage rooms, shells x -9..-5 and -3..1 (a gap of one block), z 6..10, floor on the ground layer
+			room(srv, -9, y, -7, 2);
+			room(srv, -3, y, -1, 1);
+			context.waitTicks(5);
+
+			// wait for the verdicts: left green, right red
+			BlockPos green = new BlockPos(-7, y + 2, 11), red = new BlockPos(-1, y + 2, 11);
+			String state = "";
+			for (int i = 0; i < 100; i++) {
+				state = srv.computeOnServer(server -> status(server.overworld(), green) + "," + status(server.overworld(), red));
+				if (state.equals("VALID,INVALID")) break;
+				context.waitTicks(1);
+			}
+			if (!state.equals("VALID,INVALID")) throw new AssertionError("expected green and red plaques, got " + state);
+			String why = srv.computeOnServer(server -> dev.villageheart.building.Buildings.report(server,
+					dev.villageheart.world.VillageClaims.locate(server.overworld(), red)).map(v -> v.reasons().get(0).message()).orElse("none"));
+			if (!why.equals("Needs 1 more chest")) throw new AssertionError("the red marker says: " + why);
+
+			// stand 4 blocks south of the red plaque, looking at it
+			double targetY = y + 2.5, eyeY = y + 1.62, targetZ = 11.0625, px = -0.5, pz = 15.2;
+			float pitch = (float) -Math.toDegrees(Math.atan2(targetY - eyeY, pz - targetZ));
+			srv.runCommand("tp @a " + px + " " + y + " " + pz + " 180 " + pitch);
+			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
+			int fov = context.computeOnClient(mc -> mc.options.fov().get());
+			context.runOnClient(mc -> { mc.options.hideGui = false; mc.options.fov().set(100); });
+			context.waitTicks(10);
+			sp.getClientWorld().waitForChunksRender();
+			boolean onRed = context.computeOnClient(mc -> mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
+					&& hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK && hit.getBlockPos().equals(red));
+			if (!onRed) throw new AssertionError("the crosshair is not on the red marker: " + context.computeOnClient(mc -> String.valueOf(mc.hitResult)));
+			context.getInput().pressMouse(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+			context.waitTicks(5);
+			context.takeScreenshot("marker_validation");
+			context.runOnClient(mc -> { mc.options.hideGui = hideGui; mc.options.fov().set(fov); });
+		}
+	}
+
+	private static String status(net.minecraft.server.level.ServerLevel level, BlockPos marker) {
+		BlockState st = level.getBlockState(marker);
+		return st.hasProperty(dev.villageheart.block.MarkerBlock.STATUS) ? st.getValue(dev.villageheart.block.MarkerBlock.STATUS).name() : "MISSING";
+	}
+
+	/** A 3x3x3 room on the ground layer with a south door at {@code doorX}, {@code chests} chests and a Storage marker above the door. */
+	private static void room(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext srv, int x0, int y, int doorX, int chests) {
+		srv.runCommand("fill " + x0 + " " + (y - 1) + " 6 " + (x0 + 4) + " " + (y + 3) + " 10 minecraft:oak_planks hollow");
+		srv.runCommand("setblock " + doorX + " " + y + " 10 minecraft:oak_door[facing=south,half=lower]");
+		srv.runCommand("setblock " + doorX + " " + (y + 1) + " 10 minecraft:oak_door[facing=south,half=upper]");
+		srv.runCommand("setblock " + (x0 + 1) + " " + y + " 7 minecraft:chest");
+		if (chests >= 2) srv.runCommand("setblock " + (x0 + 3) + " " + y + " 7 minecraft:chest");
+		srv.runCommand("setblock " + doorX + " " + (y + 2) + " 11 villageheart:storage_marker[facing=south]");
+	}
 }

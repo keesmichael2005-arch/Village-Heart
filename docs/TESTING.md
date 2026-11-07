@@ -93,3 +93,21 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   Leave a free strip at least 2 deep in front of the door wall, because the barrier wall at z = -1 would make a 1-deep strip an alley. Mutation-checked:
   removing `skyAccess` from `brokenRoofBlockReported` turns it red.
 - `LevelBlockView` never loads chunks and `RoomScans.scan` throws off the server thread (`getChunkNow` returns null on other threads).
+
+## Building GameTests (M5+)
+- **Rules** (`BuildingGameTests`, helpers in `BuildingTestSupport`): every test touches the claim, so each declares its own environment `villageheart-gametest:buildings_<name>`
+  (JSON `{"type": "minecraft:all_of", "definitions": []}`), uses the structure `villageheart-gametest:yard` (32x28x32, `gametest/structure/yard.snbt`, one air block, **`palette` required**:
+  without it the template silently fails to load and the test dies with "Failed to place test structure") and `skyAccess = true` (rooms are scanned; see the room-test notes above).
+  Start with `BuildingTestSupport.begin(h)` (reset, fresh runtime, **sweep stray markers**, bell, claim after 3 ticks) and end with `VillageTestSupport.done(h)`.
+- **Stray markers.** Test structures sit only a few dozen blocks apart, inside each other's claim radius, so markers left by other tests would be adopted by this test's claim and change the
+  number of registered buildings (and the round-robin timing). `begin` removes every marker in the loaded chunks within 160 blocks before the test builds anything; tests that claim by hand call `sweepStrayMarkers`.
+- **Measured waits.** `awaitWithin(h, seq, bound, what, check)` re-runs `check` every tick and then asserts it took at most `bound` ticks. `bound(n, hops) = n*20 + hops + 4`: a change that fires no hook is
+  seen within `n x 20` ticks (`n` registered buildings), one more tick per dependent hop (site to parent), plus slack. The roadmap's "within 2 s" test (Storage green / red) uses 40 with `n = 1`. State `n` in the test.
+- **Chat.** `recordingPlayer` is a `ServerPlayer` subclass that collects `sendSystemMessage`; read keys and fallbacks through `TranslatableContents` (`translatable`, `lineBody`).
+  Right-click with `rightClick(...)` (`player.gameMode.useItemOn`, the main hand holds the stack so the sneak/hand rule works).
+- **Far markers** (outside the claim, unloaded): 100 000 blocks along +z of the Heart; load with `level.getChunk` and keep with `setChunkForced`, clean up in the last step. Never load chunks from the code under test.
+- **Running one GameTest:** `JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Dfabric-api.gametest.filter=villageheart-gametest:<class_snake>_<method_snake>" ./gradlew --no-daemon runGameTest`
+  (exact id, e.g. `building_game_tests_shared_room_both_red`; a regex or prefix selects nothing and the run "passes" with 0 tests).
+- L4 `MarkerClientTests.validationReport` (`marker_validation.png`): claims by `VillageClaims.claim` (a `/setblock` Heart never runs `setPlacedBy`), builds two rooms with commands, waits until the
+  server says green and red, aims at the red plaque (asserts `mc.hitResult` is on it, so it cannot click air), presses the right mouse button and shoots the chat.
+  The player must be within the block reach (about 5), so FOV is 100 to get both plaques into the frame.
