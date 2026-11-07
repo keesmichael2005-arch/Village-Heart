@@ -3,7 +3,7 @@ budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
 run_cost_usd: "~38 at 10:45Z (orchestrator session usage incl. workers)"
-current: "M3 PASS r2 @ cddb4cf | track A: backlog fix (sim isolation, branch sim-fix) | track B: M4 BUILD (branch m4) | plan-ahead: M5 (m5-plan), M7 (m7-plan)"
+current: "M4 PASS r3 + sim-fix PASS r2 merged @ dev | next: M5 BUILD (m5), L4-flake fix (l4-flake); M7 steps 1-4 queued"
 blocked: []
 wakes:                  # send_later wake-ups scheduled while usage was available
   - 2026-11-07T10:45Z   # reset 10:40Z + 5 min   (trig_014Ka2PfmCo3kBeuYqyYWdVb)

@@ -25,3 +25,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The sticky-piston test should assert that the wall block actually moved
 - [ ] Art polish: the Farmhouse sheaf glyph and the small Chopping Block axe head
 - [ ] The marker_items screenshot background is night; set noon before the shot
+
+## From M4-r1..r3
+- [ ] `verify.sh` header comment says `--fast` runs "layers 1, 2 only"; it also runs L3 self-test, model-log gate, perfTest
+- [ ] MarkerView forces marker cell open for cell() but not openToSky (safe only while MarkerBlock has no collision)
+- [ ] Cold-cache first real scan ~7 ms (logged, not asserted)
+
+## From simfix-r1/r2
+- [ ] kill_tokened pid-reuse race (pidfd would close it); free-port check-then-use race (gives ERROR, never false PASS)
+- [ ] TESTING.md: SIM_REPORT_DIR must also differ for same-checkout concurrent runs
+- [ ] Escapee marker not scoped to SIM_DIR; rename `escapee_killed (exit 2)` ok-line to avoid confusion next to the real check
