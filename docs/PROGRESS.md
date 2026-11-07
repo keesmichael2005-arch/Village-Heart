@@ -219,3 +219,8 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - tests: 268 L1 tests in all + 26 worker GameTests (101 GameTests in all), L4 `workers_at_job_blocks`. Mutations checked: skipping the conversion reset (T-L2-8 red). Flakes found and removed: WAKE strolls reaching the block (iron-door pen), unemployed villagers wandering out of rooms (control instead of "inside"), breeding (seeded, three windows).
 - Known L4 NetworkSynchronizer flake: the fix on dev rescued 1 lost wakeup in the final full run.
 - Next: M8 (Heart screen: hire/fire from the UI, worker status display), M9+ real jobs through `JobBehaviours`. Blockers: none.
+
+### M7 review r1 fixes (builder)
+- depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
+- Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
+- Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
