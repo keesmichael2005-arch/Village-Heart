@@ -111,6 +111,13 @@ class HeartCodecsTest {
 		assertEquals(f, roundTrip(FireWorkerPayload.CODEC, f));
 		RecheckBuildingPayload r = new RecheckBuildingPayload(2, new BlockPos(1, 2, 3));
 		assertEquals(r, roundTrip(RecheckBuildingPayload.CODEC, r));
+		SetRankPayload sr = new SetRankPayload(7, id(5), 2);
+		assertEquals(sr, roundTrip(SetRankPayload.CODEC, sr));
+		SetRankPayload crafted = new SetRankPayload(7, id(5), 99);
+		assertEquals(crafted, roundTrip(SetRankPayload.CODEC, crafted), "any int decodes; the server validates it");
+		assertEquals(new SetRankPayload(0, id(5), -1), roundTrip(SetRankPayload.CODEC, new SetRankPayload(0, id(5), -1)));
+		TransferOwnershipPayload to = new TransferOwnershipPayload(7, id(6), 1);
+		assertEquals(to, roundTrip(TransferOwnershipPayload.CODEC, to));
 		HeartOpenData d = new HeartOpenData(new BlockPos(4, 5, 6), full());
 		assertEquals(d, roundTrip(HeartOpenData.STREAM_CODEC, d));
 	}

@@ -12,6 +12,7 @@ import dev.villageheart.core.worker.HireRefusal;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.heart.net.HeartActionResultPayload;
 import dev.villageheart.heart.net.HeartNetwork;
+import dev.villageheart.rank.Members;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.worker.HireResult;
 import dev.villageheart.worker.Workers;
@@ -84,6 +85,8 @@ public final class HeartActions {
 			case HeartAction.Assign a -> assign(player, containerId, server, state, heartLevel, a);
 			case HeartAction.Fire f -> fire(player, containerId, server, f);
 			case HeartAction.Recheck r -> recheck(player, containerId, server, state, r);
+			case HeartAction.SetRank s -> setRank(player, containerId, server, s);
+			case HeartAction.Transfer t -> transfer(player, containerId, server, t);
 		};
 		if (ok) {
 			HeartFacts.invalidate();
@@ -128,6 +131,28 @@ public final class HeartActions {
 		if (state.building(marker).isEmpty()) return reject(player, containerId, Rejection.NOT_A_BUILDING, server.getTickCount());
 		Buildings.request(server, marker);
 		reply(player, containerId, true, "gui.villageheart.heart.checking", "Checking the building now.", List.of());
+		return true;
+	}
+
+	/** Rules and the change itself live in {@link Members}, shared with the op commands. The target is re-read from the state. */
+	private static boolean setRank(ServerPlayer player, int containerId, MinecraftServer server, HeartAction.SetRank s) {
+		Members.Outcome o = Members.setRank(server, player.getGameProfile().name(), s.player(), s.rank());
+		if (o.rejected().isPresent()) return reject(player, containerId, o.rejected().get(), server.getTickCount());
+		if (o.changed()) {
+			reply(player, containerId, true, "message.villageheart.rank.set", "%s is now a %s.", List.of(o.targetName(), Members.rankLabel(o.newRank())));
+		} else {
+			reply(player, containerId, true, "message.villageheart.rank.unchanged", "%s is already a %s.",
+					List.of(o.targetName(), Members.rankLabel(o.newRank())));
+		}
+		return o.changed();
+	}
+
+	private static boolean transfer(ServerPlayer player, int containerId, MinecraftServer server, HeartAction.Transfer t) {
+		Members.Outcome o = Members.transfer(server, player.getGameProfile().name(), player.getUUID(), t.player(),
+				Optional.of(t.expected()), false);
+		if (o.rejected().isPresent()) return reject(player, containerId, o.rejected().get(), server.getTickCount());
+		reply(player, containerId, true, "message.villageheart.rank.transferred", "You gave the village to %s. You are now a Steward.",
+				List.of(o.targetName()));
 		return true;
 	}
 

@@ -13,7 +13,12 @@ import dev.villageheart.core.heart.Rejection;
 import dev.villageheart.gametest.RankTestSupport.Console;
 import dev.villageheart.gametest.HeartTestSupport.OverlayPlayer;
 import dev.villageheart.world.VillageClaims;
+import dev.villageheart.heart.HeartActions;
+import dev.villageheart.heart.net.HeartActionResultPayload;
+import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
@@ -217,6 +222,111 @@ public class RankGameTests {
 			h.assertValueEqual(Rank.VISITOR, VillageClaims.current(server).orElseThrow().rankOf(d.getUUID()), "still a visitor");
 			done(h);
 		});
+	}
+
+	// ---- T-L2-4 (roadmap) ---------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:ranks_hire", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void stewardCanHire(GameTestHelper h) {
+		Villager[] v = new Villager[1];
+		BuildingTestSupport.RecordingPlayer[] vis = new BuildingTestSupport.RecordingPlayer[1];
+		List<Sent>[] sent = new List[1];
+		seed(h).thenExecute(() -> {
+			sent[0] = recorder();
+			v[0] = villager(h);
+			vis[0] = chatty(h, "vis", Rank.VISITOR);
+			open(h, owner());
+			open(h, vis[0]);
+			assign(vis[0], v[0], "farmer", Optional.empty());
+			HeartActionResultPayload r = lastResult(sent[0], vis[0]);
+			h.assertTrue(!r.ok() && r.key().equals(Rejection.NO_PERMISSION.langKey()), "a Visitor cannot hire: " + r);
+			h.assertFalse(isWorker(h, v[0]), "not a worker");
+
+			setRank(owner(), vis[0].getUUID(), Rank.STEWARD.ordinal());
+			HeartActionResultPayload set = lastResult(sent[0], owner());
+			h.assertTrue(set.ok() && set.key().equals("message.villageheart.rank.set"), "the Owner made V a Steward: " + set);
+			h.assertTrue(hasChat(vis[0], "message.villageheart.rank.you_are"), "V was told: " + vis[0].messages);
+
+			assign(vis[0], v[0], "farmer", Optional.empty());
+			HeartActionResultPayload hired = lastResult(sent[0], vis[0]);
+			h.assertTrue(hired.ok() && hired.key().equals("message.villageheart.hire.hired"), "the new Steward hires: " + hired);
+			h.assertTrue(isWorker(h, v[0]), "the villager is a worker");
+			done(h);
+		});
+	}
+
+	// ---- T-L2-5 -------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:ranks_validate", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void setRankAndTransferValidation(GameTestHelper h) {
+		BlockPos table = new BlockPos(3, 1, 20);
+		seed(h).thenExecute(() -> {
+			List<Sent> sent = recorder();
+			MinecraftServer server = server(h);
+			ServerPlayer o = owner();
+			ServerPlayer s = ranked(h, "stew", Rank.STEWARD);
+			ServerPlayer r = ranked(h, "res", Rank.RESIDENT);
+			ServerPlayer q = ranked(h, "quin", Rank.RESIDENT);
+			ServerPlayer vis = ranked(h, "vis", Rank.VISITOR);
+			h.setBlock(table, Blocks.CRAFTING_TABLE);
+			open(h, o);
+			open(h, s);
+
+			setRank(s, vis.getUUID(), 2);
+			h.assertValueEqual(Rejection.NO_PERMISSION.langKey(), lastResult(sent, s).key(), "a Steward cannot rank");
+			h.assertValueEqual(Rank.VISITOR, rankOf(server, vis), "unchanged");
+			transfer(s, s.getUUID(), 1);
+			h.assertValueEqual(Rejection.NO_PERMISSION.langKey(), lastResult(sent, s).key(), "a Steward cannot transfer");
+
+			HeartActions.reset();
+			setRank(o, o.getUUID(), 1);
+			h.assertValueEqual(Rejection.OWNER_RANK_FIXED.langKey(), lastResult(sent, o).key(), "the Owner's rank is fixed");
+			setRank(o, vis.getUUID(), 99);
+			h.assertValueEqual(Rejection.BAD_RANK.langKey(), lastResult(sent, o).key(), "a crafted rank");
+			setRank(o, java.util.UUID.randomUUID(), 2);
+			h.assertValueEqual(Rejection.UNKNOWN_PLAYER.langKey(), lastResult(sent, o).key(), "a stranger who is not here");
+
+			use(h, r, chest1());
+			h.assertTrue(r.containerMenu instanceof ChestMenu, "R has the Storage chest open");
+			use(h, q, table);
+			h.assertTrue(q.containerMenu instanceof net.minecraft.world.inventory.CraftingMenu, "Q has a crafting table open");
+			HeartActions.reset();
+			setRank(o, r.getUUID(), 3);
+			setRank(o, q.getUUID(), 3);
+			h.assertValueEqual(Rank.VISITOR, rankOf(server, r), "R is a Visitor now");
+			h.assertTrue(r.containerMenu == r.inventoryMenu, "R's chest menu was closed by the demotion");
+			h.assertTrue(q.containerMenu instanceof net.minecraft.world.inventory.CraftingMenu, "Q's crafting table stays open");
+			h.assertFalse(opens(h, r, chest1()), "R cannot open the chest again");
+
+			HeartActions.reset();
+			transfer(o, s.getUUID(), Rank.RESIDENT.ordinal());
+			h.assertValueEqual(Rejection.TARGET_CHANGED.langKey(), lastResult(sent, o).key(), "S is a Steward, not a Resident");
+			transfer(o, vis.getUUID(), Rank.VISITOR.ordinal());
+			h.assertValueEqual(Rejection.NOT_A_MEMBER.langKey(), lastResult(sent, o).key(), "a Visitor cannot receive the village");
+			h.assertValueEqual(o.getUUID(), VillageClaims.current(server).orElseThrow().owner(), "still the owner");
+			transfer(o, s.getUUID(), Rank.STEWARD.ordinal());
+			h.assertValueEqual("message.villageheart.rank.transferred", lastResult(sent, o).key(), "transferred");
+			VillageState v = VillageClaims.current(server).orElseThrow();
+			h.assertValueEqual(s.getUUID(), v.owner(), "S owns the village");
+			h.assertValueEqual("stew", v.ownerName(), "ownerName follows");
+			h.assertValueEqual(Rank.STEWARD, v.rankOf(o.getUUID()), "the old owner is a Steward");
+			h.assertFalse(o.gameMode.destroyBlock(heartPos(h)), "the old owner can no longer break the Heart");
+			h.assertTrue(VillageClaims.current(server).isPresent(), "still claimed");
+
+			try {
+				VillageState saved = VillageTestSupport.reload(server).village().orElseThrow();
+				h.assertValueEqual(v.owner(), saved.owner(), "saved owner");
+				h.assertValueEqual(v.ranks(), saved.ranks(), "saved ranks");
+				h.assertValueEqual(v.known(), saved.known(), "saved names");
+			} catch (java.io.IOException e) {
+				throw new AssertionError(e);
+			}
+			done(h);
+		});
+	}
+
+	private static Rank rankOf(MinecraftServer server, ServerPlayer p) {
+		return VillageClaims.current(server).orElseThrow().rankOf(p.getUUID());
 	}
 
 	// ---- T-L2-8 -------------------------------------------------------------------------------

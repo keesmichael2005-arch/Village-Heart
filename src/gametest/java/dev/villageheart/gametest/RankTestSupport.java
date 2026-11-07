@@ -30,6 +30,29 @@ public final class RankTestSupport {
 		return p;
 	}
 
+	/** Like {@link #ranked} but records the chat messages it gets. */
+	public static BuildingTestSupport.RecordingPlayer chatty(GameTestHelper h, String name, Rank rank) {
+		var p = (BuildingTestSupport.RecordingPlayer) VillageTestSupport.player(h, name, GameType.SURVIVAL, BuildingTestSupport.RecordingPlayer::new);
+		if (rank != Rank.VISITOR && rank != Rank.OWNER) VillageClaims.setRank(h.getLevel().getServer(), p.getUUID(), rank);
+		HeartTestSupport.standNearHeart(h, p);
+		return p;
+	}
+
+	public static boolean hasChat(BuildingTestSupport.RecordingPlayer p, String key) {
+		return p.messages.stream().anyMatch(c -> isKey(c, key));
+	}
+
+	/** Sends a SetRank / Transfer payload through the real codec and receiver, from the menu the player has open. */
+	public static void setRank(ServerPlayer p, java.util.UUID target, int rank) {
+		HeartTestSupport.send(p, dev.villageheart.heart.net.SetRankPayload.CODEC,
+				new dev.villageheart.heart.net.SetRankPayload(p.containerMenu.containerId, target, rank));
+	}
+
+	public static void transfer(ServerPlayer p, java.util.UUID target, int expectedRank) {
+		HeartTestSupport.send(p, dev.villageheart.heart.net.TransferOwnershipPayload.CODEC,
+				new dev.villageheart.heart.net.TransferOwnershipPayload(p.containerMenu.containerId, target, expectedRank));
+	}
+
 	/** Right-click the top face of the block at {@code rel} with an empty hand (the real {@code useItemOn} path). */
 	public static InteractionResult use(GameTestHelper h, ServerPlayer p, BlockPos rel) {
 		return use(h, p, rel, ItemStack.EMPTY);
