@@ -33,7 +33,7 @@ when it's fixed. Source reviews: docs/reviews/.
   - Done (backlog-1): `time set noon` + `weather clear` right before the shot, looked at. Finding: the test already set noon at the start; the dark backdrop is vanilla's screen dimming of a noon sky (the marker_wall shot, same time, is bright), not night.
 
 ## From M4-r1..r3
-- [ ] `verify.sh` header comment says `--fast` runs "layers 1, 2 only"; it also runs L3 self-test, model-log gate, perfTest
+- [x] `verify.sh` header comment says `--fast` runs "layers 1, 2 only"; it also runs L3 self-test, model-log gate, perfTest
 - [ ] MarkerView forces marker cell open for cell() but not openToSky (safe only while MarkerBlock has no collision)
 - [ ] Cold-cache first real scan ~7 ms (logged, not asserted)
 
@@ -106,3 +106,7 @@ when it's fixed. Source reviews: docs/reviews/.
   - Fixed (backlog-1): DESIGN section 2 now names them.
 - [ ] Heart snapshot headroom is now 31 KiB (481/512 KiB); recheck the caps when adding fields
 - [ ] MP_SESSION end is logged before the fake player leaves, so the gate misses shutdown errors
+
+## From backlog1-r1
+- [ ] VillageTickerPerfTest times only the empty-registry path (~600× headroom): time the real systems with a live claim, or document its scope
+- [ ] assertOwnEnvironment reads the private GameTestHelper.testInfo by reflection; fix it on a Minecraft version bump
