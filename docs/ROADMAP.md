@@ -42,8 +42,8 @@ from there instead of hard-coding them.
 - **L2**: a marker placed on a wall side is attached and facing out. If the wall is removed, the marker drops
 - **L4**: screenshot of a wall showing every marker and the 3 new job blocks, in good light (checked by looking at it)
 
-## M4: Room detection (flood fill)
-- [ ] `core.room.RoomScanner` over a `BlockView` interface: start from the inside of the marked door and report
+## M4: Room detection (flood fill) ✅
+- [x] `core.room.RoomScanner` over a `BlockView` interface: start from the inside of the marked door and report
       enclosed, volume, floor area, contents and reasons (§3.2). Real-world adapter in glue code
 - **L1**: a fake-grid closed 5×5×3 room is enclosed with the right floor area. A missing roof block fails with the reason and position.
       A missing wall fails. Fences, glass and doors count as wall. A room over 4096 air fails. Two markers into one room fail with "shared"
