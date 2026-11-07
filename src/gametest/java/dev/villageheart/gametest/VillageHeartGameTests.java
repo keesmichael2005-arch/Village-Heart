@@ -14,7 +14,19 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.minecraft.world.level.storage.LevelResource;
+import java.util.List;
 import java.util.UUID;
+import dev.villageheart.core.Tier;
+import dev.villageheart.core.VillageState;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.piston.PistonBaseBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.material.PushReaction;
+import dev.villageheart.block.ModBlocks;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -112,5 +124,207 @@ public class VillageHeartGameTests {
 		} catch (java.io.IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	// ---- helpers -------------------------------------------------------------------------------
+
+	/** Places bells at the given relative positions, waits for the (deferred) POI registration, then runs next. */
+	private static void withBells(GameTestHelper h, Runnable next, BlockPos... bells) {
+		for (BlockPos b : bells) h.setBlock(b, Blocks.BELL);
+		h.runAfterDelay(2, next);
+	}
+
+	private static VillageState village(GameTestHelper h) {
+		return VillageClaims.current(h.getLevel().getServer()).orElseThrow(() -> h.assertionException("expected a claimed village"));
+	}
+
+	// ---- T-L2-2 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:placing_claims", maxTicks = 100)
+	public void placingHeartClaimsVillage(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer owner = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, owner, new BlockPos(2, 0, 2));
+			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, new BlockPos(2, 1, 2));
+			VillageState v = village(h);
+			h.assertValueEqual(owner.getUUID(), v.owner(), "owner");
+			h.assertValueEqual(VillageClaims.locate(h.getLevel(), h.absolutePos(new BlockPos(2, 1, 2))), v.heart(), "heart location is absolute");
+			h.assertValueEqual(Tier.HAMLET, v.tier(), "tier");
+			h.assertValueEqual(0, v.treasury(), "treasury");
+			h.assertTrue(owner.getMainHandItem().isEmpty(), "Heart item consumed on success");
+			VillageTestSupport.done(h);
+		}, new BlockPos(4, 1, 2));
+	}
+
+	// ---- T-L2-3 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:second_heart", maxTicks = 200)
+	public void secondHeartRefusedThenReleaseAllowsNewClaim(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		ServerPlayer bob = VillageTestSupport.player(h, "bob", GameType.SURVIVAL);
+		BlockPos aHeart = new BlockPos(1, 1, 2), bHeart = new BlockPos(6, 1, 5);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, aHeart.below());
+			h.assertValueEqual(alice.getUUID(), village(h).owner(), "alice claimed first");
+
+			BlockPos absB = h.absolutePos(bHeart);
+			double d = VillageClaims.bellDistance(h.getLevel(), absB);
+			h.assertTrue(d >= 0 && d < 2, "second site is next to bell B, distance " + d);
+			h.assertValueEqual(ClaimRules.Result.ALREADY_HAVE_VILLAGE, VillageClaims.evaluate(h.getLevel(), absB), "evaluate at B");
+			h.assertValueEqual(ClaimRules.Result.ALREADY_HAVE_VILLAGE, VillageClaims.checkPlacement(h.getLevel(), absB, bob), "checkPlacement at B");
+
+			VillageTestSupport.place(h, bob, bHeart.below());
+			h.assertBlockNotPresent(ModBlocks.VILLAGE_HEART, bHeart);
+			h.assertValueEqual(1, bob.getMainHandItem().getCount(), "Bob keeps his Heart item");
+			h.assertValueEqual(alice.getUUID(), village(h).owner(), "claim still Alice's");
+			h.assertValueEqual(VillageClaims.locate(h.getLevel(), h.absolutePos(aHeart)), village(h).heart(), "claim still at A");
+
+			// (b) owner breaks, new claim possible
+			h.assertTrue(alice.gameMode.destroyBlock(h.absolutePos(aHeart)), "owner may break the Heart");
+			h.assertBlockNotPresent(ModBlocks.VILLAGE_HEART, aHeart);
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isEmpty(), "claim released");
+			VillageTestSupport.place(h, bob, bHeart.below());
+			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, bHeart);
+			h.assertValueEqual(bob.getUUID(), village(h).owner(), "Bob now owns the village");
+			VillageTestSupport.done(h);
+		}, new BlockPos(1, 1, 1), new BlockPos(6, 1, 6));
+	}
+
+	// ---- T-L2-4 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:break_not_owner", maxTicks = 100)
+	public void nonOwnerCannotBreakHeart(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		ServerPlayer bobSurvival = VillageTestSupport.player(h, "bob", GameType.SURVIVAL);
+		ServerPlayer bobCreative = VillageTestSupport.player(h, "bobc", GameType.CREATIVE);
+		BlockPos heart = new BlockPos(2, 1, 2);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, heart.below());
+			VillageClaims.depositTreasury(h.getLevel().getServer(), 5);
+			int before = VillageTestSupport.emeralds(h, heart, 3);
+			for (ServerPlayer bob : List.of(bobSurvival, bobCreative)) {
+				h.assertTrue(!bob.gameMode.destroyBlock(h.absolutePos(heart)), "non-owner break refused (creative=" + bob.isCreative() + ")");
+				h.assertBlockPresent(ModBlocks.VILLAGE_HEART, heart);
+				h.assertValueEqual(alice.getUUID(), village(h).owner(), "claim owner unchanged");
+				h.assertValueEqual(5, village(h).treasury(), "treasury unchanged");
+				h.assertValueEqual(before, VillageTestSupport.emeralds(h, heart, 3), "no emerald drop");
+			}
+			VillageTestSupport.done(h);
+		}, new BlockPos(4, 1, 2));
+	}
+
+	// ---- T-L2-5 / 5b ---------------------------------------------------------------------------
+
+	private void ownerBreakDrops(GameTestHelper h, boolean blockDrops) {
+		VillageTestSupport.reset(h);
+		MinecraftServer server = h.getLevel().getServer();
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		BlockPos heart = new BlockPos(2, 1, 2);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, heart.below());
+			VillageClaims.depositTreasury(server, 70);
+			int before = VillageTestSupport.emeralds(h, heart, 3);
+			h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, blockDrops, server);
+			boolean ok = alice.gameMode.destroyBlock(h.absolutePos(heart));
+			h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);
+			h.assertTrue(ok, "owner break succeeds");
+			h.assertValueEqual(70, VillageTestSupport.emeralds(h, heart, 3) - before, "emeralds dropped");
+			h.assertTrue(VillageClaims.current(server).isEmpty(), "claim released");
+			boolean heartItem = !h.getEntities(EntityType.ITEM, heart, 3).stream().filter(e -> e.getItem().is(ModBlocks.VILLAGE_HEART_ITEM)).toList().isEmpty();
+			h.assertValueEqual(blockDrops, heartItem, "Heart item drop follows the block-drops gamerule");
+			VillageTestSupport.done(h);
+		}, new BlockPos(4, 1, 2));
+	}
+
+	@GameTest(environment = "villageheart-gametest:owner_break_drops", maxTicks = 100)
+	public void ownerBreakDropsTreasury(GameTestHelper h) { ownerBreakDrops(h, true); }
+
+	@GameTest(environment = "villageheart-gametest:block_drops_off", maxTicks = 100)
+	public void treasuryDropsEvenWithBlockDropsOff(GameTestHelper h) { ownerBreakDrops(h, false); }
+
+	// ---- T-L2-7 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:piston", maxTicks = 100)
+	public void pistonCannotMoveHeart(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		BlockPos heart = new BlockPos(3, 1, 3);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, heart.below());
+			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, heart);
+			h.setBlock(new BlockPos(2, 1, 3), Blocks.PISTON.defaultBlockState().setValue(PistonBaseBlock.FACING, Direction.EAST));
+			h.setBlock(new BlockPos(1, 1, 3), Blocks.REDSTONE_BLOCK);
+			h.runAfterDelay(6, () -> {
+				h.assertBlockPresent(ModBlocks.VILLAGE_HEART, heart);
+				h.assertBlockNotPresent(ModBlocks.VILLAGE_HEART, new BlockPos(4, 1, 3));
+				h.assertValueEqual(VillageClaims.locate(h.getLevel(), h.absolutePos(heart)), village(h).heart(), "claim unchanged");
+				VillageTestSupport.done(h);
+			});
+		}, new BlockPos(3, 1, 6));
+	}
+
+	// ---- T-L2-8 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:stale_heal", maxTicks = 100)
+	public void staleClaimSelfHeals(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		MinecraftServer server = h.getLevel().getServer();
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		ServerPlayer bob = VillageTestSupport.player(h, "bob", GameType.SURVIVAL);
+		BlockPos a = new BlockPos(1, 1, 2), b = new BlockPos(6, 1, 5);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, a.below());
+			VillageClaims.depositTreasury(server, 7);
+			// no UPDATE_NEIGHBORS: skips affectNeighborsAfterRemoval
+			h.getLevel().setBlock(h.absolutePos(a), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+			h.assertTrue(VillageClaims.current(server).isPresent(),
+					"precondition: removal without neighbour updates leaves the claim (the removal hook was skipped); if this fails the vanilla behaviour changed");
+			int nearABefore = VillageTestSupport.emeralds(h, a, 2), nearBBefore = VillageTestSupport.emeralds(h, b, 2);
+			VillageTestSupport.place(h, bob, b.below());
+			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, b);
+			h.assertValueEqual(bob.getUUID(), village(h).owner(), "Bob claimed after the heal");
+			h.assertValueEqual(7, VillageTestSupport.emeralds(h, a, 2) - nearABefore, "treasury dropped at the stale Heart");
+			h.assertValueEqual(0, VillageTestSupport.emeralds(h, b, 2) - nearBBefore, "nothing dropped at the new Heart");
+			h.assertValueEqual(ClaimRules.Result.ALREADY_HAVE_VILLAGE,
+					VillageClaims.checkPlacement(h.getLevel(), h.absolutePos(new BlockPos(5, 1, 5)), alice), "Bob's village now blocks Alice");
+			h.assertValueEqual(7, VillageTestSupport.emeralds(h, a, 2) - nearABefore, "heal is idempotent");
+			VillageTestSupport.done(h);
+		}, new BlockPos(1, 1, 1), new BlockPos(6, 1, 6));
+	}
+
+	// ---- T-L2-9 --------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:unclaimed_inert", maxTicks = 100)
+	public void unclaimedHeartIsInert(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		ServerPlayer bob = VillageTestSupport.player(h, "bob", GameType.SURVIVAL);
+		BlockPos a = new BlockPos(1, 1, 2), c = new BlockPos(6, 1, 6);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, a.below());
+			VillageClaims.depositTreasury(h.getLevel().getServer(), 3);
+			h.setBlock(c, ModBlocks.VILLAGE_HEART);
+			int before = VillageTestSupport.emeralds(h, c, 3);
+			h.assertTrue(bob.gameMode.destroyBlock(h.absolutePos(c)), "anyone may break an unclaimed Heart");
+			h.assertBlockNotPresent(ModBlocks.VILLAGE_HEART, c);
+			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, a);
+			h.assertValueEqual(alice.getUUID(), village(h).owner(), "claim intact");
+			h.assertValueEqual(before, VillageTestSupport.emeralds(h, c, 3), "no emerald drop");
+			VillageTestSupport.done(h);
+		}, new BlockPos(1, 1, 1));
+	}
+
+	// ---- T-L2-11 -------------------------------------------------------------------------------
+
+	@GameTest
+	public void heartIsImmuneToWitherAndDragon(GameTestHelper h) {
+		BlockState state = ModBlocks.VILLAGE_HEART.defaultBlockState();
+		h.assertTrue(state.is(BlockTags.WITHER_IMMUNE), "wither_immune tag");
+		h.assertTrue(state.is(BlockTags.DRAGON_IMMUNE), "dragon_immune tag");
+		h.assertValueEqual(PushReaction.BLOCK, state.getPistonPushReaction(), "push reaction");
+		h.succeed();
 	}
 }

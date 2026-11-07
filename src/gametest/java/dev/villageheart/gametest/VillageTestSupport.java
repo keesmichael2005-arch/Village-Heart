@@ -47,16 +47,20 @@ public final class VillageTestSupport {
 		}
 	}
 
-	/** Test structures are reused across batches, and a removed bell can leave its POI behind. Drop them. */
+	/**
+	 * Bells (and their POIs) from other tests, including failed ones that never cleaned up, can sit within the
+	 * 16-block claim range of a neighbouring test structure. Each claim test runs alone in its own batch, so it is
+	 * safe to drop every POI around the test before it starts.
+	 */
 	private static void purgePoi(GameTestHelper h) {
-		net.minecraft.world.phys.AABB b = h.getBounds();
 		var poi = h.getLevel().getPoiManager();
-		for (BlockPos p : BlockPos.betweenClosed(BlockPos.containing(b.minX, b.minY, b.minZ),
-				BlockPos.containing(b.maxX - 1e-6, b.maxY - 1e-6, b.maxZ - 1e-6))) {
+		BlockPos centre = h.absolutePos(BlockPos.ZERO);
+		for (var rec : poi.getInRange(t -> true, centre, 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).toList()) {
+			BlockPos p = rec.getPos().immutable();
 			if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.BELL)) {
 				h.getLevel().setBlock(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
 			}
-			poi.remove(p.immutable());
+			poi.remove(p);
 		}
 	}
 
