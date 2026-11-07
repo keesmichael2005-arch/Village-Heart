@@ -34,10 +34,10 @@ from there instead of hard-coding them.
 - **L3**: `bare` runs for 5 days, exits 0, the JSON has 5 records, the claim exists on every day, and population on the last day ≥ population on day 1 − 1
 - **L3**: a deliberately failing assertion makes the script exit non-zero (prove that red is red)
 
-## M3: Marker items and recipes
-- [ ] Blank Marker plus one marker item/block per building and outdoor site (§3.1, §3.3), with textures and lang
-- [ ] Recipes: Blank Marker in the centre and the ring ingredients from §3.3. The marker places on a wall (wall-mounted, faces outwards)
-- [ ] New job blocks (Chopping Block, Builder's Table, Market Stall), with recipes and textures
+## M3: Marker items and recipes ✅
+- [x] Blank Marker plus one marker item/block per building and outdoor site (§3.1, §3.3), with textures and lang
+- [x] Recipes: Blank Marker in the centre and the ring ingredients from §3.3. The marker places on a wall (wall-mounted, faces outwards)
+- [x] New job blocks (Chopping Block, Builder's Table, Market Stall), with recipes and textures
 - **L2**: for every building type, the recipe manager crafts the marker from the expected 3×3 grid, and the Blank Marker recipe works
 - **L2**: a marker placed on a wall side is attached and facing out. If the wall is removed, the marker drops
 - **L4**: screenshot of a wall showing every marker and the 3 new job blocks, in good light (checked by looking at it)

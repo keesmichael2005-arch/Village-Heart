@@ -82,3 +82,8 @@ the `check-model-log.sh` gate (proved red by pointing one model at a missing tex
 Art: iterated three times on the x8 sheet; the axe, wheat sheaf, bow and mineshaft (now a mine cart) were redrawn after the first look; House/Mine/Barracks/Market/Hunting Ground colours were changed to meet
 the 3:1 contrast rule. Next: M4. Blockers: none.
 
+
+## 2026-11-07: M3 review round 2 (verifier): PASS
+On a clean checkout, `scripts/verify.sh` exited 0 twice (L2 38/38, L4 green, no synchronizer flake). The model-log fixtures are now tracked, and no other test reads an ignored file.
+Two mutations went red as expected (a storage recipe ingredient, and the kitchen marker's loot item). Both screenshots were looked at: the marker_items shot is clean now.
+M3 ticked in ROADMAP. 3 non-blocking notes in `docs/reviews/M3-r2.md`. Next: M4. Blockers: none.
