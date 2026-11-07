@@ -5,7 +5,7 @@ Village Heart, places it near a village bell, and that one village becomes their
 villagers into jobs, build workplaces, share resources and help the village survive and grow.
 
 Design and scope: `docs/DESIGN.md`. Milestones and acceptance tests: `docs/ROADMAP.md`.
-How testing works: `docs/TESTING.md`.
+How testing works: `docs/TESTING.md`. Overnight loop protocol: `docs/AGENT_LOOP.md`.
 
 ## Toolchain
 - Gradle/Loom need **Java 25**; `scripts/verify.sh` installs Mojang's runtime to `~/.jdk25` if missing.
