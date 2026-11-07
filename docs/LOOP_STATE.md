@@ -7,6 +7,7 @@ current: "run 2 | M24 PASS r1 merged | M9 r1 FAIL -> builder fixing (m9) | next:
 blocked: []
 open_questions_for_human:
   - "M11 starter sim: if a zombie kills a hired worker, food or logs stop for the rest of the 10-day run. Choose: (a) peaceful difficulty for the `starter` scenario, or (b) a scenario re-hire action. Default if unanswered: (b)"
+  - "Decided by the orchestrator, FYI: ROADMAP M15 side-by-side changed to iron ≥1.1× stone and ≥1.3× wood (iron ≥1.3× stone is mathematically unreachable with DESIGN tool multipliers). Alternative if preferred: raise the iron multiplier to ~1.9"
   - "Fixed by the orchestrator, FYI: ROADMAP M11 L2 said 20 bread minus 4 villagers leaves 8; the correct figure is 12 (each eats 2 bread = 10 nutrition)"
 plans_ready_not_built: [M9 (needs M7), M10 (needs M9), M11 (needs M7, M9, M10)]
 partially_built: [M8 steps 1-3 on m8 (steps 4-9 need M7)]
