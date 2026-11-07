@@ -44,6 +44,7 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.JobSiteReservations.releaseAll(server);
 		dev.villageheart.worker.Workers.setJobSiteSourceForTest(null);
 		WorkerTestSupport.discardSpawned(h.getLevel());
+		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();
 		h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);
 		purgePoi(h);

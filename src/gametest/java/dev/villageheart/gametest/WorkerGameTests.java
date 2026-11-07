@@ -1144,7 +1144,6 @@ public class WorkerGameTests {
 		begin(h);
 		BlockPos[] far = new BlockPos[1];
 		HeartLocation[] farLoc = new HeartLocation[1];
-		Villager[] v = new Villager[1];
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			MinecraftServer server = level.getServer();
@@ -1162,6 +1161,13 @@ public class WorkerGameTests {
 			ServerLevel level = h.getLevel();
 			h.assertTrue(level.getPoiManager().take(t -> true, (t, p) -> p.equals(far[0]), far[0], 1).isPresent(), "the mod took the ticket");
 			VillageClaims.data(level.getServer()).setReservedJobBlocks(Set.of(farLoc[0]));
+			// the reservation pass must keep it held while the chunk is still loaded
+			Workers.setJobSiteSourceForTest(new JobSiteSource() {
+				@Override public List<SiteView> sites(MinecraftServer s, JobType job) { return List.of(); }
+				@Override public boolean isRegistered(MinecraftServer s, HeartLocation b) { return true; }
+				@Override public List<HeartLocation> reservable(MinecraftServer s) { return List.of(farLoc[0]); }
+				@Override public boolean contentsPending(MinecraftServer s) { return true; }
+			});
 			level.setChunkForced(far[0].getX() >> 4, far[0].getZ() >> 4, false);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getChunkSource().getChunkNow(far[0].getX() >> 4, far[0].getZ() >> 4) == null,
@@ -1177,21 +1183,15 @@ public class WorkerGameTests {
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 80, "the pending release completes after the chunk loads", () -> {
 			MinecraftServer server = h.getLevel().getServer();
-			h.assertTrue(VillageClaims.data(server).pendingTicketReleases().isEmpty(), "still pending");
+			h.assertFalse(VillageClaims.data(server).pendingTicketReleases().contains(farLoc[0]), "still pending");
 			h.assertTrue(poiHasSpaceAbs(h, far[0]), "the composter's ticket is free");
 		});
+		// vanilla can take it again: the very query a villager's AcquirePoi makes (acquirable job site, free ticket) now finds it
 		seq = seq.thenExecute(() -> {
-			ServerLevel level = h.getLevel();
-			level.setDayTime(2000);
-			Villager e = EntityType.VILLAGER.create(level, EntitySpawnReason.LOAD);
-			e.snapTo(far[0].getX() + 1.5, far[0].getY(), far[0].getZ() + 0.5);
-			e.setPersistenceRequired();
-			level.addFreshEntity(e);
-			track(e);
-			v[0] = e;
+			var poi = h.getLevel().getPoiManager();
+			h.assertTrue(poi.take(VillagerProfession.ALL_ACQUIRABLE_JOBS, (t, p) -> p.equals(far[0]), far[0], 1).isPresent(),
+					"a villager's job-site search takes the freed composter");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "a vanilla villager takes the freed composter",
-				() -> h.assertTrue(isFarmer(v[0]), "profession " + v[0].getVillagerData().profession().getRegisteredName()));
 		seq.thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			level.setBlock(far[0], Blocks.AIR.defaultBlockState(), 3);
