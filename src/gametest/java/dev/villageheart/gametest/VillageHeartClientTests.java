@@ -21,5 +21,44 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			sp.getClientWorld().waitForChunksRender();
 			context.takeScreenshot("village_heart_placed");
 		}
+		refusedPlacementKeepsClientItem(context);
+	}
+
+	/** T-L4-1: a survival player right-clicks a Village Heart onto the ground with no bell near. */
+	private void refusedPlacementKeepsClientItem(ClientGameTestContext context) {
+		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
+			sp.getClientWorld().waitForChunksRender();
+			sp.getServer().runCommand("time set day");
+			sp.getServer().runCommand("gamemode survival @a");
+			sp.getServer().runCommand("clear @a");
+			sp.getServer().runCommand("give @a villageheart:village_heart 1");
+			sp.getServer().runCommand("tp @a ~ ~ ~ 0 60");
+			context.waitTicks(20);
+			sp.getClientWorld().waitForChunksRender();
+			context.getInput().pressMouse(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+			context.waitTicks(5);
+			context.takeScreenshot("heart_refused_no_bell");
+			context.waitTicks(10);
+
+			int count = context.computeOnClient(mc -> mc.player.getMainHandItem().getCount());
+			boolean heartNearby = context.computeOnClient(mc -> {
+				var origin = mc.player.blockPosition();
+				for (var p : net.minecraft.core.BlockPos.betweenClosed(origin.offset(-6, -3, -6), origin.offset(6, 3, 6))) {
+					if (mc.level.getBlockState(p).is(dev.villageheart.block.ModBlocks.VILLAGE_HEART)) return true;
+				}
+				return false;
+			});
+			boolean serverHeart = sp.getServer().computeOnServer(server -> {
+				var pl = server.getPlayerList().getPlayers().get(0);
+				var origin = pl.blockPosition();
+				for (var p : net.minecraft.core.BlockPos.betweenClosed(origin.offset(-6, -3, -6), origin.offset(6, 3, 6))) {
+					if (pl.level().getBlockState(p).is(dev.villageheart.block.ModBlocks.VILLAGE_HEART)) return true;
+				}
+				return false;
+			});
+			if (serverHeart) throw new AssertionError("server placed a Heart although no bell is near");
+			if (heartNearby) throw new AssertionError("ghost Village Heart stayed on the client");
+			if (count != 1) throw new AssertionError("client main hand count after refusal is " + count + ", expected 1");
+		}
 	}
 }
