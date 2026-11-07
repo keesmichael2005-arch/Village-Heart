@@ -11,7 +11,13 @@ import java.util.UUID;
 /** Immutable snapshot of the one claimed village. */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks) {
+
+	/** Without tree tasks (the shape before M9). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks, int treasury,
+			Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, workers, List.of());
+	}
 
 	public VillageState {
 		Objects.requireNonNull(heart, "heart");
@@ -21,10 +27,18 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(tier, "tier");
 		Objects.requireNonNull(buildings, "buildings");
 		Objects.requireNonNull(workers, "workers");
+		Objects.requireNonNull(treeTasks, "treeTasks");
 		if (treasury < 0) throw new IllegalArgumentException("treasury must be >= 0: " + treasury);
 		ranks = Map.copyOf(ranks);
 		buildings = sortedBuildings(buildings);
 		workers = List.copyOf(workers);
+		treeTasks = List.copyOf(treeTasks);
+		java.util.Set<HeartLocation> seenCells = new java.util.HashSet<>();
+		for (TreeTask t : treeTasks) {
+			for (HeartLocation c : t.base()) {
+				if (!seenCells.add(c)) throw new IllegalArgumentException("two tree tasks share the cell " + c);
+			}
+		}
 		java.util.Set<UUID> seenVillagers = new java.util.HashSet<>();
 		java.util.Set<HeartLocation> seenBlocks = new java.util.HashSet<>();
 		for (WorkerRecord w : workers) {
@@ -55,7 +69,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	public static VillageState founded(HeartLocation heart, UUID owner, String ownerName, long gameTime) {
-		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), 0, Tier.HAMLET, List.of(), List.of());
+		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), 0, Tier.HAMLET, List.of(), List.of(), List.of());
 	}
 
 	public Rank rankOf(UUID player) {
@@ -70,18 +84,18 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (owner.equals(player)) throw new IllegalArgumentException("cannot change the owner's rank");
 		java.util.HashMap<UUID, Rank> copy = new java.util.HashMap<>(ranks);
 		if (rank == Rank.VISITOR) copy.remove(player); else copy.put(player, rank);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, copy, treasury, tier, buildings, workers);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, copy, treasury, tier, buildings, workers, treeTasks);
 	}
 
 	public VillageState depositTreasury(int emeralds) {
 		if (emeralds < 0) throw new IllegalArgumentException("deposit must be >= 0: " + emeralds);
 		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks,
-				Math.addExact(treasury, emeralds), tier, buildings, workers);
+				Math.addExact(treasury, emeralds), tier, buildings, workers, treeTasks);
 	}
 
 	public VillageState withTier(Tier t) {
 		Objects.requireNonNull(t, "tier");
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, t, buildings, workers);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, t, buildings, workers, treeTasks);
 	}
 
 	public Optional<BuildingRecord> building(HeartLocation marker) {
@@ -95,7 +109,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		List<BuildingRecord> copy = new ArrayList<>(buildings);
 		copy.removeIf(o -> o.marker().equals(b.marker()));
 		copy.add(b);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers, treeTasks);
 	}
 
 	/** Remove the record at {@code marker}; a no-op when there is none. */
@@ -103,7 +117,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (building(marker).isEmpty()) return this;
 		List<BuildingRecord> copy = new ArrayList<>(buildings);
 		copy.removeIf(o -> o.marker().equals(marker));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers, treeTasks);
 	}
 
 	public Optional<WorkerRecord> worker(UUID villager) {
@@ -116,7 +130,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(w, "worker");
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.add(w);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy, treeTasks);
 	}
 
 	/** Remove the record of {@code villager}; a no-op when there is none. */
@@ -124,11 +138,38 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (worker(villager).isEmpty()) return this;
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.removeIf(o -> o.villager().equals(villager));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy, treeTasks);
 	}
 
 	public List<WorkerRecord> workersAt(HeartLocation building) {
 		return workers.stream().filter(w -> w.building().equals(building)).toList();
+	}
+
+	// ---- tree tasks (M9) ----
+
+	/** Append a tree task. Throws when it shares a base cell with another task. */
+	public VillageState withTreeTask(TreeTask t) {
+		Objects.requireNonNull(t, "task");
+		List<TreeTask> copy = new ArrayList<>(treeTasks);
+		copy.add(t);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, workers, copy);
+	}
+
+	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
+	public VillageState withoutTreeTask(HeartLocation key) {
+		if (treeTask(key).isEmpty()) return this;
+		List<TreeTask> copy = new ArrayList<>(treeTasks);
+		copy.removeIf(t -> t.key().equals(key));
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, workers, copy);
+	}
+
+	public Optional<TreeTask> treeTask(HeartLocation key) {
+		for (TreeTask t : treeTasks) if (t.key().equals(key)) return Optional.of(t);
+		return Optional.empty();
+	}
+
+	public List<TreeTask> treeTasksAt(HeartLocation building) {
+		return treeTasks.stream().filter(t -> t.building().equals(building)).toList();
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {
