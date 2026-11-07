@@ -65,3 +65,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic)
 - [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
+
+## Cross-milestone (from the M12 plan)
+- [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
