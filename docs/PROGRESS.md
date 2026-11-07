@@ -209,3 +209,13 @@ Next: nothing on this item. Blockers: none.
 - Folds in BACKLOG M6 "FULL with one unknown Storage: say so" (alert text suffix).
 Revised after a fresh critique (21 findings: payload bound in bytes, cross-dimension targets, 1.21.9+ input API, disabled-tab bypass, log flood, L4 ordering).
 Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API moving before merge (only `HeartFacts`/`HeartActions` import it).
+
+## 2026-11-07: M8 steps 1-3 built on branch m8 (steps 4-9 wait for M7 on dev)
+- Step 1 `core.heart`: `Permission/Permissions` (DESIGN 2 matrix), sealed `HeartAction` (Assign/Fire/Recheck), `Rejection`, `ActionGate`
+  (order: rate, open, epoch, village, rank), `RateLimiter` (8 tokens, +1 per 5 ticks), `VillagerNames`, `JobLevels`, `FoodDays`, `HeartLimits`; Balance constants.
+- Step 2: snapshot records (`HeartSnapshot`, `Overview`, rows, `Stock`), plain input `VillageFacts`, `HeartSnapshotBuilder` (rank filter: Visitors get no
+  details; order; caps with "+N more"; alerts incl. the BACKLOG M6 "FULL with unknown Storage" suffix).
+- Step 3: `HeartCodecs`, 5 payloads, `HeartOpenData`, `HeartNetwork.register()` (receivers call a stub `HeartActions.handle`), lang keys for rejections/alerts.
+  Worst-case snapshot encodes to 469 KiB with 3-byte chars (< 512 KiB asserted).
+- verify --fast green after each step. Deviations are in docs/plans/M8.md section 8.
+- Next: when M7 is on dev, rebase, re-check A1-A12, then steps 4-9 (facts from the world, menu, actions, screen, tabs, L4).
