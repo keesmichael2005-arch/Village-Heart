@@ -284,3 +284,13 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
+
+## 2026-11-07: M18 plan (guards), branch m18-plan
+- Plan: docs/plans/M18.md, 13 steps. Guard brain without panic/bell/raid hiding. Combat is a mod behaviour plus vanilla `doHurtTarget` after registering `ATTACK_DAMAGE` on villagers (`FabricDefaultAttributeRegistry`), because villager brains lack the attack memories.
+- Day sleep uses vanilla `SleepInBed` (no time check), with REST driven by a pure `GuardSchedule` (night shift: sleep 0-11000, duty 12000-24000).
+- Barracks beds are reserved through the M7 POI pass (HOME eviction). Gear is worn (sword visible, armour invisible) and handed back to the Barracks chest off shift.
+- Level perks are permanent attribute modifiers. Guards heal while asleep, and a wounded guard retreats to its bed.
+- Shift pins are saved in `VillageState`; the Heart screen gets a `SetGuardShift` action gated by `SET_GUARD_SHIFT`. L3 `defended` sits on M11's `starter`.
+- Assumes M9 (WalkTo, without relying on its give-up timings), M11, M15 (else a minimal Leveling) and M12 (strike = no duty).
+- Critique session gave no answer in time; self-review is in plan section 7. A fresh critique is owed before the build.
+- Top risk: L3 `defended` (≤ 1 mob death in 10 unseeded days) depends on the unbuilt M11 harness and on vanilla villager night behaviour.
