@@ -257,6 +257,21 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
   The player can open these chests normally. Workers put new goods in the nearest Storage with space.
   Building chests (tools, inputs) are *not* part of the stockpile.
   If all Storage is full, workers keep the goods in their inventory and stop gathering (shown as an alert).
+  Rules as built (M6): the stockpile is a *live view* over the chests and barrels (chest, trapped chest and copper chests;
+  not ender chests or shulker boxes) that the latest scan of a valid Storage lists; nothing is stored in the mod, so it can
+  never drift from the chests.
+  - A chest that is also in the scan of any other room building (a House, a Lumber Camp's tool chest, even in a wall shared
+    with a Storage) is *not* stockpile. A Storage that ends up with no readable container is "unknown", not full.
+    Right after a restart a Storage is unknown while a neighbouring room building (marker within 32 blocks) has no scan yet.
+  - A double chest is two containers (each half has its own 27 slots); a half outside the room is not part of the stockpile.
+  - Items are the same only with equal components (a renamed paper, an enchanted book or a damaged sword is a separate item).
+  - *Nearest* Storage = nearest door (straight line) among those with space for that item; a deposit spills into the next
+    nearest. Fill order inside a Storage: partial stacks first, then empty slots, in container then slot order. What does not
+    fit is returned to the caller. Withdraw takes from the nearest Storage that has the item.
+  - **Storage full** alert = no empty slot in any readable Storage, or a deposit that found no room within the last 10 s.
+    It means "no empty slot", not per item: a partial stack can still take more of its item. *No Storage* alert when the
+    village has no valid Storage. Shulker boxes and bundles count as one item, their contents are not counted (v1).
+  - Reservations (a worker or build claims items, M20) are claims, not locks: the items stay in the chests.
 - **Food**: villagers eat at **dinner (tick 11000)**. Each villager needs **10 nutrition** per day, using vanilla
   food values (bread 5, baked potato 5, cooked beef 8, carrot 3, apple 4, raw meat counts as its vanilla raw
   value). The best foods are eaten first, cooked before raw. Children need half.

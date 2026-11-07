@@ -1,7 +1,8 @@
 # Backlog (non-blocking review notes)
 
 ## Priority (flaky infrastructure)
-- [ ] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
+- [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
+  - **Fixed (branch l4-flake).** Root cause is in Fabric, not our tests: a lost-wakeup race in `NetworkSynchronizer.waitForPacketHandlers` (predicate tested outside the lock, then `await(10 s)` with no re-test). The server thread's first tick of a new world misses the signal for the client's login packet and sleeps 10 s, which the synchronizer reports as invalid. Fixed by a gametest-only mixin that re-tests before parking and parks in 20 ms slices (no retry). See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 
 Planners: scan this list. Pick up an item when it touches your milestone or is cheap, and tick it
 when it's fixed. Source reviews: docs/reviews/.
@@ -42,3 +43,16 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] sweepStrayMarkers is only safe while each sweeping test has its own environment: add an assertion or a TESTING.md rule
 - [ ] L4 marker_validation checks the chat only via the screenshot; add a client-side assertion
 - [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
+
+## From l4flake-r1
+- [ ] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+- [ ] The wakeup wrapper doesn't check the `invalid` flag between slices (cosmetic; up to 10 s later failure)
+
+## From M6-r1/r2
+- [ ] Treat `unreadContainers > 0` like an unknown Storage when noting a short deposit (up to 10 s false FULL after a hidden chest loads)
+- [ ] "Readable full + unknown" alert case is tested at L1 only; a glue mutation passing 0 for unknownSites survives. Add an L2 test
+- [ ] StockpilePerfTest has 4–10× headroom (a 3× slowdown stays green); tighten the limits or document StockpileCostTest as the regression guard
+- [ ] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
+- [ ] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
+- [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
+- [ ] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so

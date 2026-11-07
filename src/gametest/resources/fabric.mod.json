@@ -6,8 +6,9 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": ["dev.villageheart.sim.SimulationBootstrap"],
-		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests", "dev.villageheart.gametest.RoomGameTests", "dev.villageheart.gametest.BuildingGameTests", "dev.villageheart.gametest.WorkerGameTests"],
+		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests", "dev.villageheart.gametest.RoomGameTests", "dev.villageheart.gametest.BuildingGameTests", "dev.villageheart.gametest.StockpileGameTests", "dev.villageheart.gametest.StockpileFacadeGameTests", "dev.villageheart.gametest.WorkerGameTests"],
 		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
 	},
+	"mixins": ["villageheart-gametest.mixins.json"],
 	"depends": { "villageheart": "*" }
 }

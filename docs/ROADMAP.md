@@ -60,8 +60,8 @@ from there instead of hard-coding them.
 - **L2**: Mineshaft 12 deep with 8 rails and a torch → valid and linked to a Mine 20 blocks away. With 6 rails → invalid
 - **L4**: screenshot of one red marker and one green marker side by side, plus the chat validation message
 
-## M6: Stockpile backed by Storage chests
-- [ ] `Stockpile` view aggregated over chests in valid Storage buildings. Deposit goes to the nearest Storage with space.
+## M6: Stockpile backed by Storage chests ✅
+- [x] `Stockpile` view aggregated over chests in valid Storage buildings. Deposit goes to the nearest Storage with space.
       Withdraw takes from any. A "Storage full" alert
 - **L1**: aggregation and deposit routing over fake inventories (fill order, overflow returns the remainder)
 - **L2**: two Storage buildings with items → the stockpile totals are their sum. Chests in a House are **not** counted.

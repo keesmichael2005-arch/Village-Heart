@@ -31,6 +31,11 @@ step "Model-log gate self-test" model-log-selftest.log scripts/test-check-model-
 if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: client GameTests + screenshots (virtual display)" clienttest.log \
     xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
+  # Our gametest mixin fixes a lost-wakeup race in Fabric's NetworkSynchronizer (docs/TESTING.md). Fail if it was not
+  # installed, and report how often it saved the run (each rescue would have been a 10 s stall and likely a crash).
+  step "Layer 4: NetworkSynchronizer lost-wakeup fix installed" lost-wakeup-fix.log \
+    grep -m1 "LOST_WAKEUP_FIX installed" reports/clienttest.log
+  echo "    lost wakeups rescued in layer 4: $(grep -c "LOST_WAKEUP_RESCUED" reports/clienttest.log)" >> "$SUMMARY"
   step "Client log has no villageheart model warnings" model-log-gate.log scripts/check-model-log.sh reports/clienttest.log
   rm -rf reports/screenshots && mkdir -p reports/screenshots
   cp build/run/clientGameTest/screenshots/*.png reports/screenshots/ 2>/dev/null

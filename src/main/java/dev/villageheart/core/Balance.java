@@ -48,4 +48,10 @@ public final class Balance {
 	public static final int RESERVATION_INTERVAL_TICKS = 20;
 	/** A worker counts as "at" its job block within this many blocks (3D). */
 	public static final double JOB_BLOCK_REACH = 1.5;
+	/** The system refreshes the storage alert every this many ticks (DESIGN section 6). */
+	public static final int STOCKPILE_REFRESH_TICKS = 20;
+	/** A short spilling deposit keeps the "Storage full" alert up for this many ticks. */
+	public static final int STORAGE_FULL_HOLD_TICKS = 200;
+	/** A Storage is "unknown" while a room building within this many blocks has no cached scan yet (after a restart). */
+	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
 }
