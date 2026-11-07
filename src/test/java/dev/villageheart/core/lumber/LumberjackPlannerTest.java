@@ -92,10 +92,16 @@ class LumberjackPlannerTest {
 	}
 
 	@Test
-	void rows5and6_replantBeforeCollectBeforeANewFell() {
+	void rows5to8_replantBeforeAFellBeforeCollect() {
 		expect(with(BASE, b -> b.replant().collect()), REPLANT, CLEAR_NEEDS_TOOL);
-		expect(with(BASE, b -> b.collect()), COLLECT, CLEAR_NEEDS_TOOL);
-		expect(with(BASE, b -> b.task().collect()), COLLECT, CLEAR_NEEDS_TOOL);
+		// while a tree can still be started, a tree comes before a drop (a worker that always had a drop never reached the next tree)
+		expect(with(BASE, b -> b.collect()), FELL_NEW, CLEAR_ALL);
+		expect(with(BASE, b -> b.task().collect()), FELL_TASK, CLEAR_ALL);
+		// with no tree to fell, or too late for a new one, the drop is collected
+		expect(with(BASE, b -> b.collect().finder(FinderState.EXHAUSTED)), COLLECT, CLEAR_NEEDS_TOOL);
+		expect(with(BASE, b -> b.collect().time(5000)), COLLECT, CLEAR_NEEDS_TOOL);
+		// without an axe nothing is felled: the drop is collected
+		expect(with(BASE, b -> b.collect().tool(ToolState.NONE)), COLLECT, NEEDS_TOOL);
 	}
 
 	@Test
@@ -112,7 +118,7 @@ class LumberjackPlannerTest {
 	@Test
 	void row8_noNewTreeFromDayTime5000ButAnInterruptedFellIsFinished() {
 		expect(with(BASE, b -> b.time(5000)), IDLE_AT_CAMP, CLEAR_NEEDS_TOOL);
-		expect(with(BASE, b -> b.time(8000).task()), FELL_TASK, CLEAR_ALL);
+		expect(with(BASE, b -> b.time(8000).task().collect()), FELL_TASK, CLEAR_ALL);
 		expect(with(BASE, b -> b.time(8000).fell()), CONTINUE_FELL, CLEAR_ALL);
 	}
 

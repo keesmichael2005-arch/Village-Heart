@@ -10,9 +10,9 @@ import dev.villageheart.core.Balance;
  *   <li>a fell is in progress (and the axe is there): carry on felling</li>
  *   <li>axe missing or unknown: only replanting and collecting may run, otherwise idle (status "Needs axe" when it is certain)</li>
  *   <li>a replant spot the worker can plant now</li>
- *   <li>a wanted drop to collect</li>
  *   <li>an unclaimed felling task of this camp (a fell somebody had to leave)</li>
  *   <li>before {@link Balance#LUMBER_LAST_FELL}: a tree the finder has found</li>
+ *   <li>a wanted drop to collect</li>
  *   <li>the finder still has columns to look at: search</li>
  *   <li>idle ("no trees" when the finder is done and nothing is left to do)</li>
  * </ol>
@@ -42,12 +42,15 @@ public final class LumberjackPlanner {
 		if (tool && s.fellInProgress()) return new Decision(Action.CONTINUE_FELL, StatusChange.CLEAR_ALL);
 		StatusChange base = tool ? StatusChange.CLEAR_NEEDS_TOOL : s.tool() == ToolState.NONE ? StatusChange.NEEDS_TOOL : StatusChange.KEEP;
 		if (s.replantReady()) return new Decision(Action.REPLANT, base);
-		if (s.collectAvailable()) return new Decision(Action.COLLECT, base);
-		if (!tool) return new Decision(Action.IDLE_AT_CAMP, base);
-		if (s.fellingTaskAvailable()) return new Decision(Action.FELL_TASK, StatusChange.CLEAR_ALL);
-		if (s.dayTime() < Balance.LUMBER_LAST_FELL && s.finder() == FinderState.HAS_TREE) {
+		// Trees come before drops while new fells are still allowed: the drops of a canopy keep coming for thousands of ticks, and a
+		// worker that always had one to collect never started the next tree before the cutoff. Drops live 6000 ticks; the cutoff is
+		// early enough to collect them afterwards.
+		if (tool && s.fellingTaskAvailable()) return new Decision(Action.FELL_TASK, StatusChange.CLEAR_ALL);
+		if (tool && s.dayTime() < Balance.LUMBER_LAST_FELL && s.finder() == FinderState.HAS_TREE) {
 			return new Decision(Action.FELL_NEW, StatusChange.CLEAR_ALL);
 		}
+		if (s.collectAvailable()) return new Decision(Action.COLLECT, base);
+		if (!tool) return new Decision(Action.IDLE_AT_CAMP, base);
 		if (s.finder() == FinderState.PAUSED && s.dayTime() < Balance.LUMBER_LAST_FELL) return new Decision(Action.SEARCH, base);
 		if (s.finder() == FinderState.EXHAUSTED) return new Decision(Action.IDLE_AT_CAMP, StatusChange.NO_WORK);
 		return new Decision(Action.IDLE_AT_CAMP, base);
