@@ -17,8 +17,8 @@ public final class ProfessionArt {
 
 	/** Jacket cube: u=0, v=38, 8 wide, 20 tall, 6 deep. Front face is x 6..13, y 44..63. */
 	static final int JACKET_U = 0, JACKET_V = 38, W = 8, H = 20, D = 6;
-	static final int GLYPH_X = 6 + 1, GLYPH_Y = 44 + 3;
-	static final int SASH_Y = 44 + 9;
+	static final int GLYPH_X = 6 + 1, GLYPH_Y = 44 + 12;
+	static final int SASH_Y = 44 + 9; // just below the crossed arms, which hide the upper chest
 
 	public static final Map<JobType, Art> ART = new EnumMap<>(JobType.class);
 
