@@ -23,6 +23,7 @@ class VillageCodecsTest {
 	static VillageState full() {
 		HeartLocation loc = new HeartLocation("minecraft:the_nether", -12, -5, -300);
 		return new VillageState(loc, OWNER, "alice", 5_000_000_000L, Map.of(STEW, Rank.STEWARD, RES, Rank.RESIDENT),
+				List.of(new dev.villageheart.core.KnownPlayer(STEW, "stew", 7), new dev.villageheart.core.KnownPlayer(RES, "res", 9)),
 				1234, Tier.TOWN, List.of(new BuildingRecord("farm", loc)), List.of(new WorkerRecord(RES, "farmer", loc, new HeartLocation("minecraft:the_nether", -10, -5, -300))));
 	}
 
@@ -53,7 +54,7 @@ class VillageCodecsTest {
 
 	@Test void pinnedFieldNames() {
 		JsonElement e = enc(VillageCodecs.VILLAGE_STATE, full());
-		assertEquals(Set.of("heart", "owner", "owner_name", "claimed_at", "ranks", "treasury", "tier", "buildings", "workers"), keys(e));
+		assertEquals(Set.of("heart", "owner", "owner_name", "claimed_at", "ranks", "known_players", "treasury", "tier", "buildings", "workers"), keys(e));
 		JsonObject world = enc(VillageCodecs.WORLD_CLAIM, new WorldClaim(java.util.Optional.of(full()))).getAsJsonObject();
 		assertEquals(Set.of("schema", "village"), world.keySet());
 		assertEquals(1, world.get("schema").getAsInt());

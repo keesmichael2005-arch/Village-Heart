@@ -63,4 +63,10 @@ public final class Balance {
 	/** Total XP at which a worker reaches level 2 and 3 (display only until M15 owns levelling, DESIGN section 4). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;
+
+	/** The village's name book (M24): players it remembers by name. Ranked players are never evicted, so at most one less can be ranked. */
+	public static final int MAX_KNOWN_PLAYERS = 64;
+	public static final int MAX_PLAYER_NAME = 32;
+	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
+	public static final int GUARD_FALLBACK_RADIUS = 16;
 }

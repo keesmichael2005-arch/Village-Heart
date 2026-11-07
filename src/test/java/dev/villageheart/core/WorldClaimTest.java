@@ -74,6 +74,13 @@ class WorldClaimTest {
 		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, bob));
 	}
 
+	@Test void breakRuleFollowsOwnershipTransfer() {
+		WorldClaim w = claimedByAlice();
+		w.update(v -> v.withRank(bob, "bob", Rank.RESIDENT, 5).transferOwnership(bob, 6));
+		assertEquals(BreakDecision.ALLOWED_OWNER, w.mayBreakHeart(A, bob));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, alice), "the old owner is a Steward now");
+	}
+
 	@Test void dimensionIsPartOfLocation() {
 		WorldClaim w = claimedByAlice();
 		HeartLocation nether = new HeartLocation("minecraft:the_nether", A.x(), A.y(), A.z());
