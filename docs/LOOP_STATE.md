@@ -2,7 +2,7 @@ status: RUNNING         # RUNNING | PAUSED | DONE
 budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after this"
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
-run_cost_usd: "~38 at 10:45Z (orchestrator session usage incl. workers)"
+run_cost_usd: "~156 at 15:50Z (orchestrator session usage incl. all workers); 5h window never hit"
 current: "M6 PASS r2 merged | M7 BUILD (m7), step 9 now unblocked"
 blocked: []
 wakes:                  # send_later wake-ups scheduled while usage was available
