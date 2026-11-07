@@ -1,0 +1,436 @@
+package dev.villageheart.sim;
+
+import dev.villageheart.VillageHeart;
+import dev.villageheart.core.Balance;
+import dev.villageheart.core.sim.ActionSchedule;
+import dev.villageheart.core.sim.Assertion;
+import dev.villageheart.core.sim.AssertionResult;
+import dev.villageheart.core.sim.DayMetrics;
+import dev.villageheart.core.sim.Json;
+import dev.villageheart.core.sim.MetricsJson;
+import dev.villageheart.core.sim.MetricsJson.Pos;
+import dev.villageheart.core.sim.MetricsJson.Report;
+import dev.villageheart.core.sim.MetricsJson.VillagePositions;
+import dev.villageheart.core.sim.MetricsTable;
+import dev.villageheart.core.sim.Scenario;
+import dev.villageheart.core.sim.ScenarioAction;
+import dev.villageheart.core.sim.ScenarioEvaluator;
+import dev.villageheart.core.sim.ScenarioParser;
+import dev.villageheart.core.sim.ScenarioResult;
+import dev.villageheart.core.sim.SimClock;
+import dev.villageheart.core.sim.SimRequest;
+import dev.villageheart.core.sim.SimStatus;
+import dev.villageheart.core.sim.TickStats;
+import dev.villageheart.world.VillageClaims;
+import dev.villageheart.world.VillageTicker;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.Vec3;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.OptionalInt;
+
+/**
+ * The long-simulation state machine: LOCATE (on server start) -> WAIT_BELL -> SETUP -> RUNNING -> DONE.
+ * Every callback is guarded: a failure becomes status ERROR with the stack trace in the report, then the server halts.
+ * The report on disk is the only channel back to scripts/simulate.sh.
+ */
+public final class SimulationRun {
+	private enum State { PRE_START, WAIT_BELL, WAIT_RESUME, RUNNING, DONE }
+
+	private static final int BELL_POLL_TICKS = 20;
+	private static final int BELL_MAX_TICKS = 600;
+	private static final int HEARTBEAT_TICKS = 6000;
+
+	// request / scenario
+	private SimRequest request;
+	private Scenario scenario;
+	private List<Assertion> assertions = List.of();
+	private ActionSchedule schedule;
+	private Path fallbackPath;
+	private String startupError;
+
+	// report state
+	private SimStatus status = SimStatus.RUNNING;
+	private String error;
+	private boolean cleanShutdown;
+	private long heartbeat;
+	private Integer stoppedAfterDay;
+	private long seed = SimWorld.SEED;
+	private String difficulty = "normal";
+	private BlockPos structure, bell, heart;
+	private long g0;
+	private final List<Integer> reloads = new ArrayList<>();
+	private DayMetrics baseline;
+	private final List<DayMetrics> days = new ArrayList<>();
+	private List<AssertionResult> assertionResults = List.of();
+
+	// live state
+	private State state = State.PRE_START;
+	private MinecraftServer server;
+	private ServerLevel level;
+	private SimPlayer player;
+	private SimMetricsCollector collector;
+	private SimClock clock;
+	private int stateTicks;
+	private long dayWallStart;
+	private long dayStartTick;
+	private boolean finishing;
+
+	private SimulationRun() {}
+
+	// ---- accessors for actions ----
+	ServerLevel level() { return level; }
+	MinecraftServer server() { return server; }
+	BlockPos bell() { return bell; }
+	BlockPos heart() { return heart; }
+	SimPlayer player() { return player; }
+
+	void onClaimed(BlockPos heartPos) {
+		this.heart = heartPos;
+		collector.setCentre(Vec3.atCenterOf(heartPos));
+	}
+
+	// ---- startup (onInitialize): never throws ----
+
+	static SimulationRun start(Path requestPath) {
+		SimulationRun r = new SimulationRun();
+		r.fallbackPath = requestPath.toAbsolutePath().resolveSibling("sim-error.json");
+		try {
+			r.request = SimRequest.parse(Files.readString(requestPath));
+		} catch (Throwable t) {
+			r.startupError = "bad request file " + requestPath + ": " + describe(t);
+			r.writeFallback();
+			return r;
+		}
+		try {
+			String file = Path.of(r.request.scenarioFile()).getFileName().toString();
+			r.scenario = ScenarioParser.parse(file.replaceAll("\\.json$", ""), Files.readString(Path.of(r.request.scenarioFile())));
+			r.assertions = ScenarioEvaluator.parseAll(r.scenario, r.request.extraAssertions());
+			r.schedule = new ActionSchedule(r.scenario.actions());
+			if (r.scenario.seed() != null) r.seed = r.scenario.seed();
+			for (ScenarioAction a : r.scenario.actions()) {
+				if (a.day() > r.request.days()) {
+					throw new IllegalArgumentException("action \"" + a.type() + "\" is on day " + a.day() + " but only " + r.request.days() + " days run");
+				}
+				if (!SimActions.ALL.containsKey(a.type())) throw new IllegalArgumentException("no implementation for action " + a.type());
+			}
+			if (r.request.resume()) {
+				Report old = MetricsJson.read(Files.readString(Path.of(r.request.out())));
+				r.restoreFrom(old);
+			}
+			r.writeReport();
+		} catch (Throwable t) {
+			r.startupError = describe(t);
+			r.status = SimStatus.ERROR;
+			r.error = r.startupError;
+			r.tryWriteReport();
+		}
+		return r;
+	}
+
+	private void restoreFrom(Report old) {
+		if (old.status() != SimStatus.RUNNING || old.stoppedAfterDay() == null) {
+			throw new IllegalStateException("cannot resume: previous report is " + old.status() + ", stopped_after_day=" + old.stoppedAfterDay());
+		}
+		structure = toPos(old.village().structure());
+		bell = toPos(old.village().bell());
+		heart = toPos(old.village().heart());
+		g0 = old.g0();
+		reloads.addAll(old.reloads());
+		reloads.add(old.stoppedAfterDay());
+		baseline = old.baseline();
+		days.addAll(old.days());
+		seed = old.seed();
+		heartbeat = old.heartbeat();
+		cleanShutdown = false;
+		schedule.restore(old.actionsDone());
+	}
+
+	private static BlockPos toPos(Pos p) { return p == null ? null : new BlockPos(p.x(), p.y(), p.z()); }
+	private static Pos fromPos(BlockPos p) { return p == null ? null : new Pos(p.getX(), p.getY(), p.getZ()); }
+
+	// ---- server lifecycle ----
+
+	void onServerStarted(MinecraftServer server) {
+		this.server = server;
+		if (startupError != null) {
+			VillageHeart.LOG.error("[sim] startup failed: {}", startupError);
+			server.halt(false);
+			return;
+		}
+		guarded(() -> {
+			level = server.overworld();
+			difficulty = server.getWorldData().getDifficulty().getKey();
+			seed = level.getSeed();
+			collector = new SimMetricsCollector(level, null, Balance.CLAIM_RADIUS);
+			collector.register();
+			if (request.resume()) {
+				SimWorld.forceLoad(level, structure);
+				state = State.WAIT_RESUME;
+				VillageHeart.LOG.info("[sim] resuming after day {} at {}", stoppedAfterDayOfResume(), heart.toShortString());
+			} else {
+				structure = SimWorld.locate(level).orElseThrow(() -> new IllegalStateException("no plains village within 100 chunks of spawn"));
+				VillageHeart.LOG.info("[sim] village start at {}", structure.toShortString());
+				SimWorld.forceLoad(level, structure);
+				state = State.WAIT_BELL;
+			}
+			stateTicks = 0;
+			writeReport();
+		});
+	}
+
+	private int stoppedAfterDayOfResume() { return reloads.isEmpty() ? 0 : reloads.get(reloads.size() - 1); }
+
+	void onServerStopped(MinecraftServer server) {
+		if (request == null && startupError != null && scenario == null) return; // fallback already written
+		cleanShutdown = true;
+		tryWriteReport();
+	}
+
+	// ---- per-tick state machine ----
+
+	void onTick(MinecraftServer server) {
+		if (state == State.PRE_START || state == State.DONE || finishing) return;
+		guarded(() -> {
+			switch (state) {
+				case WAIT_BELL -> waitBell();
+				case WAIT_RESUME -> waitResume();
+				case RUNNING -> running();
+				default -> { }
+			}
+		});
+	}
+
+	private void waitBell() {
+		stateTicks++;
+		if (stateTicks % BELL_POLL_TICKS != 0) return;
+		var found = SimWorld.findBell(level, structure);
+		if (found.isEmpty()) {
+			if (stateTicks >= BELL_MAX_TICKS) throw new IllegalStateException("no bell near village " + structure.toShortString());
+			return;
+		}
+		bell = found.get();
+		VillageHeart.LOG.info("[sim] bell at {}", bell.toShortString());
+		setup();
+	}
+
+	private void setup() {
+		// the simulated owner stands near the bell until the Heart exists, then at the Heart
+		BlockPos stand = SimWorld.heartSpot(level, bell).orElse(bell.below());
+		player = SimPlayer.join(server, level, stand);
+		for (ScenarioAction a : schedule.setupActions()) runAction(a);
+		schedule.markSetupDone();
+		level.setDayTime(0);
+		g0 = level.getGameTime();
+		clock = new SimClock(g0, request.days());
+		baseline = collector.collect(server, 0, g0, TickStats.EMPTY, 0, 0);
+		resetTimers();
+		if (heart != null) VillageHeart.LOG.info("[sim] heart at {}", heart.toShortString());
+		if (request.days() == 0) {
+			finish(SimStatus.PASS, false);
+			return;
+		}
+		server.tickRateManager().requestGameToSprint((int) (request.days() * SimClock.DAY_TICKS + 200));
+		state = State.RUNNING;
+		writeReport();
+	}
+
+	private void waitResume() {
+		stateTicks++;
+		if (!level.isLoaded(heart)) {
+			if (stateTicks > BELL_MAX_TICKS) throw new IllegalStateException("village chunks did not load on resume");
+			return;
+		}
+		int done = days.size();
+		var claim = VillageClaims.current(server);
+		if (claim.isEmpty()) throw new IllegalStateException("resume: the claim is gone after reload");
+		if (!claim.get().owner().equals(SimWorld.OWNER_UUID)) throw new IllegalStateException("resume: claim owner changed");
+		if (level.getGameTime() < g0 + done * SimClock.DAY_TICKS) {
+			throw new IllegalStateException("resume: game time " + level.getGameTime() + " is before day " + done + " end");
+		}
+		player = SimPlayer.join(server, level, heart.below());
+		collector.setCentre(Vec3.atCenterOf(heart));
+		clock = new SimClock(g0, request.days(), done);
+		resetTimers();
+		server.tickRateManager().requestGameToSprint((int) (clock.remainingTicks(level.getGameTime()) + 200));
+		state = State.RUNNING;
+		writeReport();
+		VillageHeart.LOG.info("[sim] resumed at game time {}, {} days recorded, {} to go", level.getGameTime(), done, clock.remainingTicks(level.getGameTime()));
+	}
+
+	/** Day records and wall clock start fresh (the setup/boot ticks must not leak into the next day). */
+	private void resetTimers() {
+		VillageTicker.TIMER.snapshotAndReset();
+		dayWallStart = System.nanoTime();
+		dayStartTick = level.getGameTime();
+	}
+
+	private void running() {
+		long now = level.getGameTime();
+		if (now % 20 == 0) player.drain();
+		// Fixed order (docs/plans/M2.md 3.4): record ended days, run due actions, write the report, then maybe finish.
+		boolean wrote = false;
+		for (OptionalInt d = clock.dayEnded(now); d.isPresent(); d = clock.dayEnded(now)) {
+			recordDay(d.getAsInt(), now);
+			wrote = true;
+		}
+		for (ScenarioAction a : schedule.due(clock.elapsed(now))) runAction(a);
+		boolean lastDay = clock.finished();
+		boolean stopNow = request.stopAfterDay() != null && clock.completedDays() >= request.stopAfterDay();
+		if (wrote || now - heartbeat >= HEARTBEAT_TICKS) {
+			heartbeat = now;
+			writeReport();
+		}
+		if (lastDay) {
+			finish(null, false);
+		} else if (stopNow) {
+			stoppedAfterDay = request.stopAfterDay();
+			finish(SimStatus.RUNNING, true);
+		}
+	}
+
+	private void recordDay(int day, long now) {
+		double wall = (System.nanoTime() - dayWallStart) / 1e9;
+		long ticks = now - dayStartTick;
+		TickStats ms = VillageTicker.TIMER.snapshotAndReset();
+		DayMetrics m = collector.collect(server, day, now, ms, wall, ticks);
+		days.add(m);
+		dayWallStart = System.nanoTime();
+		dayStartTick = now;
+		VillageHeart.LOG.info("[sim] day {} done: population {}, village {} ms/tick, {} tps", day, m.population(),
+				String.format("%.4f", ms.meanMs()), String.format("%.0f", m.serverTps()));
+	}
+
+	private void runAction(ScenarioAction a) {
+		VillageHeart.LOG.info("[sim] action {} (day {} tick {})", a.type(), a.day(), a.tick());
+		try {
+			SimActions.ALL.get(a.type()).run(this, a);
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IllegalStateException("action " + a.type() + " failed", e);
+		}
+	}
+
+	// ---- finishing ----
+
+	/** @param forced non-null to set the status directly; null = evaluate the assertions. */
+	private void finish(SimStatus forced, boolean phase1) {
+		finishing = true;
+		try {
+			server.tickRateManager().stopSprinting();
+			if (forced != null) {
+				status = forced;
+			} else {
+				ScenarioResult r = ScenarioEvaluator.evaluate(assertions, new MetricsTable(baseline, days));
+				status = r.status();
+				assertionResults = r.results();
+			}
+			state = State.DONE;
+			writeReport();
+			writeSummary();
+		} finally {
+			server.halt(false);
+		}
+	}
+
+	private void guarded(Runnable r) {
+		try {
+			r.run();
+		} catch (Throwable t) {
+			VillageHeart.LOG.error("[sim] harness failure", t);
+			fail(t);
+		}
+	}
+
+	private void fail(Throwable t) {
+		if (state == State.DONE && status == SimStatus.ERROR) return;
+		status = SimStatus.ERROR;
+		error = describe(t);
+		state = State.DONE;
+		finishing = true;
+		tryWriteReport();
+		if (server != null) server.halt(false);
+	}
+
+	private static String describe(Throwable t) {
+		StringWriter sw = new StringWriter();
+		t.printStackTrace(new PrintWriter(sw));
+		String s = sw.toString();
+		return s.length() > 6000 ? s.substring(0, 6000) + "..." : s;
+	}
+
+	// ---- report files ----
+
+	private void tryWriteReport() {
+		try {
+			writeReport();
+		} catch (Throwable t) {
+			VillageHeart.LOG.error("[sim] could not write report", t);
+		}
+	}
+
+	private Report buildReport() {
+		String mc = FabricLoader.getInstance().getModContainer("minecraft")
+				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
+		return new Report(scenario != null ? scenario.name() : request.scenario(), status, error, cleanShutdown, heartbeat,
+				schedule != null ? schedule.actionsDone() : 0, stoppedAfterDay, seed, difficulty, request.days(), mc,
+				new VillagePositions(fromPos(structure), fromPos(bell), fromPos(heart)), g0, reloads, baseline, days, assertionResults);
+	}
+
+	private void writeReport() {
+		try {
+			Path out = Path.of(request.out());
+			Files.createDirectories(out.getParent());
+			Path tmp = out.resolveSibling(out.getFileName() + ".tmp");
+			Files.writeString(tmp, MetricsJson.write(buildReport()), StandardCharsets.UTF_8);
+			Files.move(tmp, out, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+		} catch (java.io.IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+	}
+
+	private void writeFallback() {
+		try {
+			Files.createDirectories(fallbackPath.getParent());
+			Files.writeString(fallbackPath, Json.write(Map.of("status", "ERROR", "error", startupError, "clean_shutdown", false), true));
+		} catch (Throwable t) {
+			VillageHeart.LOG.error("[sim] could not write {}", fallbackPath, t);
+		}
+	}
+
+	private void writeSummary() {
+		try {
+			Path out = Path.of(request.out());
+			Path md = out.resolveSibling(out.getFileName().toString().replaceAll("\\.json$", ".summary.md"));
+			StringBuilder sb = new StringBuilder();
+			sb.append("# Simulation ").append(scenario.name()).append(": ").append(status).append("\n\n");
+			sb.append("Seed ").append(seed).append(", ").append(difficulty).append(", ").append(days.size()).append(" of ")
+					.append(request.days()).append(" days");
+			if (!reloads.isEmpty()) sb.append(", reloaded after day ").append(reloads);
+			sb.append("\n\n");
+			for (AssertionResult a : assertionResults) {
+				sb.append(a.passed() ? "- PASS " : "- FAIL ").append(a.text()).append(" (").append(a.detail()).append(")\n");
+			}
+			sb.append("\n| day | population | deaths | village ms mean | village ms p95 | server tps | heap MB |\n|---|---|---|---|---|---|---|\n");
+			for (DayMetrics d : days) {
+				sb.append(String.format("| %d | %d | %d | %.4f | %.4f | %.0f | %d |%n", d.day(), d.population(), d.deaths().size(),
+						d.villageMs().meanMs(), d.villageMs().p95Ms(), d.serverTps(), d.heapUsedMb()));
+			}
+			Files.writeString(md, sb.toString(), StandardCharsets.UTF_8);
+		} catch (Throwable t) {
+			VillageHeart.LOG.error("[sim] could not write summary", t);
+		}
+	}
+}

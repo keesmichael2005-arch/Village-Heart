@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One command that runs every automated check and writes reports/verify-summary.md.
 # Agents: run this before claiming anything works. Exit code 0 == all green.
-#   scripts/verify.sh            # layers 1, 2, 4
+#   scripts/verify.sh            # layers 1, 2, 4 (+ the stubbed L3 script self-test)
 #   scripts/verify.sh --fast     # layers 1, 2 only (no game client)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -22,6 +22,9 @@ step() { # name, logfile, command...
 step "Layer 1: build + unit tests" build.log ./gradlew --no-daemon build
 step "Layer 2: in-world GameTests (headless server)" gametest.log ./gradlew --no-daemon runGameTest
 grep -E "required tests (passed|failed)|failed at" reports/gametest.log | sed 's/^/    /' >> "$SUMMARY"
+
+step "Layer 3 script self-test (stubbed server)" simulate-selftest.log \
+  bash -c 'bash -n scripts/simulate.sh && scripts/test-simulate.sh'
 
 if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: client GameTests + screenshots (virtual display)" clienttest.log \

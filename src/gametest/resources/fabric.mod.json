@@ -5,6 +5,7 @@
 	"name": "Village Heart Tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": ["dev.villageheart.sim.SimulationBootstrap"],
 		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests"],
 		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
 	},

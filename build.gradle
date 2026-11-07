@@ -34,6 +34,23 @@ fabricApi {
 	}
 }
 
+// Layer 3: a real dedicated server running the gametest source set (the simulation harness), driven by
+// scripts/simulate.sh. The harness is a no-op unless -Dvillageheart.sim.request is set. Must come AFTER the
+// fabricApi block: sourceSets.gametest does not exist before it.
+loom {
+	runs {
+		simulation {
+			server()
+			name "Simulation"
+			source sourceSets.gametest
+			runDir "build/run/sim"
+			property "villageheart.sim.request", file("build/run/sim/sim-request.json").absolutePath
+			vmArg "-Xmx3G"
+			programArgs "--nogui"
+		}
+	}
+}
+
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings loom.officialMojangMappings()
