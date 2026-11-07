@@ -13,6 +13,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.PushReaction;
 
 public final class ModBlocks {
 	public static final Identifier VILLAGE_HEART_ID = Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "village_heart");
@@ -23,6 +24,7 @@ public final class ModBlocks {
 			.setId(BLOCK_KEY)
 			.strength(3.0f, 1200.0f)
 			.lightLevel(state -> 10)
+			.pushReaction(PushReaction.BLOCK)
 			.sound(SoundType.AMETHYST));
 
 	public static final Item VILLAGE_HEART_ITEM = new BlockItem(VILLAGE_HEART,

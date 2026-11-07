@@ -6,7 +6,15 @@ import dev.villageheart.core.ClaimRules;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import dev.villageheart.core.Rank;
+import dev.villageheart.world.VillageSavedData;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.minecraft.world.level.storage.LevelResource;
+import java.util.UUID;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -52,4 +60,57 @@ public class VillageHeartGameTests {
 
 	@GameTest(environment = "villageheart-gametest:probe_b", maxTicks = 200)
 	public void isolationProbeB(GameTestHelper h) { isolationProbe(h, "probe_b"); }
+
+	/** T-L2-6: reload from disk through a brand-new DimensionDataStorage after each mutator. */
+	private static VillageSavedData reload(MinecraftServer server) throws java.io.IOException {
+		server.overworld().getDataStorage().saveAndJoin();
+		java.nio.file.Path dir = DimensionType.getStorageFolder(Level.OVERWORLD, server.getWorldPath(LevelResource.ROOT)).resolve("data");
+		try (DimensionDataStorage fresh = new DimensionDataStorage(dir,
+				server.getFixerUpper(), server.registryAccess())) {
+			return fresh.get(VillageSavedData.TYPE);
+		}
+	}
+
+	@GameTest(environment = "villageheart-gametest:save_reload", maxTicks = 200)
+	public void claimSurvivesSaveAndReload(GameTestHelper h) {
+		MinecraftServer server = h.getLevel().getServer();
+		VillageTestSupport.reset(h);
+		try {
+			VillageSavedData r = reload(server);
+			h.assertTrue(r != null && r.village().isEmpty(), "after clear(): file exists and is empty");
+			java.nio.file.Path file = DimensionType.getStorageFolder(Level.OVERWORLD, server.getWorldPath(LevelResource.ROOT))
+					.resolve("data").resolve("villageheart_village.dat");
+			h.assertTrue(java.nio.file.Files.exists(file), "villageheart_village.dat exists");
+
+			ServerPlayer alice = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+			h.setBlock(new BlockPos(4, 1, 2), Blocks.BELL);
+			h.runAfterDelay(2, () -> {
+				try {
+					VillageTestSupport.place(h, alice, new BlockPos(2, 0, 2));
+					BlockPos abs = h.absolutePos(new BlockPos(2, 1, 2));
+					VillageSavedData r2 = reload(server);
+					h.assertTrue(r2 != null && r2.village().isPresent(), "claim persisted");
+					h.assertValueEqual(alice.getUUID(), r2.village().get().owner(), "persisted owner");
+					h.assertValueEqual(VillageClaims.locate(h.getLevel(), abs), r2.village().get().heart(), "persisted heart");
+
+					VillageClaims.depositTreasury(server, 42);
+					h.assertValueEqual(42, reload(server).village().orElseThrow().treasury(), "persisted treasury");
+
+					UUID steward = UUID.randomUUID();
+					VillageClaims.setRank(server, steward, Rank.STEWARD);
+					VillageSavedData r4 = reload(server);
+					h.assertValueEqual(Rank.STEWARD, r4.village().orElseThrow().rankOf(steward), "persisted rank");
+					h.assertValueEqual(VillageClaims.current(server).orElseThrow(), r4.village().orElseThrow(), "whole record equal");
+
+					alice.gameMode.destroyBlock(abs);
+					h.assertTrue(reload(server).village().isEmpty(), "release persisted");
+					VillageTestSupport.done(h);
+				} catch (java.io.IOException e) {
+					throw new RuntimeException(e);
+				}
+			});
+		} catch (java.io.IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }
