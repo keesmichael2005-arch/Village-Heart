@@ -122,6 +122,33 @@ public class RankGameTests {
 		});
 	}
 
+	/**
+	 * M24-r1: the double-chest partner check. With no enclosed scan the guard falls back to a 16-block box around the marker. The inner
+	 * half of a double chest is inside it, the outer half is not; the outer half is protected only through its partner.
+	 */
+	@GameTest(environment = "villageheart-gametest:ranks_double", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void doubleChestOuterHalfIsProtectedThroughItsPartner(GameTestHelper h) {
+		BlockPos inner = new BlockPos(11, 1, 19);
+		BlockPos outer = new BlockPos(11, 1, 20);
+		BlockPos single = new BlockPos(11, 1, 23);
+		OverlayPlayer[] v = new OverlayPlayer[1];
+		seed(h).thenExecute(() -> {
+			v[0] = ranked(h, "vis", Rank.VISITOR);
+			BuildingSystem.resetRuntimeForTests(); // no enclosed scan: the fallback box is used
+			var east = Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.FACING, net.minecraft.core.Direction.EAST);
+			h.setBlock(inner, east.setValue(net.minecraft.world.level.block.ChestBlock.TYPE, net.minecraft.world.level.block.state.properties.ChestType.LEFT));
+			h.setBlock(outer, east.setValue(net.minecraft.world.level.block.ChestBlock.TYPE, net.minecraft.world.level.block.state.properties.ChestType.RIGHT));
+			h.setBlock(single, Blocks.CHEST);
+			h.assertFalse(opens(h, v[0], inner), "the inner half is inside the box: refused");
+			h.assertFalse(opens(h, v[0], outer), "the outer half is outside the box but its partner is inside: refused");
+			h.assertTrue(opens(h, v[0], single), "control: a single chest at the same distance is outside the box and opens");
+			h.assertFalse(v[0].gameMode.destroyBlock(h.absolutePos(outer)), "the outer half cannot be broken either");
+			h.assertTrue(h.getBlockState(outer).is(Blocks.CHEST), "the outer half is still there");
+			h.assertTrue(v[0].gameMode.destroyBlock(h.absolutePos(single)), "control: the single chest can be broken");
+			done(h);
+		});
+	}
+
 	// ---- T-L2-3 -------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:ranks_scan", structure = YARD, skyAccess = true, maxTicks = 900)
