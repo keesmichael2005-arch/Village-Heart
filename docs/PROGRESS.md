@@ -188,3 +188,9 @@ and before the player logs in; a counter probe showed both counters at 0 during 
 Measured with 4 busy loops of mine (load 9-12): unpatched dev 1/10 failed (plus 3/6 in earlier probe runs); patched 12/12 green (2 rescues logged).
 Mutation: with a 30 ms sleep before the `lock()` the unpatched code failed 2/2 with the same stack; with the fix it passed with 3 rescues.
 Next: nothing on this item. Blockers: none.
+
+## 2026-11-07: M6 review r1 fixed (builder)
+- False "Storage full": `noteDepositShort(time, sitesSeen, unknownSites)` now ignores a short deposit that did not see every Storage (none, or any unknown). L1 `shortDepositThatSawNoStorageProvesNothing`;
+  GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
+- `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
+- `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.

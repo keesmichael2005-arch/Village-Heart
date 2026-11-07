@@ -98,9 +98,12 @@ public class StockpileGameTests {
 		Stockpile<StackKey> s = siteOf(h, new BlockPos(0, 1, 0), new BlockPos(0, 1, 0), chest);
 		h.assertValueEqual(4, s.snapshot(0, 0, 0, StorageAlert.OK).totals().size(), "four variants");
 
-		// the key is vanilla's stacking rule: all 36 unordered pairs of the 8 stacks (the 4 and a copy of each)
-		List<ItemStack> eight = new ArrayList<>(List.of(plain, named, damaged, fresh));
-		for (ItemStack st : List.of(plain, named, damaged, fresh)) eight.add(st.copy());
+		// the key is vanilla's stacking rule: all 55 unordered pairs of the 10 stacks (the 5 and a copy of each, one enchanted)
+		ItemStack enchanted = stack(Items.IRON_SWORD, 1);
+		enchanted.enchant(h.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+				.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 1);
+		List<ItemStack> eight = new ArrayList<>(List.of(plain, named, damaged, fresh, enchanted));
+		for (ItemStack st : List.of(plain, named, damaged, fresh, enchanted)) eight.add(st.copy());
 		int pairs = 0;
 		for (int i = 0; i < eight.size(); i++) for (int j = i; j < eight.size(); j++) {
 			ItemStack a = eight.get(i), b = eight.get(j);
@@ -109,7 +112,7 @@ public class StockpileGameTests {
 			if (ka.equals(kb)) h.assertTrue(ka.hashCode() == kb.hashCode(), "equal keys, equal hash " + i + "," + j);
 			pairs++;
 		}
-		h.assertValueEqual(36, pairs, "pairs");
+		h.assertValueEqual(55, pairs, "pairs (10 stacks)");
 
 		StackKey plainKey = StackKey.of(plain);
 		h.assertValueEqual(10, s.deposit(pos(h, chest), plainKey, 10), "deposit plain paper");
@@ -129,6 +132,10 @@ public class StockpileGameTests {
 
 	// ---- T-L2-6 ----------------------------------------------------------------------------------
 
+	/**
+	 * The comparator must follow the grow (top up a partial stack) and shrink (partial withdraw) paths, which only the stockpile's
+	 * own {@code changed()} notifies: vanilla {@code setItem} already calls setChanged, so a deposit into an empty slot proves nothing.
+	 */
 	@GameTest(environment = GLUE_ENV, maxTicks = 100)
 	public void depositMarksChestChanged(GameTestHelper h) {
 		floor(h, 5);
@@ -136,12 +143,17 @@ public class StockpileGameTests {
 		h.setBlock(chest, Blocks.CHEST);
 		// a comparator FACING points at its input (the block behind it), so WEST reads the chest at x - 1
 		h.setBlock(comparator, Blocks.COMPARATOR.defaultBlockState().setValue(ComparatorBlock.FACING, Direction.WEST));
+		fillAll(h, chest, stack(Items.COBBLESTONE, 1));
 		Stockpile<StackKey> s = siteOf(h, new BlockPos(0, 1, 0), new BlockPos(0, 1, 0), chest);
+		StackKey cobble = StackKey.of(Items.COBBLESTONE);
 		h.startSequence().thenIdle(5).thenExecute(() -> {
-			h.assertValueEqual(0, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "empty chest signal");
-			h.assertValueEqual(64, s.deposit(pos(h, chest), StackKey.of(Items.COBBLESTONE), 64), "stored");
-		}).thenIdle(4).thenExecute(() -> {
-			h.assertValueEqual(1, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "signal after the deposit");
+			h.assertValueEqual(1, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "27 single cobblestones");
+			h.assertValueEqual(27 * 63, s.deposit(pos(h, chest), cobble, 27 * 63), "every slot topped up (grow path)");
+		}).thenIdle(5).thenExecute(() -> {
+			h.assertValueEqual(15, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "signal after the grow");
+			h.assertValueEqual(27 * 32, s.withdraw(pos(h, chest), cobble, 27 * 32, null), "half taken out (shrink path)");
+		}).thenIdle(5).thenExecute(() -> {
+			h.assertValueEqual(8, h.getBlockEntity(comparator, ComparatorBlockEntity.class).getOutputSignal(), "signal after the shrink");
 		}).thenSucceed();
 	}
 

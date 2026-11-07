@@ -27,7 +27,7 @@ class StorageAlertTest {
 		assertEquals(StorageAlert.OK, t.refresh(snap(1, 0, 2, 3), 140));
 		assertEquals(140, t.since());
 
-		t.noteDepositShort(1000);
+		t.noteDepositShort(1000, 1, 0);
 		assertEquals(StorageAlert.FULL, t.refresh(snap(1, 0, 2, 3), 1000));
 		assertEquals(StorageAlert.FULL, t.refresh(snap(1, 0, 2, 3), 1199));
 		assertEquals(StorageAlert.OK, t.refresh(snap(1, 0, 2, 3), 1200));
@@ -48,5 +48,14 @@ class StorageAlertTest {
 		StorageAlertTracker t = new StorageAlertTracker();
 		t.refresh(snap(0, 0, 0, 0), 0);
 		assertEquals(StorageAlert.OK, t.refresh(snap(0, 1, 0, 0), 20));
+	}
+
+	@Test void shortDepositThatSawNoStorageProvesNothing() {
+		StorageAlertTracker t = new StorageAlertTracker();
+		t.noteDepositShort(1000, 0, 0); // no Storage at all
+		t.noteDepositShort(1000, 0, 2); // only unknown Storages (after a restart)
+		t.noteDepositShort(1000, 1, 1); // one readable, one unknown: it did not see everything
+		assertEquals(StorageAlert.OK, t.refresh(snap(1, 0, 2, 54), 1010));
+		assertEquals(StorageAlert.OK, t.refresh(snap(1, 0, 2, 54), 1100));
 	}
 }

@@ -8,8 +8,13 @@ public final class StorageAlertTracker {
 	private long since;
 	private long lastShort = Long.MIN_VALUE / 2;
 
-	/** A spilling deposit returned less than asked: nothing anywhere had room for that item. */
-	public void noteDepositShort(long gameTime) { lastShort = gameTime; }
+	/**
+	 * A spilling deposit returned less than asked. It only means "nothing anywhere had room" when the deposit saw every Storage:
+	 * with no readable Storage, or with an unknown one (after a restart, an unloaded chunk), it proves nothing and is ignored.
+	 */
+	public void noteDepositShort(long gameTime, int sitesSeen, int unknownSites) {
+		if (sitesSeen > 0 && unknownSites == 0) lastShort = gameTime;
+	}
 
 	public StorageAlert refresh(StockSnapshot<?> s, long gameTime) {
 		StorageAlert next;

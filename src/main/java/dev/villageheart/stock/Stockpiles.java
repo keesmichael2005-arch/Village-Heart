@@ -132,11 +132,14 @@ public final class Stockpiles {
 		int asked = stack.getCount();
 		int stored = view(server, c).deposit(RoomScans.pos(from), key, asked);
 		stack.shrink(stored);
-		if (stored < asked) runtime(server).tracker.noteDepositShort(level.getGameTime());
+		if (stored < asked) runtime(server).tracker.noteDepositShort(level.getGameTime(), c.sites().size(), c.unknownSites());
 		return stored;
 	}
 
-	/** Same, into the Storage whose anchor is nearest to {@code from} only (a worker standing at that Storage). */
+	/**
+	 * Same, into the Storage whose anchor is nearest to {@code from} only (a worker standing at that Storage). Never raises the
+	 * "Storage full" alert, even when it stores nothing: one full Storage is not a full village.
+	 */
 	public static int depositHere(ServerLevel level, BlockPos from, ItemStack stack) {
 		MinecraftServer server = level.getServer();
 		requireServerThread(server);

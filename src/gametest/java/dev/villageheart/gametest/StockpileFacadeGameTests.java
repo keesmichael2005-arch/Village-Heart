@@ -199,6 +199,25 @@ public class StockpileFacadeGameTests {
 		});
 	}
 
+	// ---- regression: a deposit that saw no Storage must not raise FULL later (review r1) -----------
+
+	@GameTest(environment = "villageheart-gametest:stockpile_unseen_deposit", structure = Y, skyAccess = true, maxTicks = 500)
+	public void depositWithoutStorageDoesNotRaiseFull(GameTestHelper h) {
+		BlockPos ma = markerPos(A, 5);
+		GameTestSequence seq = begin(h).thenExecute(() -> {
+			ItemStack s = stack(Items.COBBLESTONE, 5);
+			h.assertValueEqual(0, Stockpiles.deposit(h.getLevel(), outsideDoor(h, A), s), "nothing to store into");
+			storageRoom(h, A, Blocks.CHEST, Blocks.CHEST);
+			placeMarker(h, BuildingType.STORAGE, ma, Direction.NORTH);
+		});
+		seq = awaitWithin(h, seq, bound(1, 0), "empty Storage readable", () -> assertSites(h, 1));
+		seq.thenIdle(Balance.STOCKPILE_REFRESH_TICKS + 2).thenExecute(() -> {
+			h.assertValueEqual(54, Stockpiles.snapshot(server(h)).freeSlots(), "free slots");
+			h.assertValueEqual(StorageAlert.OK, Stockpiles.alert(server(h)), "an empty Storage is not full");
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-3b ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:stockpile_full", structure = Y, skyAccess = true, maxTicks = 800)
@@ -315,8 +334,8 @@ public class StockpileFacadeGameTests {
 			Arrays.sort(snapT);
 			Arrays.sort(sysT);
 			System.out.println("perf stockpile real snapshot (32 chests): median " + snapT[10] / 1000 + " us; refresh: median " + sysT[10] / 1000 + " us");
-			h.assertTrue(snapT[10] < 3_000_000L, "snapshot median " + snapT[10] / 1000 + " us, budget 1000 us (asserted at 3x)");
-			h.assertTrue(sysT[10] < 3_000_000L, "refresh median " + sysT[10] / 1000 + " us, budget 1000 us (asserted at 3x)");
+			// no wall-clock assertion here (M4 rule: those live in perfTest); the deterministic guard is the structure asserted above
+			// (32 containers, 864 slots) and StockpileCostTest's slot-read counts
 			StockpileSystem.INSTANCE.tick(srv, village); // runs without throwing at any game time
 			VillageTestSupport.done(h);
 		});
