@@ -293,3 +293,16 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
 - marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
 - Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
+
+## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
+- Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
+  `core.job.Leveling` applies M14's `TierRules.levelFor` (banked XP up to 300, level = max(stored, levelFor), never lowered); level changes
+  written to attachment and `WorkerRecord.level` at once via M12's `Workers.setLevel`; a 20-tick pass turns banked XP into levels after a tier-up.
+- Feedback: HAPPY_VILLAGER particles, VILLAGER_CELEBRATE sound, chat to online Resident+ members (max 3 lines + summary), a one-off "needs a Village"
+  notice, the vanilla belt badge (VillagerData level 1/2/3), a gold "capped" XP bar on the Villagers tab. Listener seam for M18 perks.
+- Tools: nothing to redo (M9 has tiers, multipliers, sharing, wear per log); M15 extends the speed table test, audits `CampTools.use` per job, and
+  re-proves wear in the side-by-side test.
+- **Blocked on decision D1:** the roadmap's "iron ≥1.3× stone" is impossible with DESIGN's multipliers (iron/stone = 1.5/1.25 = 1.2 is the
+  ceiling, walking only lowers it). Recommended: "≥1.1× stone and ≥1.3× wood" in one three-way test (stacked identical yards at +30/+60 on glass platforms).
+- Critique: a separate critic session, 19 findings (1 blocker = D1 confirmed, 9 major, 9 minor), all taken (plan section 7).
+- Top risk: D1, then the stacked-platform layout of the side-by-side test (fallback: three sequential days, recorded as a deviation).
