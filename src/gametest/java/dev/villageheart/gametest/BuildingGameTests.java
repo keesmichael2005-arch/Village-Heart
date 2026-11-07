@@ -109,7 +109,8 @@ public class BuildingGameTests {
 		});
 		seq = awaitWithin(h, seq, 40, "green", () -> assertStatus(h, marker, MarkerStatus.VALID));
 		seq = seq.thenExecute(() -> {
-			ServerPlayer breaker = VillageTestSupport.player(h, "breaker", GameType.SURVIVAL);
+			// M24: a Visitor may not break a registered marker any more, so the breaker is the village owner (what the test proves is unchanged)
+			ServerPlayer breaker = owner();
 			breaker.gameMode.destroyBlock(h.absolutePos(marker));
 			h.assertTrue(record(h, marker).isEmpty(), "unregistered in the same tick");
 			boolean dropped = h.getEntities(EntityType.ITEM, marker, 4.0).stream()
@@ -143,7 +144,7 @@ public class BuildingGameTests {
 		});
 		seq = seq.thenIdle(40).thenExecute(() ->
 				h.assertValueEqual(0, BuildingSystem.priorityQueuedForTests(h.getLevel().getServer()), "no ping-pong: the queue is empty"));
-		seq = seq.thenExecute(() -> VillageTestSupport.player(h, "breaker", GameType.SURVIVAL).gameMode.destroyBlock(h.absolutePos(east)));
+		seq = seq.thenExecute(() -> owner().gameMode.destroyBlock(h.absolutePos(east)));
 		awaitWithin(h, seq, 5, "survivor green", () -> {
 			assertStatus(h, north, MarkerStatus.VALID);
 			h.assertTrue(reasons(h, north).isEmpty(), "no SHARED left: " + reasons(h, north));

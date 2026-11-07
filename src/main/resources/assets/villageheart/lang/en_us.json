@@ -5,6 +5,8 @@
 	"message.villageheart.claim.already_have_village": "You already have a village in this world.",
 	"message.villageheart.claim.already_claimed_other": "This world's village already belongs to %s.",
 	"message.villageheart.heart.not_owner": "Only %s can break the Village Heart.",
+	"message.villageheart.protect.container": "This belongs to the village of %s. Ask the Owner to make you a Resident.",
+	"message.villageheart.protect.break": "This is part of the village of %s. Only Residents and above can break it.",
 	"message.villageheart.heart.released": "Your village has been released.",
 	"block.villageheart.house_marker": "House Marker",
 	"block.villageheart.storage_marker": "Storage Marker",

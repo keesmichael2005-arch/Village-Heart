@@ -6,6 +6,9 @@ import dev.villageheart.core.VillageState;
 import dev.villageheart.core.building.BuildingStatus;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.Verdict;
+import dev.villageheart.core.building.BuildingKind;
+import dev.villageheart.core.rank.ContainerGuard;
+import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.room.RoomScan;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
@@ -39,6 +42,24 @@ public final class Buildings {
 			out.add(new BuildingView(type.get(), level, new BlockPos(m.x(), m.y(), m.z()), b.status(),
 					l == null ? null : new BlockPos(l.x(), l.y(), l.z()),
 					Optional.ofNullable(rt.rawScans.get(m)), Optional.ofNullable(rt.verdicts.get(m))));
+		}
+		return out;
+	}
+
+	/**
+	 * Every registered ROOM building of the village for the Visitor container rule (M24). Taken from the saved registry, never
+	 * from the scan cache: after a restart the cache is empty and every room is then a fail-closed box around its marker.
+	 */
+	public static List<ContainerGuard.GuardArea> guardAreas(MinecraftServer server) {
+		List<ContainerGuard.GuardArea> out = new ArrayList<>();
+		Optional<VillageState> village = VillageClaims.current(server);
+		if (village.isEmpty()) return out;
+		BuildingRuntime rt = BuildingSystem.runtime(server);
+		for (BuildingRecord b : village.get().buildings()) {
+			Optional<BuildingType> type = b.type();
+			if (type.isEmpty() || type.get().kind() != BuildingKind.ROOM) continue;
+			HeartLocation m = b.marker();
+			out.add(new ContainerGuard.GuardArea(m.dimension(), new Pos(m.x(), m.y(), m.z()), Optional.ofNullable(rt.lastEnclosed.get(m))));
 		}
 		return out;
 	}
