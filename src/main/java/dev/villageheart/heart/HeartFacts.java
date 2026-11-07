@@ -186,7 +186,27 @@ public final class HeartFacts {
 		}
 
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
-				villagers, jobs, buildings, stock(server), List.of()));
+				villagers, jobs, buildings, stock(server), List.of(), members(server, state)));
+	}
+
+	/** The owner, every known player and every online player the village has not seen yet (online Visitors are always rankable). */
+	private static List<VillageFacts.MemberFact> members(MinecraftServer server, VillageState state) {
+		List<VillageFacts.MemberFact> out = new ArrayList<>();
+		Set<UUID> seen = new HashSet<>();
+		out.add(member(server, state, state.owner()));
+		seen.add(state.owner());
+		for (dev.villageheart.core.KnownPlayer k : state.known()) {
+			if (seen.add(k.id())) out.add(member(server, state, k.id()));
+		}
+		for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {
+			if (seen.add(p.getUUID())) out.add(member(server, state, p.getUUID()));
+		}
+		return out;
+	}
+
+	private static VillageFacts.MemberFact member(MinecraftServer server, VillageState state, UUID id) {
+		return new VillageFacts.MemberFact(id, dev.villageheart.rank.Members.displayName(server, state, id), state.rankOf(id),
+				dev.villageheart.rank.Members.online(server, id) != null);
 	}
 
 	private static StockFacts stock(MinecraftServer server) {

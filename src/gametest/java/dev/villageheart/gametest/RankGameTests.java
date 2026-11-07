@@ -329,6 +329,68 @@ public class RankGameTests {
 		return VillageClaims.current(server).orElseThrow().rankOf(p.getUUID());
 	}
 
+	// ---- T-L2-9 -------------------------------------------------------------------------------
+
+	private static dev.villageheart.core.heart.HeartSnapshot lastSnapshot(GameTestHelper h, List<Sent> sent, ServerPlayer p) {
+		List<dev.villageheart.heart.net.HeartSnapshotPayload> got = snapshotsTo(sent, p);
+		h.assertTrue(!got.isEmpty(), "a snapshot was sent to " + p.getName().getString());
+		return got.get(got.size() - 1).snapshot();
+	}
+
+	private static dev.villageheart.core.heart.MemberRow member(dev.villageheart.core.heart.HeartSnapshot s, java.util.UUID id) {
+		return s.members().stream().filter(m -> m.id().equals(id)).findFirst().orElse(null);
+	}
+
+	@GameTest(environment = "villageheart-gametest:ranks_online", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void ranksSnapshotOnlineFlags(GameTestHelper h) {
+		List<Sent>[] sent = new List[1];
+		ServerPlayer[] p = new ServerPlayer[2];
+		java.util.UUID[] bea = new java.util.UUID[1];
+		int within = dev.villageheart.core.Balance.HEART_REFRESH_TICKS + 2;
+		GameTestSequence seq = begin(h).thenExecute(() -> {
+			sent[0] = recorder();
+			p[0] = ranked(h, "Bea", Rank.STEWARD);
+			bea[0] = p[0].getUUID();
+			open(h, owner());
+			leave(h, p[0]);
+			p[1] = ranked(h, "vera", Rank.VISITOR);
+		});
+		seq = awaitWithin(h, seq, within, "the owner's list shows Bea offline and Vera online", () -> {
+			var s = lastSnapshot(h, sent[0], owner());
+			var b = member(s, bea[0]);
+			var v = member(s, p[1].getUUID());
+			h.assertTrue(b != null && b.rank() == Rank.STEWARD && !b.online(), "Bea is an offline Steward: " + b);
+			h.assertTrue(v != null && v.rank() == Rank.VISITOR && v.online(), "Vera is an online Visitor: " + v);
+			h.assertTrue(member(s, owner().getUUID()) != null && member(s, owner().getUUID()).online(), "the owner is online");
+			h.assertValueEqual(Rank.OWNER, s.members().get(0).rank(), "owner first");
+		});
+		seq = seq.thenExecute(() -> p[0] = joinAs(h, bea[0], "Bea"));
+		seq = awaitWithin(h, seq, within, "Bea is online again", () ->
+				{
+			var b = member(lastSnapshot(h, sent[0], owner()), bea[0]);
+			h.assertTrue(b != null && b.online(), "Bea online");
+		});
+		seq = seq.thenExecute(() -> {
+			open(h, p[0]);
+			h.assertTrue(((dev.villageheart.heart.HeartMenu) p[0].containerMenu).snapshot().members().isEmpty(), "a Steward is not sent the member list");
+			HeartActions.reset();
+			transfer(owner(), bea[0], Rank.STEWARD.ordinal());
+			h.assertValueEqual("message.villageheart.rank.transferred", lastResult(sent[0], owner()).key(), "transferred");
+		});
+		seq = awaitWithin(h, seq, within, "the new owner's screen shows the members, the old owner's does not", () -> {
+			var mine = lastSnapshot(h, sent[0], p[0]);
+			h.assertValueEqual(Rank.OWNER, mine.viewerRank(), "Bea is the Owner now");
+			h.assertTrue(mine.members().size() >= 3, "Bea sees the members: " + mine.members());
+			var old = lastSnapshot(h, sent[0], owner());
+			h.assertValueEqual(Rank.STEWARD, old.viewerRank(), "the old owner is a Steward");
+			h.assertTrue(old.members().isEmpty(), "...and no longer sees the members");
+		});
+		seq.thenExecute(() -> {
+			leave(h, p[0]);
+			done(h);
+		});
+	}
+
 	// ---- T-L2-8 -------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:ranks_names", structure = YARD, skyAccess = true, maxTicks = 300)

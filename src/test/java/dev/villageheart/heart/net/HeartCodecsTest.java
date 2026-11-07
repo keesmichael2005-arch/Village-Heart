@@ -13,6 +13,7 @@ import dev.villageheart.core.heart.GoalLine;
 import dev.villageheart.core.heart.HeartLimits;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.heart.JobChoice;
+import dev.villageheart.core.heart.MemberRow;
 import dev.villageheart.core.heart.NeedsFlags;
 import dev.villageheart.core.heart.Overview;
 import dev.villageheart.core.heart.RowStatus;
@@ -67,7 +68,7 @@ class HeartCodecsTest {
 		Stock s = new Stock(List.of(new StockLine("minecraft:bread", 1L << 40, 5), new StockLine("minecraft:oak_log", 64, 0)), 4,
 				(1L << 40) + 64, 5L << 40, 2, 1, 4, 30, 108, StorageAlert.FULL);
 		return new HeartSnapshot(Rank.STEWARD, o, v, 3, List.of(new JobChoice("farmer", 0, false), new JobChoice("mason", 1, true)),
-				b, 2, s);
+				b, 2, s, List.of(new MemberRow(id(1), "Olga", Rank.OWNER, true), new MemberRow(id(2), "Bea", Rank.STEWARD, false)), 3);
 	}
 
 	@Test void roundTripFullSnapshot() {
@@ -77,10 +78,10 @@ class HeartCodecsTest {
 
 	@Test void roundTripEmptyAndEveryEnum() {
 		Overview o = new Overview("", Tier.TOWN, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, -1, 0, -1, List.of(), 0);
-		HeartSnapshot s = new HeartSnapshot(Rank.VISITOR, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY);
+		HeartSnapshot s = new HeartSnapshot(Rank.VISITOR, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0);
 		assertEquals(s, roundTrip(HeartCodecs.SNAPSHOT, s));
 		for (Rank r : Rank.values()) {
-			HeartSnapshot x = new HeartSnapshot(r, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY);
+			HeartSnapshot x = new HeartSnapshot(r, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0);
 			assertEquals(x, roundTrip(HeartCodecs.SNAPSHOT, x));
 		}
 		for (ActivityKind a : ActivityKind.values()) {
@@ -157,7 +158,9 @@ class HeartCodecsTest {
 		for (int i = 0; i < HeartLimits.MAX_STOCK_KINDS; i++) items.add(new StockLine(s(HeartLimits.MAX_ID), Long.MIN_VALUE, Integer.MIN_VALUE));
 		Stock st = new Stock(items, Integer.MIN_VALUE, Long.MIN_VALUE, Long.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
 				Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, StorageAlert.FULL);
-		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st);
+		List<MemberRow> members = new ArrayList<>();
+		for (int i = 0; i < HeartLimits.MAX_MEMBERS; i++) members.add(new MemberRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), Rank.RESIDENT, true));
+		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE);
 	}
 
 	@Test void worstCaseSize() {
@@ -194,7 +197,7 @@ class HeartCodecsTest {
 		List<VillagerRow> many = new ArrayList<>();
 		for (int i = 0; i <= HeartLimits.MAX_VILLAGERS; i++) many.add(row);
 		Overview o = new Overview("", Tier.TOWN, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, -1, 0, -1, List.of(), 0);
-		HeartSnapshot tooMany = new HeartSnapshot(Rank.OWNER, o, many, 0, List.of(), List.of(), 0, Stock.EMPTY);
+		HeartSnapshot tooMany = new HeartSnapshot(Rank.OWNER, o, many, 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0);
 		assertThrows(RuntimeException.class, () -> encodedSize(tooMany));
 
 		ByteBuf hostile = Unpooled.buffer();
@@ -202,6 +205,17 @@ class HeartCodecsTest {
 		HeartCodecs.OVERVIEW.encode(hostile, o);
 		net.minecraft.network.codec.ByteBufCodecs.VAR_INT.encode(hostile, 1_000_000); // villager count
 		assertThrows(DecoderException.class, () -> HeartCodecs.SNAPSHOT.decode(hostile));
+	}
+
+	@Test void memberListIsBounded() {
+		List<MemberRow> many = new ArrayList<>();
+		for (int i = 0; i <= HeartLimits.MAX_MEMBERS; i++) many.add(new MemberRow(id(i), "n", Rank.VISITOR, false));
+		Overview o = new Overview("", Tier.TOWN, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, -1, 0, -1, List.of(), 0);
+		HeartSnapshot tooMany = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, many, 0);
+		assertThrows(RuntimeException.class, () -> encodedSize(tooMany));
+		List<MemberRow> exactly = many.subList(0, HeartLimits.MAX_MEMBERS);
+		HeartSnapshot ok = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, exactly, 1);
+		assertEquals(ok, roundTrip(HeartCodecs.SNAPSHOT, ok));
 	}
 
 	@Test void badEnumOrdinalIsRejected() {

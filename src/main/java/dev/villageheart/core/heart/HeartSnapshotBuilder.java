@@ -46,7 +46,15 @@ public final class HeartSnapshotBuilder {
 			}
 			choices = c;
 		}
-		return new HeartSnapshot(viewer, overview(f), villagers, moreVillagers, choices, buildings, moreBuildings, stock);
+		List<MemberRow> members = List.of();
+		int moreMembers = 0;
+		if (Permissions.allows(viewer, Permission.MANAGE_RANKS)) {
+			List<MemberRow> all = memberRows(f.members());
+			members = all.subList(0, Math.min(all.size(), HeartLimits.MAX_MEMBERS));
+			moreMembers = all.size() - members.size();
+		}
+		return new HeartSnapshot(viewer, overview(f), villagers, moreVillagers, choices, buildings, moreBuildings, stock, members,
+				moreMembers);
 	}
 
 	// ---- overview -----------------------------------------------------------------------------------------------------
@@ -153,6 +161,22 @@ public final class HeartSnapshotBuilder {
 			int shown = Math.min(b.reasons().size(), HeartLimits.MAX_REASONS);
 			rows.add(new BuildingRow(HeartLimits.cut(b.typeId(), HeartLimits.MAX_ID), b.x(), b.y(), b.z(), b.status(),
 					b.reasons().subList(0, shown), b.reasons().size() - shown, b.detail(), b.detailCount(), b.workersHere()));
+		}
+		return rows;
+	}
+
+	// ---- members ------------------------------------------------------------------------------------------------------
+
+	/** Owner, Stewards, Residents, Visitors; within a rank online first, then name (case-insensitive), then id. */
+	private static List<MemberRow> memberRows(List<VillageFacts.MemberFact> members) {
+		List<VillageFacts.MemberFact> sorted = new ArrayList<>(members);
+		sorted.sort(Comparator.comparingInt((VillageFacts.MemberFact m) -> m.rank().ordinal())
+				.thenComparing((VillageFacts.MemberFact m) -> !m.online())
+				.thenComparing(VillageFacts.MemberFact::name, String.CASE_INSENSITIVE_ORDER)
+				.thenComparing(VillageFacts.MemberFact::id));
+		List<MemberRow> rows = new ArrayList<>(sorted.size());
+		for (VillageFacts.MemberFact m : sorted) {
+			rows.add(new MemberRow(m.id(), HeartLimits.cut(m.name(), HeartLimits.MAX_NAME), m.rank(), m.online()));
 		}
 		return rows;
 	}
