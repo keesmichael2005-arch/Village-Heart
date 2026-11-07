@@ -2,7 +2,9 @@
 # Stand-in for "./gradlew runSimulation" in scripts/test-simulate.sh. Picks its behaviour from $FAKE_CASE.
 set -u
 SIM_DIR=${SIM_DIR:-build/run/sim}
-python3 - "$SIM_DIR" "${FAKE_CASE:-pass}" <<'PY'
+# The long-lived processes carry the real server's marker argument (villageheart.sim.request=...) and the run's SIM_DIR in
+# their argv, so a machine-wide pkill -f on that marker, or a leftover check scoped to the temp dir, can see them.
+python3 - "$SIM_DIR" "${FAKE_CASE:-pass}" "villageheart.sim.request=$SIM_DIR/sim-request.json" <<'PY'
 import json, os, sys, time
 sim_dir, case = sys.argv[1:3]
 req = json.load(open(os.path.join(sim_dir, "sim-request.json")))
@@ -32,7 +34,12 @@ elif case == "crashreport":
 elif case == "noreport": pass
 elif case == "rc1": report(); sys.exit(1)
 elif case == "sleep":
-    report("RUNNING", 0, False); os.system("sleep 100 & wait"); time.sleep(100)
+    report("RUNNING", 0, False)
+    os.system("python3 -c 'import time; time.sleep(100)' '%s/grandchild' & wait" % sim_dir); time.sleep(100)
+elif case == "escape":
+    # like Gradle's daemon + server: a child in its own session and process group, reachable only through the run token
+    report("RUNNING", 0, False)
+    os.system("setsid python3 -c 'import time; time.sleep(100)' '%s/escapee' villageheart.sim.request=x & wait" % sim_dir); time.sleep(100)
 elif case == "slow_start": time.sleep(100)
 else: sys.exit(99)
 PY

@@ -31,6 +31,10 @@ python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(0 if r["cl
   && echo "ok   crash is recorded in the report itself" || { echo "FAIL report does not record the crash"; FAILED=1; }
 expect gradle_rc1      2 FAKE_CASE=rc1         -- bare 5
 expect timeout         2 FAKE_CASE=sleep SIM_TIMEOUT_SECONDS=5 -- bare 5
+# a child that left the process group (own session, like Gradle's daemon) is only reachable through the run token
+expect escapee_killed  2 FAKE_CASE=escape SIM_TIMEOUT_SECONDS=5 -- bare 5
+sleep 1
+if pgrep -f "$T/sim/escapee" > /dev/null; then echo "FAIL escapee outlived its run (kill_tokened)"; pkill -f "$T/sim/escapee"; FAILED=1; else echo "ok   session-escaping child killed by the run token"; fi
 if pgrep -f "$T/sim" > /dev/null; then echo "FAIL leftover fake-sim processes"; pgrep -af "$T/sim"; FAILED=1; else echo "ok   no leftover processes"; fi
 expect stall           2 FAKE_CASE=sleep SIM_STALL_SECONDS=2 -- bare 5
 expect slow_start      2 FAKE_CASE=slow_start SIM_START_SECONDS=2 -- bare 5
