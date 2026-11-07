@@ -194,3 +194,18 @@ Next: nothing on this item. Blockers: none.
   GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
 - `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
 - `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.
+
+## 2026-11-07: M8 plan written (docs/plans/M8.md)
+9-step plan for the Heart screen v1. APIs checked against the 1.21.11 sources and Fabric 0.141.6 sources jars (no Gradle run).
+- Opening: Fabric `ExtendedScreenHandlerType<HeartMenu, HeartOpenData>` (a menu with no slots; the first snapshot travels with the open packet,
+  vanilla owns close/distance/one-menu-per-player), opened from `VillageHeartBlock.useWithoutItem`; `HeartScreen extends Screen implements MenuAccess`
+  modelled on vanilla `StatsScreen` (TabNavigationBar), `isPauseScreen` false (else the integrated server pauses and nothing refreshes).
+- Networking: per-viewer full snapshots (pure `core.heart` records, `equals` = dedupe) at most 1 Hz from `HeartMenu.broadcastChanges`, only when
+  changed; C2S `AssignJob/FireWorker/RecheckBuilding` payloads with `containerId`; `ActionGate` order rate limit, open menu, epoch, village, rank
+  (re-read every time); Visitors are never sent detail data. Worst case ≈ 270 KB (3-byte chars), tested < 512 KiB.
+- Layout sized for the L4 default: 854x480 at auto GUI scale 2 = 427x240 GUI px. L4 asserts `clippedThisFrame == 0` and an empty `layoutProblems()`.
+- M7 assumptions A1-A12 (plan 3.1): `Workers.hire/fire/fireById`, `WorkerAttachments.get` → `WorkerData(level, xp, Needs)`, `Workers.status`,
+  job sites + `JobSlots.freeSlots`, activity from `getActiveNonCoreActivity` + `WorkerBrain.GO_HOME`; M8 adds a public `Workers.findLoaded`.
+- Folds in BACKLOG M6 "FULL with one unknown Storage: say so" (alert text suffix).
+Revised after a fresh critique (21 findings: payload bound in bytes, cross-dimension targets, 1.21.9+ input API, disabled-tab bypass, log flood, L4 ordering).
+Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API moving before merge (only `HeartFacts`/`HeartActions` import it).
