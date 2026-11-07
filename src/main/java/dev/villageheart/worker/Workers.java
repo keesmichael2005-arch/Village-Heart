@@ -93,7 +93,20 @@ public final class Workers {
 		}
 	}
 
+	private static final java.util.Map<UUID, WorkerStatus> TRIP_STATUS = new java.util.HashMap<>();
+
+	/** Transient result of the worker's last deposit trip (null clears it). Not saved. */
+	static void setTripStatus(UUID villager, WorkerStatus status) {
+		if (status == null) TRIP_STATUS.remove(villager); else TRIP_STATUS.put(villager, status);
+	}
+
 	public static WorkerStatus status(MinecraftServer server, WorkerRecord record) {
+		WorkerStatus trip = TRIP_STATUS.get(record.villager());
+		WorkerStatus slot = slotStatus(server, record);
+		return slot != WorkerStatus.OK || trip == null ? slot : trip;
+	}
+
+	private static WorkerStatus slotStatus(MinecraftServer server, WorkerRecord record) {
 		Optional<JobType> job = JobType.byId(record.jobId());
 		Optional<VillageState> village = VillageClaims.current(server);
 		if (job.isEmpty() || village.isEmpty()) return WorkerStatus.WORKPLACE_INVALID;

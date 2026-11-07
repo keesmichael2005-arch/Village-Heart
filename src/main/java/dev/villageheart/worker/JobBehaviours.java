@@ -15,12 +15,13 @@ final class JobBehaviours {
 	/** The behaviours of the WORK activity. */
 	static ImmutableList<Pair<Integer, ? extends BehaviorControl<? super Villager>>> work(Villager villager) {
 		return ImmutableList.of(
-				Pair.of(1, new GoToJobBlock()),
+				Pair.of(1, new DepositTrip()),
+				Pair.of(2, new GoToJobBlock()),
 				Pair.of(4, new StandAtJobBlock()));
 	}
 
 	/** The behaviours of the go_home activity that come before walking to the bed (M9+: deposit trips). */
 	static ImmutableList<Pair<Integer, ? extends BehaviorControl<? super Villager>>> goHome(Villager villager) {
-		return ImmutableList.of();
+		return ImmutableList.of(Pair.of(1, new DepositTrip()));
 	}
 }

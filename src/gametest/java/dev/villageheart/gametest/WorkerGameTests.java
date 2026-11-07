@@ -1038,4 +1038,98 @@ public class WorkerGameTests {
 			end(h);
 		});
 	}
+
+	// ---- deposit trips (step 9, needs M6) --------------------------------------------------------
+
+	/** Farmhouse at A (1 composter), Storage at B (2 chests, optionally full of dirt), both valid; a worker hired inside A at {@code dayTime}. */
+	private static GameTestSequence depositSetup(GameTestHelper h, boolean storageFull, long dayTime, Villager[] worker) {
+		BlockPos farmMarker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
+		BlockPos storeMarker = BuildingTestSupport.markerPos(ORIGIN_B, 5);
+		BlockPos chest1 = BuildingTestSupport.inside(ORIGIN_B, 0, 0, 3), chest2 = BuildingTestSupport.inside(ORIGIN_B, 4, 0, 3);
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, ORIGIN_A, 1);
+			BuildingTestSupport.room(h, ORIGIN_B, 5, 4);
+			h.setBlock(chest1, Blocks.CHEST);
+			h.setBlock(chest2, Blocks.CHEST);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker, Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, farmMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, storeMarker, MarkerStatus.VALID);
+			h.assertTrue(isHeld(h, BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0)), "composter reserved");
+		});
+		return seq.thenExecute(() -> {
+			if (storageFull) {
+				StockpileTestSupport.fillAll(h, chest1, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIRT, 64));
+				StockpileTestSupport.fillAll(h, chest2, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIRT, 64));
+			}
+			h.getLevel().setDayTime(dayTime);
+			worker[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
+			h.assertTrue(hire(h, worker[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+		});
+	}
+
+	private static long stored(GameTestHelper h, String id) {
+		return dev.villageheart.stock.Stockpiles.totalsById(h.getLevel().getServer()).getOrDefault(id, 0L);
+	}
+
+	/** T-L2-13: at the end of the day a worker carrying a little hands it in at Storage. */
+	@GameTest(environment = "villageheart-gametest:workers_deposit_end", structure = YARD, skyAccess = true, maxTicks = 1600)
+	public void depositTripAtEndOfDay(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = depositSetup(h, false, 10900, v).thenExecute(() -> {
+			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT, 20));
+			h.assertValueEqual(0L, stored(h, "minecraft:wheat"), "Storage starts without wheat");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the 20 wheat reach Storage", () -> {
+			h.assertValueEqual(20L, stored(h, "minecraft:wheat"), "wheat in Storage");
+			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.WHEAT), "wheat still carried");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-13b (1): a full load is delivered in the middle of the day. */
+	@GameTest(environment = "villageheart-gametest:workers_deposit_full", structure = YARD, skyAccess = true, maxTicks = 1600)
+	public void depositTripWhenFull(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = depositSetup(h, false, 3000, v).thenExecute(() -> {
+			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
+			h.assertTrue(h.getLevel().getDayTime() < 11000, "mid-day");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the 64 cobblestone reach Storage", () -> {
+			h.assertValueEqual(64L, stored(h, "minecraft:cobblestone"), "cobblestone in Storage");
+			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "cobblestone still carried");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** T-L2-13b (2): with every Storage container full the worker keeps its load, reports STORAGE_FULL and the village alert shows it. */
+	@GameTest(environment = "villageheart-gametest:workers_storage_full", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void depositTripStorageFull(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = depositSetup(h, true, 3000, v).thenExecute(() -> {
+			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "STORAGE_FULL is reported", () -> {
+			var rec = record(h, v[0]).orElseThrow();
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.STORAGE_FULL, Workers.status(h.getLevel().getServer(), rec), "status");
+			h.assertValueEqual(dev.villageheart.core.stock.StorageAlert.FULL, dev.villageheart.stock.Stockpiles.alert(h.getLevel().getServer()), "village alert");
+		});
+		seq = seq.thenIdle(100).thenExecute(() -> {
+			h.assertValueEqual(64, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "the worker keeps what it carries");
+			h.assertValueEqual(0L, stored(h, "minecraft:cobblestone"), "nothing was stored");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }
