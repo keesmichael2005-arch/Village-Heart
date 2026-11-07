@@ -1,0 +1,15 @@
+[20:58:40] [Render thread/INFO] (Minecraft) Setting user: Player0
+[20:58:49] [Test thread/INFO] (villageheart) MP_SESSION begin
+[20:58:50] [Yggdrasil Key Fetcher/ERROR] (Minecraft) Failed to request yggdrasil public key
+
+com.mojang.authlib.exceptions.MinecraftClientException: Failed to read from https://api.minecraftservices.com/publickeys due to api.minecraftservices.com
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readInputStream(MinecraftClient.java:111)
+Caused by: java.net.UnknownHostException: api.minecraftservices.com
+[20:58:51] [Server thread/INFO] (Minecraft) Starting Minecraft server on *:33479
+[20:58:51] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[20:58:51] [Download-1/ERROR] (Minecraft) Failed to retrieve profile key pair
+[20:58:53] [Render thread/WARN] (Minecraft) Ignoring chat session from Player0 due to missing Services public key
+[20:58:55] [Render thread/ERROR] (Minecraft) 65547: X11: Standard cursor shape unavailable
+[20:58:56] [Server thread/INFO] (Minecraft) Olga joined the game
+[20:59:08] [Test thread/INFO] (villageheart) MP_SESSION end
+[20:59:08] [Server thread/INFO] (Minecraft) Player0 lost connection: Disconnected
