@@ -1,7 +1,9 @@
 package dev.villageheart.core;
 
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
@@ -10,11 +12,42 @@ public final class WorldClaim {
 	public enum BreakDecision { ALLOWED_UNCLAIMED, ALLOWED_OWNER, DENIED_NOT_OWNER }
 
 	private VillageState village;
+	/** Job blocks whose POI ticket the mod holds (M7). Belongs to the village: cleared with it. */
+	private final Set<HeartLocation> reservedJobBlocks = new LinkedHashSet<>();
+
+	/** Held job blocks whose ticket could not be released (chunk unloaded when the village was released): finished when they load. */
+	private final Set<HeartLocation> pendingTicketReleases = new LinkedHashSet<>();
 
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
 		this.village = village.orElse(null);
+	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks) {
+		this(village);
+		this.reservedJobBlocks.addAll(reservedJobBlocks);
+	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases) {
+		this(village, reservedJobBlocks);
+		this.pendingTicketReleases.addAll(pendingTicketReleases);
+	}
+
+	/** A copy of the pending releases. Unlike the reservations they survive {@link #releaseAt} and {@link #clear}. */
+	public Set<HeartLocation> pendingTicketReleases() { return new LinkedHashSet<>(pendingTicketReleases); }
+
+	public void setPendingTicketReleases(Set<HeartLocation> blocks) {
+		pendingTicketReleases.clear();
+		pendingTicketReleases.addAll(blocks);
+	}
+
+	/** A copy; use {@link #setReservedJobBlocks} to change. */
+	public Set<HeartLocation> reservedJobBlocks() { return new LinkedHashSet<>(reservedJobBlocks); }
+
+	public void setReservedJobBlocks(Set<HeartLocation> blocks) {
+		reservedJobBlocks.clear();
+		reservedJobBlocks.addAll(blocks);
 	}
 
 	public Optional<VillageState> village() {
@@ -35,6 +68,7 @@ public final class WorldClaim {
 		if (village == null || !village.isHeartAt(at)) return Optional.empty();
 		VillageState released = village;
 		village = null;
+		reservedJobBlocks.clear();
 		return Optional.of(released);
 	}
 
@@ -50,13 +84,15 @@ public final class WorldClaim {
 
 	public void clear() {
 		village = null;
+		reservedJobBlocks.clear();
 	}
 
 	@Override public boolean equals(Object o) {
-		return o instanceof WorldClaim w && Objects.equals(village, w.village);
+		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
+				&& pendingTicketReleases.equals(w.pendingTicketReleases);
 	}
 
 	@Override public int hashCode() {
-		return Objects.hashCode(village);
+		return Objects.hash(village, reservedJobBlocks);
 	}
 }

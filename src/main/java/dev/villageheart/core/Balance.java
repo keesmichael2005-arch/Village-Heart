@@ -36,6 +36,18 @@ public final class Balance {
 	public static final int TRAINING_YARD_RADIUS = 6;
 	public static final int TRAINING_YARD_MIN_DUMMIES = 2;
 
+	/** Length of a Minecraft day in ticks. */
+	public static final int DAY_TICKS = 24000;
+	/** Worker day (DESIGN section 4, tunable): work from WORK_START to WORK_END, go home until SLEEP_START, then sleep. */
+	public static final int WORK_START = 1000;
+	public static final int WORK_END = 11000;
+	public static final int SLEEP_START = 12000;
+	/** A worker carrying this many full stacks' worth walks to Storage. */
+	public static final int WORKER_CARRY_STACKS = 1;
+	/** The job-block reservation pass runs this often. */
+	public static final int RESERVATION_INTERVAL_TICKS = 20;
+	/** A worker counts as "at" its job block within this many blocks (3D). */
+	public static final double JOB_BLOCK_REACH = 1.5;
 	/** The system refreshes the storage alert every this many ticks (DESIGN section 6). */
 	public static final int STOCKPILE_REFRESH_TICKS = 20;
 	/** A short spilling deposit keeps the "Storage full" alert up for this many ticks. */

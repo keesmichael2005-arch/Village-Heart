@@ -23,7 +23,7 @@ class VillageCodecsTest {
 	static VillageState full() {
 		HeartLocation loc = new HeartLocation("minecraft:the_nether", -12, -5, -300);
 		return new VillageState(loc, OWNER, "alice", 5_000_000_000L, Map.of(STEW, Rank.STEWARD, RES, Rank.RESIDENT),
-				1234, Tier.TOWN, List.of(new BuildingRecord("farm", loc)), List.of(new WorkerRecord(RES, "farmer")));
+				1234, Tier.TOWN, List.of(new BuildingRecord("farm", loc)), List.of(new WorkerRecord(RES, "farmer", loc, new HeartLocation("minecraft:the_nether", -10, -5, -300))));
 	}
 
 	static <T> JsonElement enc(Codec<T> c, T v) { return c.encodeStart(JsonOps.INSTANCE, v).getOrThrow(); }
@@ -119,5 +119,75 @@ class VillageCodecsTest {
 		JsonObject b = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject().getAsJsonArray("buildings").get(0).getAsJsonObject();
 		assertEquals(Set.of("type", "marker", "status", "link"), b.keySet());
 		assertEquals("valid", b.get("status").getAsString());
+	}
+
+	static final UUID W1 = UUID.fromString("44444444-4444-4444-4444-444444444444");
+	static final UUID W2 = UUID.fromString("55555555-5555-5555-5555-555555555555");
+	static final UUID W3 = UUID.fromString("66666666-6666-6666-6666-666666666666");
+	static final HeartLocation J1 = new HeartLocation("minecraft:overworld", 11, 65, 11);
+	static final HeartLocation J2 = new HeartLocation("minecraft:overworld", 12, 65, 11);
+	static final HeartLocation J3 = new HeartLocation("minecraft:overworld", 21, 65, 11);
+
+	@Test void workersRoundTripKeepOrder() {
+		VillageState v = VillageState.founded(M1, OWNER, "a", 1)
+				.withWorker(new WorkerRecord(W3, "farmer", M1, J2))
+				.withWorker(new WorkerRecord(W1, "lumberjack", M2, J3))
+				.withWorker(new WorkerRecord(W2, "farmer", M1, J1));
+		VillageState back = dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v));
+		assertEquals(v, back);
+		assertEquals(List.of(W3, W1, W2), back.workers().stream().map(WorkerRecord::villager).toList());
+	}
+
+	@Test void pinnedWorkerKeys() {
+		VillageState v = VillageState.founded(M1, OWNER, "a", 1).withWorker(new WorkerRecord(W1, "farmer", M1, J1));
+		JsonObject w = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject().getAsJsonArray("workers").get(0).getAsJsonObject();
+		assertEquals(Set.of("villager", "job", "building", "job_block"), w.keySet());
+	}
+
+	static final String LOCJ = "{\"dim\":\"minecraft:overworld\",\"x\":1,\"y\":2,\"z\":3}";
+
+	@Test void workerWithoutBuildingOrJobBlockIsADecodeError() {
+		for (String entry : List.of("{\"villager\":\"" + W1 + "\",\"job\":\"farmer\"}",
+				"{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + "}",
+				"{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"job_block\":" + LOCJ + "}")) {
+			assertTrue(VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json("{" + BASE + ",\"workers\":[" + entry + "]}")).result().isEmpty(), entry);
+		}
+	}
+
+	@Test void twoWorkersOnOneJobBlockOrOneVillagerTwiceIsAnError() {
+		String a = "{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + ",\"job_block\":" + LOCJ + "}";
+		String b = "{\"villager\":\"" + W2 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + ",\"job_block\":" + LOCJ + "}";
+		assertTrue(VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json("{" + BASE + ",\"workers\":[" + a + "," + b + "]}")).result().isEmpty());
+		String c = "{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + ",\"job_block\":"
+				+ "{\"dim\":\"minecraft:overworld\",\"x\":9,\"y\":2,\"z\":3}}";
+		assertTrue(VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json("{" + BASE + ",\"workers\":[" + a + "," + c + "]}")).result().isEmpty());
+	}
+
+	@Test void reservedJobBlocksRoundTripAndDefaultEmpty() {
+		WorldClaim w = new WorldClaim(java.util.Optional.of(full()), Set.of(J2, J1, J3));
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, enc(VillageCodecs.WORLD_CLAIM, w));
+		assertEquals(w, back);
+		assertEquals(Set.of(J1, J2, J3), back.reservedJobBlocks());
+		JsonObject o = enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject();
+		assertEquals(Set.of("schema", "village", "reserved_job_blocks"), o.keySet());
+		WorldClaim legacy = dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}"));
+		assertTrue(legacy.reservedJobBlocks().isEmpty());
+	}
+
+	@Test void releasingTheClaimForgetsReservations() {
+		WorldClaim w = new WorldClaim(java.util.Optional.of(VillageState.founded(M1, OWNER, "a", 1)), Set.of(J1));
+		w.releaseAt(M1);
+		assertTrue(w.reservedJobBlocks().isEmpty());
+	}
+
+	@Test void pendingTicketReleasesSurviveReleaseAndRoundTrip() {
+		WorldClaim w = new WorldClaim(java.util.Optional.of(VillageState.founded(M1, OWNER, "a", 1)), Set.of(J1), Set.of(J2));
+		w.releaseAt(M1);
+		assertTrue(w.reservedJobBlocks().isEmpty());
+		assertEquals(Set.of(J2), w.pendingTicketReleases());
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, enc(VillageCodecs.WORLD_CLAIM, w));
+		assertEquals(w, back);
+		assertEquals(Set.of("schema", "pending_ticket_releases"), enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject().keySet());
+		assertTrue(dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).pendingTicketReleases().isEmpty());
 	}
 }

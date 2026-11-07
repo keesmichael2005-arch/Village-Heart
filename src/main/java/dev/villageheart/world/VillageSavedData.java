@@ -72,6 +72,22 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Job blocks whose POI ticket the mod holds (a copy). */
+	public java.util.Set<HeartLocation> reservedJobBlocks() { return claim.reservedJobBlocks(); }
+
+	public void setReservedJobBlocks(java.util.Set<HeartLocation> blocks) {
+		claim.setReservedJobBlocks(blocks);
+		setDirty();
+	}
+
+	/** Held job blocks whose ticket still has to be released once their chunk loads. */
+	public java.util.Set<HeartLocation> pendingTicketReleases() { return claim.pendingTicketReleases(); }
+
+	public void setPendingTicketReleases(java.util.Set<HeartLocation> blocks) {
+		claim.setPendingTicketReleases(blocks);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {

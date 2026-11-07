@@ -9,6 +9,7 @@ expect() { # name, want, log
   if [ "$got" -eq "$2" ]; then echo "ok   $1 (exit $got)"; else echo "FAIL $1: expected $2, got $got"; FAILED=1; fi
 }
 expect bad_log   1 scripts/testdata/model-log-bad.log
+expect bad_entity_texture 1 scripts/testdata/model-log-bad-entity.log
 expect clean_log 0 scripts/testdata/model-log-clean.log
 expect missing   2 scripts/testdata/does-not-exist.log
 : > "${TMPDIR:-/tmp}/empty-model-log.$$"

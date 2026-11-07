@@ -61,7 +61,7 @@ class VillageStateTest {
 		VillageState v = new VillageState(LOC, owner, "a", 0, ranks, 0, Tier.HAMLET, buildings, workers);
 		ranks.put(UUID.randomUUID(), Rank.STEWARD);
 		buildings.add(new BuildingRecord("farm", LOC));
-		workers.add(new WorkerRecord(UUID.randomUUID(), "farmer"));
+		workers.add(new WorkerRecord(UUID.randomUUID(), "farmer", LOC, LOC));
 		assertTrue(v.ranks().isEmpty());
 		assertTrue(v.buildings().isEmpty());
 		assertTrue(v.workers().isEmpty());

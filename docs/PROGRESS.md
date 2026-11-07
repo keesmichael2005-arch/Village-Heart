@@ -151,6 +151,23 @@ Interface check vs merged M3/M4 and every deviation: plan section 9. Notable: th
 tests sweep stray markers of neighbouring test structures before claiming (they otherwise adopt them and the measured bounds fail).
 Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().positions("#chest")` + barrels), M7 (job slots from `verdict().slots()`), M14 calls `Buildings.requestAll` after a tier-up. Blockers: none.
 
+## 2026-11-07: M7 plan written (docs/plans/M7.md), villager-control spike decided
+11-step plan for hiring and the worker framework, written ahead of M4-M6. It talks to them only through a narrow `JobSiteSource`
+(`sites(job)`, `isRegistered(building)`, `reservable()`), plus M6's `Stockpiles.depositTarget/deposit`, which is needed for step 9 only.
+**Spike decision: (a), a brain mixin** (recorded in DESIGN §12). A throwaway GameTest spike (8 tests, deleted) gave this evidence:
+- With a mixin at the head of `Villager.registerBrainGoals`, a mod-built brain walked through a closed door to its job block in 60 ticks,
+  slept in a bed at night, worked after dawn, and survived an NBT reload. A mod profession with no trades gives 0 offers.
+- (b), the runner with the brain suspended, got stuck at the closed door (no `InteractWithDoor`).
+- With the vanilla brain kept, `ResetProfession` cleared the mod profession within 200 ticks.
+- The mod holding a composter's POI ticket blocked vanilla for 1200 ticks; a free composter was taken by tick 200.
+Findings for later milestones:
+- 1.21.11's villager schedule is a timeline-driven `EnvironmentAttribute`.
+- POI add/remove is deferred through `server.execute`, so reservations retry and evict.
+- Calling `runAfterDelay` inside a `runAfterDelay` callback crashes the GameTest server.
+Revised after a fresh critique (26 findings): a stable slot cut, reserving every mod-job workstation, no chunk loading, real zombie
+conversion in tests, stronger L2 assertions and isolation, breeding kept.
+Next: BUILD M7 steps 1-4 (no dependencies); steps 5-8 after M5, step 9 after M6. Top risk: brain ownership (one mixin into a private
+vanilla method; vanilla behaviours reused by hand).
 
 ## 2026-11-07: M6 plan written (docs/plans/M6.md)
 7-step plan for the stockpile over Storage chests, APIs checked against the 1.21.11 sources (no gradle run).
@@ -194,3 +211,16 @@ Next: nothing on this item. Blockers: none.
   GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
 - `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
 - `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.
+
+## M7 (builder, branch m7): hiring and the worker framework
+Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBrainMixin` at the head of `Villager.registerBrainGoals` installs `WorkerBrain` for hired adults.
+- core: `JobType`, `DaySchedule`, `JobSlots`/`HireDecision`, `WorkerData`/`Needs`, `WorkerRecord(villager, job, building, jobBlock)`, `ClaimGeometry`, `WorkerStatus`; codecs (`WorkerCodecs`, `reserved_job_blocks` in `WorldClaim`). 
+- glue: nine `villageheart:<job>` professions (no POI predicate, no trades) with generated 64x64 overlays, `WorkerAttachments`, `WorkerBrain` (worker packages built from vanilla behaviours, `go_home` activity, `UpdateWorkerActivity`, `GoToJobBlock`, `DepositTrip`), `JobSiteSource`/`BuildingJobSites` (M5), `JobSiteReservations` (the mod holds the POI ticket of every job block in a valid building; evicts vanilla claimants; never loads chunks; never releases while contents are unknown), `Workers.hire/fire`, `/villageheart hire|fire|workers`, `WorkerSystem` (lifecycle, orphans, death/conversion, Heart release).
+- tests: 268 L1 tests in all + 26 worker GameTests (101 GameTests in all), L4 `workers_at_job_blocks`. Mutations checked: skipping the conversion reset (T-L2-8 red). Flakes found and removed: WAKE strolls reaching the block (iron-door pen), unemployed villagers wandering out of rooms (control instead of "inside"), breeding (seeded, three windows).
+- Known L4 NetworkSynchronizer flake: the fix on dev rescued 1 lost wakeup in the final full run.
+- Next: M8 (Heart screen: hire/fire from the UI, worker status display), M9+ real jobs through `JobBehaviours`. Blockers: none.
+
+### M7 review r1 fixes (builder)
+- depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
+- Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
+- Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.

@@ -5,6 +5,7 @@ import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.building.ShapedSpec;
 import dev.villageheart.core.sim.Json;
+import dev.villageheart.core.worker.JobType;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -31,6 +32,7 @@ public final class AssetGenerator {
 	public static final String NS = "villageheart";
 	private static final String A = "assets/" + NS + "/";
 	private static final String D = "data/" + NS + "/";
+	public static final String PROFESSION_DIR = A + "textures/entity/villager/profession/";
 	private static final String[] FACINGS = {"north", "east", "south", "west"};
 	private static final int[] Y_ROT = {0, 90, 180, 270};
 
@@ -190,6 +192,9 @@ public final class AssetGenerator {
 								"south", face("#awning", list(0L, 0L, 16L, 4L)), "west", face("#awning", list(0L, 0L, 16L, 4L)),
 								"up", face("#awning", null)))))));
 
+		// ---- villager profession overlays (M7) ----
+		for (JobType j : JobType.values()) out.put(PROFESSION_DIR + j.id() + ".png", png(ProfessionArt.render(j)));
+
 		// ---- loot tables ----
 		for (String id : blockIds()) {
 			out.put(D + "loot_table/blocks/" + id + ".json", json(map(
@@ -235,7 +240,7 @@ public final class AssetGenerator {
 				String rel = root.relativize(p).toString().replace('\\', '/');
 				String name = p.getFileName().toString();
 				String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
-				boolean owned = rel.startsWith(A + "textures/block/marker/") || rel.startsWith(A + "models/block/marker/")
+				boolean owned = rel.startsWith(PROFESSION_DIR) || rel.startsWith(A + "textures/block/marker/") || rel.startsWith(A + "models/block/marker/")
 						|| rel.equals("data/minecraft/tags/block/mineable/axe.json")
 						|| rel.equals(A + "models/block/marker_plaque.json");
 				boolean named = base.endsWith("_marker") || base.equals("blank_marker") || jobs.contains(base);
@@ -298,5 +303,18 @@ public final class AssetGenerator {
 		for (int k = 0; k < types.length; k++) blit(g, MarkerArt.render(types[k], "unchecked"), gap + k * (16 * 3 + 4), y, 3);
 		g.dispose();
 		ImageIO.write(sheet, "png", dir.resolve("markers.png").toFile());
+
+		// professions: each overlay at x6 on a villager-brown background (64x64 -> 384x384), 3 per row
+		JobType[] jobs = JobType.values();
+		int ps = 6, pt = 64 * ps;
+		BufferedImage prof = new BufferedImage(3 * (pt + gap) + gap, 3 * (pt + gap) + gap, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D pg = prof.createGraphics();
+		pg.setColor(new Color(0x7A5A3C));
+		pg.fillRect(0, 0, prof.getWidth(), prof.getHeight());
+		for (int k = 0; k < jobs.length; k++) {
+			pg.drawImage(ProfessionArt.render(jobs[k]), gap + (k % 3) * (pt + gap), gap + (k / 3) * (pt + gap), pt, pt, null);
+		}
+		pg.dispose();
+		ImageIO.write(prof, "png", dir.resolve("professions.png").toFile());
 	}
 }
