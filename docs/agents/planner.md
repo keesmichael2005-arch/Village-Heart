@@ -14,6 +14,8 @@ Write `docs/plans/{M}.md` containing:
    plus extra edge cases. Say for each test how it would FAIL if the feature were broken.
 6. **Risks & unknowns**, and **out of scope** for this milestone.
 
+Also scan docs/BACKLOG.md and fold in items that touch this milestone.
+
 Then start a fresh critique subagent. Give it only the plan file and the roadmap entry, and ask it
 to find gaps, wrong API assumptions, untestable criteria and missing edge cases. Revise the plan,
 and add a short "Critique addressed" section at the end. Commit and push to `dev`.
