@@ -3,7 +3,7 @@ budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
 run_cost_usd: "~38 at 10:45Z (orchestrator session usage incl. workers)"
-current: "M5 PASS r1 merged | M6 BUILD (m6) | L4-flake VERIFY (l4-flake) | M7 BUILD queued (m7)"
+current: "M6 PASS r2 merged | M7 BUILD (m7), step 9 now unblocked"
 blocked: []
 wakes:                  # send_later wake-ups scheduled while usage was available
   - 2026-11-07T10:45Z   # reset 10:40Z + 5 min   (trig_014Ka2PfmCo3kBeuYqyYWdVb)
