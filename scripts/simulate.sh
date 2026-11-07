@@ -74,6 +74,8 @@ fi
 export JAVA_HOME="${JAVA_HOME_25:-$HOME/.jdk25}"
 
 mkdir -p "$SIM_DIR" "$REPORT_DIR"
+# a free TCP port per run: the default 25565 would make two concurrent servers collide ("Failed to initialize server")
+SERVER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 exec 9> "$SIM_DIR/.lock"
 flock -n 9 || { echo "another simulation is running (lock $SIM_DIR/.lock)" >&2; exit 2; }
 
@@ -89,6 +91,8 @@ rm -rf "${SIM_DIR:?}/world" "${SIM_DIR:?}/crash-reports"
 echo "eula=true" > "$SIM_DIR/eula.txt"
 cat > "$SIM_DIR/server.properties" <<PROPS
 online-mode=false
+server-port=$SERVER_PORT
+query.port=$SERVER_PORT
 level-seed=$SEED
 difficulty=normal
 pause-when-empty-seconds=0
@@ -128,7 +132,7 @@ kill_tokened() {
   for d in /proc/[0-9]*; do
     pid=${d#/proc/}
     [ "$pid" = "$$" ] && continue
-    if tr '\0' '\n' < "$d/environ" 2>/dev/null | grep -qx "SIM_RUN_TOKEN=$SIM_RUN_TOKEN"; then
+    if { tr '\0' '\n' < "$d/environ"; } 2>/dev/null | grep -qx "SIM_RUN_TOKEN=$SIM_RUN_TOKEN"; then
       kill -KILL "$pid" 2>/dev/null
     fi
   done
