@@ -43,6 +43,8 @@ Expect about 50 s per in-game day on 4 cores; a 5-day run is 5-6 minutes. The sc
 | 0 | `PASS`, `clean_shutdown`, N day records, no crash report, Gradle rc 0 |
 | 1 | `FAIL`: an assertion was false (red is red) and everything else was healthy |
 | 2 | `ERROR`: crash, hang, compile failure, timeout, stalled or missing report, bad assertion text, lock held. Gradle's own exit code is never trusted: a server crash still ends it with 0 |
+
+Concurrency: every run kills only what it started (its process group, plus any process carrying its private `SIM_RUN_TOKEN`), uses its own server port, and locks `$SIM_DIR/.lock`. Different worktrees (each with its own `build/run/sim`) can simulate at the same time; a second run in the same directory is refused (exit 2). On a crash, `simulate.sh` rewrites the report itself: `status: ERROR`, `clean_shutdown: false`, `crash_reports: [...]`.
 | 64 | usage error (unknown scenario, `days` not 0..365, `days 0` with `--assert`, bad `--reload-at`) |
 
 `days = 0` is a smoke run (boot, locate, claim, baseline, stop; ~35 s). `--reload-at D` stops the server cleanly after day D (tick order: record
