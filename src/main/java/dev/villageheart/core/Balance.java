@@ -35,4 +35,11 @@ public final class Balance {
 
 	public static final int TRAINING_YARD_RADIUS = 6;
 	public static final int TRAINING_YARD_MIN_DUMMIES = 2;
+
+	/** The system refreshes the storage alert every this many ticks (DESIGN section 6). */
+	public static final int STOCKPILE_REFRESH_TICKS = 20;
+	/** A short spilling deposit keeps the "Storage full" alert up for this many ticks. */
+	public static final int STORAGE_FULL_HOLD_TICKS = 200;
+	/** A Storage is "unknown" while a room building within this many blocks has no cached scan yet (after a restart). */
+	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
 }
