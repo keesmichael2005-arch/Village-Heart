@@ -150,3 +150,13 @@ Screenshot looked at: green Storage plaque (left) and red one (right, crosshair 
 Interface check vs merged M3/M4 and every deviation: plan section 9. Notable: the in-tick click-spam reuse was dropped (it contradicts the same-tick re-check test); `Verdict.slots` for Storage is its container count; `yard.snbt` needs a palette;
 tests sweep stray markers of neighbouring test structures before claiming (they otherwise adopt them and the measured bounds fail).
 Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().positions("#chest")` + barrels), M7 (job slots from `verdict().slots()`), M14 calls `Buildings.requestAll` after a tier-up. Blockers: none.
+## 2026-11-07: L4 "Network synchronizer in invalid state" flake fixed (builder, branch l4-flake)
+Root cause is a lost-wakeup race in Fabric's `NetworkSynchronizer.waitForPacketHandlers` (fabric-client-gametest-api-v1 4.3.5; newer Fabric removed the class, and no newer
+fabric-api exists for 1.21.11). It tests "packet in flight, nothing queued" outside the lock, then `await(10 s)` without testing again. On the server's first tick of a new
+world the client's login packet is handled in that gap, the signal is lost, the server sleeps 10 s (nothing else can wake it: the client waits for the server) and the
+synchronizer declares itself invalid. Evidence: every failure is on the server thread at `NetworkSynchronizer.java:138` (the await timeout), 10 s after `Time elapsed`
+and before the player logs in; a counter probe showed both counters at 0 during the whole stall. Fix: gametest-only client mixin `NetworkSynchronizerLostWakeupFix`
+(re-test before parking, 20 ms slices, Fabric's 10 s failure kept); no retry, no test changed. `verify.sh` fails if the fix is not installed and reports the rescue count.
+Measured with 4 busy loops of mine (load 9-12): unpatched dev 1/10 failed (plus 3/6 in earlier probe runs); patched 12/12 green (2 rescues logged).
+Mutation: with a 30 ms sleep before the `lock()` the unpatched code failed 2/2 with the same stack; with the fix it passed with 3 rescues.
+Next: nothing on this item. Blockers: none.

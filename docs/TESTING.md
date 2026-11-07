@@ -12,6 +12,20 @@ GitHub Actions runs the same script on every push.
 
 Proven at setup: a deliberately broken GameTest fails the run (exit 1), so a green run means something.
 
+## Layer 4 and Fabric's NetworkSynchronizer (lost-wakeup fix)
+Fabric's client-gametest framework (fabric-client-gametest-api-v1 4.3.5, the newest for 1.21.11) counts in-flight packets so that every
+tick ends with all packets handled. Its `NetworkSynchronizer.waitForPacketHandlers` checks "a packet is in flight and nothing is queued"
+without the lock, then parks on `await(10 s)` without checking again. If the last packet is handled in between, the signal is lost, the
+thread sleeps 10 s, the synchronizer marks itself invalid and the run dies with `AssertionError: Network synchronizer in invalid state`
+plus a server crash. It hit on the server thread's first tick of a new world (the client's login packet races it, and only that thread could
+make progress), more often under CPU load. Fix: the gametest-only, client-only mixin `dev.villageheart.gametest.mixin.NetworkSynchronizerLostWakeupFix`
+(`villageheart-gametest.mixins.json`) wraps that `await`: it re-checks the predicate before parking and parks in 20 ms slices, keeping
+Fabric's 10 s failure for a packet that really never arrives. It logs `LOST_WAKEUP_FIX installed` once and `LOST_WAKEUP_RESCUED` per rescue;
+`verify.sh` fails if the first is missing and reports the rescue count. Do **not** set `fabric.client.gametest.disableNetworkSynchronizer`:
+that would drop the "packets handled by the end of the tick" guarantee the client tests rely on. Remove the mixin when moving to a Fabric
+version without `NetworkSynchronizer` (the mixin then no longer compiles; if the class stays but the `await` call changes, the
+`required` injector stops the client at start-up, so it cannot silently stop working).
+
 ## GameTests that touch the village claim (M1+)
 The claim is global (one per world) and vanilla runs GameTests of the same test environment at the same time, so
 claim tests would interfere. **Rule:** every test that reads or writes the claim declares its own environment,

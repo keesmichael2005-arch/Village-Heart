@@ -9,5 +9,6 @@
 		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests", "dev.villageheart.gametest.RoomGameTests", "dev.villageheart.gametest.BuildingGameTests"],
 		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
 	},
+	"mixins": ["villageheart-gametest.mixins.json"],
 	"depends": { "villageheart": "*" }
 }
