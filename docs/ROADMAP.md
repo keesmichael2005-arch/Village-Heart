@@ -99,7 +99,7 @@ from there instead of hard-coding them.
 - [ ] §4 needs, §6 food rules: dinner at tick 11000, best-food-first, children at half, fed/housed/paid multipliers (paid is stubbed until M12)
 - **L1**: dinner allocation (best food first, cooked before raw, 10 nutrition each, children 5). Food-days-left calculation.
       Hungry for 1 day → ×0.5, 2 days → 0. No bed → ×0.75
-- **L2**: 4 villagers and 20 bread in Storage → after dinner, 8 bread are left and all are fed. With 0 food → all hungry, and still alive after 3 days
+- **L2**: 4 villagers and 20 bread in Storage → after dinner, 12 bread are left (8 eaten: 2 × 5 nutrition each) and all are fed. With 0 food → all hungry, and still alive after 3 days
 - **L3**: scenario `starter` (prebuilt House×2, Storage, Farmhouse + field, Lumber Camp, Kitchen; 1 farmer + 1 lumberjack), 10 days:
       0 starvation deaths, ≥90% fed villager-days from day 3, logs increase every day
 

@@ -18,5 +18,5 @@ Also scan docs/BACKLOG.md and fold in items that touch this milestone.
 
 Then start a fresh critique subagent. Give it only the plan file and the roadmap entry, and ask it
 to find gaps, wrong API assumptions, untestable criteria and missing edge cases. Revise the plan,
-and add a short "Critique addressed" section at the end. Commit and push to `dev`.
+and add a short "Critique addressed" section at the end. Commit and push to your own `mNN-plan` branch (the orchestrator merges plans with the milestone; never push plans straight to `dev`).
 Finish with a 3-line summary: plan path, number of steps, top risk.
