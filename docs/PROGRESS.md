@@ -224,3 +224,17 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
+
+## 2026-11-07: M12 plan written (docs/plans/M12.md, branch m12-plan)
+8-step plan for the treasury and wages. APIs checked with javap against the 1.21.11 jar (no Gradle run).
+- Deposit: right-click the Heart with emeralds in the main hand (`useItemOn`; other items `TRY_WITH_EMPTY_HAND` → M8's screen) plus "Deposit all" on the Overview;
+  Owner-only "Withdraw 1/64" buttons through M8's validated action path. New permissions DEPOSIT_TREASURY (Resident+) / WITHDRAW_TREASURY (Owner only; M8's Steward-gets-all case rewritten).
+- Dawn: shared pure `DailyClock` (M11's dinner clock delegates); wages when the day index changes, Heart chunk loaded, once per day, no catch-up; dawn listeners for M14/M23.
+- Pay rule (core `PayRun`): hiring order, skip on when a wage does not fit; `Payroll(lastWageDay, paidToday, unpaid with stored wages)` saved in the claim.
+  Strike = in today's unpaid list; any treasury increase settles strikers at once; hires are charged at once (closes the fire/rehire free-day exploit).
+- Strike → `needs.paid` false → speed 0, enforced by one `GatedWork` wrapper in `JobBehaviours.work` (deposit trips still run); status ON_STRIKE.
+- `WorkerRecord.level` mirror so unloaded workers are paid and the wage bill is known. Overview: wage bill, STRIKE (danger) and TREASURY_SHORT alerts, severity-first alert order.
+- Cross-milestone catch: M11's `starter` L3 scenario would strike from day 2 with treasury 0: M12 adds `villageheart treasury add 32` and wage assertions, re-run by hand.
+Revised after a fresh critique (25 findings; 22 taken, 2 partly, 1 refuted).
+Assumptions: built after M8, M9, M11 are merged on dev (names from their plans/branches, plan 3.1); steps 1-2 only need M7.
+Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: three unmerged dependencies' APIs.
