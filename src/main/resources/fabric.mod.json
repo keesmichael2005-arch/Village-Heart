@@ -12,6 +12,7 @@
 		"main": ["dev.villageheart.VillageHeart"],
 		"client": ["dev.villageheart.client.VillageHeartClient"]
 	},
+	"mixins": ["villageheart.mixins.json"],
 	"depends": {
 		"fabricloader": ">=0.20.1",
 		"minecraft": "~1.21.11",
