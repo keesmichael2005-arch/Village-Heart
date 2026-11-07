@@ -35,6 +35,10 @@ public class VillageHeart implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ModBlocks.register();
+		dev.villageheart.item.ModItems.register();
+		dev.villageheart.block.MarkerBlocks.register();
+		dev.villageheart.block.JobBlocks.register();
+		dev.villageheart.item.ModCreativeTab.register();
 		PlayerBlockBreakEvents.BEFORE.register(VillageHeart::allowBreak);
 		dev.villageheart.world.VillageTicker.register();
 		LOG.info("Village Heart loaded");

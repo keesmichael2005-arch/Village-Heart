@@ -26,7 +26,6 @@ import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.material.PushReaction;
-import dev.villageheart.block.ModBlocks;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 

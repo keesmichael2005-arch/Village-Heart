@@ -5,7 +5,7 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From M1-r3
 - [ ] No test for the `already_claimed_other` message or the "released" chat notice
-- [ ] Tidy imports in VillageHeartGameTests (duplicate ModBlocks import)
+- [x] Tidy imports in VillageHeartGameTests (duplicate ModBlocks import)
 - [ ] plans/M1.md §3.4 table says evaluate() runs the stale heal; the code (correctly) doesn't
 - [ ] The save/reload test doesn't assert the destroyBlock return value during release
 - [ ] An absent owner's Heart can only be removed by an op (/setblock). Ownership transfer is planned for M24

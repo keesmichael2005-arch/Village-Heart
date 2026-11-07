@@ -6,7 +6,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": ["dev.villageheart.sim.SimulationBootstrap"],
-		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests"],
+		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests"],
 		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
 	},
 	"depends": { "villageheart": "*" }
