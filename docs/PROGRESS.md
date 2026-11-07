@@ -87,3 +87,16 @@ the 3:1 contrast rule. Next: M4. Blockers: none.
 On a clean checkout, `scripts/verify.sh` exited 0 twice (L2 38/38, L4 green, no synchronizer flake). The model-log fixtures are now tracked, and no other test reads an ignored file.
 Two mutations went red as expected (a storage recipe ingredient, and the kitchen marker's loot item). Both screenshots were looked at: the marker_items shot is clean now.
 M3 ticked in ROADMAP. 3 non-blocking notes in `docs/reviews/M3-r2.md`. Next: M4. Blockers: none.
+
+## 2026-11-07: M6 plan written (docs/plans/M6.md)
+7-step plan for the stockpile over Storage chests, APIs checked against the 1.21.11 sources (no gradle run).
+- Pure core `core.stock`: `Inventory<K>` over fake inventories, `Stockpile<K>` as a live view (replaces the unused M0 counter; its 3 tests are ported),
+  nearest-Storage-with-space by the door anchor, partials-then-empties fill order, spill, remainder returned, withdraw from any, `StorageSet.resolve`
+  (dedupe by position, chests shared with any other room building excluded, Storage unknown while an unscanned neighbour building is within 32 blocks),
+  `StorageAlertTracker` (OK / FULL / NO_STORAGE, 200-tick hold), `Reservations` (UUID holders, the M20 hook).
+- Glue `dev.villageheart.stock`: `StackKey(item, DataComponentPatch)` equals `isSameItemSameComponents` exactly; each double-chest half read as its own
+  `ChestBlockEntity` (never `ChestBlock.getContainer`); containers found via `getChunkNow` + `LevelChunk.getBlockEntity`, because `Level.getBlockEntity`
+  loads chunks; `setChanged()` per touched container; server thread only; no memo. `Stockpiles` facade for M7-M22 and the M2 collector.
+- Assumes M4's `#chest` per block + `minecraft:barrel` ids and M5's `Buildings.valid/all` with `latestScan` (A1-A7 in the plan); steps 1-4 do not need M5.
+Revised after a fresh critique (20 findings, 3 blockers: contradictory test numbers, fill-order expectation, false FULL for unloaded Storage).
+Next: BUILD M6 once M4 is merged (steps 1-4), step 5 after M5. Top risk: the stockpile sees chests only through M5's cached scans (lag and restart window).
