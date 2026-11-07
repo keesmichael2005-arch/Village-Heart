@@ -1,5 +1,8 @@
 # Backlog (non-blocking review notes)
 
+## Priority (flaky infrastructure)
+- [ ] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
+
 Planners: scan this list. Pick up an item when it touches your milestone or is cheap, and tick it
 when it's fixed. Source reviews: docs/reviews/.
 
