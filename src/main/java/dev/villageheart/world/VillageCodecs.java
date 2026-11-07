@@ -10,6 +10,7 @@ import dev.villageheart.core.Tier;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.WorldClaim;
+import dev.villageheart.core.building.BuildingStatus;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -54,10 +55,21 @@ public final class VillageCodecs {
 	).apply(i, HeartLocation::new)).validate(l -> l.dimension().isBlank()
 			? DataResult.error(() -> "Blank dimension") : DataResult.success(l));
 
+	public static final Codec<BuildingStatus> BUILDING_STATUS = enumCodec(BuildingStatus.class);
+
 	public static final Codec<BuildingRecord> BUILDING = RecordCodecBuilder.create(i -> i.group(
 			Codec.STRING.fieldOf("type").forGetter(BuildingRecord::typeId),
-			HEART_LOCATION.fieldOf("marker").forGetter(BuildingRecord::marker)
-	).apply(i, BuildingRecord::new));
+			HEART_LOCATION.fieldOf("marker").forGetter(BuildingRecord::marker),
+			BUILDING_STATUS.optionalFieldOf("status", BuildingStatus.UNCHECKED).forGetter(BuildingRecord::status),
+			HEART_LOCATION.optionalFieldOf("link").forGetter(b -> java.util.Optional.ofNullable(b.link()))
+	).apply(i, (type, marker, status, link) -> new BuildingRecord(type, marker, status, link.orElse(null))));
+
+	/** First record per marker wins: one bad entry must not lose the whole village. */
+	private static java.util.List<BuildingRecord> dedupe(java.util.List<BuildingRecord> in) {
+		java.util.Map<HeartLocation, BuildingRecord> byMarker = new java.util.LinkedHashMap<>();
+		for (BuildingRecord b : in) byMarker.putIfAbsent(b.marker(), b);
+		return java.util.List.copyOf(byMarker.values());
+	}
 
 	public static final Codec<WorkerRecord> WORKER = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("villager").forGetter(WorkerRecord::villager),
@@ -83,7 +95,7 @@ public final class VillageCodecs {
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), r.ranks(),
-					r.treasury(), r.tier(), r.buildings(), r.workers()));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers()));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}

@@ -1,8 +1,11 @@
 package dev.villageheart.core;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Immutable snapshot of the one claimed village. */
@@ -20,12 +23,29 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(workers, "workers");
 		if (treasury < 0) throw new IllegalArgumentException("treasury must be >= 0: " + treasury);
 		ranks = Map.copyOf(ranks);
-		buildings = List.copyOf(buildings);
+		buildings = sortedBuildings(buildings);
 		workers = List.copyOf(workers);
 		if (ranks.containsKey(owner)) throw new IllegalArgumentException("owner must not appear in ranks");
 		for (Rank r : ranks.values()) {
 			if (r == Rank.OWNER || r == Rank.VISITOR) throw new IllegalArgumentException("ranks may not hold " + r);
 		}
+	}
+
+	private static final Comparator<HeartLocation> LOCATION_ORDER = Comparator.comparing(HeartLocation::dimension)
+			.thenComparingInt(HeartLocation::x).thenComparingInt(HeartLocation::y).thenComparingInt(HeartLocation::z);
+
+	/** Order of buildings and of the round-robin: (dimension, x, y, z). */
+	public static Comparator<HeartLocation> locationOrder() { return LOCATION_ORDER; }
+
+	private static List<BuildingRecord> sortedBuildings(List<BuildingRecord> in) {
+		List<BuildingRecord> sorted = new ArrayList<>(in);
+		sorted.sort(Comparator.comparing(BuildingRecord::marker, LOCATION_ORDER));
+		for (int i = 1; i < sorted.size(); i++) {
+			if (sorted.get(i).marker().equals(sorted.get(i - 1).marker())) {
+				throw new IllegalArgumentException("two buildings at " + sorted.get(i).marker());
+			}
+		}
+		return List.copyOf(sorted);
 	}
 
 	public static VillageState founded(HeartLocation heart, UUID owner, String ownerName, long gameTime) {
@@ -51,6 +71,33 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (emeralds < 0) throw new IllegalArgumentException("deposit must be >= 0: " + emeralds);
 		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks,
 				Math.addExact(treasury, emeralds), tier, buildings, workers);
+	}
+
+	public VillageState withTier(Tier t) {
+		Objects.requireNonNull(t, "tier");
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, t, buildings, workers);
+	}
+
+	public Optional<BuildingRecord> building(HeartLocation marker) {
+		for (BuildingRecord b : buildings) if (b.marker().equals(marker)) return Optional.of(b);
+		return Optional.empty();
+	}
+
+	/** Insert, or replace the record with the same marker. */
+	public VillageState withBuilding(BuildingRecord b) {
+		Objects.requireNonNull(b, "building");
+		List<BuildingRecord> copy = new ArrayList<>(buildings);
+		copy.removeIf(o -> o.marker().equals(b.marker()));
+		copy.add(b);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers);
+	}
+
+	/** Remove the record at {@code marker}; a no-op when there is none. */
+	public VillageState withoutBuilding(HeartLocation marker) {
+		if (building(marker).isEmpty()) return this;
+		List<BuildingRecord> copy = new ArrayList<>(buildings);
+		copy.removeIf(o -> o.marker().equals(marker));
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {
