@@ -1,6 +1,6 @@
 status: RUNNING         # RUNNING | PAUSED | DONE
 budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after this"
-start_weekly_usage: "~20% (user estimate at start of run 1)"
+start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
 run_cost_usd: 0
 current: M1 / PLAN
