@@ -5,7 +5,10 @@ import java.util.Map;
 
 /** Sparse test world: every unset position is OPEN. Keeps a per-column "highest non-OPEN y" so sky checks are cheap and never stale. */
 final class FakeGrid implements BlockView {
-	private final Map<Long, Cell> cells = new HashMap<>();
+	/** position to palette index (0 = OPEN); a primitive map so the perf test measures the scanner, not boxing. */
+	private final LongMap cells = new LongMap(1024);
+	private final java.util.List<Cell> palette = new java.util.ArrayList<>(java.util.List.of(Cell.OPEN));
+	private final Map<Cell, Integer> paletteIndex = new HashMap<>(Map.of(Cell.OPEN, 0));
 	/** column key (x,z) to highest y holding a non-OPEN cell; absent when none. */
 	private final Map<Long, Integer> top = new HashMap<>();
 	private int unloadedBeyondX = Integer.MAX_VALUE;
@@ -30,8 +33,7 @@ final class FakeGrid implements BlockView {
 		int from = old == null ? maxY : Math.max(old, maxY);
 		Integer best = null;
 		for (int y = from; y >= minY; y--) {
-			Cell c = cells.get(Pos.pack(x, y, z));
-			if (c != null && c.kind() != CellKind.OPEN) { best = y; break; }
+			if (cell(x, y, z).kind() != CellKind.OPEN) { best = y; break; }
 		}
 		if (best == null) top.remove(col(x, z)); else top.put(col(x, z), best);
 	}
@@ -59,8 +61,8 @@ final class FakeGrid implements BlockView {
 		long k = Pos.pack(x, y, z);
 		minY = Math.min(minY, y);
 		maxY = Math.max(maxY, y);
-		if (c.kind() == CellKind.OPEN && c.contents().isEmpty() && c.door() == DoorPart.NONE && c.partner() == null) cells.remove(k);
-		else cells.put(k, c);
+		int idx = paletteIndex.computeIfAbsent(c, cc -> { palette.add(cc); return palette.size() - 1; });
+		cells.put(k, idx);
 	}
 
 	/** Door with its lower half at (x, y, z). */
@@ -82,8 +84,7 @@ final class FakeGrid implements BlockView {
 	@Override
 	public Cell cell(int x, int y, int z) {
 		if (x > unloadedBeyondX) return Cell.UNLOADED;
-		Cell c = cells.get(Pos.pack(x, y, z));
-		return c == null ? Cell.OPEN : c;
+		return palette.get((int) cells.getOrDefault(Pos.pack(x, y, z), 0));
 	}
 
 	@Override

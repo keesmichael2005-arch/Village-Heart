@@ -75,7 +75,7 @@ Checked by a flood fill of air from the block just inside the marked door:
 - Buildings are re-checked in a round-robin (one per second) and immediately when their marker or Heart
   screen is used. Any change to the room is picked up within about `buildings × 1 s`.
 
-Every failure has a clear reason, for example *"Roof missing above (12, 70, -4)"*, *"Needs 1 more chest"*
+Every failure has a clear reason, for example *"Roof missing at (12, 70, -4)"*, *"Needs 1 more chest"*
 or *"Room too big (max 4096 air)"*.
 
 ### 3.3 Building list

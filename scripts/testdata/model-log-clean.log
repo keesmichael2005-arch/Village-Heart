@@ -1,0 +1,6 @@
+[10:00:01] [Render thread/INFO] (Minecraft) Reloading ResourceManager: vanilla, fabric, villageheart
+[10:00:03] [Worker-Main-2/WARN] (Minecraft) Missing textures in model minecraft:block/some_vanilla_thing:
+    minecraft:textures/block/not_there.png
+[10:00:03] [Worker-Main-1/WARN] (Minecraft) Unable to bake model: 'minecraft:item/other' (an upstream issue)
+[10:00:04] [Render thread/INFO] (Minecraft) Loaded 2000 models
+[10:00:05] [Render thread/INFO] (villageheart) Village Heart loaded

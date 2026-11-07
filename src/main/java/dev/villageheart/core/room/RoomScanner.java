@@ -2,11 +2,8 @@ package dev.villageheart.core.room;
 
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.room.RoomProblem.Kind;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,72 +79,71 @@ public final class RoomScanner {
 			startCell = c2;
 		}
 
-		Map<Long, Long> parent = new HashMap<>(); // interior cell to the cell it was reached from (start: itself)
-		Set<Long> shell = new HashSet<>();
-		Set<Long> recorded = new HashSet<>();
+		LongMap parent = new LongMap(256); // interior cell to the cell it was reached from (start: itself)
+		LongMap shell = new LongMap(256);
+		LongMap recorded = new LongMap(64);
 		Map<String, List<Pos>> contents = new LinkedHashMap<>();
-		ArrayDeque<Long> queue = new ArrayDeque<>();
+		long[] queue = new long[Balance.ROOM_MAX_AIR + 2]; // FIFO ring; at most ROOM_MAX_AIR + 1 cells are ever enqueued
+		int head = 0, tail = 0;
 
 		long startKey = start.pack();
-		parent.put(startKey, startKey);
+		parent.putIfAbsent(startKey, startKey);
 		record(view, contents, recorded, start, startCell);
 		RoomProblem problem = null;
 		if (view.openToSky(start.x(), start.y(), start.z())) {
 			problem = locateLeak(view, parent, door, outward, marker, start, start, null);
 		} else {
-			queue.add(startKey);
+			queue[tail++] = startKey;
 		}
 
 		Dir[] dirs = Dir.values();
 		fill:
-		while (!queue.isEmpty()) {
-			long ck = queue.poll();
+		while (head != tail) {
+			long ck = queue[head];
+			head = (head + 1) % queue.length;
 			Pos cur = Pos.unpack(ck);
 			for (Dir d : dirs) {
 				int nx = cur.x() + d.dx, ny = cur.y() + d.dy, nz = cur.z() + d.dz;
 				long nk = Pos.pack(nx, ny, nz);
-				if (parent.containsKey(nk) || shell.contains(nk)) continue;
+				if (parent.containsKey(nk) || shell.containsKey(nk)) continue;
 				Cell cell = view.cell(nx, ny, nz);
-				Pos n = new Pos(nx, ny, nz);
 				switch (cell.kind()) {
 					case UNLOADED -> {
-						problem = new RoomProblem(Kind.NOT_LOADED, n);
+						problem = new RoomProblem(Kind.NOT_LOADED, new Pos(nx, ny, nz));
 						break fill;
 					}
 					case SOLID -> {
-						shell.add(nk);
-						record(view, contents, recorded, n, cell);
+						shell.putIfAbsent(nk, 0);
+						if (!cell.contents().isEmpty() || cell.partner() != null) record(view, contents, recorded, new Pos(nx, ny, nz), cell);
 					}
 					case OPEN -> {
 						if (view.openToSky(nx, ny, nz)) {
-							problem = locateLeak(view, parent, door, outward, marker, start, n, cur);
+							problem = locateLeak(view, parent, door, outward, marker, start, new Pos(nx, ny, nz), cur);
 							break fill;
 						}
-						parent.put(nk, ck);
-						record(view, contents, recorded, n, cell);
+						parent.putIfAbsent(nk, ck);
+						if (!cell.contents().isEmpty() || cell.partner() != null) record(view, contents, recorded, new Pos(nx, ny, nz), cell);
 						if (parent.size() > Balance.ROOM_MAX_AIR) {
 							problem = new RoomProblem(Kind.TOO_BIG, null);
 							break fill;
 						}
-						queue.add(nk);
+						queue[tail] = nk;
+						tail = (tail + 1) % queue.length;
 					}
 				}
 			}
 		}
 
-		Set<Long> interior = parent.keySet();
-		long roomKey = Long.MAX_VALUE;
-		for (long k : interior) roomKey = Math.min(roomKey, k);
-		return new RoomScan(marker, door, start, problem == null, interior.size(), floorArea(view, interior, shell), contents,
-				problem == null ? List.of() : List.of(problem), interior, shell, roomKey);
+		return new RoomScan(marker, door, start, problem == null, parent.size(), floorArea(view, parent, shell), contents,
+				problem == null ? List.of() : List.of(problem), Set.of(parent.boxedKeys()), Set.of(shell.boxedKeys()), parent.minKey());
 	}
 
-	private static void record(BlockView view, Map<String, List<Pos>> contents, Set<Long> recorded, Pos at, Cell cell) {
-		if (recorded.add(at.pack())) add(contents, at, cell);
+	private static void record(BlockView view, Map<String, List<Pos>> contents, LongMap recorded, Pos at, Cell cell) {
+		if (recorded.putIfAbsent(at.pack(), 0)) add(contents, at, cell);
 		Dir partner = cell.partner();
 		if (partner != null) {
 			Pos other = at.offset(partner);
-			if (recorded.add(other.pack())) add(contents, other, view.cell(other));
+			if (recorded.putIfAbsent(other.pack(), 0)) add(contents, other, view.cell(other));
 		}
 	}
 
@@ -156,14 +152,16 @@ public final class RoomScanner {
 	}
 
 	/** Distinct (x, z) columns holding at least one interior cell that stands on something that is not air. */
-	private static int floorArea(BlockView view, Set<Long> interior, Set<Long> shell) {
-		Set<Long> columns = new HashSet<>();
-		for (long k : interior) {
+	private static int floorArea(BlockView view, LongMap interior, LongMap shell) {
+		LongMap columns = new LongMap(64);
+		interior.forEachKey(k -> {
 			Pos p = Pos.unpack(k);
 			long below = Pos.pack(p.x(), p.y() - 1, p.z());
-			if (interior.contains(below)) continue;
-			if (shell.contains(below) || view.cell(p.x(), p.y() - 1, p.z()).kind() != CellKind.OPEN) columns.add(Pos.pack(p.x(), 0, p.z()));
-		}
+			if (interior.containsKey(below)) return;
+			if (shell.containsKey(below) || view.cell(p.x(), p.y() - 1, p.z()).kind() != CellKind.OPEN) {
+				columns.putIfAbsent(Pos.pack(p.x(), 0, p.z()), 0);
+			}
+		});
 		return columns.size();
 	}
 
@@ -191,7 +189,7 @@ public final class RoomScanner {
 	 * @param e the first discovered air cell that is open to the sky
 	 * @param p the room cell it was reached from; null when the start cell itself is outdoors
 	 */
-	private static RoomProblem locateLeak(BlockView view, Map<Long, Long> parent, Pos door, Dir outward, @Nullable Pos marker, Pos start,
+	private static RoomProblem locateLeak(BlockView view, LongMap parent, Pos door, Dir outward, @Nullable Pos marker, Pos start,
 			Pos e, @Nullable Pos p) {
 		List<Pos> path = new ArrayList<>(); // start .. e
 		List<Dir> entered = new ArrayList<>(); // direction each path cell was entered by (null for start)

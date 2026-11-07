@@ -40,6 +40,7 @@ class RoomScannerPerfTest {
 
 		long[] all = new long[30];
 		long median = medianNanos(g, marker, 50, 30, all);
+		System.out.println("perf 16x16x8: median " + median / 1000 + " us");
 		assertTrue(median < 5_000_000L, "median " + median / 1000 + " us; all (us): "
 				+ Arrays.stream(all).map(n -> n / 1000).boxed().toList());
 	}
@@ -54,6 +55,7 @@ class RoomScannerPerfTest {
 		assertEquals(RoomProblem.Kind.TOO_BIG, s.problems().get(0).kind());
 		long[] all = new long[30];
 		long median = medianNanos(g, marker, 50, 30, all);
+		System.out.println("perf cap worst case: median " + median / 1000 + " us");
 		assertTrue(median < 10_000_000L, "median " + median / 1000 + " us; all (us): "
 				+ Arrays.stream(all).map(n -> n / 1000).boxed().toList());
 	}
