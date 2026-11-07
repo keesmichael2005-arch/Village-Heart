@@ -416,4 +416,88 @@ public class VillageHeartGameTests {
 			}
 		});
 	}
+
+	// ---- T-L2-2..4: the simulation metrics collector --------------------------------------------
+
+	private static net.minecraft.world.phys.Vec3 centreOf(GameTestHelper h, BlockPos rel) {
+		return net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(rel));
+	}
+
+	@GameTest(environment = "villageheart-gametest:sim_collector", maxTicks = 100)
+	public void simCollectorCountsVillagersInRadius(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		BlockPos heart = new BlockPos(2, 1, 2);
+		for (int i = 0; i < 2; i++) h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(3 + i, 1, 3));
+		net.minecraft.world.entity.npc.villager.Villager baby = h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(4, 1, 4));
+		baby.setAge(-24000);
+		h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(14, 1, 2)); // 12 blocks away
+		h.runAfterDelay(2, () -> {
+			var c = dev.villageheart.sim.SimMetricsCollector.census(h.getLevel(), centreOf(h, heart), 10);
+			h.assertValueEqual(3, c.population(), "population within 10 blocks");
+			h.assertValueEqual(2, c.adults(), "adults");
+			h.assertValueEqual(1, c.babies(), "babies");
+			var wide = dev.villageheart.sim.SimMetricsCollector.census(h.getLevel(), centreOf(h, heart), 20);
+			h.assertTrue(wide.population() >= 4, "radius 20 also sees the far villager, got " + wide.population());
+			VillageTestSupport.done(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:sim_collector_death", maxTicks = 100)
+	public void simCollectorRecordsDeathCause(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		BlockPos heart = new BlockPos(2, 1, 2);
+		var collector = new dev.villageheart.sim.SimMetricsCollector(h.getLevel(), centreOf(h, heart), 10);
+		collector.register();
+		var near = h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(3, 1, 3));
+		var far = h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(14, 1, 2));
+		near.hurtServer(h.getLevel(), h.getLevel().damageSources().fall(), 1000f);
+		far.hurtServer(h.getLevel(), h.getLevel().damageSources().fall(), 1000f);
+		h.runAfterDelay(1, () -> {
+			try {
+				h.assertValueEqual(1, collector.pendingDeaths(), "one death inside the radius, none outside");
+				var deaths = collector.drainDeaths();
+				h.assertValueEqual("minecraft:fall", deaths.get(0).cause(), "cause is the damage type id");
+				h.assertTrue(!deaths.get(0).byMob(), "a fall is not a mob death");
+				h.assertValueEqual(0, collector.pendingDeaths(), "drain empties the list");
+				collector.onDeath(near, h.getLevel().damageSources().fall());
+				h.assertValueEqual(0, collector.pendingDeaths(), "the same villager is never counted twice");
+			} finally {
+				collector.setEnabled(false);
+			}
+			VillageTestSupport.done(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:sim_collector_zombie", maxTicks = 100)
+	public void simCollectorZombieConversionCountsOnce(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		BlockPos heart = new BlockPos(2, 1, 2);
+		var collector = new dev.villageheart.sim.SimMetricsCollector(h.getLevel(), centreOf(h, heart), 10);
+		var v1 = h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(3, 1, 3));
+		var v2 = h.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(4, 1, 3));
+		var zombie = h.spawn(net.minecraft.world.entity.EntityType.ZOMBIE, new BlockPos(2, 1, 4));
+		var zv = h.spawn(net.minecraft.world.entity.EntityType.ZOMBIE_VILLAGER, new BlockPos(1, 1, 4));
+		zombie.setNoAi(true);
+		zv.setNoAi(true);
+		// vanilla order for a villager killed by a zombie: death, then conversion in the same tick
+		collector.onDeath(v1, h.getLevel().damageSources().mobAttack(zombie));
+		collector.onConversion(v1, zv);
+		collector.onConversion(v2, zv); // converted without a recorded death
+		var deaths = collector.drainDeaths();
+		h.assertValueEqual(2, deaths.size(), "two villagers lost, not three");
+		for (var d : deaths) {
+			h.assertValueEqual("zombified", d.cause(), "cause");
+			h.assertTrue(d.byMob(), "counted as a mob death");
+		}
+		h.assertValueEqual(2L, deaths.stream().filter(dev.villageheart.core.sim.DeathRecord::byMob).count(), "deaths.mobs");
+		VillageTestSupport.done(h);
+	}
+
+	/** The scenario parser's known action ids must match the harness implementation (they live in different source sets). */
+	@GameTest(maxTicks = 20)
+	public void simActionTypesMatchParser(GameTestHelper h) {
+		h.assertValueEqual(dev.villageheart.core.sim.ScenarioParser.ACTION_TYPES, dev.villageheart.sim.SimActions.actionTypes(),
+				"action ids: parser vs harness");
+		h.succeed();
+	}
 }

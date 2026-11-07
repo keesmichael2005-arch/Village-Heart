@@ -17,11 +17,14 @@ import java.util.List;
 import java.util.Map;
 
 /** The scenario action types. The keys must equal {@link ScenarioParser#ACTION_TYPES} (checked in a GameTest). */
-final class SimActions {
+public final class SimActions {
 	private SimActions() {}
 
 	/** Set by the crash action; thrown from an unguarded tick listener so the server really crashes. */
 	static volatile boolean crashRequested;
+
+	/** Action type ids implemented here; must equal ScenarioParser.ACTION_TYPES. */
+	public static java.util.Set<String> actionTypes() { return ALL.keySet(); }
 
 	static final Map<String, SimAction> ALL = Map.of(
 			"claim", SimActions::claim,
