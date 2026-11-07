@@ -2,7 +2,10 @@ package dev.villageheart.block;
 
 import dev.villageheart.VillageHeart;
 import dev.villageheart.core.ClaimRules;
+import dev.villageheart.heart.HeartScreens;
 import dev.villageheart.world.VillageClaims;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -49,6 +52,21 @@ public class VillageHeartBlock extends Block {
 			VillageHeart.LOG.warn("Village Heart placed at {} but claim was {} (logic bug)", pos, result);
 		}
 		player.displayClientMessage(VillageClaims.refusalMessage(result, player), true);
+	}
+
+	/**
+	 * Right-click opens the Heart screen when this Heart holds the village (every rank; Visitors see the Overview only). Holding an
+	 * item does not matter, except sneaking with one, which vanilla keeps for placing blocks.
+	 */
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+		if (level instanceof ServerLevel server && player instanceof ServerPlayer sp) {
+			boolean ours = VillageClaims.current(server.getServer())
+					.filter(v -> v.isHeartAt(VillageClaims.locate(server, pos))).isPresent();
+			if (ours) HeartScreens.open(sp, server, pos);
+			else player.displayClientMessage(Component.translatable("message.villageheart.heart.not_this_village"), true);
+		}
+		return InteractionResult.SUCCESS;
 	}
 
 	/** Any removal with neighbour updates (owner break, commands, ...) releases the claim if this is the claimed Heart. */

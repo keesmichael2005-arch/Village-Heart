@@ -55,7 +55,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
 - [ ] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
 - [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
-- [ ] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so
+- [x] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so (done in M8: "... (1 Storage not checked yet)")
 
 ## From M7-r1/r2
 - [ ] Deterministic regression tests for the deposit-trip guards: (a) erase the walk target mid-trip and assert it is re-pointed at Storage, not the job block; (b) only one of the WORK/go_home trips starts
@@ -65,3 +65,12 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic)
 - [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
+
+## Cross-milestone (from the M12 plan)
+- [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+
+## From M8-r1
+- [ ] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
+- [ ] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
+- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)

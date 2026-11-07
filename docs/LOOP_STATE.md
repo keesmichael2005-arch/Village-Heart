@@ -3,7 +3,7 @@ budget: "run 2: stop new workers at run-2 cost ~$400 (session cost_usd ~588) or 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 started 2026-11-07T18:31Z | M8 BUILD steps 4-9 (m8) | M9 BUILD (m9) | plan-ahead M12, M13"
+current: "run 2 | M8 PASS r1 merged | M9 BUILD (m9) | M10 next after M9 | plans ready: M10-M13"
 blocked: []
 open_questions_for_human:
   - "M11 starter sim: if a zombie kills a hired worker, food or logs stop for the rest of the 10-day run. Choose: (a) peaceful difficulty for the `starter` scenario, or (b) a scenario re-hire action. Default if unanswered: (b)"

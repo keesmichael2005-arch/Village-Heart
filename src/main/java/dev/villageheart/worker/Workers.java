@@ -80,6 +80,11 @@ public final class Workers {
 		return attached || registered;
 	}
 
+	/** The loaded villager with this UUID in any level, or empty. Never loads anything. */
+	public static Optional<Villager> findLoaded(MinecraftServer server, UUID id) {
+		return Optional.ofNullable(WorkerSystem.findLoaded(server, id));
+	}
+
 	/** Fires the worker of {@code record}, loaded or not. */
 	static void fireRecord(MinecraftServer server, WorkerRecord record) {
 		Villager v = WorkerSystem.findLoaded(server, record.villager());
