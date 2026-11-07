@@ -317,6 +317,14 @@ The tier never goes down in v1. The Overview tab shows each goal's progress.
 - **Stockpile**: item totals across Storage, food nutrition total, and surplus reserve settings.
 - **Ranks** (Owner only): players and their ranks.
 
+As built in M8 (`docs/plans/M8.md`): the screen is a slotless menu (`ExtendedScreenHandlerType`) opened by right-clicking the claimed Heart with any item
+(not while sneaking with an item: vanilla keeps that for placing). The server sends each viewer a full snapshot at most once a second and only when it
+changed; a Visitor's snapshot holds the Overview only (no villager, building or stock data is sent). Actions (assign, fire, check now) are
+client-to-server payloads that the server re-checks (rate limit, open screen, current village, rank re-read every time, villager and building looked up
+in the Heart's dimension only). The screen is drawn for a 427 x 240 GUI (854 x 480 at GUI scale 2); tabs and lists are our own widgets.
+Population counts loaded villagers plus recorded workers that are not loaded. Food days use 10 nutrition per adult and 5 per baby a day;
+foods in `#villageheart:not_village_food` do not count.
+
 ### In the world
 - Marker colours (grey, red, green). Right-clicking a marker prints its validation report.
 - Particles for work-site status (chopping, hauling).

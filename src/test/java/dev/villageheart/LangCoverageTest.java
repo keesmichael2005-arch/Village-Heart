@@ -21,6 +21,54 @@ class LangCoverageTest {
 		}
 	}
 
+	/** Heart screen texts the server builds: each key exists and its English matches the fallback the server sends. */
+	@Test
+	void heartScreenServerTexts() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.heart.Rejection r : dev.villageheart.core.heart.Rejection.values()) {
+			assertEquals(r.message(), lang.get(r.langKey()), r.langKey());
+		}
+		assertTrue(lang.containsKey("message.villageheart.heart.not_this_village"));
+		// Every alert text the builder can produce.
+		dev.villageheart.core.heart.TextLine[] alerts = {
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.no_storage", "No Storage: items have nowhere to go"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.storage_full",
+						"Storage full: no empty slot in any readable Storage"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.storage_full_unchecked",
+						"Storage full: no empty slot in any readable Storage (%s Storage not checked yet)"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_building", "1 building needs attention"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_buildings", "%s buildings need attention"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace")};
+		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
+	}
+
+	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */
+	@Test
+	void heartScreenClientTexts() throws Exception {
+		Map<String, Object> lang = lang();
+		for (Map.Entry<String, String> e : dev.villageheart.core.heart.HeartTexts.EN.entrySet()) {
+			assertEquals(e.getValue(), lang.get(e.getKey()), e.getKey());
+		}
+		for (dev.villageheart.core.heart.ActivityKind a : dev.villageheart.core.heart.ActivityKind.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("activity." + a.name().toLowerCase(java.util.Locale.ROOT));
+		}
+		dev.villageheart.core.heart.HeartTexts.key("activity.workplace_invalid");
+		for (BuildingType t : BuildingType.values()) {
+			assertEquals(t.displayName(), dev.villageheart.core.heart.HeartTexts.english("building." + t.id()), t.id());
+		}
+		for (dev.villageheart.core.heart.RowStatus s : dev.villageheart.core.heart.RowStatus.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("status." + s.name().toLowerCase(java.util.Locale.ROOT));
+		}
+		for (dev.villageheart.core.heart.DetailKind d : dev.villageheart.core.heart.DetailKind.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("detail." + (d == dev.villageheart.core.heart.DetailKind.WORKER_SLOTS ? "slots"
+					: d.name().toLowerCase(java.util.Locale.ROOT)));
+		}
+		for (dev.villageheart.core.worker.JobType j : dev.villageheart.core.worker.JobType.values()) {
+			assertEquals(j.displayName(), lang.get("entity.villageheart.villager." + j.id()), j.id());
+		}
+	}
+
 	@Test
 	void everyNameIsPresent() throws Exception {
 		Map<String, Object> lang = lang();

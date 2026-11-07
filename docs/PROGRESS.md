@@ -224,3 +224,38 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
+
+## 2026-11-07: M8 plan written (docs/plans/M8.md)
+9-step plan for the Heart screen v1. APIs checked against the 1.21.11 sources and Fabric 0.141.6 sources jars (no Gradle run).
+- Opening: Fabric `ExtendedScreenHandlerType<HeartMenu, HeartOpenData>` (a menu with no slots; the first snapshot travels with the open packet,
+  vanilla owns close/distance/one-menu-per-player), opened from `VillageHeartBlock.useWithoutItem`; `HeartScreen extends Screen implements MenuAccess`
+  modelled on vanilla `StatsScreen` (TabNavigationBar), `isPauseScreen` false (else the integrated server pauses and nothing refreshes).
+- Networking: per-viewer full snapshots (pure `core.heart` records, `equals` = dedupe) at most 1 Hz from `HeartMenu.broadcastChanges`, only when
+  changed; C2S `AssignJob/FireWorker/RecheckBuilding` payloads with `containerId`; `ActionGate` order rate limit, open menu, epoch, village, rank
+  (re-read every time); Visitors are never sent detail data. Worst case ≈ 270 KB (3-byte chars), tested < 512 KiB.
+- Layout sized for the L4 default: 854x480 at auto GUI scale 2 = 427x240 GUI px. L4 asserts `clippedThisFrame == 0` and an empty `layoutProblems()`.
+- M7 assumptions A1-A12 (plan 3.1): `Workers.hire/fire/fireById`, `WorkerAttachments.get` → `WorkerData(level, xp, Needs)`, `Workers.status`,
+  job sites + `JobSlots.freeSlots`, activity from `getActiveNonCoreActivity` + `WorkerBrain.GO_HOME`; M8 adds a public `Workers.findLoaded`.
+- Folds in BACKLOG M6 "FULL with one unknown Storage: say so" (alert text suffix).
+Revised after a fresh critique (21 findings: payload bound in bytes, cross-dimension targets, 1.21.9+ input API, disabled-tab bypass, log flood, L4 ordering).
+Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API moving before merge (only `HeartFacts`/`HeartActions` import it).
+
+## 2026-11-07: M8 steps 1-3 built on branch m8 (steps 4-9 wait for M7 on dev)
+- Step 1 `core.heart`: `Permission/Permissions` (DESIGN 2 matrix), sealed `HeartAction` (Assign/Fire/Recheck), `Rejection`, `ActionGate`
+  (order: rate, open, epoch, village, rank), `RateLimiter` (8 tokens, +1 per 5 ticks), `VillagerNames`, `JobLevels`, `FoodDays`, `HeartLimits`; Balance constants.
+- Step 2: snapshot records (`HeartSnapshot`, `Overview`, rows, `Stock`), plain input `VillageFacts`, `HeartSnapshotBuilder` (rank filter: Visitors get no
+  details; order; caps with "+N more"; alerts incl. the BACKLOG M6 "FULL with unknown Storage" suffix).
+- Step 3: `HeartCodecs`, 5 payloads, `HeartOpenData`, `HeartNetwork.register()` (receivers call a stub `HeartActions.handle`), lang keys for rejections/alerts.
+  Worst-case snapshot encodes to 469 KiB with 3-byte chars (< 512 KiB asserted).
+- verify --fast green after each step. Deviations are in docs/plans/M8.md section 8.
+- Next: when M7 is on dev, rebase, re-check A1-A12, then steps 4-9 (facts from the world, menu, actions, screen, tabs, L4).
+
+## 2026-11-07: M8 built (Heart screen v1), steps 4-9 after M7 merged
+- Step 4 `HeartFacts` (collect/cached/invalidate), `VillageCensus`, public `Workers.findLoaded`, tag `#villageheart:not_village_food`.
+- Step 5 `ModMenus.HEART` (`ExtendedScreenHandlerType`), `HeartMenu` (slotless; per-viewer snapshot at most 1 Hz and only when changed; closes on distance, Heart gone, release/re-claim),
+  `VillageHeartBlock.useWithoutItem`, `HeartNetwork` sender seam.
+- Step 6 `HeartActions.handle` (rate limit first, `ActionGate`, assign/fire/check now, replies, throttled WARN, cleared on disconnect and server stop).
+- Steps 7-8 `HeartScreen` (own tabs/lists, Overview/Villagers/Buildings/Stockpile, action bar, status line, layout self-check), client receivers.
+- Step 9 L4 `HeartScreenClientTests` with 4 screenshots (looked at), UI fire, scrolling, ellipsis; docs (TESTING, DESIGN 10, ROADMAP deferrals, BACKLOG tick).
+- Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
+- Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.
