@@ -78,8 +78,8 @@ from there instead of hard-coding them.
       The same composter outside any building → it does (vanilla untouched)
 - **L2**: worker data survives a save/reload. Firing restores an unemployed vanilla villager
 
-## M8: Heart screen v1 (Overview, Villagers, Buildings, Stockpile)
-- [ ] Networked tabbed screen (§10), with assign/fire actions through server-validated packets
+## M8: Heart screen v1 (Overview, Villagers, Buildings, Stockpile) ✅
+- [x] Networked tabbed screen (§10), with assign/fire actions through server-validated packets
 - **L2**: an assign-job packet from a Visitor is rejected. From a Steward it is accepted
 - **L4**: screenshot of each of the 4 tabs with a seeded village (3 villagers, 2 buildings, stockpile items), with text readable
 - Deferred out of M8 (on purpose): set guard shift (M18), active blueprint on the Buildings tab (M20), surplus reserve settings (M22), tier goal checklist (M14), wage bill (M12), Ranks tab (M24). "Check now" on a building is an extra beyond this entry (Steward).
