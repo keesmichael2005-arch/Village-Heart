@@ -194,3 +194,20 @@ Next: nothing on this item. Blockers: none.
   GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
 - `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
 - `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.
+
+## 2026-11-07: M11 plan written (docs/plans/M11.md)
+Planner. Food, dinner and needs, plus the first real L3 scenario `starter`. Planned on assumptions about M7 (origin/m7 at a49fa0f), M9 (origin/m9-plan)
+and M10 (no plan yet); section 3.1 lists them. M11 is built only after M7, M9 and M10 are on dev.
+- Dinner is abstract: at day tick 11000 a village system takes food straight from the Storage chests for every loaded villager in the claim
+  (no walking). Pure `core.food.DinnerPlanner`: hungriest first, then workers in hiring order; best food first (prepared before raw, then
+  nutrition); a villager eats only if it can reach its full need (10, children 5), so food is not wasted on partial meals. `DinnerClock` fires once per
+  day index (`!=`, so `/time set` works), saved as `last_dinner_day`; no catch-up.
+- Hunger lives in a persistent `villageheart:diet` attachment on every villager (epoch-checked); `WorkerData.needs` becomes a derived copy with
+  the invariant fed == (hungryDays == 0). `Needs.speed()` = hunger {1, 0.5, 0} x unhoused 0.75 x unpaid 0; paid is stubbed true (`PaidSource`) until M12.
+  Housed = HOME bed head is a `#bed` of a valid House scan (or the worker's own building). Workers are moved into free House beds (may take one
+  from an awake non-worker). Speed 0 gets a planner row in M9/M10 (idle + `TOO_HUNGRY`).
+- Harness: five new actions (`site` = deterministic flat-site search in core + flatten + light, `prefab` rooms, `field`, `grove` of worldgen oaks,
+  `hire` at day 1 tick 200), `food.*` and `housing.*` metrics, `sim/scenarios/starter.json` with the assertions for the roadmap criteria.
+- Roadmap correction to make in the build: 4 villagers + 20 bread leaves 12 bread (8 eaten), not 8.
+Revised after a fresh critique (22 findings; 3 refuted: `@prev` exists, `--reload-at` halts at dawn, job/building ids are core enums). Key fixes: test hooks so older worker GameTests keep full pace, adults-before-children tiebreak, lenient needs decode, dinner clock reset after the harness sets dawn.
+Next: BUILD M11 after M10 (orchestrator: approve the 12-bread roadmap correction). Top risk: `starter` relies on the unbuilt M9/M10 workers surviving and producing in an unseeded village for 10 days.
