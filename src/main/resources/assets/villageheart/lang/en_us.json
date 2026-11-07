@@ -1,0 +1,6 @@
+{
+	"block.villageheart.village_heart": "Village Heart",
+	"message.villageheart.claim.claimed": "This village is now yours!",
+	"message.villageheart.claim.no_bell_nearby": "The Village Heart must be placed near a village bell.",
+	"message.villageheart.claim.already_have_village": "You already have a village in this world."
+}

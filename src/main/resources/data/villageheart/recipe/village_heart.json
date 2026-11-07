@@ -1,0 +1,7 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "misc",
+	"pattern": ["GEG", "EDE", "GEG"],
+	"key": { "G": "minecraft:gold_ingot", "E": "minecraft:emerald", "D": "minecraft:diamond" },
+	"result": { "id": "villageheart:village_heart", "count": 1 }
+}

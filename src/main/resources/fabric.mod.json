@@ -1,0 +1,21 @@
+{
+	"schemaVersion": 1,
+	"id": "villageheart",
+	"version": "${version}",
+	"name": "Village Heart",
+	"description": "Claim a village with the Village Heart and grow it into a working settlement: hire villagers, build workplaces, share resources, survive.",
+	"authors": ["kees"],
+	"license": "CC0-1.0",
+	"icon": "assets/villageheart/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dev.villageheart.VillageHeart"],
+		"client": ["dev.villageheart.client.VillageHeartClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

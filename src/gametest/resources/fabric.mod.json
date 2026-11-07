@@ -1,0 +1,12 @@
+{
+	"schemaVersion": 1,
+	"id": "villageheart-gametest",
+	"version": "1.0.0",
+	"name": "Village Heart Tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests"],
+		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
+	},
+	"depends": { "villageheart": "*" }
+}
