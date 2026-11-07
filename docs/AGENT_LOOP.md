@@ -12,27 +12,36 @@ It never runs on a fixed schedule.
 
 ## One milestone = plan → build → verify (roughly 40 / 20 / 40)
 ```
-PLAN (planner)        writes docs/plans/Mxx.md, has it critiqued by a fresh subagent, revises
+PLAN    planner (Opus)    writes docs/plans/Mxx.md, has a fresh subagent critique it, revises
   ↓
-BUILD (builder)       implements the plan, tests first; small commits to `dev`, each green on verify --fast
+BUILD   builder (Sonnet)  implements the plan, tests first; small commits to `dev`, each green on verify --fast
   ↓
-VERIFY (verifier)     full verify.sh + adversarial review → docs/reviews/Mxx-rN.md: PASS or FAIL + fix list
-  ↓ FAIL                                   ↓ PASS
-BUILD again (fresh builder, given the review) → VERIFY again      tick ROADMAP, next milestone
+VERIFY  verifier (Opus)   fresh every round: full verify.sh + adversarial review → docs/reviews/Mxx-rN.md
+  ↓ FAIL: the SAME builder gets the review and fixes it (it auto-compacts on long milestones) → new verifier
+  ↓ PASS: tick ROADMAP, next milestone
 ```
-- At most **4 build/verify rounds** per milestone. After that the orchestrator marks it `BLOCKED` in
-  LOOP_STATE with the reason, skips to the next milestone that doesn't depend on it, and flags it for the human.
-- Only one worker runs at a time, all on `dev`. `main` only moves when the human merges.
+- **Models:** Opus for planning and verifying (judgement), Sonnet for building (volume). If a
+  milestone is failing repeatedly on hard problems, the orchestrator may switch the builder to Opus.
+- **Helpers:** any worker, mostly builders, may start **at most 2 subagents** of its own (e.g. one to
+  write tests while it writes code, or one to research an API). No deeper nesting.
+- **5 failed verifications:** the orchestrator reads the reviews and decides. If each round is fixing
+  real issues and the list is shrinking (a healthy loop), it continues. If the same items keep coming
+  back, or the blocker needs a human decision, it marks the milestone `BLOCKED` in LOOP_STATE with
+  the reason and moves on to the next milestone that doesn't depend on it.
+- Only one milestone is in progress at a time, all on `dev`. `main` only moves when the human merges.
 
 ## How the orchestrator knows when to act
-- Workers run as background agents, so the orchestrator is woken **as soon as one finishes**.
-  There are no fixed slots.
-- **Heartbeat:** while a run is active, the orchestrator keeps one wake-up scheduled about 60 minutes
-  ahead and pushes it back each time it wakes. If a worker or the orchestrator dies (usage limit,
-  crash), the heartbeat brings it back, re-reads git and LOOP_STATE, and restarts the interrupted
-  phase with a fresh worker ("continue from what is on `dev`").
-- **5-hour usage window hit:** everything pauses. The orchestrator schedules its wake-up for just
-  after the reset time and resumes from git.
+- **It doesn't watch workers.** They run in the background and report back when they finish, and
+  the orchestrator acts on that report straight away.
+- If the orchestrator hasn't heard from the current worker in **over an hour**, it checks on it once
+  (still going? died? stuck?).
+- **Reset wake-ups:** usage limits come in 5-hour windows. While the orchestrator still has usage, it
+  schedules wake-ups for **5 minutes after each upcoming window reset** for the whole run. The first one
+  is 5 minutes after the current window's reset. Each later one is 5 h 05 min after the previous wake,
+  because a new window only starts at first use after a reset. So whenever a limit hits mid-run,
+  something is already scheduled to wake the orchestrator, and it never needs usage to set up its own
+  wake-up. The times are recorded in LOOP_STATE (`wakes:`). On wake it re-reads git and LOOP_STATE and
+  resumes. A worker cut off mid-phase is resumed, or restarted fresh with "continue from what is on `dev`".
 
 ## Budget
 Set per run by the human and recorded in `docs/LOOP_STATE.md` (`budget:`), e.g. a stop time,
