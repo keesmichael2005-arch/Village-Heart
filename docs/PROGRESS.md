@@ -224,3 +224,19 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
+
+## 2026-11-07: M9 plan written (docs/plans/M9.md), Lumberjack
+12-step plan for the first real job, written while M7 is still being built (assumptions M7-1..8 and M8-1 are in §3.1; the main ones: `JobBehaviours.work`
+is the per-job plug-in point, and M7 step 9's `DepositTrip` deposits everything at GO_HOME and gets three small hooks: keep, free-slot, `wanted`).
+- Core: a reusable job toolkit (`core.job`: tool tiers, `WorkSpeed` = tool × level × needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), tree detection
+  over a `TreeView` grid (a 26-connected natural-log component with ≥ 3 non-persistent leaf contacts, a soil base inside 2×2, no log in a valid room,
+  ≤ 192 logs), a budgeted nearest-first `TreeFinder`, a `LumberjackPlanner` decision table, and `TreeTask`s saved in `VillageState`, so an interrupted fell resumes.
+- Pace: stone ×1.25 → 40 ticks per log (1 log per 2 s). Copper, gold and netherite multipliers are pinned. The axe is used in place in the camp chest
+  (1 durability per log), never held, so it cannot be dropped or duplicated. Drops are picked up by mod code (vanilla looting needs `mob_griefing` and
+  `requestedItems`). No new fells after day time 5000, so the canopy (≈ 5 600 ticks to decay) drops before night. Never loads chunks.
+- Verified for the plan: villagers have FOLLOW_RANGE 16 (partial paths, so a progress watchdog is needed); random ticks run in GameTests without a player;
+  the GameTest server does not pace ticks.
+- Tests: 13 L1, 14 L2 (feature-grown trees with fixed seeds, measured `fellBound`, stray-tree sweep), 1-2 L4. L3: `work.<job>.<counter>`,
+  `workers.status.<status>` and the reserved `stockpile.tag.*` get filled for M11.
+Revised after a fresh critique (22 findings; I refuted 3 against the sources: random ticks, StandAtJobBlock, GameTest tick pacing).
+Next: BUILD M9 after M7 (including step 9) is merged. Top risk: the DepositTrip interplay (M7 step 9 does not exist yet).
