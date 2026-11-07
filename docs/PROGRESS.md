@@ -47,3 +47,14 @@ Full `scripts/verify.sh` exit 0, 15/15 GameTests in 3 runs, 0 POI mismatches. M1
 The plan was revised after a fresh critique (16 findings): process-group kill and lock, stall/start checks, `ActionSchedule`/`SimClock` with `>=`,
 a section-based tick timer for entity-tick work, a stubbed exit-code self-test in `verify.sh --fast`, and death-cause dedupe.
 Next: BUILD M2. Top risk: run time and run-to-run variance of long scenarios (villager AI is not seeded).
+
+## 2026-11-07: M2 built (builder): Layer 3 long-simulation harness
+`scripts/simulate.sh <scenario> [days] [--assert ...] [--reload-at D]` boots a real dedicated server (Loom run `runSimulation`, gametest source set,
+harness `dev.villageheart.sim.*`, off unless `-Dvillageheart.sim.request` is set) on seed 1, claims the plains village at bell (639,66,821) through a real
+`useItemOn`, sprints N days and writes `reports/sim/<name>.json` (+ `.summary.md`, logs). Exit 0 PASS / 1 FAIL / 2 ERROR / 64 usage; only the report and
+`clean_shutdown` decide, never Gradle's rc. Core (pure, L1-tested): `Json`, `TickTimer`, `DayMetrics`/`MetricsJson`, assertion language, `ScenarioParser`,
+`ActionSchedule`, `SimClock`, `SimRequest`. Main: `VillageSystems`/`VillageTicker` (the 1 ms/tick measurement hook). L2: T-L2-1/1b (timer), T-L2-2..4 (collector), action-id sync.
+`verify.sh` gained the stubbed "Layer 3 script self-test". Real runs: `bare 5` exit 0 in 237 s wall (5 records, village_ms.mean ~0.0001-0.0002 ms/tick, 24000 samples/day,
+~450-840 server tps, 8 villagers throughout); red-is-red `--assert "population >= 1000 on day 1"` exit 1; bad assertion exit 2 in 21 s; `selftest_error|crash|hang` exit 2;
+JVM killed mid-run exit 2; `bare 4 --reload-at 2` exit 0 (`reloads [2]`, day 3 has 23999 samples).
+Note: one earlier `bare 2` lost 3 villagers to zombies on night one (unseeded AI); the collector recorded them correctly. Next: M3. Blockers: none.
