@@ -73,7 +73,9 @@ public final class VillageCodecs {
 
 	public static final Codec<WorkerRecord> WORKER = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("villager").forGetter(WorkerRecord::villager),
-			Codec.STRING.fieldOf("job").forGetter(WorkerRecord::jobId)
+			Codec.STRING.fieldOf("job").forGetter(WorkerRecord::jobId),
+			HEART_LOCATION.fieldOf("building").forGetter(WorkerRecord::building),
+			HEART_LOCATION.fieldOf("job_block").forGetter(WorkerRecord::jobBlock)
 	).apply(i, WorkerRecord::new));
 
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
@@ -102,8 +104,16 @@ public final class VillageCodecs {
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(),
 			v.treasury(), v.tier(), v.buildings(), v.workers())));
 
+	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
+	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {
+		java.util.List<HeartLocation> l = new java.util.ArrayList<>(w.reservedJobBlocks());
+		l.sort(VillageState.locationOrder());
+		return l;
+	}
+
 	public static final Codec<WorldClaim> WORLD_CLAIM = RecordCodecBuilder.create(i -> i.group(
 			Codec.INT.fieldOf("schema").forGetter(w -> SCHEMA),
-			VILLAGE_STATE.optionalFieldOf("village").forGetter(WorldClaim::village)
-	).apply(i, (schema, village) -> new WorldClaim(village)));
+			VILLAGE_STATE.optionalFieldOf("village").forGetter(WorldClaim::village),
+			HEART_LOCATION.listOf().optionalFieldOf("reserved_job_blocks", java.util.List.of()).forGetter(VillageCodecs::sortedReserved)
+	).apply(i, (schema, village, reserved) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved))));
 }

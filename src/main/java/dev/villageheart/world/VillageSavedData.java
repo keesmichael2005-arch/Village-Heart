@@ -72,6 +72,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Job blocks whose POI ticket the mod holds (a copy). */
+	public java.util.Set<HeartLocation> reservedJobBlocks() { return claim.reservedJobBlocks(); }
+
+	public void setReservedJobBlocks(java.util.Set<HeartLocation> blocks) {
+		claim.setReservedJobBlocks(blocks);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {
