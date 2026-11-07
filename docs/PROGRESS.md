@@ -107,3 +107,6 @@ Next: M5 (markers validate rooms: call `RoomScans.scan(level, pos, state.getValu
 
 ## 2026-11-07: M4 review round 1 fixed (builder)
 Perf tests assert the best of 5 batch medians (absolute 5 ms / 10 ms kept) and T-L1-17 adds a deterministic call-count guard. The extra roof-test candidates only consider neighbours inside the room (porch slot, pergola and y=8 regression tests added; gable test still passes). Larger roof holes now pin the exact cell.
+
+## 2026-11-07: M4 review round 2 fixed (builder)
+Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by verify.sh (retrying batches up to 5 s); deterministic call-count guards (tightened to 2x) stay in `test`. TESTING.md updated.

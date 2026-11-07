@@ -82,8 +82,10 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 
 ## Room detection tests (M4+)
 - **Core** (`src/test/java/dev/villageheart/core/room/`): `FakeGrid` is a sparse test world (unset = air) with `hollow`/`box`/`door` builders and a
-  never-stale sky cache; the standard fixture `room5x5x3()` has its marker at `FakeGrid.MARKER`, outward NORTH. `RoomScannerPerfTest` times the
-  scanner (median of 30 after 50 warm-ups: 16x16x8 under 5 ms, worst case under 10 ms) and prints the medians to stdout (see the JUnit XML in `build/test-results`).
+  never-stale sky cache; the standard fixture `room5x5x3()` has its marker at `FakeGrid.MARKER`, outward NORTH. `RoomScannerCostTest` (normal `test`) pins the scan cost
+  deterministically by counting `cell()` / `openToSky()` calls (16x16x8 and the 4097-cell cap case). The wall-clock limits (16x16x8 under 5 ms, cap worst case under 10 ms) are in
+  `RoomScannerPerfTest`, tagged `perf`: excluded from `test`/`build`, run by `./gradlew --no-parallel perfTest`, which `verify.sh` runs as its own last step so nothing competes for the CPU.
+  It times batches of 30 scans with 100 ms pauses until one batch median is under the limit (budget 50 batches / 5 s) and prints `perf ...` lines (copied into the verify summary).
 - **Room GameTests** (`RoomGameTests`) **must declare `@GameTest(skyAccess = true)`**. The test framework encases the 8x8x8 structure in barrier blocks, on top
   too unless the test has sky access; with a barrier ceiling a roof hole is "enclosed" and every leak test passes (or here: fails) for the wrong reason.
   Leave a free strip at least 2 deep in front of the door wall, because the barrier wall at z = -1 would make a 1-deep strip an alley. Mutation-checked:

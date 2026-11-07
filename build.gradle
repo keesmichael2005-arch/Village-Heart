@@ -65,8 +65,21 @@ dependencies {
 
 test {
 	systemProperty 'villageheart.resourcesDir', file('src/main/resources').absolutePath
-	useJUnitPlatform()
+	useJUnitPlatform { excludeTags 'perf' }
 	testLogging { events "failed"; exceptionFormat "full" }
+}
+
+// Wall-clock performance limits (tests tagged "perf"). Not part of `test`/`build`: verify.sh runs it alone, after the other
+// Gradle steps, because timings are meaningless while other tasks compete for the CPU.
+tasks.register('perfTest', Test) {
+	group = 'verification'
+	description = 'Runs the wall-clock performance tests (tag perf).'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform { includeTags 'perf' }
+	testLogging { events "failed", "standard_out"; exceptionFormat "full" }
+	outputs.upToDateWhen { false }
+	maxParallelForks = 1
 }
 
 processResources {
