@@ -114,3 +114,9 @@ Perf tests assert the best of 5 batch medians (absolute 5 ms / 10 ms kept) and T
 
 ## 2026-11-07: M4 review round 2 fixed (builder)
 Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by verify.sh (retrying batches up to 5 s); deterministic call-count guards (tightened to 2x) stay in `test`. TESTING.md updated.
+
+## 2026-11-07: Layer-3 harness made safe to run concurrently (builder)
+`simulate.sh` no longer runs a machine-wide `pkill`: it kills its own process group and anything carrying its per-run `SIM_RUN_TOKEN` (found via /proc). Each run picks a free server port (two servers on 25565 crashed the second one).
+`SIM_DIR` now works for real runs (`build.gradle` reads it). A crash rewrites the report (`ERROR`, `clean_shutdown: false`, `crash_reports`). New stub cases: wrong phase-2 `reloads`, crash recorded in the report, and isolation
+(a bystander run survives another finishing and another being killed). Proof: two real `simulate.sh bare 1` from two worktrees at once both exit 0. While testing, another track's old `verify.sh` self-test really did pkill my first
+real sim, which is the bug reproduced live. Next: M4. Blockers: none.

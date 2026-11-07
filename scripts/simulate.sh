@@ -9,12 +9,17 @@
 #             2 ERROR (anything else: crash, hang, compile failure, timeout, bad report, lock held) | 64 usage
 # env: SIM_TIMEOUT_SECONDS (overall limit), SIM_STALL_SECONDS (default 600, report must change at least this often),
 #      SIM_START_SECONDS (default 180, report must appear), SIM_GRADLE_CMD (default "./gradlew --no-daemon runSimulation"),
-#      SIM_DIR (default build/run/sim), SIM_REPORT_DIR (default reports/sim), SIM_POLL (poll seconds, default 5)
+#      SIM_DIR (default build/run/sim; honoured by the real run too, build.gradle reads it from the environment),
+#      SIM_REPORT_DIR (default reports/sim), SIM_POLL (poll seconds, default 5)
 # Never trusts Gradle's exit code alone: a server crash still ends runSimulation with 0.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 SIM_DIR=${SIM_DIR:-build/run/sim}
+# Everything this script starts carries SIM_RUN_TOKEN in its environment; kill_group only ever kills processes
+# with this run's token (or in this run's process group), never anything else on the machine.
+SIM_RUN_TOKEN="vh-sim-$$-$(date +%s%N)"
+export SIM_RUN_TOKEN SIM_DIR
 REPORT_DIR=${SIM_REPORT_DIR:-reports/sim}
 SIM_GRADLE_CMD=${SIM_GRADLE_CMD:-"./gradlew --no-daemon runSimulation"}
 SIM_STALL_SECONDS=${SIM_STALL_SECONDS:-600}
@@ -69,6 +74,8 @@ fi
 export JAVA_HOME="${JAVA_HOME_25:-$HOME/.jdk25}"
 
 mkdir -p "$SIM_DIR" "$REPORT_DIR"
+# a free TCP port per run: the default 25565 would make two concurrent servers collide ("Failed to initialize server")
+SERVER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 exec 9> "$SIM_DIR/.lock"
 flock -n 9 || { echo "another simulation is running (lock $SIM_DIR/.lock)" >&2; exit 2; }
 
@@ -84,6 +91,8 @@ rm -rf "${SIM_DIR:?}/world" "${SIM_DIR:?}/crash-reports"
 echo "eula=true" > "$SIM_DIR/eula.txt"
 cat > "$SIM_DIR/server.properties" <<PROPS
 online-mode=false
+server-port=$SERVER_PORT
+query.port=$SERVER_PORT
 level-seed=$SEED
 difficulty=normal
 pause-when-empty-seconds=0
@@ -114,8 +123,19 @@ kill_group() {
     sleep 1
     kill -KILL -- "-$PGID" 2>/dev/null
   fi
-  pkill -KILL -f -- "villageheart.sim.request=" 2>/dev/null
+  kill_tokened
   return 0
+}
+# Kill leftovers (e.g. a server that left the process group) by this run's private token, found in /proc/*/environ.
+kill_tokened() {
+  local d pid
+  for d in /proc/[0-9]*; do
+    pid=${d#/proc/}
+    [ "$pid" = "$$" ] && continue
+    if { tr '\0' '\n' < "$d/environ"; } 2>/dev/null | grep -qx "SIM_RUN_TOKEN=$SIM_RUN_TOKEN"; then
+      kill -KILL "$pid" 2>/dev/null
+    fi
+  done
 }
 trap kill_group EXIT
 trap 'exit 2' INT TERM
@@ -170,7 +190,15 @@ if not rf or not os.path.isfile(rf): out(2, "no report written")
 try: r = json.load(open(rf))
 except Exception as e: out(2, "unparsable report: %s" % e)
 crashes = [f for f in os.listdir(crashdir)] if os.path.isdir(crashdir) else []
-if crashes: out(2, "server crash report(s): %s" % ", ".join(crashes))
+if crashes:
+    # the harness itself may have written clean_shutdown: true before the crash; make the report say what happened
+    msg = "server crash report(s): %s" % ", ".join(crashes)
+    r["clean_shutdown"] = False
+    r["crash_reports"] = crashes
+    r["status"] = "ERROR"
+    r["error"] = (str(r["error"]) + " | " if r.get("error") else "") + msg
+    json.dump(r, open(rf, "w"), indent=2)
+    out(2, msg)
 st = r.get("status")
 if st == "ERROR": out(2, "harness ERROR: %s" % str(r.get("error"))[:400].replace("\n", " | "))
 if not r.get("clean_shutdown"): out(2, "no clean_shutdown (server did not stop cleanly), status %s" % st)

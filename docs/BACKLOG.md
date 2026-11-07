@@ -14,11 +14,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] An absent owner's Heart can only be removed by an op (/setblock). Ownership transfer is planned for M24
 
 ## From M2-r1
-- [ ] **Concurrent sims kill each other:** `kill_group` runs a machine-wide `pkill -f villageheart.sim.request=`. Scope it to this run's PID/process group (matters before running sims while verify runs)
-- [ ] The report says `clean_shutdown: true` after a real crash; mark the crash in the report itself
-- [ ] No stub case where phase 2 reports a wrong `reloads` (that mutation survives)
+- [x] **Concurrent sims kill each other:** `kill_group` runs a machine-wide `pkill -f villageheart.sim.request=`. Scope it to this run's PID/process group (matters before running sims while verify runs). Fixed: kills are scoped to the run's process group plus a per-run `SIM_RUN_TOKEN` in the environment; each run also gets its own free server port (25565 collided)
+- [x] The report says `clean_shutdown: true` after a real crash; mark the crash in the report itself
+- [x] No stub case where phase 2 reports a wrong `reloads` (that mutation survives)
 - [ ] T-L2-2 doesn't test the spherical radius (a villager in a box corner outside the sphere)
-- [ ] The `SIM_DIR` override only works with the stub
+- [x] The `SIM_DIR` override only works with the stub (now `build.gradle` reads `SIM_DIR` from the environment)
 - [ ] `world.save_bytes` lags the autosave (fine for the soak, not for per-day trends)
 
 ## From M3-r1/r2
