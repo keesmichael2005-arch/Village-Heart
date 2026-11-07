@@ -72,6 +72,14 @@ public final class WalkTo {
 		nextPathAt = 0;
 	}
 
+	/** True when another villager stands within a block and has the lower id: this one gives way. */
+	private static boolean jamNeighbour(Villager v) {
+		for (Villager o : v.level().getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(1.0), x -> x != v && x.isAlive())) {
+			if (o.getId() < v.getId()) return true;
+		}
+		return false;
+	}
+
 	public void clear() { target = null; }
 
 	/** The 3D distance from the villager to the bottom centre of the target block. */
@@ -111,11 +119,18 @@ public final class WalkTo {
 			jamAnchor = v.position();
 			jamAt = now;
 		} else if (now - jamAt >= JAM_TICKS && !nav.isDone()) {
-			// stopped on the way: step back from the others for a random while, then plan again (the other one gets through first)
-			nav.stop();
-			nextPathAt = now + 10 + v.getRandom().nextInt(40);
+			// Stopped on the way (another villager in the doorway). The one with the higher id steps back along its own path and waits,
+			// so the other one gets through; the one with the lower id just goes on. Moving back counts as moving for the stall rule.
 			jamAnchor = null;
-			if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: waits {} ticks", v.getId(), now, v.blockPosition(), nextPathAt - now);
+			Path cur = nav.getPath();
+			if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+				var back = cur.getNode(Math.max(0, cur.getNextNodeIndex() - 4)).asBlockPos();
+				nav.moveTo(back.getX() + 0.5, back.getY(), back.getZ() + 0.5, SPEED);
+				nextPathAt = now + 30 + v.getRandom().nextInt(30);
+				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: steps back to {}", v.getId(), now, v.blockPosition(), back);
+			} else {
+				jamAt = now;
+			}
 		}
 		if (nav.isDone() && now >= nextPathAt) {
 			nextPathAt = now + REPATH_TICKS;
