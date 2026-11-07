@@ -36,3 +36,14 @@ T-L2-6 now re-claims, reloads, clears and reloads again, so a missing `setDirty(
 ## 2026-11-07: M1 review round 3 (verifier): PASS
 Both round-2 items re-checked with mutations (red without `setDirty()` in `clear()`; red when `purgePoi` touches all POIs).
 Full `scripts/verify.sh` exit 0, 15/15 GameTests in 3 runs, 0 POI mismatches. M1 ticked. Non-blocking notes in docs/reviews/M1-r3.md. Next: M2.
+
+## 2026-11-07: M2 plan written (docs/plans/M2.md)
+10-step plan for the Layer 3 harness, de-risked with a throwaway dedicated-server spike. Findings:
+- A Loom run config `runSimulation` (`server()`, gametest source set, request file) boots a seed-1 world in ~4 s.
+- The seed-1 plains village is at (640, ~, 816), with its bell at (639, 66, 821) and 8 villagers. The Heart claims through a real `useItemOn`.
+- Sprinting with a fake creative owner takes ~50 s per in-game day, so a 5-day run is ~6 min and a 30-day run ~25–30 min.
+- A server crash still exits Gradle 0, so `simulate.sh` trusts only the report status plus `clean_shutdown`.
+
+The plan was revised after a fresh critique (16 findings): process-group kill and lock, stall/start checks, `ActionSchedule`/`SimClock` with `>=`,
+a section-based tick timer for entity-tick work, a stubbed exit-code self-test in `verify.sh --fast`, and death-cause dedupe.
+Next: BUILD M2. Top risk: run time and run-to-run variance of long scenarios (villager AI is not seeded).
