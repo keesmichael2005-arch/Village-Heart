@@ -25,6 +25,12 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		ranks = Map.copyOf(ranks);
 		buildings = sortedBuildings(buildings);
 		workers = List.copyOf(workers);
+		java.util.Set<UUID> seenVillagers = new java.util.HashSet<>();
+		java.util.Set<HeartLocation> seenBlocks = new java.util.HashSet<>();
+		for (WorkerRecord w : workers) {
+			if (!seenVillagers.add(w.villager())) throw new IllegalArgumentException("two records for villager " + w.villager());
+			if (!seenBlocks.add(w.jobBlock())) throw new IllegalArgumentException("two workers on job block " + w.jobBlock());
+		}
 		if (ranks.containsKey(owner)) throw new IllegalArgumentException("owner must not appear in ranks");
 		for (Rank r : ranks.values()) {
 			if (r == Rank.OWNER || r == Rank.VISITOR) throw new IllegalArgumentException("ranks may not hold " + r);
@@ -98,6 +104,31 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		List<BuildingRecord> copy = new ArrayList<>(buildings);
 		copy.removeIf(o -> o.marker().equals(marker));
 		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, copy, workers);
+	}
+
+	public Optional<WorkerRecord> worker(UUID villager) {
+		for (WorkerRecord w : workers) if (w.villager().equals(villager)) return Optional.of(w);
+		return Optional.empty();
+	}
+
+	/** Append (list order is hiring order). Throws when the villager or the job block already has a record. */
+	public VillageState withWorker(WorkerRecord w) {
+		Objects.requireNonNull(w, "worker");
+		List<WorkerRecord> copy = new ArrayList<>(workers);
+		copy.add(w);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy);
+	}
+
+	/** Remove the record of {@code villager}; a no-op when there is none. */
+	public VillageState withoutWorker(UUID villager) {
+		if (worker(villager).isEmpty()) return this;
+		List<WorkerRecord> copy = new ArrayList<>(workers);
+		copy.removeIf(o -> o.villager().equals(villager));
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, treasury, tier, buildings, copy);
+	}
+
+	public List<WorkerRecord> workersAt(HeartLocation building) {
+		return workers.stream().filter(w -> w.building().equals(building)).toList();
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

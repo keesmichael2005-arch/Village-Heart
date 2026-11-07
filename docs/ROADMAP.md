@@ -67,11 +67,11 @@ from there instead of hard-coding them.
 - **L2**: two Storage buildings with items → the stockpile totals are their sum. Chests in a House are **not** counted.
       Deposit 100 cobblestone into an almost-full Storage → it spills into the second one
 
-## M7: Hiring and the worker framework (includes the villager-control spike)
-- [ ] Spike: choose brain mixin or a mod task runner (DESIGN §12) and record the decision in DESIGN.md
-- [ ] Assign or fire a job (server-side API + command for tests). Job blocks reserved via POI. Mod professions with no trades
-- [ ] Worker data attachment: job, building, level, XP, needs. Daily schedule (§4), going home to a bed, deposit trips
-- [ ] A dummy "Idle Worker" behaviour that walks to its job block during work hours (real jobs come next)
+## M7: Hiring and the worker framework (includes the villager-control spike) ✅
+- [x] Spike: choose brain mixin or a mod task runner (DESIGN §12) and record the decision in DESIGN.md
+- [x] Assign or fire a job (server-side API + command for tests). Job blocks reserved via POI. Mod professions with no trades
+- [x] Worker data attachment: job, building, level, XP, needs. Daily schedule (§4), going home to a bed, deposit trips
+- [x] A dummy "Idle Worker" behaviour that walks to its job block during work hours (real jobs come next)
 - **L1**: slot accounting: job blocks in valid buildings minus assigned = free. Hire rejected with no free slot. Firing frees the slot
 - **L2**: a hired villager has 0 trade offers and the mod profession, and is at its job block by tick 3000
 - **L2**: an unemployed villager next to a reserved composter does **not** take the farmer profession within 1 day.
@@ -99,7 +99,7 @@ from there instead of hard-coding them.
 - [ ] §4 needs, §6 food rules: dinner at tick 11000, best-food-first, children at half, fed/housed/paid multipliers (paid is stubbed until M12)
 - **L1**: dinner allocation (best food first, cooked before raw, 10 nutrition each, children 5). Food-days-left calculation.
       Hungry for 1 day → ×0.5, 2 days → 0. No bed → ×0.75
-- **L2**: 4 villagers and 20 bread in Storage → after dinner, 8 bread are left and all are fed. With 0 food → all hungry, and still alive after 3 days
+- **L2**: 4 villagers and 20 bread in Storage → after dinner, 12 bread are left (8 eaten: 2 × 5 nutrition each) and all are fed. With 0 food → all hungry, and still alive after 3 days
 - **L3**: scenario `starter` (prebuilt House×2, Storage, Farmhouse + field, Lumber Camp, Kitchen; 1 farmer + 1 lumberjack), 10 days:
       0 starvation deaths, ≥90% fed villager-days from day 3, logs increase every day
 

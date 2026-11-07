@@ -39,6 +39,12 @@ public final class VillageTestSupport {
 	public static void reset(GameTestHelper h) {
 		MinecraftServer server = h.getLevel().getServer();
 		removePlayers(server);
+		// worker tests (M7): give back every POI ticket the mod holds before the claim (and with it the held set) is forgotten,
+		// restore the real building source, and discard villagers earlier worker tests spawned
+		dev.villageheart.worker.JobSiteReservations.releaseAll(server);
+		dev.villageheart.worker.Workers.setJobSiteSourceForTest(null);
+		WorkerTestSupport.discardSpawned(h.getLevel());
+		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();
 		h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);
 		purgePoi(h);

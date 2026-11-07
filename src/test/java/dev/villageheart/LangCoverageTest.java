@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.sim.Json;
+import dev.villageheart.core.worker.HireRefusal;
+import dev.villageheart.core.worker.JobType;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -49,6 +51,15 @@ class LangCoverageTest {
 		}
 		for (JobBlockType t : JobBlockType.values()) {
 			assertEquals(t.displayName(), lang.get("block.villageheart." + t.id()), t.id());
+		}
+		for (JobType j : JobType.values()) {
+			assertEquals(j.displayName(), lang.get("entity.villageheart.villager." + j.id()), j.id());
+		}
+		for (HireRefusal r : HireRefusal.values()) assertTrue(lang.containsKey(r.langKey()), r.langKey());
+		for (String k : new String[] {"message.villageheart.hire.hired", "message.villageheart.hire.fired", "message.villageheart.hire.not_a_worker",
+				"message.villageheart.hire.unknown_job", "message.villageheart.hire.workers_header", "message.villageheart.hire.workers_none",
+				"message.villageheart.hire.worker_line"}) {
+			assertTrue(lang.containsKey(k), k);
 		}
 		assertEquals("Blank Marker", lang.get("item.villageheart.blank_marker"));
 		assertEquals("Village Heart", lang.get("itemGroup.villageheart.main"));

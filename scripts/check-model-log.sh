@@ -4,7 +4,7 @@
 set -uo pipefail
 log=${1:-}
 [ -n "$log" ] && [ -s "$log" ] || { echo "check-model-log: log missing or empty: ${log:-<none>}" >&2; exit 2; }
-if grep -E '(Missing (block model|model for variant|textures in model|texture references in model)|Unable to bake( item)? model).*villageheart' "$log"; then
+if grep -E '(Missing (resource|block model|model for variant|textures in model|texture references in model)|Unable to bake( item)? model).*villageheart' "$log"; then
   echo "check-model-log: villageheart model problems found (lines above)" >&2
   exit 1
 fi

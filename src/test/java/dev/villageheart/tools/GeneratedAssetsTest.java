@@ -3,6 +3,7 @@ package dev.villageheart.tools;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.worker.JobType;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -57,6 +58,36 @@ class GeneratedAssetsTest {
 		int n = 0;
 		for (int y = 0; y < 10; y++) for (int x = 0; x < 10; x++) if (a[y][x] != b[y][x]) n++;
 		return n;
+	}
+
+	@Test
+	void professionOverlaysExistAndAreReadable() throws IOException {
+		JobType[] jobs = JobType.values();
+		for (int i = 0; i < jobs.length; i++) {
+			Path f = root().resolve(AssetGenerator.PROFESSION_DIR + jobs[i].id() + ".png");
+			assertTrue(Files.isRegularFile(f), "missing profession texture " + f);
+			BufferedImage img = ImageIO.read(f.toFile());
+			assertEquals(64, img.getWidth(), jobs[i].id());
+			assertEquals(64, img.getHeight(), jobs[i].id());
+			assertTrue(img.getColorModel().hasAlpha(), jobs[i].id() + " has an alpha channel");
+			int opaque = 0, transparent = 0;
+			for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) {
+				int a = img.getRGB(x, y) >>> 24;
+				assertTrue(a == 0 || a == 255, jobs[i].id() + " pixel alpha " + a);
+				if (a == 255) opaque++; else transparent++;
+			}
+			assertTrue(opaque > 300 && transparent > 2000, jobs[i].id() + " opaque=" + opaque + " transparent=" + transparent);
+			ProfessionArt.Art art = ProfessionArt.ART.get(jobs[i]);
+			assertTrue(MarkerArt.contrast(art.glyph(), art.apron()) >= 3.0, jobs[i] + " glyph contrast " + MarkerArt.contrast(art.glyph(), art.apron()));
+			assertTrue(MarkerArt.contrast(art.sash(), art.apron()) >= 1.5, jobs[i] + " sash contrast");
+			for (int j = i + 1; j < jobs.length; j++) {
+				assertNotEquals(art.apron(), ProfessionArt.ART.get(jobs[j]).apron(), jobs[i] + " and " + jobs[j] + " share an apron colour");
+				int d = 0;
+				boolean[][] a = ProfessionArt.bitmap(jobs[i]), b = ProfessionArt.bitmap(jobs[j]);
+				for (int y = 0; y < 5; y++) for (int x = 0; x < 5; x++) if (a[y][x] != b[y][x]) d++;
+				assertTrue(d >= 6, jobs[i] + " vs " + jobs[j] + " glyph distance " + d);
+			}
+		}
 	}
 
 	@Test

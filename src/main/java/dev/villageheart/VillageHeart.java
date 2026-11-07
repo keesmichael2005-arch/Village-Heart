@@ -39,11 +39,18 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.block.MarkerBlocks.register();
 		dev.villageheart.block.JobBlocks.register();
 		dev.villageheart.item.ModCreativeTab.register();
+		dev.villageheart.worker.ModProfessions.register();
+		dev.villageheart.worker.WorkerAttachments.register();
+		dev.villageheart.worker.WorkerBrain.register();
+		dev.villageheart.worker.WorkerCommands.register();
 		dev.villageheart.room.RoomCells.register();
 		dev.villageheart.heart.net.HeartNetwork.register();
 		PlayerBlockBreakEvents.BEFORE.register(VillageHeart::allowBreak);
 		dev.villageheart.world.VillageTicker.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:job_reservations", dev.villageheart.worker.JobSiteReservations.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:workers", dev.villageheart.worker.WorkerSystem.INSTANCE);
+		dev.villageheart.worker.WorkerSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
