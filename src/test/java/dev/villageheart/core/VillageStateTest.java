@@ -67,4 +67,42 @@ class VillageStateTest {
 		assertTrue(v.workers().isEmpty());
 		assertThrows(UnsupportedOperationException.class, () -> v.ranks().put(UUID.randomUUID(), Rank.STEWARD));
 	}
+
+	static HeartLocation at(int x, int y, int z) { return new HeartLocation("minecraft:overworld", x, y, z); }
+
+	@Test void buildingRegistryOperations() {
+		VillageState v = founded();
+		BuildingRecord a = new BuildingRecord("storage", at(5, 64, 5));
+		BuildingRecord b = new BuildingRecord("house", at(1, 70, 0));
+		BuildingRecord c = new BuildingRecord("mine", at(1, 64, 9));
+		VillageState s = v.withBuilding(a).withBuilding(b).withBuilding(c);
+		assertEquals(List.of(c.marker(), b.marker(), a.marker()), s.buildings().stream().map(BuildingRecord::marker).toList(),
+				"sorted by (dimension, x, y, z)");
+		VillageState replaced = s.withBuilding(a.withStatus(dev.villageheart.core.building.BuildingStatus.VALID));
+		assertEquals(3, replaced.buildings().size());
+		assertEquals(dev.villageheart.core.building.BuildingStatus.VALID, replaced.building(a.marker()).orElseThrow().status());
+		assertEquals(2, s.withoutBuilding(a.marker()).buildings().size());
+		assertSame(s, s.withoutBuilding(at(99, 99, 99)));
+		assertTrue(s.building(at(99, 99, 99)).isEmpty());
+	}
+
+	@Test void duplicateMarkersThrow() {
+		assertThrows(IllegalArgumentException.class, () -> new VillageState(LOC, owner, "a", 0, Map.of(), 0, Tier.HAMLET,
+				List.of(new BuildingRecord("storage", LOC), new BuildingRecord("house", LOC)), List.of()));
+	}
+
+	@Test void withTierChangesOnlyTier() {
+		VillageState v = founded().withBuilding(new BuildingRecord("storage", LOC)).depositTreasury(5);
+		VillageState t = v.withTier(Tier.TOWN);
+		assertEquals(Tier.TOWN, t.tier());
+		assertEquals(v, t.withTier(Tier.HAMLET));
+	}
+
+	@Test void twoArgRecordIsUncheckedWithoutLink() {
+		BuildingRecord r = new BuildingRecord("storage", LOC);
+		assertEquals(dev.villageheart.core.building.BuildingStatus.UNCHECKED, r.status());
+		assertNull(r.link());
+		assertEquals(dev.villageheart.core.building.BuildingType.STORAGE, r.type().orElseThrow());
+		assertEquals(LOC, r.withLink(LOC).link());
+	}
 }

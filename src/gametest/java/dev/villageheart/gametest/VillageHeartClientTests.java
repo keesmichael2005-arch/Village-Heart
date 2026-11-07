@@ -24,6 +24,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		refusedPlacementKeepsClientItem(context);
 		MarkerClientTests.markerWall(context);
 		MarkerClientTests.markerItems(context);
+		MarkerClientTests.validationReport(context);
 	}
 
 	/** T-L4-1: a survival player right-clicks a Village Heart onto the ground with no bell near. */

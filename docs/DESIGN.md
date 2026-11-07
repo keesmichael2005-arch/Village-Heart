@@ -78,6 +78,11 @@ Checked by a flood fill of air from the block just inside the marked door:
 Every failure has a clear reason, for example *"Roof missing at (12, 70, -4)"*, *"Needs 1 more chest"*
 or *"Room too big (max 4096 air)"*.
 
+Pinned details (M5): Storage counts chests **and barrels** but its reason reads *"Needs 1 more chest"*. A marker outside the claim sphere
+turns red without being registered (*"Outside the village: 93 blocks from the Heart (max 80)"*); a marker placed before the village exists is
+adopted when the Heart is claimed (loaded chunks) or when it is right-clicked. Releasing the village greys the plaques of loaded buildings;
+plaques in unloaded chunks keep their colour until used. A room that reaches an unloaded area gets no new verdict (the old one stays).
+
 ### 3.3 Building list
 
 Each **job block** inside a building is one worker slot.
@@ -100,6 +105,9 @@ Each **job block** inside a building is one worker slot.
 - **Mineshaft** (marker: rail / torch). The marker sits at a player-dug entrance. Connected air must
   descend **at least 12 blocks** below the marker, with **≥8 rails** inside it and a light source.
   The deepest point reached sets the ore table (§5.3). It links to the nearest Mine within 48 blocks.
+  The fill goes down from the marker cell through open air within 16 blocks sideways (at most 4096 cells); near the surface it only
+  spreads one block around the marker, so the hole has to be right under (or next to) the post. A light source also counts when it is
+  embedded in the shaft wall.
 - **Hunting Ground** (marker: stick / feather). Valid if there are **≥40 grass, leaf or log blocks**
   within 12 blocks and it is outside the House and Farmhouse rooms. It links to the nearest Hunting Lodge.
 - **Training Yard** (marker: hay bale / wooden sword). Valid if there are **≥2 armor stands or target

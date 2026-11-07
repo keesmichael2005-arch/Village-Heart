@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Sparse test world: every unset position is OPEN. Keeps a per-column "highest non-OPEN y" so sky checks are cheap and never stale. */
-final class FakeGrid implements BlockView {
+public final class FakeGrid implements BlockView {
 	/** position to palette index (0 = OPEN); a primitive map so the perf test measures the scanner, not boxing. */
 	private final LongMap cells = new LongMap(1024);
 	private final java.util.List<Cell> palette = new java.util.ArrayList<>(java.util.List.of(Cell.OPEN));
@@ -15,15 +15,15 @@ final class FakeGrid implements BlockView {
 
 	private static long col(int x, int z) { return Pos.pack(x, 0, z); }
 
-	FakeGrid unloadedBeyondX(int limit) { this.unloadedBeyondX = limit; return this; }
+	public FakeGrid unloadedBeyondX(int limit) { this.unloadedBeyondX = limit; return this; }
 
-	FakeGrid set(int x, int y, int z, Cell c) {
+	public FakeGrid set(int x, int y, int z, Cell c) {
 		setNoRefresh(x, y, z, c);
 		refreshColumn(x, z);
 		return this;
 	}
 
-	FakeGrid clear(int x, int y, int z) { return set(x, y, z, Cell.OPEN); }
+	public FakeGrid clear(int x, int y, int z) { return set(x, y, z, Cell.OPEN); }
 
 	private int minY = Integer.MAX_VALUE;
 
@@ -41,14 +41,14 @@ final class FakeGrid implements BlockView {
 	private int maxY = Integer.MIN_VALUE;
 
 	/** Solid box, inclusive corners. */
-	FakeGrid box(int x0, int y0, int z0, int x1, int y1, int z1, Cell c) {
+	public FakeGrid box(int x0, int y0, int z0, int x1, int y1, int z1, Cell c) {
 		for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) setNoRefresh(x, y, z, c);
 		for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++) refreshColumn(x, z);
 		return this;
 	}
 
 	/** Shell of {@code wall} (floor, walls, roof) with OPEN inside. */
-	FakeGrid hollow(int x0, int y0, int z0, int x1, int y1, int z1, Cell wall) {
+	public FakeGrid hollow(int x0, int y0, int z0, int x1, int y1, int z1, Cell wall) {
 		for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) {
 			boolean edge = x == x0 || x == x1 || y == y0 || y == y1 || z == z0 || z == z1;
 			setNoRefresh(x, y, z, edge ? wall : Cell.OPEN);
@@ -66,20 +66,20 @@ final class FakeGrid implements BlockView {
 	}
 
 	/** Door with its lower half at (x, y, z). */
-	FakeGrid door(int x, int y, int z) {
+	public FakeGrid door(int x, int y, int z) {
 		set(x, y, z, Cell.door(DoorPart.LOWER, "minecraft:oak_door", RoomContents.DOOR));
 		return set(x, y + 1, z, Cell.door(DoorPart.UPPER).withPartner(Dir.DOWN));
 	}
 
 	/** Standard fixture: 5x5x3 interior x,z 1..5, y 1..3 (75 air), door (3,1,0)/(3,2,0). Marker (3,3,-1), outward NORTH. */
-	static FakeGrid room5x5x3() {
+	public static FakeGrid room5x5x3() {
 		FakeGrid g = new FakeGrid();
 		g.hollow(0, 0, 0, 6, 4, 6, Cell.solid("minecraft:stone"));
 		g.door(3, 1, 0);
 		return g;
 	}
 
-	static final Pos MARKER = new Pos(3, 3, -1);
+	public static final Pos MARKER = new Pos(3, 3, -1);
 
 	@Override
 	public Cell cell(int x, int y, int z) {

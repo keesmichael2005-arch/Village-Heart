@@ -76,9 +76,20 @@ public final class VillageTestSupport {
 
 	/** A real ServerPlayer (not the mock helper, which is always creative) with its own name and UUID. */
 	public static ServerPlayer player(GameTestHelper h, String name, GameType mode) {
+		return player(h, name, mode, (server, level, profile) -> new ServerPlayer(server, level, profile, ClientInformation.createDefault()));
+	}
+
+	/** Builds the player object, so a test can pass a subclass (for example one that records chat messages). */
+	@FunctionalInterface
+	public interface PlayerFactory {
+		ServerPlayer create(MinecraftServer server, net.minecraft.server.level.ServerLevel level, GameProfile profile);
+	}
+
+	/** Like {@link #player(GameTestHelper, String, GameType)} with a custom ServerPlayer subclass. Tracked and removed by reset. */
+	public static ServerPlayer player(GameTestHelper h, String name, GameType mode, PlayerFactory factory) {
 		MinecraftServer server = h.getLevel().getServer();
 		GameProfile profile = new GameProfile(UUID.randomUUID(), name);
-		ServerPlayer p = new ServerPlayer(server, h.getLevel(), profile, ClientInformation.createDefault());
+		ServerPlayer p = factory.create(server, h.getLevel(), profile);
 		Connection conn = new Connection(PacketFlow.SERVERBOUND);
 		new EmbeddedChannel(conn);
 		server.getPlayerList().placeNewPlayer(conn, p, CommonListenerCookie.createInitial(profile, false));
@@ -98,6 +109,17 @@ public final class VillageTestSupport {
 		ItemStack stack = new ItemStack(ModBlocks.VILLAGE_HEART_ITEM);
 		p.setItemInHand(InteractionHand.MAIN_HAND, stack);
 		h.placeAt(p, stack, relBelow, Direction.UP);
+	}
+
+	/** Reads the saved village back from disk through a brand-new DimensionDataStorage (what a restart would see). */
+	public static dev.villageheart.world.VillageSavedData reload(MinecraftServer server) throws java.io.IOException {
+		server.overworld().getDataStorage().saveAndJoin();
+		java.nio.file.Path dir = net.minecraft.world.level.dimension.DimensionType.getStorageFolder(
+				net.minecraft.world.level.Level.OVERWORLD, server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)).resolve("data");
+		try (net.minecraft.world.level.storage.DimensionDataStorage fresh = new net.minecraft.world.level.storage.DimensionDataStorage(dir,
+				server.getFixerUpper(), server.registryAccess())) {
+			return fresh.get(dev.villageheart.world.VillageSavedData.TYPE);
+		}
 	}
 
 	public static int emeralds(GameTestHelper h, BlockPos relPos, double radius) {

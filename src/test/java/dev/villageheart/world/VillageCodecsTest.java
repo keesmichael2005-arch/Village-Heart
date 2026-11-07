@@ -84,4 +84,40 @@ class VillageCodecsTest {
 		String badOwner = BASE.replace("11111111-1111-1111-1111-111111111111", "not-a-uuid");
 		assertTrue(VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json("{" + badOwner + "}")).result().isEmpty());
 	}
+
+	static final HeartLocation M1 = new HeartLocation("minecraft:overworld", 10, 64, 10);
+	static final HeartLocation M2 = new HeartLocation("minecraft:overworld", 20, 64, 10);
+	static final HeartLocation M3 = new HeartLocation("minecraft:overworld", 30, 64, 10);
+
+	@Test void buildingsRoundTripWithStatusAndLink() {
+		VillageState v = VillageState.founded(M1, OWNER, "a", 1)
+				.withBuilding(new BuildingRecord("mineshaft", M2, dev.villageheart.core.building.BuildingStatus.VALID, M3))
+				.withBuilding(new BuildingRecord("house", M1, dev.villageheart.core.building.BuildingStatus.INVALID, null))
+				.withBuilding(new BuildingRecord("storage", M3));
+		assertEquals(v, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v)));
+	}
+
+	@Test void oldBuildingShapeDecodesAsUnchecked() {
+		VillageState v = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"buildings\":[{\"type\":\"storage\","
+				+ "\"marker\":{\"dim\":\"minecraft:overworld\",\"x\":1,\"y\":2,\"z\":3}}]}"));
+		BuildingRecord b = v.buildings().get(0);
+		assertEquals(dev.villageheart.core.building.BuildingStatus.UNCHECKED, b.status());
+		assertNull(b.link());
+	}
+
+	@Test void duplicateMarkersDecodeToTheFirst() {
+		String m = "\"marker\":{\"dim\":\"minecraft:overworld\",\"x\":1,\"y\":2,\"z\":3}";
+		VillageState v = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"buildings\":[{\"type\":\"storage\"," + m
+				+ "},{\"type\":\"house\"," + m + "}]}"));
+		assertEquals(1, v.buildings().size());
+		assertEquals("storage", v.buildings().get(0).typeId());
+	}
+
+	@Test void pinnedBuildingKeys() {
+		VillageState v = VillageState.founded(M1, OWNER, "a", 1)
+				.withBuilding(new BuildingRecord("mineshaft", M2, dev.villageheart.core.building.BuildingStatus.VALID, M3));
+		JsonObject b = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject().getAsJsonArray("buildings").get(0).getAsJsonObject();
+		assertEquals(Set.of("type", "marker", "status", "link"), b.keySet());
+		assertEquals("valid", b.get("status").getAsString());
+	}
 }

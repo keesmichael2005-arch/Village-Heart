@@ -21,6 +21,8 @@ public class VillageSavedData extends SavedData {
 			new SavedDataType<>("villageheart_village", VillageSavedData::new, CODEC, null);
 
 	private final WorldClaim claim;
+	/** Not saved: bumped on every claim, release and clear, so transient caches keyed to a claim never outlive it. */
+	private int epoch;
 
 	public VillageSavedData() {
 		this(new WorldClaim());
@@ -45,13 +47,19 @@ public class VillageSavedData extends SavedData {
 
 	public ClaimRules.Result claim(HeartLocation at, UUID owner, String ownerName, double distanceToBell, long gameTime) {
 		ClaimRules.Result r = claim.claim(at, owner, ownerName, distanceToBell, gameTime);
-		if (r == ClaimRules.Result.CLAIMED) setDirty();
+		if (r == ClaimRules.Result.CLAIMED) {
+			epoch++;
+			setDirty();
+		}
 		return r;
 	}
 
 	public Optional<VillageState> releaseAt(HeartLocation at) {
 		Optional<VillageState> r = claim.releaseAt(at);
-		if (r.isPresent()) setDirty();
+		if (r.isPresent()) {
+			epoch++;
+			setDirty();
+		}
 		return r;
 	}
 
@@ -64,7 +72,10 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	public int epoch() { return epoch; }
+
 	public void clear() {
+		epoch++;
 		claim.clear();
 		setDirty();
 	}

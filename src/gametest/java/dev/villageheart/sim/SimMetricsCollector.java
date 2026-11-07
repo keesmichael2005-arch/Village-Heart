@@ -133,7 +133,8 @@ public final class SimMetricsCollector {
 		long heapMb = (rt.totalMemory() - rt.freeMemory()) >> 20;
 		return new DayMetrics(day, gameTime, village.isPresent(), c.population(), c.adults(), c.babies(),
 				village.map(v -> v.workers().size()).orElse(0),
-				0, village.map(v -> v.buildings().size()).orElse(0),
+				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() == dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
+				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() != dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
 				Map.of(), 0, 0.0, village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)));
 	}

@@ -120,3 +120,33 @@ Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by veri
 `SIM_DIR` now works for real runs (`build.gradle` reads it). A crash rewrites the report (`ERROR`, `clean_shutdown: false`, `crash_reports`). New stub cases: wrong phase-2 `reloads`, crash recorded in the report, and isolation
 (a bystander run survives another finishing and another being killed). Proof: two real `simulate.sh bare 1` from two worktrees at once both exit 0. While testing, another track's old `verify.sh` self-test really did pkill my first
 real sim, which is the bug reproduced live. Next: M4. Blockers: none.
+
+## 2026-11-07: M5 plan written (docs/plans/M5.md, branch m5-plan)
+8-step plan for the building registry and validation, against M3's markers (verified on dev) and M4's planned `RoomScans`/`RoomScan`
+API (assumptions A0-A8 in §3.0, so the builder can adapt once M4 merges).
+- Registry lives in `VillageState.buildings` (`BuildingRecord` gains `status` and `link`, saved, backward compatible). Markers register in
+  `MarkerBlock.onPlace` (ignores recolours via `oldState.is(this)`), unregister in `affectNeighborsAfterRemoval`, and an orphan sweep catches
+  `/setblock` removals (flags `2|256`, no removal hook). Out-of-claim markers turn red without registering; pre-claim markers are adopted on claim
+  (loaded chunks) or on right-click; unloaded markers are skipped and partly unloaded scans give a "deferred" verdict that changes nothing.
+- Pure core: `BuildingRules` + per-type `BuildingRequirements` over an abstract `RoomFacts`, site rules, `ShaftScanner`/`AreaCounter` over M4's
+  `BlockView`, `ClaimArea`, `Links`, and a `RoundRobin` scheduler (one building per 20 ticks + ≤1 priority check per tick) run inside a
+  `VillageSystem`. Right-click validates synchronously and prints the reasons with `translatableWithFallback`.
+- Tests: 13 L1, 14 L2 (own environments, a 32×28×32 SNBT yard structure, a measured `bound(n, hops)` for "within 2 s"), 1 L4 (red + green
+  plaques and the chat report).
+Revised after a fresh critique (24 findings, 3 blockers: shared-room requeue loop, grass in the Hunting Ground test, tight wait bounds).
+Next: BUILD M5 once M4 is on dev. Top risk: M4's API differing from its plan (mitigated by the two small adapters).
+
+## 2026-11-07: M5 built (builder): building registry and validation
+Core (`core.building`, pure, L1): `BuildingStatus`, `BuildingRecord(type, marker, status, link)` (saved, old saves decode unchanged, duplicate markers dedupe on load), `VillageState.withTier/building/withBuilding/withoutBuilding`
+(sorted, duplicate check), `Reason` (exact texts, translation keys), `Thing`, `Verdict`, `RoomFacts.of(RoomScan)`, `BuildingRequirements` (the section 3.3 table), `BuildingRules.checkRoom/checkSite`, `ClaimArea`
+(3-D sphere, 80 / 128 for Mineshaft and Hunting Ground), `Links`, `ShaftScanner`, `AreaCounter`, `RoundRobin` (1 per 20 ticks + at most 1 priority check per tick), `VerdictPolicy` (deferred verdicts change nothing).
+Glue (`dev.villageheart.building`): `BuildingSystem` (a `VillageSystem`: pending placements, round-robin, `useMarker`), `BuildingValidator`, `SiteSurveys`, `MarkerAdoption`, `MarkerReport`, `Buildings` facade, `BuildingContentKeys`
+(`#rail`, `#natural`, `#anvil` added to `RoomCells`); `MarkerBlock` got `onPlace`, `affectNeighborsAfterRemoval`, `useWithoutItem`; `VillageClaims.claim/releaseAt` adopt and reset markers.
+Tests: L1 (new `ReasonTest`, `BuildingRequirementsTest` (every room type, every shortfall), `BuildingRulesOrderTest`, `ClaimAreaTest`, `LinksTest`, `SiteRulesTest`, `ShaftScannerTest`, `AreaCounterTest`, `RoundRobinTest`,
+`VerdictPolicyTest`, extended `VillageStateTest`/`VillageCodecsTest`); L2 `BuildingGameTests` (14 tests: Storage green then red within 2 s, break/orphan sweep, shared rooms, tier gate, no claim / outside claim, release, unloaded,
+persistence, Mineshaft 12 deep linked to a Mine 20 away, Hunting Ground, Training Yard, RoomCells group keys, right-click report, recolour is not a placement); L4 `marker_validation.png`.
+Mutation checks: no unregister on removal -> `sharedRoomBothRed` red ("survivor green took 38 ticks, bound 5"); shared rule not applied -> same test red ("plaque ... to be INVALID: was VALID").
+Screenshot looked at: green Storage plaque (left) and red one (right, crosshair on it), chat shows `Storage at (-1, -58, 11): invalid`, ` - Needs 1 more chest`, `Containers: 1`. FOV 100, 4 blocks from the red plaque (block reach).
+Interface check vs merged M3/M4 and every deviation: plan section 9. Notable: the in-tick click-spam reuse was dropped (it contradicts the same-tick re-check test); `Verdict.slots` for Storage is its container count; `yard.snbt` needs a palette;
+tests sweep stray markers of neighbouring test structures before claiming (they otherwise adopt them and the measured bounds fail).
+Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().positions("#chest")` + barrels), M7 (job slots from `verdict().slots()`), M14 calls `Buildings.requestAll` after a tier-up. Blockers: none.
