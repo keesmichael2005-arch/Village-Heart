@@ -43,3 +43,6 @@ replay_*.log
 run/
 *.log
 reports/
+
+# agent worktrees / local Claude state
+.claude/
