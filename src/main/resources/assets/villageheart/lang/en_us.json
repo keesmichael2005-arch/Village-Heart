@@ -50,6 +50,7 @@
 	"message.villageheart.hire.workers_none": "No workers yet.",
 	"message.villageheart.hire.worker_line": "%s: %s",
 	"itemGroup.villageheart.main": "Village Heart",
+	"container.villageheart.heart": "Village Heart",
 	"message.villageheart.heart.not_this_village": "This Heart does not hold a village.",
 	"message.villageheart.heart.rejected.not_open": "That screen is no longer open.",
 	"message.villageheart.heart.rejected.stale": "The village changed. Open the Heart again.",

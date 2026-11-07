@@ -44,6 +44,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerBrain.register();
 		dev.villageheart.worker.WorkerCommands.register();
 		dev.villageheart.room.RoomCells.register();
+		dev.villageheart.heart.ModMenus.register();
 		dev.villageheart.heart.net.HeartNetwork.register();
 		PlayerBlockBreakEvents.BEFORE.register(VillageHeart::allowBreak);
 		dev.villageheart.world.VillageTicker.register();

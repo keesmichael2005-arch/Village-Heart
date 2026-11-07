@@ -1,0 +1,19 @@
+package dev.villageheart.heart;
+
+import dev.villageheart.VillageHeart;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+
+public final class ModMenus {
+	private ModMenus() {}
+
+	/** The Heart screen: a menu with no slots, opened with the first snapshot as opening data. */
+	public static final ExtendedScreenHandlerType<HeartMenu, HeartOpenData> HEART = Registry.register(BuiltInRegistries.MENU,
+			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "heart"),
+			new ExtendedScreenHandlerType<>(HeartMenu::new, HeartOpenData.STREAM_CODEC));
+
+	/** Touch the class during mod init so the menu type is registered before any client joins. */
+	public static void register() {}
+}

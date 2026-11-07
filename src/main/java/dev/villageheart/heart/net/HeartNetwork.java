@@ -5,6 +5,9 @@ import dev.villageheart.core.VillageState;
 import dev.villageheart.core.heart.HeartAction;
 import dev.villageheart.heart.HeartActions;
 import dev.villageheart.world.VillageClaims;
+import dev.villageheart.heart.HeartFacts;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
@@ -14,7 +17,29 @@ import net.minecraft.server.level.ServerPlayer;
 public final class HeartNetwork {
 	private HeartNetwork() {}
 
+	/** Where server-to-client payloads go. GameTests swap in a recorder. */
+	@FunctionalInterface
+	public interface Sender {
+		void send(ServerPlayer player, CustomPacketPayload payload);
+	}
+
+	private static final Sender DEFAULT_SENDER = ServerPlayNetworking::send;
+	private static Sender sender = DEFAULT_SENDER;
+
+	public static void send(ServerPlayer player, CustomPacketPayload payload) { sender.send(player, payload); }
+
+	/** Test hook: install a sender; pass null to restore the real one. Returns the previous one. */
+	public static Sender setSenderForTest(Sender s) {
+		Sender previous = sender;
+		sender = s == null ? DEFAULT_SENDER : s;
+		return previous;
+	}
+
 	public static void register() {
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			HeartFacts.reset();
+			sender = DEFAULT_SENDER;
+		});
 		PayloadTypeRegistry.playS2C().register(HeartSnapshotPayload.TYPE, HeartSnapshotPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(HeartActionResultPayload.TYPE, HeartActionResultPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(AssignJobPayload.TYPE, AssignJobPayload.CODEC);

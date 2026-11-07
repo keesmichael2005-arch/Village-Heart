@@ -84,6 +84,12 @@ public final class HeartFacts {
 		return cached;
 	}
 
+	/** Forget everything (server stopping: the integrated server is reused between worlds). */
+	public static void reset() {
+		invalidate();
+		cachedEpoch = -1;
+	}
+
 	public static void invalidate() {
 		cachedServer = null;
 		cachedTick = -1;
