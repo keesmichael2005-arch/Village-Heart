@@ -35,3 +35,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] kill_tokened pid-reuse race (pidfd would close it); free-port check-then-use race (gives ERROR, never false PASS)
 - [ ] TESTING.md: SIM_REPORT_DIR must also differ for same-checkout concurrent runs
 - [ ] Escapee marker not scoped to SIM_DIR; rename `escapee_killed (exit 2)` ok-line to avoid confusion next to the real check
+
+## From M5-r1
+- [ ] `outsideClaimAndNoClaim` reads messages.get(0) without a non-empty assert (BuildingGameTests ~L205/218/239): a broken report crashes the whole GameTest server
+- [ ] GameTest filter quirk: a non-exact filter runs 0 tests and "passes". Fail when a filter is set and 0 tests ran
+- [ ] sweepStrayMarkers is only safe while each sweeping test has its own environment: add an assertion or a TESTING.md rule
+- [ ] L4 marker_validation checks the chat only via the screenshot; add a client-side assertion
+- [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
