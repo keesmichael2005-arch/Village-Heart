@@ -139,6 +139,7 @@ from there instead of hard-coding them.
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
+- Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
       Training Yard XP, level perks for health and damage, best gear from the stockpile, raid call-up
 - **L1**: shift balancing. Gear ranking. Max health by level (20/30/40)
@@ -156,6 +157,7 @@ from there instead of hard-coding them.
 - **L2**: no vanilla golem spawns in the claim over 2 days with 10 gossiping villagers (vanilla would)
 
 ## M20: Builder and blueprints (buildings)
+- Note (M24): gate starting a blueprint with the existing `Permission.START_BLUEPRINT` (Steward and up).
 - [ ] Blueprint data format in core. Builder's Table GUI, Blueprint item placement with particles and rotation, material reservation,
       clearing natural blocks, layer-by-layer build. Small House, Storage Shed and Farm Plot
 - **L1**: blueprint parse, rotation (4 rotations), material list. A site overlap with a player room is refused
@@ -184,6 +186,7 @@ from there instead of hard-coding them.
 - **L1**: permission matrix for every rank × action
 - **L2**: a Visitor fake player cannot open a Storage chest, and a Resident can. A Steward can hire. Only the Owner can withdraw from the treasury
 - **L4**: Ranks tab screenshot with 3 players
+- Builder status (not ticked): everything above except "Only the Owner can withdraw" is built and tested on branch `m24`; that L2 (plan T-L2-6) waits for M12, see docs/plans/M24.md section 8.
 
 ## M25: Raids and alerts
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
@@ -201,5 +204,6 @@ from there instead of hard-coding them.
 - [ ] A 60-day `full` soak: no crash, no error logs from `villageheart`, and the save size grows by less than 1 MB
 - [ ] Save/reload in the middle of each L3 scenario gives the same metrics trend (no lost state)
 - [ ] A dedicated server with 2 players (Owner + Resident) runs a scripted session with no desync errors
+  - Harness (M24): `MultiplayerClientTests` = 1 real networked client + 1 server-side player (the Owner), `scripts/check-mp-log.sh`; a second real client would need a protocol bot. Whether that satisfies this item is decided at release.
 - [ ] L4 screenshot set refreshed and reviewed: every marker state, all Heart tabs, a Builder mid-build, the defence set
 - [ ] README updated (recipes, how to start, the building table). DESIGN.md matches what shipped

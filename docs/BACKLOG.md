@@ -12,7 +12,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [x] Tidy imports in VillageHeartGameTests (duplicate ModBlocks import)
 - [ ] plans/M1.md §3.4 table says evaluate() runs the stale heal; the code (correctly) doesn't
 - [ ] The save/reload test doesn't assert the destroyBlock return value during release
-- [ ] An absent owner's Heart can only be removed by an op (/setblock). Ownership transfer is planned for M24
+- [x] An absent owner's Heart can only be removed by an op (/setblock). Ownership transfer is planned for M24
+  - Fixed in M24: `/villageheart owner <player>` (op) hands the village over while the owner is offline; the Owner can also transfer in the Ranks tab.
 
 ## From M2-r1
 - [x] **Concurrent sims kill each other:** `kill_group` runs a machine-wide `pkill -f villageheart.sim.request=`. Scope it to this run's PID/process group (matters before running sims while verify runs). Fixed: kills are scoped to the run's process group plus a per-run `SIM_RUN_TOKEN` in the environment; each run also gets its own free server port (25565 collided)
@@ -74,3 +75,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
 - [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
+
+## From M24
+- [ ] **Indirect container access by Visitors:** a hopper under or next to a protected container, copper golems, pistons, explosions, chest minecarts (v1 scope, documented in DESIGN section 2)
+- [ ] **Creative pick-block with data copies a protected chest:** `PlayerPickItemEvents.BLOCK` exists in Fabric for a later fix
+- [ ] Should breaking a registered marker be Steward-only (today Residents can, Visitors cannot)?
+- [ ] No self step-down: an Owner can demote anyone but must transfer to stop being Owner
+- [ ] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+- [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
+- [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
+- [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name

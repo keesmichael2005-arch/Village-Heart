@@ -272,3 +272,15 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   desync checks per step; M24 does not tick the gate (it is 1 real client + 1 server-side player).
 - Assumes M12 lands first (withdraw L2 waits for it; step 6 starts with a checkpoint against M12's real code). Critique: 30 findings, 25 taken.
 - Top risk: the guard depends on cached room scans (windows after a restart and before a new chest is rescanned).
+
+## 2026-11-07: M24 built (ranks and multiplayer), branch m24 (M12 not on dev: step 9 pending)
+- Step 1 `Permission(minimum rank)` (OPEN_CONTAINERS, MANAGE_RANKS, TRANSFER_OWNERSHIP, BREAK_HEART, START_BLUEPRINT added), `Rank.atLeast`, Heart break via `BREAK_HEART`; literal-table `PermissionsTest`.
+- Step 2 name book (`KnownPlayer`, `VillageState.known`, `seen`, `transferOwnership`, `MemberRepair`, lenient `known_players` codec), `RankRules`, new `Rejection`s.
+- Steps 3-4 `ContainerGuard` + `ContainerProtection` (UseBlockCallback open guard, break guard, double-chest resend), `BuildingRuntime.lastEnclosed`, `Buildings.guardAreas`; L2 open/break/last-enclosed-scan tests.
+  Three older tests broke markers as a Visitor and now break them as the owner (docs/plans/M24.md section 8, item 4).
+- Step 5 `Members` (JOIN/DISCONNECT name book, `setRank`/`transfer` shared by screen and commands, container closed on demotion), `RankCommands` (`owner`, `rank`, `members`; ticks BACKLOG M1 absent owner).
+- Step 6 `HeartAction.SetRank/Transfer` + `malformed()` gate slot, two payloads. Step 7 member rows in the snapshot (Owner only), `HeartFacts.members`. Step 8 Ranks tab, L4 `RanksClientTests`.
+- Step 10 `MultiplayerClientTests` (dedicated server in the client JVM, real client + fake Owner), `FakePlayer`, `scripts/check-mp-log.sh` + self-test, wired into `verify.sh`. 5 of 5 runs passed.
+  Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
+- Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
+- **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
