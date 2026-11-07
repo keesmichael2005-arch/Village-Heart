@@ -120,3 +120,18 @@ Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by veri
 `SIM_DIR` now works for real runs (`build.gradle` reads it). A crash rewrites the report (`ERROR`, `clean_shutdown: false`, `crash_reports`). New stub cases: wrong phase-2 `reloads`, crash recorded in the report, and isolation
 (a bystander run survives another finishing and another being killed). Proof: two real `simulate.sh bare 1` from two worktrees at once both exit 0. While testing, another track's old `verify.sh` self-test really did pkill my first
 real sim, which is the bug reproduced live. Next: M4. Blockers: none.
+
+## 2026-11-07: M5 plan written (docs/plans/M5.md, branch m5-plan)
+8-step plan for the building registry and validation, against M3's markers (verified on dev) and M4's planned `RoomScans`/`RoomScan`
+API (assumptions A0-A8 in §3.0, so the builder can adapt once M4 merges).
+- Registry lives in `VillageState.buildings` (`BuildingRecord` gains `status` and `link`, saved, backward compatible). Markers register in
+  `MarkerBlock.onPlace` (ignores recolours via `oldState.is(this)`), unregister in `affectNeighborsAfterRemoval`, and an orphan sweep catches
+  `/setblock` removals (flags `2|256`, no removal hook). Out-of-claim markers turn red without registering; pre-claim markers are adopted on claim
+  (loaded chunks) or on right-click; unloaded markers are skipped and partly unloaded scans give a "deferred" verdict that changes nothing.
+- Pure core: `BuildingRules` + per-type `BuildingRequirements` over an abstract `RoomFacts`, site rules, `ShaftScanner`/`AreaCounter` over M4's
+  `BlockView`, `ClaimArea`, `Links`, and a `RoundRobin` scheduler (one building per 20 ticks + ≤1 priority check per tick) run inside a
+  `VillageSystem`. Right-click validates synchronously and prints the reasons with `translatableWithFallback`.
+- Tests: 13 L1, 14 L2 (own environments, a 32×28×32 SNBT yard structure, a measured `bound(n, hops)` for "within 2 s"), 1 L4 (red + green
+  plaques and the chat report).
+Revised after a fresh critique (24 findings, 3 blockers: shared-room requeue loop, grass in the Hunting Ground test, tight wait bounds).
+Next: BUILD M5 once M4 is on dev. Top risk: M4's API differing from its plan (mitigated by the two small adapters).
