@@ -53,7 +53,7 @@ class StockpilePerfTest {
 		int[] distinct = new int[1];
 		long m = median(() -> distinct[0] = s.snapshot(0, 0, 0, StorageAlert.OK).totals().size(), () -> {});
 		System.out.println("perf stockpile snapshot (13824 slots): median " + m / 1000 + " us");
-		assertEquals(300, distinct[0]);
+		assertEquals(270, distinct[0]); // 300 item ids, those with n%100 >= 90 never occur in a 90% fill
 		assertTrue(m < 3_000_000L, "median " + m / 1000 + " us");
 	}
 
