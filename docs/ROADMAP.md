@@ -67,11 +67,11 @@ from there instead of hard-coding them.
 - **L2**: two Storage buildings with items → the stockpile totals are their sum. Chests in a House are **not** counted.
       Deposit 100 cobblestone into an almost-full Storage → it spills into the second one
 
-## M7: Hiring and the worker framework (includes the villager-control spike)
-- [ ] Spike: choose brain mixin or a mod task runner (DESIGN §12) and record the decision in DESIGN.md
-- [ ] Assign or fire a job (server-side API + command for tests). Job blocks reserved via POI. Mod professions with no trades
-- [ ] Worker data attachment: job, building, level, XP, needs. Daily schedule (§4), going home to a bed, deposit trips
-- [ ] A dummy "Idle Worker" behaviour that walks to its job block during work hours (real jobs come next)
+## M7: Hiring and the worker framework (includes the villager-control spike) ✅
+- [x] Spike: choose brain mixin or a mod task runner (DESIGN §12) and record the decision in DESIGN.md
+- [x] Assign or fire a job (server-side API + command for tests). Job blocks reserved via POI. Mod professions with no trades
+- [x] Worker data attachment: job, building, level, XP, needs. Daily schedule (§4), going home to a bed, deposit trips
+- [x] A dummy "Idle Worker" behaviour that walks to its job block during work hours (real jobs come next)
 - **L1**: slot accounting: job blocks in valid buildings minus assigned = free. Hire rejected with no free slot. Firing frees the slot
 - **L2**: a hired villager has 0 trade offers and the mod profession, and is at its job block by tick 3000
 - **L2**: an unemployed villager next to a reserved composter does **not** take the farmer profession within 1 day.
