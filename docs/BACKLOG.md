@@ -17,3 +17,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] T-L2-2 doesn't test the spherical radius (a villager in a box corner outside the sphere)
 - [ ] The `SIM_DIR` override only works with the stub
 - [ ] `world.save_bytes` lags the autosave (fine for the soak, not for per-day trends)
+
+## From M3-r1/r2
+- [ ] The sticky-piston test should assert that the wall block actually moved
+- [ ] Art polish: the Farmhouse sheaf glyph and the small Chopping Block axe head
+- [ ] The marker_items screenshot background is night; set noon before the shot
