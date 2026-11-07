@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "#minecraft:planks",
+    "E": "minecraft:white_wool",
+    "#": "villageheart:blank_marker"
+  },
+  "pattern": [
+    "CEC",
+    "E#E",
+    "CEC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:house_marker"
+  }
+}

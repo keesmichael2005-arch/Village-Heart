@@ -64,6 +64,7 @@ dependencies {
 }
 
 test {
+	systemProperty 'villageheart.resourcesDir', file('src/main/resources').absolutePath
 	useJUnitPlatform()
 	testLogging { events "failed"; exceptionFormat "full" }
 }
@@ -91,4 +92,15 @@ jar {
 	from("LICENSE") {
 		rename { "${it}_$projectName" }
 	}
+}
+
+// Regenerates the marker / job-block assets from the core enums (see docs/TESTING.md). Commit the output.
+tasks.register('genAssets', JavaExec) {
+	group = 'villageheart'
+	description = 'Regenerate generated assets under src/main/resources and a preview sheet in build/asset-preview'
+	dependsOn 'testClasses'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'dev.villageheart.tools.AssetGenerator'
+	args file('src/main/resources').absolutePath, file('build/asset-preview').absolutePath
+	systemProperty 'java.awt.headless', 'true'
 }

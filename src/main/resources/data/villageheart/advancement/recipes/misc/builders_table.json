@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_blank_marker": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "villageheart:blank_marker"
+          }
+        ]
+      }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "villageheart:builders_table"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_blank_marker"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "villageheart:builders_table"
+    ]
+  }
+}

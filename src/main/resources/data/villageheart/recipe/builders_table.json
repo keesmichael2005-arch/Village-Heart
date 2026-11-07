@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "minecraft:paper",
+    "B": "minecraft:brick",
+    "C": "minecraft:crafting_table"
+  },
+  "pattern": [
+    " P ",
+    "BCB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:builders_table"
+  }
+}

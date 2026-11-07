@@ -1,0 +1,7 @@
+{
+  "parent": "villageheart:block/marker_plaque",
+  "textures": {
+    "front": "villageheart:block/marker/hunting_ground_invalid",
+    "edge": "minecraft:block/stripped_oak_log"
+  }
+}

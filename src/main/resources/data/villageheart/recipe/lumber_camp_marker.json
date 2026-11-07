@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "#minecraft:logs",
+    "E": "minecraft:stick",
+    "T": "minecraft:stone_axe",
+    "#": "villageheart:blank_marker"
+  },
+  "pattern": [
+    "CTC",
+    "E#E",
+    "CEC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:lumber_camp_marker"
+  }
+}

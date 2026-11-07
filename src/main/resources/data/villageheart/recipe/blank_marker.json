@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "#minecraft:planks",
+    "F": "minecraft:item_frame"
+  },
+  "pattern": [
+    "PPP",
+    "PFP",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:blank_marker"
+  }
+}

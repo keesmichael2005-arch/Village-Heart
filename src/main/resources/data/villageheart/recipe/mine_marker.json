@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "minecraft:cobblestone",
+    "E": "minecraft:rail",
+    "T": "minecraft:stone_pickaxe",
+    "#": "villageheart:blank_marker"
+  },
+  "pattern": [
+    "CTC",
+    "E#E",
+    "CEC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:mine_marker"
+  }
+}

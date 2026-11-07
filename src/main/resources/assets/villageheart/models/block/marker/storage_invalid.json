@@ -1,0 +1,7 @@
+{
+  "parent": "villageheart:block/marker_plaque",
+  "textures": {
+    "front": "villageheart:block/marker/storage_invalid",
+    "edge": "minecraft:block/stripped_oak_log"
+  }
+}

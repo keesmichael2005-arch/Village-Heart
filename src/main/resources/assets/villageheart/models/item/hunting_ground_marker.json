@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "villageheart:block/marker/hunting_ground_unchecked"
+  }
+}

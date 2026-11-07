@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "#minecraft:axes",
+    "L": "#minecraft:logs"
+  },
+  "pattern": [
+    "A",
+    "L"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:chopping_block"
+  }
+}

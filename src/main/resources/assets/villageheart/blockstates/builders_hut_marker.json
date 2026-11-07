@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "facing=north,status=unchecked": {
+      "model": "villageheart:block/marker/builders_hut_unchecked"
+    },
+    "facing=north,status=invalid": {
+      "model": "villageheart:block/marker/builders_hut_invalid"
+    },
+    "facing=north,status=valid": {
+      "model": "villageheart:block/marker/builders_hut_valid"
+    },
+    "facing=east,status=unchecked": {
+      "model": "villageheart:block/marker/builders_hut_unchecked",
+      "y": 90
+    },
+    "facing=east,status=invalid": {
+      "model": "villageheart:block/marker/builders_hut_invalid",
+      "y": 90
+    },
+    "facing=east,status=valid": {
+      "model": "villageheart:block/marker/builders_hut_valid",
+      "y": 90
+    },
+    "facing=south,status=unchecked": {
+      "model": "villageheart:block/marker/builders_hut_unchecked",
+      "y": 180
+    },
+    "facing=south,status=invalid": {
+      "model": "villageheart:block/marker/builders_hut_invalid",
+      "y": 180
+    },
+    "facing=south,status=valid": {
+      "model": "villageheart:block/marker/builders_hut_valid",
+      "y": 180
+    },
+    "facing=west,status=unchecked": {
+      "model": "villageheart:block/marker/builders_hut_unchecked",
+      "y": 270
+    },
+    "facing=west,status=invalid": {
+      "model": "villageheart:block/marker/builders_hut_invalid",
+      "y": 270
+    },
+    "facing=west,status=valid": {
+      "model": "villageheart:block/marker/builders_hut_valid",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "replace": false,
+  "values": [
+    "villageheart:house_marker",
+    "villageheart:storage_marker",
+    "villageheart:farmhouse_marker",
+    "villageheart:lumber_camp_marker",
+    "villageheart:kitchen_marker",
+    "villageheart:builders_hut_marker",
+    "villageheart:mine_marker",
+    "villageheart:hunting_lodge_marker",
+    "villageheart:barracks_marker",
+    "villageheart:market_marker",
+    "villageheart:smithy_marker",
+    "villageheart:mineshaft_marker",
+    "villageheart:hunting_ground_marker",
+    "villageheart:training_yard_marker",
+    "villageheart:chopping_block",
+    "villageheart:builders_table",
+    "villageheart:market_stall"
+  ]
+}

@@ -7,3 +7,7 @@
 # These are Windows script files and should use crlf
 *.bat           text eol=crlf
 
+
+# Generated assets are compared byte-for-byte by GeneratedAssetsTest
+src/main/resources/**/*.json text eol=lf
+*.png binary

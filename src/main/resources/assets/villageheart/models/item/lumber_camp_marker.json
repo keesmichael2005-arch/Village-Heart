@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "villageheart:block/marker/lumber_camp_unchecked"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "W": "#minecraft:wool",
+    "P": "#minecraft:planks",
+    "E": "minecraft:emerald"
+  },
+  "pattern": [
+    "WWW",
+    "PEP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:market_stall"
+  }
+}
