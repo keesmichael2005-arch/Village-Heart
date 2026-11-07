@@ -282,3 +282,11 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Step 9 L4 `HeartScreenClientTests` with 4 screenshots (looked at), UI fire, scrolling, ellipsis; docs (TESTING, DESIGN 10, ROADMAP deferrals, BACKLOG tick).
 - Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
 - Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.
+
+## 2026-11-07: M9 review round 1: FAIL (verifier)
+- Merged origin/dev (M8) into m9; all conflicts additive (both sides kept). Review: docs/reviews/M9-r1.md.
+- Fix 1: a free oak in the open yard is sometimes judged unreachable (WalkTo gives up, 6000-tick blacklist): Layer 2 failed 3 of 9
+  merged runs (two_lumberjacks x2, fell_resumes x1, odd_shapes x1). Fix 2: the Heart Villagers tab shows "Working", not "Needs axe"
+  (HeartFacts ignores NEEDS_TOOL/NO_WORK; WorkerStatusText unused; two key sets for the same statuses).
+- All roadmap tests mutation-checked and real; M7 worker tests 12/12 green; L1, L4, perf green.
+- Next: builder round 2 on m9. Blockers: none.
