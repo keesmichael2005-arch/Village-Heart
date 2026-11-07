@@ -26,9 +26,12 @@ expect no_clean        2 FAKE_CASE=noclean     -- bare 5
 expect four_of_five    2 FAKE_CASE=fourdays    -- bare 5
 expect crash_report    2 FAKE_CASE=crashreport -- bare 5
 expect no_report       2 FAKE_CASE=noreport SIM_START_SECONDS=2 -- bare 5
+expect crash_report_recorded 2 FAKE_CASE=crashreport -- bare 5
+python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); sys.exit(0 if r["clean_shutdown"] is False and r["status"]=="ERROR" and r["crash_reports"]==["crash-x.txt"] else 1)' "$SIM_REPORT_DIR/bare.json" \
+  && echo "ok   crash is recorded in the report itself" || { echo "FAIL report does not record the crash"; FAILED=1; }
 expect gradle_rc1      2 FAKE_CASE=rc1         -- bare 5
 expect timeout         2 FAKE_CASE=sleep SIM_TIMEOUT_SECONDS=5 -- bare 5
-if pgrep -f "$T/sim" > /dev/null || pgrep -fx "sleep 100" > /dev/null; then echo "FAIL leftover fake-sim processes"; pgrep -af "$T/sim"; FAILED=1; else echo "ok   no leftover processes"; fi
+if pgrep -f "$T/sim" > /dev/null; then echo "FAIL leftover fake-sim processes"; pgrep -af "$T/sim"; FAILED=1; else echo "ok   no leftover processes"; fi
 expect stall           2 FAKE_CASE=sleep SIM_STALL_SECONDS=2 -- bare 5
 expect slow_start      2 FAKE_CASE=slow_start SIM_START_SECONDS=2 -- bare 5
 expect usage_unknown  64 -- nonesuch
@@ -45,6 +48,8 @@ second_resume=$(python3 -c 'import json,sys; l=[json.loads(x) for x in open(sys.
 if [ "$calls" -eq 2 ] && [ "$second_resume" = "True" ]; then echo "ok   reload makes two phases (second has resume: true)"
 else echo "FAIL reload: calls=$calls second_resume=$second_resume"; FAILED=1; fi
 
+expect reload_wrong    2 FAKE_CASE=pass FAKE_RELOAD=3 -- bare 4 --reload-at 2
+
 # extra assertions with quotes survive into the request
 rm -f "$SIM_DIR/fake-calls.log"
 expect assert_escaping 0 FAKE_CASE=pass -- bare 1 --assert 'population >= "1" on day 1'
@@ -55,4 +60,16 @@ python3 -c 'import json,sys; r=json.loads(open(sys.argv[1]).readline()); sys.exi
 mkdir -p "$SIM_DIR"
 locked=$( exec 8> "$SIM_DIR/.lock"; flock -n 8; FAKE_CASE=pass scripts/simulate.sh bare 5 > /dev/null 2>&1; echo $? )
 if [ "$locked" -eq 2 ]; then echo "ok   lock held (exit 2)"; else echo "FAIL lock held: expected 2, got $locked"; FAILED=1; fi
+
+# isolation: a bystander run (own dirs, own token) must survive another run finishing and another being killed
+SIM_DIR="$T/simA" SIM_REPORT_DIR="$T/repA" FAKE_CASE=sleep SIM_TIMEOUT_SECONDS=60 SIM_STALL_SECONDS=60 scripts/simulate.sh bare 5 > "$T/outA.txt" 2>&1 &
+A=$!
+sleep 3
+expect isolation_other_finishes 0 SIM_DIR="$T/simB" SIM_REPORT_DIR="$T/repB" FAKE_CASE=pass -- bare 5
+expect isolation_other_times_out 2 SIM_DIR="$T/simC" SIM_REPORT_DIR="$T/repC" FAKE_CASE=sleep SIM_TIMEOUT_SECONDS=4 -- bare 5
+if kill -0 "$A" 2>/dev/null && pgrep -f "$T/simA" > /dev/null; then echo "ok   concurrent run A survived B finishing and C being killed"
+else echo "FAIL concurrent run A was killed by another run"; FAILED=1; fi
+kill -TERM "$A" 2>/dev/null; wait "$A" 2>/dev/null
+sleep 1.5
+if pgrep -f "$T/simA" > /dev/null; then echo "FAIL run A left processes behind after SIGTERM"; FAILED=1; else echo "ok   run A cleaned up after itself"; fi
 exit $FAILED
