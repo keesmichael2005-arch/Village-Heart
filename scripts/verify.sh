@@ -26,9 +26,12 @@ grep -E "required tests (passed|failed)|failed at" reports/gametest.log | sed 's
 step "Layer 3 script self-test (stubbed server)" simulate-selftest.log \
   bash -c 'bash -n scripts/simulate.sh && scripts/test-simulate.sh'
 
+step "Model-log gate self-test" model-log-selftest.log scripts/test-check-model-log.sh
+
 if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: client GameTests + screenshots (virtual display)" clienttest.log \
     xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
+  step "Client log has no villageheart model warnings" model-log-gate.log scripts/check-model-log.sh reports/clienttest.log
   rm -rf reports/screenshots && mkdir -p reports/screenshots
   cp build/run/clientGameTest/screenshots/*.png reports/screenshots/ 2>/dev/null
   echo "- Screenshots: $(ls reports/screenshots | tr '\n' ' ')" >> "$SUMMARY"

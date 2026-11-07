@@ -64,3 +64,18 @@ How to extend (each one place + a test):
 - **An assertion function:** `core.sim.AssertionFunctions` + a test in `AssertionTest`.
 Report JSON keys are snake_case and pinned by `MetricsJsonTest.pinnedKeys`.
 Villager AI is not seeded, so runs differ (a night-one zombie attack can kill villagers). Write assertions with slack; never loosen one silently.
+
+## Markers, generated assets and the model-log gate (M3+)
+- **Generated assets.** Everything for markers and job blocks (blockstates, models, item definitions, loot tables, recipes, recipe-unlock
+  advancements, the axe-mineable tag and all 16x16 PNGs) is produced from the `core.building` enums by `src/test/java/dev/villageheart/tools/AssetGenerator.java`
+  (art in `MarkerArt` / `JobBlockArt`). After changing a `BuildingType`/`JobBlockType`, the art or `Balance.BLANK_MARKER_YIELD`, run
+  `./gradlew --no-daemon genAssets` and commit the output; it also writes a x8 contact sheet to `build/asset-preview/markers.png`
+  (look at it). `GeneratedAssetsTest` (L1) fails on any hand edit, stale file or orphan (JSON byte-for-byte, PNG pixel-for-pixel) and on unreadable
+  art (glyph distance, contrast, status only on the frame). Lang (`en_us.json`) stays hand-written; `LangCoverageTest` checks it.
+- **Marker GameTests** (`MarkerGameTests`) all use environment `villageheart-gametest:markers`, never call `VillageTestSupport.reset`, create players with
+  `MarkerTestSupport.player` and remove only their own (`removePlayer`), and click through `MarkerTestSupport.clickFace`, not `placeAt` (which clicks the
+  air in front of the block). Tests that check drops first assert the `block_drops` gamerule is on.
+- **Model-log gate.** `scripts/check-model-log.sh <log>` fails (exit 1) when the client log has a `Missing textures in model`, `Missing block model`,
+  `Missing model for variant` or `Unable to bake model` warning about `villageheart`; exit 2 if the log is missing or empty. `verify.sh` runs it on
+  `reports/clienttest.log` after layer 4 and self-tests it (`scripts/test-check-model-log.sh`, sample logs in `scripts/testdata/`) in both modes.
+
