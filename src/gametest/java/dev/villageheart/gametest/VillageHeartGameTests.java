@@ -353,4 +353,67 @@ public class VillageHeartGameTests {
 			});
 		});
 	}
+
+	// ---- T-L2-1 / 1b: the village tick timer ------------------------------------------------------
+
+	private static void spinMs(long ms) {
+		long end = System.nanoTime() + ms * 1_000_000L;
+		while (System.nanoTime() < end) { /* busy wait */ }
+	}
+
+	@GameTest(environment = "villageheart-gametest:village_ticker", maxTicks = 100)
+	public void villageTickerTimesSystems(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		ServerPlayer owner = VillageTestSupport.player(h, "alice", GameType.SURVIVAL);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, owner, new BlockPos(2, 0, 2));
+			village(h);
+			dev.villageheart.world.VillageTicker.TIMER.snapshotAndReset();
+			var reg = dev.villageheart.world.VillageSystems.register("test_spin", (server, v) -> spinMs(2));
+			boolean threw = false;
+			try {
+				dev.villageheart.world.VillageSystems.register("test_spin", (server, v) -> { });
+			} catch (IllegalArgumentException e) {
+				threw = true;
+			}
+			if (!threw) {
+				reg.close();
+				throw h.assertionException("duplicate system id must throw IllegalArgumentException");
+			}
+			h.runAfterDelay(20, () -> {
+				var stats = dev.villageheart.world.VillageTicker.TIMER.snapshot();
+				reg.close();
+				h.assertTrue(stats.samples() >= 20, "samples >= 20, got " + stats.samples());
+				h.assertTrue(stats.meanMs() >= 1.5, "mean >= 1.5 ms, got " + stats.meanMs());
+				dev.villageheart.world.VillageTicker.TIMER.snapshotAndReset();
+				h.runAfterDelay(10, () -> {
+					var after = dev.villageheart.world.VillageTicker.TIMER.snapshot();
+					h.assertTrue(after.samples() >= 9, "still sampling, got " + after.samples());
+					h.assertTrue(after.meanMs() < 0.5, "unregistered system costs nothing, mean " + after.meanMs());
+					VillageTestSupport.done(h);
+				});
+			});
+		}, new BlockPos(4, 1, 2));
+	}
+
+	@GameTest(environment = "villageheart-gametest:village_ticker_section", maxTicks = 100)
+	public void villageTickerCountsSections(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		dev.villageheart.world.VillageTicker.TIMER.snapshotAndReset();
+		int[] ticks = {0};
+		h.onEachTick(() -> {
+			if (ticks[0] >= 20) return;
+			ticks[0]++;
+			// two sections per tick: they must add up into one sample, not two
+			try (var t = dev.villageheart.world.VillageTicker.section()) { spinMs(1); }
+			try (var t = dev.villageheart.world.VillageTicker.section()) { spinMs(1); }
+			if (ticks[0] == 20) {
+				var stats = dev.villageheart.world.VillageTicker.TIMER.snapshot();
+				h.assertTrue(stats.meanMs() >= 1.5, "mean >= 1.5 ms (sections of 2x1 ms per tick), got " + stats.meanMs());
+				h.assertTrue(stats.samples() >= 19 && stats.samples() <= 21,
+						"one sample per tick (20 ticks), got " + stats.samples());
+				VillageTestSupport.done(h);
+			}
+		});
+	}
 }

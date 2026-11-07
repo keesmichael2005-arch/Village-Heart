@@ -36,6 +36,7 @@ public class VillageHeart implements ModInitializer {
 	public void onInitialize() {
 		ModBlocks.register();
 		PlayerBlockBreakEvents.BEFORE.register(VillageHeart::allowBreak);
+		dev.villageheart.world.VillageTicker.register();
 		LOG.info("Village Heart loaded");
 	}
 }
