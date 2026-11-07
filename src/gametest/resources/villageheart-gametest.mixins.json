@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "dev.villageheart.gametest.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"NetworkSynchronizerLostWakeupFix"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

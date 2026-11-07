@@ -120,3 +120,14 @@ Perf wall-clock tests moved to a `perf`-tagged `perfTest` task run alone by veri
 `SIM_DIR` now works for real runs (`build.gradle` reads it). A crash rewrites the report (`ERROR`, `clean_shutdown: false`, `crash_reports`). New stub cases: wrong phase-2 `reloads`, crash recorded in the report, and isolation
 (a bystander run survives another finishing and another being killed). Proof: two real `simulate.sh bare 1` from two worktrees at once both exit 0. While testing, another track's old `verify.sh` self-test really did pkill my first
 real sim, which is the bug reproduced live. Next: M4. Blockers: none.
+
+## 2026-11-07: L4 "Network synchronizer in invalid state" flake fixed (builder, branch l4-flake)
+Root cause is a lost-wakeup race in Fabric's `NetworkSynchronizer.waitForPacketHandlers` (fabric-client-gametest-api-v1 4.3.5; newer Fabric removed the class, and no newer
+fabric-api exists for 1.21.11). It tests "packet in flight, nothing queued" outside the lock, then `await(10 s)` without testing again. On the server's first tick of a new
+world the client's login packet is handled in that gap, the signal is lost, the server sleeps 10 s (nothing else can wake it: the client waits for the server) and the
+synchronizer declares itself invalid. Evidence: every failure is on the server thread at `NetworkSynchronizer.java:138` (the await timeout), 10 s after `Time elapsed`
+and before the player logs in; a counter probe showed both counters at 0 during the whole stall. Fix: gametest-only client mixin `NetworkSynchronizerLostWakeupFix`
+(re-test before parking, 20 ms slices, Fabric's 10 s failure kept); no retry, no test changed. `verify.sh` fails if the fix is not installed and reports the rescue count.
+Measured with 4 busy loops of mine (load 9-12): unpatched dev 1/10 failed (plus 3/6 in earlier probe runs); patched 12/12 green (2 rescues logged).
+Mutation: with a 30 ms sleep before the `lock()` the unpatched code failed 2/2 with the same stack; with the fix it passed with 3 rescues.
+Next: nothing on this item. Blockers: none.
