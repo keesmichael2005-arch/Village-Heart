@@ -69,6 +69,9 @@ class WorldClaimTest {
 		assertEquals(BreakDecision.ALLOWED_UNCLAIMED, w.mayBreakHeart(B, bob));
 		assertEquals(BreakDecision.ALLOWED_OWNER, w.mayBreakHeart(A, alice));
 		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, bob));
+		w.update(v -> v.withRank(carol, Rank.STEWARD).withRank(bob, Rank.RESIDENT));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, carol));
+		assertEquals(BreakDecision.DENIED_NOT_OWNER, w.mayBreakHeart(A, bob));
 	}
 
 	@Test void dimensionIsPartOfLocation() {
