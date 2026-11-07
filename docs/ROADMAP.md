@@ -23,13 +23,13 @@ from there instead of hard-coding them.
 - **L2**: claim, save and reload the level (or re-read the saved data) → the claim, owner and treasury are intact
 - **L2**: a non-owner player breaking the Heart → the block is still there and the claim is intact
 
-## M2: Layer 3: long-simulation harness
-- [ ] `scripts/simulate.sh <scenario> <days>`: boots a headless server on a **fixed seed** with a known plains village,
+## M2: Layer 3: long-simulation harness ✅
+- [x] `scripts/simulate.sh <scenario> <days>`: boots a headless server on a **fixed seed** with a known plains village,
       locates the village and its bell, places the Heart, applies a scenario setup, fast-forwards N days, and writes
       `reports/sim/<scenario>.json` (one record per day) plus a pass/fail summary for the scenario's assertions
-- [ ] Per-day metrics: day, population, adults, employed, buildings valid/invalid, stockpile totals (top items),
+- [x] Per-day metrics: day, population, adults, employed, buildings valid/invalid, stockpile totals (top items),
       food nutrition, food days left, treasury, deaths (with cause), mean/p95 **ms per tick of village logic**, server TPS
-- [ ] Scenario `bare`: claim only, 5 days. The harness is not part of `verify.sh` by default. Document it in `docs/TESTING.md`
+- [x] Scenario `bare`: claim only, 5 days. The harness is not part of `verify.sh` by default. Document it in `docs/TESTING.md`
 - **L1**: metrics JSON writer and assertion evaluator (e.g. `population >= 4 on day 5`) are unit-tested
 - **L3**: `bare` runs for 5 days, exits 0, the JSON has 5 records, the claim exists on every day, and population on the last day ≥ population on day 1 − 1
 - **L3**: a deliberately failing assertion makes the script exit non-zero (prove that red is red)
