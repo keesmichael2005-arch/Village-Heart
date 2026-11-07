@@ -47,3 +47,6 @@ reports/
 
 # agent worktrees / local Claude state
 .claude/
+
+# the in-process dedicated server of the 2-player session writes its log here (M24)
+logs/
