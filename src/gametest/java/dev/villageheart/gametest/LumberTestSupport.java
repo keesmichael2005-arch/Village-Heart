@@ -129,6 +129,12 @@ public final class LumberTestSupport {
 		return Workers.status(h.getLevel().getServer(), rec);
 	}
 
+	/** Fails when any lumberjack declared a tree unreachable (every tree of the open-yard tests can be reached). */
+	public static void assertNoGiveUps(GameTestHelper h) {
+		var gu = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).giveUps();
+		h.assertTrue(gu.isEmpty(), "a tree in the open was declared unreachable: " + gu);
+	}
+
 	/** Where a lumberjack is spawned: next to the Chopping Block. */
 	public static BlockPos spawnSpot() { return BuildingTestSupport.inside(CAMP, 1, 0, 1); }
 

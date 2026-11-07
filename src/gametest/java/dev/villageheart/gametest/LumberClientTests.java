@@ -65,7 +65,7 @@ final class LumberClientTests {
 				BlockPos next = new BlockPos(0, top - felled, 7);
 				if (!level.getBlockState(next).is(Blocks.OAK_LOG)) throw new AssertionError("the trunk is too short for the scene");
 				// a stump with a sapling, and the drops
-				BlockPos stump = new BlockPos(-4, fy, 5);
+				BlockPos stump = new BlockPos(1, fy, 4); // left of the trunk in the picture, between the camera and the worker
 				level.setBlock(stump, Blocks.OAK_SAPLING.defaultBlockState(), 3);
 				level.addFreshEntity(new ItemEntity(level, -2.5, fy + 0.3, 4.5, new ItemStack(Items.OAK_LOG, 2)));
 				level.addFreshEntity(new ItemEntity(level, -3.2, fy + 0.3, 5.8, new ItemStack(Items.STICK, 3)));
@@ -109,5 +109,69 @@ final class LumberClientTests {
 			srv.runCommand("kill @e[type=minecraft:villager]");
 		}
 		WorkerSystem.clearOrphanExemptionsForTest();
+	}
+
+	/**
+	 * T-L4-2: the Villagers tab of the Heart screen with a lumberjack whose camp chest holds no axe: its row reads "Needs axe". A real claim,
+	 * a real Lumber Camp (Chopping Block and chest, no axe), a real hire, the screen opened by a real right-click; the row is checked in the
+	 * snapshot the client holds, then the shot is taken.
+	 */
+	static void villagersNeedsAxe(ClientGameTestContext context) {
+		java.util.UUID worker = new java.util.UUID(0, 11);
+		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
+			sp.getClientWorld().waitForChunksRender();
+			var srv = sp.getServer();
+			int y = srv.computeOnServer(server -> server.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0));
+			srv.runCommand("time set noon");
+			srv.runCommand("gamerule advance_time false");
+			srv.runCommand("weather clear");
+			srv.runCommand("difficulty peaceful");
+			srv.runCommand("gamemode creative @a");
+			srv.runCommand("effect give @a minecraft:night_vision infinite 0 true");
+			srv.runCommand("setblock 0 " + y + " 0 minecraft:bell");
+			srv.runCommand("setblock -2 " + y + " 0 villageheart:village_heart");
+			context.waitTicks(10);
+			final int fy = y;
+			String claim = srv.computeOnServer(server -> dev.villageheart.world.VillageClaims.claim(server.overworld(),
+					new BlockPos(-2, fy, 0), server.getPlayerList().getPlayers().get(0)).name());
+			if (!claim.equals("CLAIMED")) throw new AssertionError("the claim failed: " + claim);
+			HeartScreenClientTests.room(srv, -3, y, 5, 4, "lumber_camp_marker");
+			srv.runCommand("setblock -2 " + y + " 7 villageheart:chopping_block[facing=south]");
+			srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
+			srv.runCommand("setblock 0 " + y + " 10 minecraft:torch");
+			// a villager with AI: the status comes from the job running in its brain
+			srv.runCommand("summon minecraft:villager 0 " + y + " 8 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(worker) + ",CustomName:\"Tom\"}");
+			BlockPos marker = new BlockPos(0, y + 2, 12);
+			String state = "";
+			for (int i = 0; i < 200 && !state.equals("VALID"); i++) {
+				state = srv.computeOnServer(server -> HeartScreenClientTests.marker(server.overworld(), marker));
+				context.waitTicks(1);
+			}
+			if (!state.equals("VALID")) throw new AssertionError("the Lumber Camp plaque is " + state);
+			String hired = srv.computeOnServer(server -> dev.villageheart.worker.Workers.hire(server.overworld(),
+					server.overworld().getEntity(worker), JobType.LUMBERJACK, java.util.Optional.empty()).toString());
+			if (!hired.startsWith("Hired")) throw new AssertionError("the hire failed: " + hired);
+			double eyeY = y + 1.62, targetY = y + 0.5, pz = 3.5;
+			float pitch = (float) -Math.toDegrees(Math.atan2(targetY - eyeY, pz - 0.5));
+			srv.runCommand("tp @a -1.5 " + y + " " + pz + " 180 " + pitch);
+			context.waitTicks(10);
+			sp.getClientWorld().waitForChunksRender();
+			context.getInput().pressMouse(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+			context.waitForScreen(dev.villageheart.client.heart.HeartScreen.class);
+			HeartScreenClientTests.openTab(context, 1);
+			// the worker's first plan sets the status within a second; the client gets the snapshot on its next refresh
+			dev.villageheart.core.heart.VillagerRow row = null;
+			for (int i = 0; i < 200 && (row == null || row.activity() != dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL); i++) {
+				context.waitTicks(1);
+				row = HeartScreenClientTests.snapshot(context).villagers().stream().filter(r -> r.id().equals(worker)).findFirst().orElse(null);
+			}
+			if (row == null || row.activity() != dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL) throw new AssertionError("the row is " + row);
+			String text = dev.villageheart.core.heart.HeartTexts.EN.get(dev.villageheart.core.heart.HeartTexts.activityKey(row.activity(), row.jobId()));
+			if (!"Needs axe".equals(text)) throw new AssertionError("the row reads " + text);
+			context.takeScreenshot("villagers_tab_needs_axe");
+			HeartScreenClientTests.assertClean(context, "villagers tab with a status");
+			srv.runCommand("gamerule advance_time true");
+			srv.runCommand("kill @e[type=minecraft:villager]");
+		}
 	}
 }

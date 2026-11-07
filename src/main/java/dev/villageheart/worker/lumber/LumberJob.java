@@ -369,7 +369,9 @@ public final class LumberJob {
 		HeartLocation key = ws.key;
 		if (key != null) {
 			rt.camp(data.building()).giveUp(key, now);
-			VillageHeart.LOG.info("Lumberjack {} cannot reach the tree at {}: skipped for {} ticks", v.getUUID(), key, Balance.TREE_BLACKLIST_TICKS);
+			rt.giveUps.add(key + ": " + ws.walk.reason());
+			VillageHeart.LOG.info("Lumberjack {} cannot reach the tree at {} ({}): skipped for {} ticks", v.getUUID(), key, ws.walk.reason(),
+					Balance.TREE_BLACKLIST_TICKS);
 			boolean untouched = ws.tree != null && ws.remaining.size() == ws.tree.fellOrder().size();
 			if (untouched) VillageClaims.data(level.getServer()).update(s -> s.withoutTreeTask(key));
 		}

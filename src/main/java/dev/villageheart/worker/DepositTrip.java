@@ -131,6 +131,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		started = gameTime;
 		delivered = false;
 		failed = false;
+		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET); // a trip walks with WalkTo; a left-over vanilla target would pull elsewhere
 		Workers.setTripRunning(villager, true);
 		walk.begin(target, ARRIVE, gameTime);
 	}

@@ -78,6 +78,13 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.storage_full", "Storage full");
 		EN.put(PREFIX + "activity.storage_unreachable", "Storage unreachable");
 		EN.put(PREFIX + "activity.workplace_invalid", "Workplace invalid");
+		EN.put(PREFIX + "activity.needs_tool", "Needs tool");
+		EN.put(PREFIX + "activity.needs_tool.axe", "Needs axe");
+		EN.put(PREFIX + "activity.needs_tool.pickaxe", "Needs pickaxe");
+		EN.put(PREFIX + "activity.needs_tool.hoe", "Needs hoe");
+		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
+		EN.put(PREFIX + "activity.no_work", "Nothing to do");
+		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");
@@ -115,4 +122,23 @@ public final class HeartTexts {
 	}
 
 	public static String english(String suffix) { return EN.get(key(suffix)); }
+
+	/**
+	 * The key of what a villager is doing, for the Villagers tab and for every other place that shows a worker's status (one set of words):
+	 * a missing tool names the tool of the job ("Needs axe"), "no work" may have a job-specific reason ("No trees within 32 blocks").
+	 */
+	public static String activityKey(ActivityKind activity, String jobId) {
+		String name = activity.name().toLowerCase(java.util.Locale.ROOT);
+		if (activity == ActivityKind.NEEDS_TOOL) {
+			String tool = dev.villageheart.core.worker.JobType.byId(jobId).flatMap(dev.villageheart.core.worker.JobType::tool)
+					.map(t -> t.kind().id()).orElse("");
+			String specific = "activity.needs_tool." + tool;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.needs_tool");
+		}
+		if (activity == ActivityKind.NO_WORK) {
+			String specific = "activity.no_work." + jobId;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.no_work");
+		}
+		return key("activity." + name);
+	}
 }

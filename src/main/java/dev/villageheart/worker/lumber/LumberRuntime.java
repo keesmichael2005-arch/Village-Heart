@@ -73,8 +73,13 @@ public final class LumberRuntime {
 				+ " tree=" + (ws.tree == null ? "none" : ws.remaining.size() + "/" + ws.tree.fellOrder().size() + " left") + " key=" + ws.key
 				+ " walk=" + (ws.walk.active() ? ws.walk.target() : "-") + " lease=" + (ws.lease != null) + " needsPlan=" + ws.needsPlan
 				+ " pos=" + v.blockPosition() + " lastTick=" + ws.lastTick + " status=" + dev.villageheart.worker.job.WorkerStatuses.get(villager)
-				+ " backoff=" + ws.idleBackoffUntil;
+				+ " backoff=" + ws.idleBackoffUntil + " giveUps=" + giveUps;
 	}
+
+	/** Every "cannot reach this tree" verdict so far (tree base and why), so a test can insist that open trees never get one. */
+	final java.util.List<String> giveUps = new ArrayList<>();
+
+	public java.util.List<String> giveUps() { return new ArrayList<>(giveUps); }
 
 	WorkerState state(UUID villager) { return workers.computeIfAbsent(villager, k -> new WorkerState()); }
 

@@ -60,6 +60,7 @@ public final class WalkTo {
 		this.anchorAt = now;
 		this.anchor = null;
 		this.nextPathAt = now;
+		this.lastTickAt = Long.MIN_VALUE;
 		this.settled = null;
 		this.jamAnchor = null;
 	}
@@ -85,13 +86,39 @@ public final class WalkTo {
 	/** The 3D distance from the villager to the bottom centre of the target block. */
 	public static double distance(Villager v, BlockPos target) { return v.position().distanceTo(Vec3.atBottomCenterOf(target)); }
 
+	/** Why the last {@link State#UNREACHABLE} was reported (for logs). */
+	public String reason() { return reason; }
+
+	private String reason = "";
+	private long lastTickAt = Long.MIN_VALUE;
+
 	public State tick(Villager v, long now) {
 		if (target == null) return State.ARRIVED;
+		// A walk that was not ticked for a while (the worker yielded to a deposit trip, or WORK was interrupted) must not count that
+		// time as standing still or as walking: the clocks start again.
+		if (lastTickAt != Long.MIN_VALUE && now - lastTickAt > 5) {
+			long gap = now - lastTickAt;
+			start += gap;
+			anchorAt = now;
+			anchor = null;
+			jamAnchor = null;
+			nextPathAt = now;
+		}
+		lastTickAt = now;
 		PathNavigation nav = v.getNavigation();
 		double d = distance(v, target);
-		if (settled != null && v.position().distanceTo(settled) <= 1.5) return State.ARRIVED;
+		// While the worker stands at its spot (chopping a 40-log tree takes 1600 ticks) the give-up clocks must not run: they measure
+		// the walk that comes after the worker was pushed away or came back from a trip, not the work done here.
+		if (settled != null && v.position().distanceTo(settled) <= 1.5) {
+			start = now;
+			anchorAt = now;
+			return State.ARRIVED;
+		}
 		settled = null;
 		if (d <= reach + 0.1) {
+			start = now;
+			anchorAt = now;
+			anchor = null;
 			nav.stop();
 			v.getBrain().eraseMemory(MemoryModuleType.PATH);
 			return State.ARRIVED;
@@ -101,6 +128,8 @@ public final class WalkTo {
 			anchorAt = now;
 		}
 		if (now - anchorAt > Balance.WALK_STALL_TICKS || now - start > Balance.WALK_TOTAL_TICKS) {
+			reason = (now - anchorAt > Balance.WALK_STALL_TICKS ? "no movement for " + (now - anchorAt) : "walking for " + (now - start))
+					+ " ticks, " + Math.round(d * 10) / 10.0 + " blocks from " + target + ", at " + v.blockPosition();
 			nav.stop();
 			return State.UNREACHABLE;
 		}

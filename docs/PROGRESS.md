@@ -246,7 +246,7 @@ Steps 1-12 done (the second L4 shot is skipped: M8 is not on dev; ROADMAP not ti
 - core: `core.job` (tool kinds and tiers, `WorkSpeed` = tool x level x needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), `JobType.tool()`, `core.tree` (`TreeScanner`, `TreeFinder`, `FellOrder`, `Species`), `core.lumber` (`LumberjackPlanner`, `ReplantRules`), `TreeTask` saved in `VillageState.treeTasks` (`tree_tasks`), L3 families `work.<job>.<counter>`, `workers.status.<status>`, `stockpile.tag.<tag>` (`DayMetrics`, `MetricsJson`, collector).
 - glue: `worker.lumber` (`LumberjackWork`, `LumberJob`, `LumberRuntime`, `LevelTreeView`, `LumberSystem`, `LumberKeep`), `worker.job` (`CampContainers`, `CampTools`, `ItemPickup`, `WalkTo`, `WorkerStatuses`, `WorkerStatusText`, `WorkStats`); `DepositTrip` gets the keep rule, the free-slot rule, `wanted()` and long-range walking.
 - Main findings while building: the vanilla walk sink cannot bring a worker out of a room to a tree behind a wall (own pathing, `WalkTo`); leaves block the ground up to the trunk (chop from the nearest reachable spot); a worker idling at the camp does not see drops 20 blocks away (collect in the work area); two workers jam in a doorway (jam breaker).
-- Tests: see the final entry below for counts and the verify summary.
+- Tests: 14 L2 lumberjack tests, 13+ L1 test classes for the toolkit, trees, planner, saved tasks and metrics; L4 `lumberjack_felling` and `villagers_tab_needs_axe`. Verify summary and flake counts are in the M9 round 1 fixes entry below.
 
 ## 2026-11-07: M8 plan written (docs/plans/M8.md)
 9-step plan for the Heart screen v1. APIs checked against the 1.21.11 sources and Fabric 0.141.6 sources jars (no Gradle run).

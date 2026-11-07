@@ -81,6 +81,7 @@ public class LumberjackGameTests {
 			h.assertValueEqual(TreeCell.UNLOADED, view.cell(far, b.getY(), b.getZ()), "a far position is unloaded");
 			h.assertValueEqual(Integer.MIN_VALUE, view.top(far, b.getZ()), "and has no height");
 			h.assertFalse(level.hasChunk(far >> 4, b.getZ() >> 4), "reading it did not load the chunk");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -150,6 +151,7 @@ public class LumberjackGameTests {
 			Villager stray = WorkerTestSupport.spawnVillager(h, spawnSpot());
 			WorkerTestSupport.hireDirect(h, stray, dev.villageheart.core.worker.JobType.LUMBERJACK, chop());
 			h.assertValueEqual(CampTools.Missing.UNKNOWN, CampTools.lease(server, stray, ToolKind.AXE), "unknown, so no 'Needs axe'");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -217,6 +219,7 @@ public class LumberjackGameTests {
 			h.assertValueEqual(stat[2] + 1, dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted"), "work.lumberjack.saplings_planted");
 			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().treeTasks().isEmpty(),
 					"the replant task is done and gone");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -258,6 +261,7 @@ public class LumberjackGameTests {
 			});
 		}
 		seq.thenExecute(() -> {
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -300,6 +304,7 @@ public class LumberjackGameTests {
 			h.assertValueEqual(1, dirt, "the dirt lies where it was");
 			h.assertValueEqual(1, sticks, "the stick outside the work area lies where it was");
 			h.assertValueEqual(0, wanted, "nothing wanted is left on the ground");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -352,6 +357,7 @@ public class LumberjackGameTests {
 			} catch (java.io.IOException e) {
 				throw new AssertionError(e);
 			}
+			assertNoGiveUps(h);
 			v[1] = reloadEntity(h.getLevel(), v[1]);
 			dev.villageheart.worker.lumber.LumberRuntime.resetForTests();
 			dev.villageheart.worker.job.WorkerStatuses.clearAll();
@@ -362,6 +368,7 @@ public class LumberjackGameTests {
 		seq = seq.thenWaitUntil(() -> h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().treeTasks().stream()
 				.noneMatch(t -> t.stage() == dev.villageheart.core.TreeTask.Stage.FELLING), "no felling task is left"));
 		seq.thenExecute(() -> {
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -409,6 +416,7 @@ public class LumberjackGameTests {
 			h.assertTrue(carried(v[0], Items.OAK_SAPLING) >= 4, "the saplings stay with the worker: " + inventory(v[0]));
 		});
 		seq.thenExecute(() -> {
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -479,6 +487,7 @@ public class LumberjackGameTests {
 			for (int i = 0; i < 6; i++) sb.append("oak ").append(i).append(": gone ").append(goneAt[i] - t0[0]).append(", replanted ").append(plantedAt[i] - t0[0]).append("; ");
 			System.out.println("[m9] sixOaksTwoDays: " + sb + "tick now " + (h.getTick() - t0[0]));
 			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -510,8 +519,14 @@ public class LumberjackGameTests {
 			System.out.println("[m9] noAxeNoLogs: NEEDS_TOOL after " + (h.getTick() - t0[0]) + " ticks");
 			var text = dev.villageheart.worker.job.WorkerStatusText.of(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, dev.villageheart.core.worker.JobType.LUMBERJACK);
 			var contents = (net.minecraft.network.chat.contents.TranslatableContents) text.getContents();
-			h.assertValueEqual("status.villageheart.needs_tool.axe", contents.getKey(), "text key");
+			h.assertValueEqual("gui.villageheart.heart.activity.needs_tool.axe", contents.getKey(), "text key");
 			h.assertValueEqual("Needs axe", contents.getFallback(), "text");
+			// the Villagers tab row of the Heart screen says the same
+			var row = HeartTestSupport.snapshot(h, dev.villageheart.core.Rank.OWNER).villagers().stream()
+					.filter(r -> r.id().equals(v[0].getUUID())).findFirst().orElseThrow();
+			h.assertValueEqual(dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL, row.activity(), "the row's activity");
+			h.assertValueEqual("Needs axe", dev.villageheart.core.heart.HeartTexts.EN.get(
+					dev.villageheart.core.heart.HeartTexts.activityKey(row.activity(), row.jobId())), "the row's text");
 		});
 		// a day of no axe: not a log falls, nothing reaches Storage
 		seq = seq.thenWaitUntil(() -> {
@@ -531,6 +546,7 @@ public class LumberjackGameTests {
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "a log falls with the axe"));
 		seq.thenExecute(() -> {
 			System.out.println("[m9] noAxeNoLogs: first log with the axe after " + (h.getTick() - t0[0]) + " ticks");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -592,6 +608,7 @@ public class LumberjackGameTests {
 			System.out.println("[m9] oddShapes: the four dark oak saplings stood " + (saplingsAt[0] - lastLogAt[0]) + " ticks after the last dark oak log");
 			h.assertTrue(saplingsAt[0] - lastLogAt[0] <= 900, "four saplings within 900 ticks of the last dark oak log (measured 374 to 613): " + (saplingsAt[0] - lastLogAt[0]));
 			assertValid(h, true);
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -662,6 +679,7 @@ public class LumberjackGameTests {
 			h.assertTrue(status(h, v[0]) != dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, "first lumberjack keeps its axe");
 		});
 		seq.thenExecute(() -> {
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -703,6 +721,7 @@ public class LumberjackGameTests {
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
 		seq.thenExecute(() -> {
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -845,6 +864,7 @@ public class LumberjackGameTests {
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
 		seq.thenExecute(() -> {
 			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});

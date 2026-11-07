@@ -28,6 +28,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		WorkerClientTests.workersAtJobBlocks(context);
 		LumberClientTests.lumberjackFelling(context);
 		HeartScreenClientTests.heartTabs(context);
+		LumberClientTests.villagersNeedsAxe(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
 	}
