@@ -15,9 +15,9 @@ world, metrics JSON) · **L4** client test with a screenshot that the agent has 
 Times are in-game: 1 day = 24000 ticks. *(tunable)* numbers come from the core balance class, so tests read them
 from there instead of hard-coding them.
 
-## M1: Village state, persistence, one per world
-- [ ] `VillageState` saved data: Heart position, owner UUID, ranks map, treasury, tier, building/worker registries (empty for now)
-- [ ] The second Heart in a world is refused (the M0 TODO). The Owner breaking the Heart releases the claim. Others cannot break it
+## M1: Village state, persistence, one per world ✅
+- [x] `VillageState` saved data: Heart position, owner UUID, ranks map, treasury, tier, building/worker registries (empty for now)
+- [x] The second Heart in a world is refused (the M0 TODO). The Owner breaking the Heart releases the claim. Others cannot break it
 - **L1**: `ClaimRules` refuses when a claim exists. `VillageState` round-trips through its serialisable form with no data loss
 - **L2**: place Heart → claimed; place a second Heart by another bell → `ALREADY_HAVE_VILLAGE`; break the first → a new claim succeeds
 - **L2**: claim, save and reload the level (or re-read the saved data) → the claim, owner and treasury are intact

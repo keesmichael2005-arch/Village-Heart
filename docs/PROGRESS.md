@@ -32,3 +32,7 @@ T-L4-1 now teleports to a block centre and asserts the client can predict the pl
 ## 2026-11-07: M1 review round 2 fixes (builder)
 `purgePoi` now touches only MEETING POIs (bell block to air; orphan POIs removed), plus regression test `resetLeavesOtherPoisAlone` (composter POI survives reset).
 T-L2-6 now re-claims, reloads, clears and reloads again, so a missing `setDirty()` in `clear()` goes red (mutation-checked).
+
+## 2026-11-07: M1 review round 3 (verifier): PASS
+Both round-2 items re-checked with mutations (red without `setDirty()` in `clear()`; red when `purgePoi` touches all POIs).
+Full `scripts/verify.sh` exit 0, 15/15 GameTests in 3 runs, 0 POI mismatches. M1 ticked. Non-blocking notes in docs/reviews/M1-r3.md. Next: M2.
