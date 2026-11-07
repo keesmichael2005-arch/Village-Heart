@@ -1132,4 +1132,77 @@ public class WorkerGameTests {
 			end(h);
 		});
 	}
+
+	// ---- review r1: releasing the Heart with an unloaded workstation --------------------------------
+
+	/**
+	 * A held workstation whose chunk is unloaded when the Heart is broken: the ticket cannot be released then, so it must be remembered
+	 * in the saved data and released when the chunk loads, after which a vanilla villager can take the composter.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_release_unloaded", structure = YARD, maxTicks = 3000)
+	public void heartReleaseWithUnloadedWorkstation(GameTestHelper h) {
+		begin(h);
+		BlockPos[] far = new BlockPos[1];
+		HeartLocation[] farLoc = new HeartLocation[1];
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			MinecraftServer server = level.getServer();
+			HeartLocation heart = VillageClaims.current(server).orElseThrow().heart();
+			int fx = heart.x(), fz = heart.z() + 100_000;
+			level.getChunk(fx >> 4, fz >> 4);
+			level.setChunkForced(fx >> 4, fz >> 4, true);
+			int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, fx, fz);
+			far[0] = new BlockPos(fx, y, fz);
+			farLoc[0] = VillageClaims.locate(level, far[0]);
+			level.setBlock(far[0], Blocks.COMPOSTER.defaultBlockState(), 3);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getPoiManager().getType(far[0]).isPresent(), "the far composter's POI exists"));
+		seq = seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			h.assertTrue(level.getPoiManager().take(t -> true, (t, p) -> p.equals(far[0]), far[0], 1).isPresent(), "the mod took the ticket");
+			VillageClaims.data(level.getServer()).setReservedJobBlocks(Set.of(farLoc[0]));
+			level.setChunkForced(far[0].getX() >> 4, far[0].getZ() >> 4, false);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getChunkSource().getChunkNow(far[0].getX() >> 4, far[0].getZ() >> 4) == null,
+				"waiting for the far chunk to unload"));
+		seq = seq.thenExecute(() -> {
+			BuildingTestSupport.owner().gameMode.destroyBlock(h.absolutePos(new BlockPos(3, 1, 1)));
+			MinecraftServer server = h.getLevel().getServer();
+			h.assertTrue(VillageClaims.current(server).isEmpty(), "the village is released");
+			h.assertTrue(h.getLevel().getChunkSource().getChunkNow(far[0].getX() >> 4, far[0].getZ() >> 4) == null, "the chunk is still unloaded");
+			h.assertTrue(VillageClaims.data(server).pendingTicketReleases().contains(farLoc[0]),
+					"the unloaded release is remembered: " + VillageClaims.data(server).pendingTicketReleases());
+			h.getLevel().setChunkForced(far[0].getX() >> 4, far[0].getZ() >> 4, true);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 80, "the pending release completes after the chunk loads", () -> {
+			MinecraftServer server = h.getLevel().getServer();
+			h.assertTrue(VillageClaims.data(server).pendingTicketReleases().isEmpty(), "still pending");
+			h.assertTrue(poiHasSpaceAbs(h, far[0]), "the composter's ticket is free");
+		});
+		seq = seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			level.setDayTime(2000);
+			Villager e = EntityType.VILLAGER.create(level, EntitySpawnReason.LOAD);
+			e.snapTo(far[0].getX() + 1.5, far[0].getY(), far[0].getZ() + 0.5);
+			e.setPersistenceRequired();
+			level.addFreshEntity(e);
+			track(e);
+			v[0] = e;
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "a vanilla villager takes the freed composter",
+				() -> h.assertTrue(isFarmer(v[0]), "profession " + v[0].getVillagerData().profession().getRegisteredName()));
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			level.setBlock(far[0], Blocks.AIR.defaultBlockState(), 3);
+			level.setChunkForced(far[0].getX() >> 4, far[0].getZ() >> 4, false);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	private static boolean poiHasSpaceAbs(GameTestHelper h, BlockPos abs) {
+		return h.getLevel().getPoiManager().getInSquare(t -> true, abs, 0, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE)
+				.anyMatch(r -> r.getPos().equals(abs));
+	}
 }

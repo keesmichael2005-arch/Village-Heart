@@ -15,6 +15,9 @@ public final class WorldClaim {
 	/** Job blocks whose POI ticket the mod holds (M7). Belongs to the village: cleared with it. */
 	private final Set<HeartLocation> reservedJobBlocks = new LinkedHashSet<>();
 
+	/** Held job blocks whose ticket could not be released (chunk unloaded when the village was released): finished when they load. */
+	private final Set<HeartLocation> pendingTicketReleases = new LinkedHashSet<>();
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -24,6 +27,19 @@ public final class WorldClaim {
 	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks) {
 		this(village);
 		this.reservedJobBlocks.addAll(reservedJobBlocks);
+	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases) {
+		this(village, reservedJobBlocks);
+		this.pendingTicketReleases.addAll(pendingTicketReleases);
+	}
+
+	/** A copy of the pending releases. Unlike the reservations they survive {@link #releaseAt} and {@link #clear}. */
+	public Set<HeartLocation> pendingTicketReleases() { return new LinkedHashSet<>(pendingTicketReleases); }
+
+	public void setPendingTicketReleases(Set<HeartLocation> blocks) {
+		pendingTicketReleases.clear();
+		pendingTicketReleases.addAll(blocks);
 	}
 
 	/** A copy; use {@link #setReservedJobBlocks} to change. */
@@ -72,7 +88,8 @@ public final class WorldClaim {
 	}
 
 	@Override public boolean equals(Object o) {
-		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks);
+		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
+				&& pendingTicketReleases.equals(w.pendingTicketReleases);
 	}
 
 	@Override public int hashCode() {

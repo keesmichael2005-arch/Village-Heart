@@ -93,6 +93,15 @@ public final class Workers {
 		}
 	}
 
+	private static final java.util.Set<Villager> TRIPS = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
+	/** True while a deposit trip runs for this worker: nothing else may take its walk target, and no second trip may start. */
+	static boolean tripRunning(Villager v) { return TRIPS.contains(v); }
+
+	static void setTripRunning(Villager v, boolean running) {
+		if (running) TRIPS.add(v); else TRIPS.remove(v);
+	}
+
 	private static final java.util.Map<UUID, WorkerStatus> TRIP_STATUS = new java.util.HashMap<>();
 
 	/** Transient result of the worker's last deposit trip (null clears it). Not saved. */

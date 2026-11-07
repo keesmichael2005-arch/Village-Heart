@@ -82,14 +82,14 @@ final class WorkerClientTests {
 				int z = 0;
 				srv.runCommand("setblock " + x + " " + y + " " + (z - 1) + " " + blockState(jobs[i]));
 			}
-			srv.runCommand("tp @a 0.5 " + y + " 7.0 180 8");
+			srv.runCommand("tp @a 0.5 " + y + " 8.0 180 8");
 			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
 			int fov = context.computeOnClient(mc -> mc.options.fov().get());
-			context.runOnClient(mc -> { mc.options.hideGui = true; mc.options.fov().set(90); });
+			context.runOnClient(mc -> { mc.options.hideGui = true; mc.options.fov().set(95); });
 			context.waitTicks(40);
 			sp.getClientWorld().waitForChunksRender();
 
-			// the worker stays put: still within reach of its job block
+			// all ten villagers still exist on the server
 			List<String> far = srv.computeOnServer(server -> {
 				List<String> bad = new ArrayList<>();
 				for (Spawned s : spawned) {

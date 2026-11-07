@@ -131,16 +131,58 @@ public final class JobSiteReservations implements VillageSystem {
 		return claimed;
 	}
 
-	/** Releases the ticket of every held block whose POI exists and forgets them (Heart released, test reset). */
+	/**
+	 * Releases the ticket of every held block whose POI exists (Heart released, test reset). A block whose chunk is not loaded cannot be
+	 * touched without loading it: it is remembered in the saved data and finished by {@link #processPending} when the chunk loads.
+	 */
 	public static void releaseAll(MinecraftServer server, Set<HeartLocation> held) {
+		Set<HeartLocation> later = null;
 		for (HeartLocation p : held) {
 			ServerLevel level = Workers.levelOf(server, p);
 			BlockPos bp = pos(p);
-			if (level == null || !level.isLoaded(bp)) continue;
+			if (level == null) continue;
+			if (!level.isLoaded(bp)) {
+				if (later == null) later = new LinkedHashSet<>();
+				later.add(p);
+				continue;
+			}
 			PoiManager poi = level.getPoiManager();
 			if (poi.getType(bp).isPresent()) poi.release(bp);
 		}
+		if (later != null) {
+			VillageSavedData data = VillageClaims.data(server);
+			Set<HeartLocation> pending = data.pendingTicketReleases();
+			pending.addAll(later);
+			data.setPendingTicketReleases(pending);
+		}
 		INSTANCE.failedTakes.clear();
+	}
+
+	/**
+	 * Finishes releases that had to wait for a chunk (see {@link #releaseAll}); runs with or without a claim. A block that is held by the
+	 * current village again is only dropped from the list (the ticket is the village's now).
+	 */
+	public static void processPending(MinecraftServer server) {
+		VillageSavedData data = VillageClaims.data(server);
+		Set<HeartLocation> pending = data.pendingTicketReleases();
+		if (pending.isEmpty()) return;
+		Set<HeartLocation> heldNow = data.reservedJobBlocks();
+		boolean changed = false;
+		for (HeartLocation p : List.copyOf(pending)) {
+			ServerLevel level = Workers.levelOf(server, p);
+			BlockPos bp = pos(p);
+			if (level == null) {
+				pending.remove(p);
+				changed = true;
+				continue;
+			}
+			if (!level.isLoaded(bp)) continue;
+			PoiManager poi = level.getPoiManager();
+			if (!heldNow.contains(p) && poi.getType(bp).isPresent()) poi.release(bp);
+			pending.remove(p);
+			changed = true;
+		}
+		if (changed) data.setPendingTicketReleases(pending);
 	}
 
 	/** Releases every held ticket and clears the saved set. */

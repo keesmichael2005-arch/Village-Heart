@@ -48,6 +48,12 @@ public final class WorkerSystem implements VillageSystem {
 			if (entity instanceof Villager v) INSTANCE.loaded.add(v);
 		});
 		ServerTickEvents.END_SERVER_TICK.register(INSTANCE::processLoaded);
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			if (server.getTickCount() % INTERVAL != 0) return;
+			try (var t = VillageTicker.section()) {
+				JobSiteReservations.processPending(server);
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());
 		});

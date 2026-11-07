@@ -65,6 +65,7 @@ final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		if (Workers.tripRunning(villager)) return false; // at most one trip per worker, whichever activity started it
 		if ((level.getGameTime() + villager.getId()) % 20 != 0 || level.getGameTime() < cooldownUntil) return false;
 		try (var t = VillageTicker.section()) {
 			double load = load(villager);
@@ -91,6 +92,7 @@ final class DepositTrip extends Behavior<Villager> {
 	protected void start(ServerLevel level, Villager villager, long gameTime) {
 		started = gameTime;
 		delivered = false;
+		Workers.setTripRunning(villager, true);
 		villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.5F, 1));
 	}
 
@@ -103,8 +105,13 @@ final class DepositTrip extends Behavior<Villager> {
 	protected void tick(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
 			if (villager.position().distanceTo(Vec3.atBottomCenterOf(target)) > ARRIVE) {
-				if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isEmpty() && (gameTime + villager.getId()) % 20 == 0) {
-					villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.5F, 1));
+				// keep the target: the sink drops it when a path attempt fails; retry unless the pathfinder said "unreachable" a moment ago
+				if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isEmpty()) {
+					var since = villager.getBrain().getMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+					if (since.isEmpty() || gameTime - since.get() >= 20) {
+						villager.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+						villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.5F, 1));
+					}
 				}
 				return;
 			}
@@ -129,6 +136,7 @@ final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected void stop(ServerLevel level, Villager villager, long gameTime) {
+		Workers.setTripRunning(villager, false);
 		if (!delivered && load(villager) > 0 && gameTime - started >= TIMEOUT) {
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;

@@ -111,9 +111,17 @@ public final class VillageCodecs {
 		return l;
 	}
 
+	private static java.util.List<HeartLocation> sortedPending(WorldClaim w) {
+		java.util.List<HeartLocation> l = new java.util.ArrayList<>(w.pendingTicketReleases());
+		l.sort(VillageState.locationOrder());
+		return l;
+	}
+
 	public static final Codec<WorldClaim> WORLD_CLAIM = RecordCodecBuilder.create(i -> i.group(
 			Codec.INT.fieldOf("schema").forGetter(w -> SCHEMA),
 			VILLAGE_STATE.optionalFieldOf("village").forGetter(WorldClaim::village),
-			HEART_LOCATION.listOf().optionalFieldOf("reserved_job_blocks", java.util.List.of()).forGetter(VillageCodecs::sortedReserved)
-	).apply(i, (schema, village, reserved) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved))));
+			HEART_LOCATION.listOf().optionalFieldOf("reserved_job_blocks", java.util.List.of()).forGetter(VillageCodecs::sortedReserved),
+			HEART_LOCATION.listOf().optionalFieldOf("pending_ticket_releases", java.util.List.of()).forGetter(VillageCodecs::sortedPending)
+	).apply(i, (schema, village, reserved, pending) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			new java.util.LinkedHashSet<>(pending))));
 }

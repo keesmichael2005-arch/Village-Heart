@@ -179,4 +179,15 @@ class VillageCodecsTest {
 		w.releaseAt(M1);
 		assertTrue(w.reservedJobBlocks().isEmpty());
 	}
+
+	@Test void pendingTicketReleasesSurviveReleaseAndRoundTrip() {
+		WorldClaim w = new WorldClaim(java.util.Optional.of(VillageState.founded(M1, OWNER, "a", 1)), Set.of(J1), Set.of(J2));
+		w.releaseAt(M1);
+		assertTrue(w.reservedJobBlocks().isEmpty());
+		assertEquals(Set.of(J2), w.pendingTicketReleases());
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, enc(VillageCodecs.WORLD_CLAIM, w));
+		assertEquals(w, back);
+		assertEquals(Set.of("schema", "pending_ticket_releases"), enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject().keySet());
+		assertTrue(dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).pendingTicketReleases().isEmpty());
+	}
 }

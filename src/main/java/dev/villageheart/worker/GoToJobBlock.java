@@ -45,6 +45,7 @@ final class GoToJobBlock extends Behavior<Villager> {
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
 		try (var t = VillageTicker.section()) {
+			if (Workers.tripRunning(villager)) return false; // a deposit trip owns the walk target
 			Optional<BlockPos> block = jobBlockIn(level, villager);
 			if (block.isEmpty()) return false;
 			if (distanceTo(villager, block.get()) <= Balance.JOB_BLOCK_REACH) return false;

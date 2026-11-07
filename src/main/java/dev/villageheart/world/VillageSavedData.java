@@ -80,6 +80,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Held job blocks whose ticket still has to be released once their chunk loads. */
+	public java.util.Set<HeartLocation> pendingTicketReleases() { return claim.pendingTicketReleases(); }
+
+	public void setPendingTicketReleases(java.util.Set<HeartLocation> blocks) {
+		claim.setPendingTicketReleases(blocks);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {
