@@ -4,6 +4,8 @@ import static dev.villageheart.gametest.LumberTestSupport.*;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
+import dev.villageheart.block.JobBlocks;
+import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.job.ToolKind;
 import dev.villageheart.core.job.ToolTier;
 import dev.villageheart.core.tree.TreeCell;
@@ -407,6 +409,493 @@ public class LumberjackGameTests {
 			h.assertTrue(carried(v[0], Items.OAK_SAPLING) >= 4, "the saplings stay with the worker: " + inventory(v[0]));
 		});
 		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-6 (roadmap) --------------------------------------------------------------------------
+
+	/** Roadmap: 6 oaks + a stone axe give at least 16 logs in Storage within 2 days; felled spots are replanted within a day; a log wall is untouched. */
+	@GameTest(environment = "villageheart-gametest:lumber_six_oaks", structure = YARD, skyAccess = true, maxTicks = 50000)
+	public void sixOaksTwoDays(GameTestHelper h) {
+		begin(h);
+		BlockPos[] spots = {new BlockPos(3, 0, 21), new BlockPos(3, 0, 28), new BlockPos(12, 0, 17), new BlockPos(14, 0, 25),
+				new BlockPos(27, 0, 12), new BlockPos(27, 0, 22)};
+		BlockPos[] wall = new BlockPos[12];
+		for (int i = 0; i < 12; i++) wall[i] = new BlockPos(i % 4, i / 4, 13);
+		long[] goneAt = new long[6], plantedAt = new long[6];
+		String[] failure = new String[1];
+		BlockPos[] bases = new BlockPos[6];
+		long[] t0 = new long[1], sixteenAt = new long[1];
+		Villager[] v = new Villager[1];
+		// every 100 ticks: replant bookkeeping and the wall (registered from the test body, active once the oaks exist)
+		h.onEachTick(() -> {
+			if (t0[0] == 0 || h.getTick() % 100 != 0) return;
+			long now = h.getTick();
+			for (int i = 0; i < 6; i++) {
+				var s = h.getLevel().getBlockState(bases[i]);
+				boolean log = s.is(net.minecraft.tags.BlockTags.OVERWORLD_NATURAL_LOGS);
+				if (goneAt[i] == 0 && !log) goneAt[i] = now;
+				if (goneAt[i] != 0 && plantedAt[i] == 0 && (s.is(net.minecraft.tags.BlockTags.SAPLINGS) || log)) plantedAt[i] = now;
+				if (goneAt[i] != 0 && plantedAt[i] == 0 && now - goneAt[i] > 24000 && failure[0] == null) {
+					failure[0] = "oak " + i + " went at tick " + goneAt[i] + " and was not replanted within a day";
+				}
+			}
+			for (BlockPos w : wall) {
+				if (!h.getBlockState(w).is(Blocks.OAK_LOG) && failure[0] == null) failure[0] = "a wall log at " + w + " is gone at tick " + now;
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			for (int i = 0; i < 6; i++) bases[i] = growOak(h, spots[i], 11L + i);
+			for (BlockPos w : wall) h.setBlock(w, Blocks.OAK_LOG);
+			lightYard(h);
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			t0[0] = h.getTick() + 1;
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			long logs = dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), net.minecraft.tags.ItemTags.LOGS);
+			if (logs >= 16 && sixteenAt[0] == 0) sixteenAt[0] = h.getTick();
+			h.assertTrue(sixteenAt[0] != 0, "16 logs in Storage (have " + logs + ")");
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(h.getTick() - t0[0] < 48000, "16 logs reached Storage within 48000 ticks");
+			System.out.println("[m9] sixOaksTwoDays: 16 logs in Storage after " + (sixteenAt[0] - t0[0]) + " ticks");
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			for (int i = 0; i < 6; i++) h.assertTrue(plantedAt[i] != 0, "oak " + i + " is replanted (gone at " + goneAt[i] + ")");
+		});
+		// carry on through the night and into the second work day: the wall must still be whole (checked every 100 ticks)
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			h.assertTrue(h.getTick() - t0[0] >= 30000, "waiting for the second work day");
+		});
+		seq.thenExecute(() -> {
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < 6; i++) sb.append("oak ").append(i).append(": gone ").append(goneAt[i] - t0[0]).append(", replanted ").append(plantedAt[i] - t0[0]).append("; ");
+			System.out.println("[m9] sixOaksTwoDays: " + sb + "tick now " + (h.getTick() - t0[0]));
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-7 (roadmap) --------------------------------------------------------------------------
+
+	/** Roadmap: with no axe in the chest the lumberjack produces no logs in a day, and its reason is "Needs axe". */
+	@GameTest(environment = "villageheart-gametest:lumber_no_axe", structure = YARD, skyAccess = true, maxTicks = 30000)
+	public void noAxeNoLogs(GameTestHelper h) {
+		begin(h);
+		BlockPos treeRel = new BlockPos(2, 0, 8);
+		Villager[] v = new Villager[1];
+		BlockPos[] base = new BlockPos[1];
+		Set<BlockPos>[] logs = new Set[1];
+		long[] t0 = new long[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			base[0] = growOak(h, treeRel, 1L);
+			logs[0] = logsOf(h, base[0]);
+			lightYard(h);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "the status becomes NEEDS_TOOL", () -> {
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, status(h, v[0]), "status");
+		});
+		seq = seq.thenExecute(() -> {
+			System.out.println("[m9] noAxeNoLogs: NEEDS_TOOL after " + (h.getTick() - t0[0]) + " ticks");
+			var text = dev.villageheart.worker.job.WorkerStatusText.of(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, dev.villageheart.core.worker.JobType.LUMBERJACK);
+			var contents = (net.minecraft.network.chat.contents.TranslatableContents) text.getContents();
+			h.assertValueEqual("status.villageheart.needs_tool.axe", contents.getKey(), "text key");
+			h.assertValueEqual("Needs axe", contents.getFallback(), "text");
+		});
+		// a day of no axe: not a log falls, nothing reaches Storage
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(h.getTick() - t0[0] >= 24000, "waiting out a day");
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(logs[0].size(), standing(h, logs[0]), "every log of the oak still stands");
+			h.assertValueEqual(0L, dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), net.minecraft.tags.ItemTags.LOGS), "no logs in Storage");
+			h.assertValueEqual(0, carried(v[0], Items.OAK_LOG), "no logs carried");
+			// control: the same village produces logs once there is an axe
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "NEEDS_TOOL goes away with an axe in the chest", () -> {
+			h.assertTrue(status(h, v[0]) != dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, "still NEEDS_TOOL");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "a log falls with the axe"));
+		seq.thenExecute(() -> {
+			System.out.println("[m9] noAxeNoLogs: first log with the axe after " + (h.getTick() - t0[0]) + " ticks");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-11 ---------------------------------------------------------------------------------
+
+	/** Odd tree shapes are felled whole: diagonal acacia trunk, cherry, a fancy oak with limbs, a 2x2 dark oak that needs four saplings. */
+	@GameTest(environment = "villageheart-gametest:lumber_shapes", structure = YARD, skyAccess = true, maxTicks = 7000)
+	public void oddShapesFelledWhole(GameTestHelper h) {
+		begin(h);
+		net.minecraft.resources.ResourceKey<net.minecraft.world.level.levelgen.feature.ConfiguredFeature<?, ?>>[] keys = new net.minecraft.resources.ResourceKey[] {
+				net.minecraft.data.worldgen.features.TreeFeatures.ACACIA, net.minecraft.data.worldgen.features.TreeFeatures.CHERRY,
+				net.minecraft.data.worldgen.features.TreeFeatures.FANCY_OAK, net.minecraft.data.worldgen.features.TreeFeatures.DARK_OAK};
+		BlockPos[] spots = {new BlockPos(3, 0, 14), new BlockPos(3, 0, 22), new BlockPos(5, 0, 29), new BlockPos(18, 0, 18)};
+		long[] seeds = {21, 22, 23, 24};
+		Set<BlockPos>[] logs = new Set[4];
+		java.util.List<BlockPos> darkBase = new java.util.ArrayList<>();
+		Villager[] v = new Villager[1];
+		long[] lastLogAt = new long[1], saplingsAt = new long[1];
+		boolean[] started = new boolean[1];
+		// the dark oak's last log and the moment its four base cells hold saplings (a sampler: the saplings may grow later)
+		h.onEachTick(() -> {
+			if (!started[0]) return;
+			if (lastLogAt[0] == 0 && standing(h, logs[3]) == 0) lastLogAt[0] = h.getTick();
+			if (saplingsAt[0] == 0) {
+				boolean all = true;
+				for (BlockPos p : darkBase) all &= h.getLevel().getBlockState(p).is(Blocks.DARK_OAK_SAPLING);
+				if (all) saplingsAt[0] = h.getTick();
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			for (int i = 0; i < 4; i++) {
+				BlockPos base = grow(h, keys[i], spots[i], seeds[i]);
+				logs[i] = logsOf(h, base);
+				System.out.println("[m9] oddShapes tree " + i + " (" + keys[i].identifier().getPath() + "): " + logs[i].size() + " logs");
+			}
+			int minY = logs[3].stream().mapToInt(BlockPos::getY).min().orElseThrow();
+			for (BlockPos p : logs[3]) if (p.getY() == minY) darkBase.add(p);
+			h.assertValueEqual(4, darkBase.size(), "the dark oak has a 2x2 base");
+			putInChest(h, chest(), 0, axe(ToolTier.IRON));
+			putInChest(h, chest(), 1, new ItemStack(Items.DARK_OAK_SAPLING, 4));
+			lightYard(h);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			started[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> {
+			for (int i = 0; i < 4; i++) h.assertValueEqual(0, standing(h, logs[i]), "logs left of tree " + i + " ("
+					+ keys[i].identifier().getPath() + "); " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(saplingsAt[0] != 0, "the four dark oak saplings were planted; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		seq.thenExecute(() -> {
+			System.out.println("[m9] oddShapes: the four dark oak saplings stood " + (saplingsAt[0] - lastLogAt[0]) + " ticks after the last dark oak log");
+			h.assertTrue(saplingsAt[0] - lastLogAt[0] <= 600, "four saplings within 600 ticks of the last dark oak log: " + (saplingsAt[0] - lastLogAt[0]));
+			assertValid(h, true);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-13 ---------------------------------------------------------------------------------
+
+	/** Two lumberjacks in one camp never share a tree and an axe; with one axe removed the later hired one has no tool. */
+	@GameTest(environment = "villageheart-gametest:lumber_two", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void twoLumberjacksOneCamp(GameTestHelper h) {
+		begin(h);
+		BlockPos[] spots = {new BlockPos(3, 0, 14), new BlockPos(3, 0, 21), new BlockPos(3, 0, 28)};
+		Set<BlockPos>[] logs = new Set[3];
+		BlockPos[] bases = new BlockPos[3];
+		Villager[] v = new Villager[2];
+		java.util.List<java.util.Set<java.util.UUID>> breakers = new java.util.ArrayList<>();
+		for (int i = 0; i < 3; i++) breakers.add(new java.util.HashSet<>());
+		int[] last = new int[3];
+		boolean[] started = new boolean[1];
+		String[] failure = new String[1];
+		h.onEachTick(() -> {
+			if (!started[0]) return;
+			var rt = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer());
+			var claims = rt.claims();
+			for (int i = 0; i < 3; i++) {
+				int now = standing(h, logs[i]);
+				if (now < last[i]) {
+					var key = dev.villageheart.world.VillageClaims.locate(h.getLevel(), bases[i]);
+					java.util.UUID owner = claims.get(key);
+					if (owner == null && failure[0] == null && now > 0) failure[0] = "a log of tree " + i + " fell with no claim";
+					if (owner != null) breakers.get(i).add(owner);
+				}
+				last[i] = now;
+			}
+			java.util.Set<java.util.UUID> distinct = new java.util.HashSet<>(claims.values());
+			// one claim per worker
+			if (claims.size() > 2 && failure[0] == null) failure[0] = "more claims than workers: " + claims;
+			if (distinct.size() < claims.size() && failure[0] == null) failure[0] = "a worker holds two claims: " + claims;
+		});
+		GameTestSequence seq = scene(h, true, true).thenExecute(() -> {
+			for (int i = 0; i < 3; i++) {
+				bases[i] = growOak(h, spots[i], 31L + i);
+				logs[i] = logsOf(h, bases[i]);
+				last[i] = logs[i].size();
+			}
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			putInChest(h, chest(), 1, axe(ToolTier.STONE));
+			lightYard(h);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[1] = hire(h, BuildingTestSupport.inside(CAMP, 3, 0, 2));
+			started[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			for (int i = 0; i < 3; i++) h.assertValueEqual(0, standing(h, logs[i]), "logs left of tree " + i);
+		});
+		seq = seq.thenExecute(() -> {
+			for (int i = 0; i < 3; i++) h.assertValueEqual(1, breakers.get(i).size(), "tree " + i + " was felled by exactly one worker: " + breakers.get(i));
+			java.util.Set<java.util.UUID> all = new java.util.HashSet<>();
+			for (var b : breakers) all.addAll(b);
+			System.out.println("[m9] twoLumberjacks: " + all.size() + " different workers felled the 3 trees");
+			// one axe removed: only the first hired keeps one
+			StockpileTestSupport.container(h, chest()).setItem(1, ItemStack.EMPTY);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "the later hired lumberjack needs an axe", () -> {
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, status(h, v[1]), "second lumberjack");
+			h.assertTrue(status(h, v[0]) != dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, "first lumberjack keeps its axe");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-14 ---------------------------------------------------------------------------------
+
+	/** A lumberjack that cannot hand in its load stops cutting; once there is room it delivers and goes on. */
+	@GameTest(environment = "villageheart-gametest:lumber_full", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void storageFullStopsGathering(GameTestHelper h) {
+		begin(h);
+		BlockPos treeRel = new BlockPos(3, 0, 14);
+		Villager[] v = new Villager[1];
+		Set<BlockPos>[] logs = new Set[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			BlockPos base = growOak(h, treeRel, 41L);
+			logs[0] = logsOf(h, base);
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			StockpileTestSupport.fillAll(h, storeChest1(), new ItemStack(Items.COBBLESTONE, 64));
+			StockpileTestSupport.fillAll(h, storeChest2(), new ItemStack(Items.COBBLESTONE, 64));
+			lightYard(h);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "STORAGE_FULL is reported", () ->
+				h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.STORAGE_FULL, status(h, v[0]), "status"));
+		seq = seq.thenIdle(1200);
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(logs[0].size(), standing(h, logs[0]), "not a log fell while the load could not be handed in");
+			h.assertValueEqual(64, carried(v[0], Items.OAK_LOG), "the worker keeps what it carries");
+			// room in one chest: the load goes in, then the tree falls
+			var c = StockpileTestSupport.container(h, storeChest1());
+			c.clearContent();
+			c.setChanged();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
+				h.assertTrue(stored(h, "minecraft:oak_log") >= 64, "logs in Storage: " + stored(h, "minecraft:oak_log")));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-8 ----------------------------------------------------------------------------------
+
+	private static void bigRoom(GameTestHelper h, BlockPos o) {
+		// shell x o..o+10, y 0..10, z o..o+10 (interior 9 x 9 x 9), door in the north wall at x = o + 5
+		for (int x = 0; x <= 10; x++) for (int y = 0; y <= 10; y++) for (int z = 0; z <= 10; z++) {
+			boolean edge = x == 0 || x == 10 || y == 0 || y == 10 || z == 0 || z == 10;
+			h.setBlock(o.offset(x, y, z), edge ? Blocks.OAK_PLANKS.defaultBlockState() : Blocks.AIR.defaultBlockState());
+		}
+		WorkerTestSupport.door(h, new BlockPos(o.getX() + 5, o.getY() + 1, o.getZ()), net.minecraft.core.Direction.NORTH);
+		h.setBlock(o.offset(1, 1, 9), JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+		h.setBlock(o.offset(9, 1, 9), Blocks.CHEST);
+		h.setBlock(o.offset(8, 1, 9), Blocks.TORCH);
+	}
+
+	/**
+	 * Player-made logs are left alone: a log wall under natural leaves, a "tree" with persistent leaves, a natural oak inside a valid room, and
+	 * a log cabin with an oak against its wall. The one free oak by the wall is felled. Afterwards the worker is out of work ("no trees"), and a
+	 * free oak grown later is felled, which proves it was searching all along.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_placed", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void placedLogsUntouched(GameTestHelper h) {
+		begin(h);
+		BlockPos bigOrigin = new BlockPos(17, 0, 13);
+		BlockPos bigMarker = new BlockPos(bigOrigin.getX() + 5, bigOrigin.getY() + 3, bigOrigin.getZ() - 1);
+		BlockPos wallOak = new BlockPos(3, 0, 18);
+		java.util.List<BlockPos> wall = new java.util.ArrayList<>();
+		for (int x = 2; x <= 5; x++) for (int y = 0; y <= 2; y++) wall.add(new BlockPos(x, y, 16));
+		BlockPos fakeTree = new BlockPos(3, 0, 26);
+		java.util.List<BlockPos> protectedLogs = new java.util.ArrayList<>(wall);
+		for (int y = 0; y <= 3; y++) protectedLogs.add(fakeTree.above(y));
+		java.util.List<BlockPos> cabin = new java.util.ArrayList<>();
+		for (int y = 0; y <= 2; y++) for (int x = 24; x <= 28; x++) for (int z = 25; z <= 29; z++) {
+			if (x == 24 || x == 28 || z == 25 || z == 29) cabin.add(new BlockPos(x, y, z));
+		}
+		protectedLogs.addAll(cabin);
+		Villager[] v = new Villager[1];
+		Set<BlockPos>[] oakLogs = new Set[3]; // wall oak, room oak, cabin oak
+		Set<BlockPos>[] lateOak = new Set[1];
+		BlockPos[] bases = new BlockPos[3];
+		boolean[] started = new boolean[1];
+		String[] failure = new String[1];
+		long[] noWorkAt = new long[1];
+		h.onEachTick(() -> {
+			if (!started[0] || h.getTick() % 100 != 0) return;
+			for (BlockPos p : protectedLogs) {
+				if (!h.getBlockState(p).is(net.minecraft.tags.BlockTags.OVERWORLD_NATURAL_LOGS) && failure[0] == null) failure[0] = "a player log at " + p + " is gone at tick " + h.getTick();
+			}
+			for (int i = 1; i < 3; i++) {
+				if (standing(h, oakLogs[i]) < oakLogs[i].size() && failure[0] == null) failure[0] = "a log of the protected oak " + i + " was felled at tick " + h.getTick();
+			}
+		});
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			sweepStrayTrees(h, 48);
+			grass(h, 0, 0, 31, 31);
+			lightYard(h);
+			buildCamp(h);
+			buildStorage(h);
+			bigRoom(h, bigOrigin);
+			placeMarkers(h, true);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.LUMBER_CAMP, bigMarker, net.minecraft.core.Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			assertValid(h, true);
+			BuildingTestSupport.assertStatus(h, bigMarker, dev.villageheart.block.MarkerStatus.VALID);
+		});
+		seq = seq.thenExecute(() -> {
+			// the room first: its oak grows inside it
+			bases[1] = growOak(h, new BlockPos(bigOrigin.getX() + 5, 1, bigOrigin.getZ() + 5), 51L);
+			oakLogs[1] = logsOf(h, bases[1]);
+			// a wall of logs with natural leaves on its top, and a free oak a block away
+			for (BlockPos p : wall) h.setBlock(p, Blocks.OAK_LOG);
+			for (int x = 2; x <= 5; x++) h.setBlock(new BlockPos(x, 3, 16), Blocks.OAK_LEAVES);
+			bases[0] = growOak(h, wallOak, 52L);
+			oakLogs[0] = logsOf(h, bases[0]);
+			// a trunk of logs with persistent leaves
+			for (int y = 0; y <= 3; y++) h.setBlock(fakeTree.above(y), Blocks.OAK_LOG);
+			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = 2; dy <= 4; dy++) {
+				if (dx == 0 && dz == 0 && dy < 4) continue;
+				h.setBlock(fakeTree.offset(dx, dy, dz), Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+			}
+			// a cabin of logs with an oak against its wall
+			for (BlockPos p : cabin) h.setBlock(p, Blocks.OAK_LOG);
+			bases[2] = growOak(h, new BlockPos(23, 0, 27), 53L);
+			oakLogs[2] = logsOf(h, bases[2]);
+			oakLogs[2].removeAll(cabin.stream().map(h::absolutePos).toList());
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BlockPos any = oakLogs[1].iterator().next();
+			h.assertTrue(new LevelTreeView(h.getLevel()).inRoom(new dev.villageheart.core.room.Pos(any.getX(), any.getY(), any.getZ())),
+					"the room's scan holds the oak");
+		});
+		seq = seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			h.assertTrue(dev.villageheart.building.Buildings.valid(server, dev.villageheart.core.building.BuildingType.LUMBER_CAMP).size() == 2,
+					"both Lumber Camps are valid, the second holds the oak");
+			// premise: the wall touches at least three natural leaf blocks
+			var view = new LevelTreeView(h.getLevel());
+			java.util.Set<BlockPos> leaves = new java.util.HashSet<>();
+			for (BlockPos p : wall) {
+				BlockPos a = h.absolutePos(p);
+				for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+					BlockPos n = a.relative(d);
+					if (view.cell(n.getX(), n.getY(), n.getZ()).kind() == TreeCell.Kind.NATURAL_LEAVES) leaves.add(n);
+				}
+			}
+			h.assertTrue(leaves.size() >= 3, "the wall touches natural leaves: " + leaves.size());
+			h.assertTrue(oakLogs[1].size() >= 3, "the room holds an oak");
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			started[0] = true;
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, fellBound(8, 13, ToolTier.STONE) + 200, "the free oak by the wall is felled", () ->
+				h.assertValueEqual(0, standing(h, oakLogs[0]), "wall oak logs left; " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		// from now on the worker must find nothing to do: NO_WORK, every protected log in place
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NO_WORK, status(h, v[0]), "no trees to fell; "
+					+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
+		});
+		seq = seq.thenExecute(() -> noWorkAt[0] = h.getTick());
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			h.assertTrue(h.getTick() - noWorkAt[0] >= 1500, "sampling for 1500 ticks");
+			h.assertTrue(status(h, v[0]) == dev.villageheart.core.worker.WorkerStatus.NO_WORK, "still NO_WORK: " + status(h, v[0]));
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			System.out.println("[m9] placedLogsUntouched: NO_WORK from " + noWorkAt[0] + ", protected logs whole 1500 ticks later at " + h.getTick());
+			// the worker was searching all along: a free oak 12 blocks from the Chopping Block is found and felled
+			BlockPos b = growOak(h, new BlockPos(9, 0, 17), 54L);
+			lateOak[0] = logsOf(h, b);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, lateOak[0]), "the late oak is felled; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		seq.thenExecute(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-12 ---------------------------------------------------------------------------------
+
+	/** The nearest tree is out of reach (inside a wide glass box): it is tried, given up and left alone; the next one is felled; one beyond 32 blocks never. */
+	@GameTest(environment = "villageheart-gametest:lumber_radius", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void radiusAndUnreachable(GameTestHelper h) {
+		begin(h);
+		BlockPos aSpot = new BlockPos(9, 0, 20), bSpot = new BlockPos(29, 0, 17), cSpot = new BlockPos(30, 0, 30);
+		BlockPos[] base = new BlockPos[3];
+		Set<BlockPos>[] logs = new Set[3];
+		Villager[] v = new Villager[1];
+		long[] claimedAt = new long[1], givenUpAt = new long[1];
+		boolean[] started = new boolean[1];
+		h.onEachTick(() -> {
+			if (!started[0]) return;
+			var rt = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer());
+			var keyA = dev.villageheart.world.VillageClaims.locate(h.getLevel(), base[0]);
+			if (claimedAt[0] == 0 && rt.claims().containsKey(keyA)) claimedAt[0] = h.getTick();
+			if (claimedAt[0] != 0 && givenUpAt[0] == 0 && !rt.blacklist(dev.villageheart.world.VillageClaims.locate(h.getLevel(), h.absolutePos(campMarker()))).isEmpty()) {
+				givenUpAt[0] = h.getTick();
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			// a glass box around A, walls 9 blocks from its trunk (out of reach, 3 high: villagers cannot climb it)
+			for (int x = aSpot.getX() - 9; x <= aSpot.getX() + 9; x++) for (int z = aSpot.getZ() - 9; z <= aSpot.getZ() + 9; z++) {
+				boolean edge = Math.abs(x - aSpot.getX()) == 9 || Math.abs(z - aSpot.getZ()) == 9;
+				if (!edge) continue;
+				if (z < 11 && x >= 7 && x <= 15) continue; // never overlaps the camp
+				for (int y = 0; y <= 2; y++) h.setBlock(new BlockPos(x, y, z), Blocks.GLASS);
+			}
+			base[0] = growOak(h, aSpot, 61L);
+			base[1] = growOak(h, bSpot, 62L);
+			base[2] = growOak(h, cSpot, 63L);
+			for (int i = 0; i < 3; i++) logs[i] = logsOf(h, base[i]);
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			lightYard(h);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			started[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(claimedAt[0] != 0, "tree A (the nearest, in the box) is tried first"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(givenUpAt[0] != 0 || standing(h, logs[1]) < logs[1].size(), "tree A is given up (or B already falls); "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		seq = seq.thenExecute(() -> System.out.println("[m9] radiusAndUnreachable: A claimed at " + claimedAt[0] + ", given up at " + givenUpAt[0]));
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[1]), "tree B is felled; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
+		seq = seq.thenIdle(1500);
+		seq.thenExecute(() -> {
+			h.assertValueEqual(logs[0].size(), standing(h, logs[0]), "tree A (unreachable) is untouched");
+			h.assertValueEqual(logs[2].size(), standing(h, logs[2]), "tree C (beyond 32 blocks) is untouched");
+			h.assertTrue(givenUpAt[0] - claimedAt[0] <= 830, "A was given up within 800 ticks: " + (givenUpAt[0] - claimedAt[0]));
 			VillageTestSupport.done(h);
 			end(h);
 		});

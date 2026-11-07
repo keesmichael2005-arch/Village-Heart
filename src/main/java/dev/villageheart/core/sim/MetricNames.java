@@ -17,8 +17,12 @@ public final class MetricNames {
 			"server.mspt", "server.tps", "server.heap_used_mb",
 			"world.save_bytes", "wall_seconds");
 
-	/** Families valid for any non-empty suffix; a missing key reads 0. stockpile.tag is reserved for M6. */
-	public static final List<String> FAMILIES = List.of("stockpile.items.", "stockpile.tag.", "deaths.cause.");
+	/**
+	 * Families valid for any non-empty suffix; a missing key reads 0. stockpile.tag.&lt;tag&gt; (items by item tag, M9: minecraft:logs and
+	 * minecraft:saplings), work.&lt;job&gt;.&lt;counter&gt; (per-day work counts, M9) and workers.status.&lt;status&gt; (workers in each status at the end
+	 * of the day, M9).
+	 */
+	public static final List<String> FAMILIES = List.of("stockpile.items.", "stockpile.tag.", "deaths.cause.", "work.", "workers.status.");
 
 	public static boolean isFamily(String path) {
 		for (String f : FAMILIES) if (path.startsWith(f) && path.length() > f.length()) return true;

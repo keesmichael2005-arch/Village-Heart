@@ -116,6 +116,19 @@ public final class LumberTestSupport {
 		}).thenWaitUntil(() -> assertValid(h, storage));
 	}
 
+	/** Torches on the grass every 4 blocks outside the two rooms, so a night test is not spawn-proofed by darkness. */
+	public static void lightYard(GameTestHelper h) {
+		for (int x = 0; x <= 31; x += 4) for (int z = 0; z <= 31; z += 4) {
+			boolean inRoom = x >= 7 && x <= 25 && z >= 2 && z <= 10;
+			if (!inRoom) h.setBlock(new BlockPos(x, 0, z), Blocks.TORCH);
+		}
+	}
+
+	public static dev.villageheart.core.worker.WorkerStatus status(GameTestHelper h, Villager v) {
+		var rec = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).flatMap(s -> s.worker(v.getUUID())).orElseThrow();
+		return Workers.status(h.getLevel().getServer(), rec);
+	}
+
 	/** Where a lumberjack is spawned: next to the Chopping Block. */
 	public static BlockPos spawnSpot() { return BuildingTestSupport.inside(CAMP, 1, 0, 1); }
 

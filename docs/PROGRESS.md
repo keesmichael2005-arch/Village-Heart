@@ -240,3 +240,11 @@ is the per-job plug-in point, and M7 step 9's `DepositTrip` deposits everything 
   `workers.status.<status>` and the reserved `stockpile.tag.*` get filled for M11.
 Revised after a fresh critique (22 findings; I refuted 3 against the sources: random ticks, StandAtJobBlock, GameTest tick pacing).
 Next: BUILD M9 after M7 (including step 9) is merged. Top risk: the DepositTrip interplay (M7 step 9 does not exist yet).
+
+## M9 (builder, branch m9): Lumberjack
+Steps 1-12 done (the second L4 shot is skipped: M8 is not on dev; ROADMAP not ticked on instruction). Plan deviations: docs/plans/M9.md section 8.
+- core: `core.job` (tool kinds and tiers, `WorkSpeed` = tool x level x needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), `JobType.tool()`, `core.tree` (`TreeScanner`, `TreeFinder`, `FellOrder`, `Species`), `core.lumber` (`LumberjackPlanner`, `ReplantRules`), `TreeTask` saved in `VillageState.treeTasks` (`tree_tasks`), L3 families `work.<job>.<counter>`, `workers.status.<status>`, `stockpile.tag.<tag>` (`DayMetrics`, `MetricsJson`, collector).
+- glue: `worker.lumber` (`LumberjackWork`, `LumberJob`, `LumberRuntime`, `LevelTreeView`, `LumberSystem`, `LumberKeep`), `worker.job` (`CampContainers`, `CampTools`, `ItemPickup`, `WalkTo`, `WorkerStatuses`, `WorkerStatusText`, `WorkStats`); `DepositTrip` gets the keep rule, the free-slot rule, `wanted()` and long-range walking.
+- Main findings while building: the vanilla walk sink cannot bring a worker out of a room to a tree behind a wall (own pathing, `WalkTo`); leaves block the ground up to the trunk (chop from the nearest reachable spot); a worker idling at the camp does not see drops 20 blocks away (collect in the work area); two workers jam in a doorway (jam breaker).
+- Tests: see the final entry below for counts and the verify summary.
+

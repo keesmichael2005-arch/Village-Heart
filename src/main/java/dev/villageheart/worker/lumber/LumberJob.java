@@ -91,7 +91,7 @@ public final class LumberJob {
 		ws.lastTick = now;
 		if (Workers.tripRunning(v)) return; // a deposit trip owns the walk target
 		guard(level, v, ws, now);
-		if (ws.decision == null || ws.needsPlan || (now - ws.lastPlan >= PLAN_INTERVAL && ws.tree == null)) plan(level, v, data, rt, ws, now);
+		if (ws.decision == null || ws.needsPlan || (now - ws.lastPlan >= PLAN_INTERVAL && ws.action != Action.CONTINUE_FELL)) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
 	}
 
@@ -488,6 +488,7 @@ public final class LumberJob {
 		TreeFinder.Result r = camp.finder.step(new LevelTreeView(level), Balance.TREE_SEARCH_READS_PER_TICK, skip);
 		if (r instanceof TreeFinder.Found f) {
 			if (isTickable(level, f.tree().base().get(0))) camp.found.add(f.tree());
+			else trace("tree at {} skipped: its chunk is not entity-ticking / block-ticking", f.tree().base().get(0));
 		} else if (r == TreeFinder.Progress.EXHAUSTED) {
 			camp.exhausted = true;
 			camp.exhaustedUnknown = camp.finder.sawUnknown();
@@ -607,6 +608,8 @@ public final class LumberJob {
 			return;
 		}
 		Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(plan.itemId()));
+		if (TRACE && now % 20 == 0) trace("{} replant {} at {} from {} (chest {}), carrying {}", v.getId(), plan.itemId(), plan.cell(), plan.fromChest() ? "chest" : "inventory",
+				plan.chest(), v.getInventory().countItem(item));
 		if (v.getInventory().countItem(item) <= 0) {
 			// FETCH: walk to the camp chest and take what the open cells of this task need
 			BlockPos chest = plan.chest();
@@ -679,6 +682,7 @@ public final class LumberJob {
 				v.getBrain().setMemory(MemoryModuleType.LAST_WORKED_AT_POI, now);
 			}
 		}
+		trace("{} plants {} at {}: {}", v.getId(), item, cell, planted);
 		if (!planted) VillageHeart.LOG.info("Lumberjack {} dropped the replant cell {}: {}", v.getUUID(), cell, here);
 		HeartLocation cellLoc = loc(level, cell);
 		VillageClaims.data(level.getServer()).update(s -> {
@@ -697,19 +701,27 @@ public final class LumberJob {
 		return s.is(ItemTags.LOGS) || s.is(ItemTags.SAPLINGS) || s.is(Items.STICK) || s.is(Items.APPLE);
 	}
 
+	/**
+	 * The nearest wanted drop in the work area (within {@link Balance#LUMBER_RADIUS} of the Chopping Block, whatever its distance from the
+	 * worker: a lumberjack idling at the camp must still see the saplings that fall from a canopy 25 blocks away).
+	 */
 	private static ItemEntity findItem(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
 		BlockPos camp = pos(data.jobBlock());
-		double r = Balance.COLLECT_RADIUS;
+		double r = Balance.LUMBER_RADIUS;
+		net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(camp).inflate(r, Balance.LUMBER_DY + 8, r);
 		ItemEntity best = null;
 		double bestD = Double.MAX_VALUE;
-		for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, v.getBoundingBox().inflate(r), x -> true)) {
+		for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, area, x -> true)) {
 			if (e.isRemoved() || e.hasPickUpDelay() || !wanted(e.getItem()) || !ItemPickup.fits(v, e)) continue;
-			double d = e.distanceTo(v);
-			if (d > r) continue;
 			double dx = e.getX() - (camp.getX() + 0.5), dz = e.getZ() - (camp.getZ() + 0.5);
-			if (dx * dx + dz * dz > (double) Balance.LUMBER_RADIUS * Balance.LUMBER_RADIUS) continue;
+			if (dx * dx + dz * dz > r * r) continue;
 			Long until = rt.itemBlacklist.get(e.getUUID());
 			if (until != null && until > now) continue;
+			// out of reach by construction: lying on a canopy (it falls when the leaves decay) or buried in a block
+			BlockPos ip = e.blockPosition();
+			BlockState at = level.getBlockState(ip);
+			if (level.getBlockState(ip.below()).is(BlockTags.LEAVES) || !(at.isAir() || at.canBeReplaced())) continue;
+			double d = e.distanceTo(v);
 			if (d < bestD) {
 				bestD = d;
 				best = e;
@@ -725,7 +737,7 @@ public final class LumberJob {
 			return;
 		}
 		if (now - ws.itemSince > ITEM_TIMEOUT) {
-			rt.itemBlacklist.put(e.getUUID(), now + 2000);
+			rt.itemBlacklist.put(e.getUUID(), now + 6000);
 			ws.item = null;
 			ws.needsPlan = true;
 			return;
@@ -745,7 +757,7 @@ public final class LumberJob {
 		else ws.walk.retarget(ip);
 		WalkTo.State st = ws.walk.tick(v, now);
 		if (st == WalkTo.State.UNREACHABLE) {
-			rt.itemBlacklist.put(e.getUUID(), now + 2000);
+			rt.itemBlacklist.put(e.getUUID(), now + 6000);
 			ws.item = null;
 			ws.walk.clear();
 			ws.needsPlan = true;

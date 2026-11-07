@@ -138,6 +138,20 @@ class AssertionTest {
 	}
 
 	@Test
+	void workFamilies() {
+		DayMetrics d = new DayMetrics(1, 24041, true, 8, 7, 1, 0, 0, 0, Map.of(), 0, 0, 0, List.of(), TickStats.EMPTY, 0, 0, 0, 0, 0,
+				Map.of("lumberjack.logs", 12L), Map.of("needs_tool", 1L), Map.of("minecraft:logs", 30L));
+		MetricsTable t = new MetricsTable(d, List.of(d));
+		passes("work.lumberjack.logs == 12", t);
+		passes("work.lumberjack.trees == 0", t);
+		passes("workers.status.needs_tool == 1", t);
+		passes("workers.status.no_work == 0", t);
+		passes("stockpile.tag.minecraft:logs == 30", t);
+		rejects("work. >= 0");
+		rejects("workers.status. >= 0");
+	}
+
+	@Test
 	void divisionByZero() {
 		AssertionResult r = run("population / babies > 1", SimFixtures.table(8));
 		assertFalse(r.passed());

@@ -173,6 +173,20 @@ It collects the drops (logs, saplings, sticks, apples) and **replants a sapling*
 Logs that the player placed are never touched: logs in valid rooms and logs without leaves contact are skipped.
 Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
 
+  Rules as built (M9): a **natural tree** is a 26-connected set of natural logs (`#overworld_natural_logs`; no stripped logs, wood blocks or
+  stems) that touches at least 3 non-persistent leaf blocks face to face, whose logs resting on soil (`#dirt`, farmland) all lie inside one
+  2x2 footprint at its lowest y, with no log inside a valid building's room (interior or walls, any building type), at most 192 logs, 17
+  wide and 48 tall. The base rule is what protects log walls and cabins; a lone log post on soil under 3 or more natural leaves is the one
+  documented false positive, and mangroves, trees on sand and trees merged with player logs are skipped. It fells top-down (base last)
+  inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 1.25, copper
+  1.375, iron 1.5, gold 1.0, diamond 1.75, netherite 2.0, times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
+  out there, 1 durability per log (Unbreaking applies); several lumberjacks share the camp's axes best-first in hiring order. Without an
+  axe the status is "Needs axe" (an unreadable chest is unknown, not missing); replanting and collecting still run. No new tree starts after
+  day time 5000 (drops despawn after 6000 ticks); a fell in progress is saved with the village (`tree_tasks`) and any lumberjack of the camp
+  finishes it. Drops (logs, saplings, sticks, apples) in the work area are collected. The base is replanted with the log's species (one sapling per
+  base cell, four for 2x2 trunks) from the worker or the camp chest, after 6000 ticks with any one-cell sapling, and the spot expires after 3 days.
+  A worker that cannot hand in its load (Storage full or unreachable) stops cutting. Saplings the open spots need, plus 4, are never handed in.
+
 ### 5.2 Farmer (Farmhouse, Composter)
 Works farmland within 24 blocks of the Farmhouse. It harvests **mature** wheat, carrots, potatoes and
 beetroots and replants from the yield. It composts surplus seeds into bone meal and uses the bone meal on

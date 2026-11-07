@@ -24,6 +24,8 @@ public final class WalkTo {
 	private static final float NODES = 4.0F;
 	private static final float SPEED = 0.5F;
 	private static final int REPATH_TICKS = 10;
+	/** Two villagers squeezing through one door push each other off the doorway and both stop: after this long without a step, one waits. */
+	private static final int JAM_TICKS = 30;
 
 	private BlockPos target;
 	private double reach;
@@ -34,6 +36,9 @@ public final class WalkTo {
 	private long nextPathAt;
 	/** Where the pathfinder could get no nearer: while the villager stays there it counts as arrived. */
 	private Vec3 settled;
+	/** Jam breaker: where the villager was {@link #JAM_TICKS} ago. */
+	private Vec3 jamAnchor;
+	private long jamAt;
 
 	public boolean active() { return target != null; }
 
@@ -56,6 +61,7 @@ public final class WalkTo {
 		this.anchor = null;
 		this.nextPathAt = now;
 		this.settled = null;
+		this.jamAnchor = null;
 	}
 
 	/** Keeps the stall statistics but points at a new spot (an item that rolled). */
@@ -92,9 +98,24 @@ public final class WalkTo {
 		}
 		if (TRACE && (now - start) % 40 == 0) {
 			Path cur = nav.getPath();
-			dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} walking pos={} d={} done={} stuck={} path={}", v.getId(), now, v.blockPosition(),
+			String ahead = "";
+			if (cur != null && cur.getNodeCount() > cur.getNextNodeIndex()) {
+				var np = cur.getNode(cur.getNextNodeIndex()).asBlockPos();
+				ahead = " exact=" + v.position() + " next=" + np + " " + v.level().getBlockState(np) + " above " + v.level().getBlockState(np.above());
+			}
+			dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} walking" + ahead + " pos={} d={} done={} stuck={} path={}", v.getId(), now, v.blockPosition(),
 					Math.round(d * 10) / 10.0, nav.isDone(), nav.isStuck(), cur == null ? "null" : cur.getNextNodeIndex() + "/" + cur.getNodeCount()
 					+ " end=" + (cur.getNodeCount() == 0 ? "-" : cur.getNode(cur.getNodeCount() - 1).asBlockPos()));
+		}
+		if (jamAnchor == null || v.position().distanceTo(jamAnchor) >= 0.6) {
+			jamAnchor = v.position();
+			jamAt = now;
+		} else if (now - jamAt >= JAM_TICKS && !nav.isDone()) {
+			// stopped on the way: step back from the others for a random while, then plan again (the other one gets through first)
+			nav.stop();
+			nextPathAt = now + 10 + v.getRandom().nextInt(40);
+			jamAnchor = null;
+			if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: waits {} ticks", v.getId(), now, v.blockPosition(), nextPathAt - now);
 		}
 		if (nav.isDone() && now >= nextPathAt) {
 			nextPathAt = now + REPATH_TICKS;

@@ -6,6 +6,7 @@ import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
 import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.stock.Stockpiles;
+import dev.villageheart.worker.job.WalkTo;
 import dev.villageheart.world.VillageTicker;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -36,6 +37,8 @@ public final class DepositTrip extends Behavior<Villager> {
 	private BlockPos target;
 	private long started;
 	private boolean delivered;
+	private boolean failed;
+	private final WalkTo walk = new WalkTo();
 
 	DepositTrip() {
 		super(ImmutableMap.of(MemoryModuleType.WALK_TARGET, MemoryStatus.REGISTERED), TIMEOUT);
@@ -127,29 +130,27 @@ public final class DepositTrip extends Behavior<Villager> {
 	protected void start(ServerLevel level, Villager villager, long gameTime) {
 		started = gameTime;
 		delivered = false;
+		failed = false;
 		Workers.setTripRunning(villager, true);
-		villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.5F, 1));
+		walk.begin(target, ARRIVE, gameTime);
 	}
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
-		return !delivered && gameTime - started < TIMEOUT && load(villager) > 0;
+		return !delivered && !failed && gameTime - started < TIMEOUT && load(villager) > 0;
 	}
 
 	@Override
 	protected void tick(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
-			if (villager.position().distanceTo(Vec3.atBottomCenterOf(target)) > ARRIVE) {
-				// keep the target: the sink drops it when a path attempt fails; retry unless the pathfinder said "unreachable" a moment ago
-				if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isEmpty()) {
-					var since = villager.getBrain().getMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
-					if (since.isEmpty() || gameTime - since.get() >= 20) {
-						villager.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
-						villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, 0.5F, 1));
-					}
-				}
+			// M9: a long walk with its own path (WalkTo) instead of WALK_TARGET: the vanilla sink plans about 16 blocks and gives up on the
+			// first dead end, and a lumberjack comes back from 30 blocks away, from the side of the Storage that has no door
+			WalkTo.State st = walk.tick(villager, gameTime);
+			if (st == WalkTo.State.UNREACHABLE) {
+				failed = true;
 				return;
 			}
+			if (st == WalkTo.State.WALKING) return;
 			SimpleContainer inv = villager.getInventory();
 			boolean left = false;
 			for (int[] d : depositable(villager)) {
@@ -174,7 +175,8 @@ public final class DepositTrip extends Behavior<Villager> {
 	@Override
 	protected void stop(ServerLevel level, Villager villager, long gameTime) {
 		Workers.setTripRunning(villager, false);
-		if (!delivered && load(villager) > 0 && gameTime - started >= TIMEOUT) {
+		walk.clear();
+		if (!delivered && load(villager) > 0 && (failed || gameTime - started >= TIMEOUT)) {
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;
 		}
