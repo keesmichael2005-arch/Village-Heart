@@ -150,6 +150,34 @@ Screenshot looked at: green Storage plaque (left) and red one (right, crosshair 
 Interface check vs merged M3/M4 and every deviation: plan section 9. Notable: the in-tick click-spam reuse was dropped (it contradicts the same-tick re-check test); `Verdict.slots` for Storage is its container count; `yard.snbt` needs a palette;
 tests sweep stray markers of neighbouring test structures before claiming (they otherwise adopt them and the measured bounds fail).
 Next: M6 (stockpile reads `Buildings.valid(server, STORAGE)` and `latestScan().positions("#chest")` + barrels), M7 (job slots from `verdict().slots()`), M14 calls `Buildings.requestAll` after a tier-up. Blockers: none.
+
+
+## 2026-11-07: M6 plan written (docs/plans/M6.md)
+7-step plan for the stockpile over Storage chests, APIs checked against the 1.21.11 sources (no gradle run).
+- Pure core `core.stock`: `Inventory<K>` over fake inventories, `Stockpile<K>` as a live view (replaces the unused M0 counter; its 3 tests are ported),
+  nearest-Storage-with-space by the door anchor, partials-then-empties fill order, spill, remainder returned, withdraw from any, `StorageSet.resolve`
+  (dedupe by position, chests shared with any other room building excluded, Storage unknown while an unscanned neighbour building is within 32 blocks),
+  `StorageAlertTracker` (OK / FULL / NO_STORAGE, 200-tick hold), `Reservations` (UUID holders, the M20 hook).
+- Glue `dev.villageheart.stock`: `StackKey(item, DataComponentPatch)` equals `isSameItemSameComponents` exactly; each double-chest half read as its own
+  `ChestBlockEntity` (never `ChestBlock.getContainer`); containers found via `getChunkNow` + `LevelChunk.getBlockEntity`, because `Level.getBlockEntity`
+  loads chunks; `setChanged()` per touched container; server thread only; no memo. `Stockpiles` facade for M7-M22 and the M2 collector.
+- Assumes M4's `#chest` per block + `minecraft:barrel` ids and M5's `Buildings.valid/all` with `latestScan` (A1-A7 in the plan); steps 1-4 do not need M5.
+Revised after a fresh critique (20 findings, 3 blockers: contradictory test numbers, fill-order expectation, false FULL for unloaded Storage).
+Next: BUILD M6 once M4 is merged (steps 1-4), step 5 after M5. Top risk: the stockpile sees chests only through M5's cached scans (lag and restart window).
+
+## 2026-11-07: M6 built (builder): stockpile backed by Storage chests
+Core (`core.stock`, pure, L1): `Inventory<K>`, `ContainerRef`, `StorageSite`, `Stockpile<K>` (a live view: `count`, `deposit` nearest-first with spill, `depositInto`, `withdraw`, `withdrawFirst`,
+`nearestWithSpace`, `hasSpaceFor`, `snapshot`), `Reservations` (UUID holders, claims not locks), `StorageAlertTracker` (OK / FULL / NO_STORAGE, 200-tick hold), `StorageSet.resolve` (dedupe, chests of other room
+buildings excluded, Storage unknown while an unscanned neighbour is within 32 blocks); the unused M0 string counter `core.Stockpile` is gone and its 3 tests are ported. Three `Balance` values.
+Glue (`dev.villageheart.stock`): `StackKey` (item + component patch), `ContainerInventory` (one chest half or barrel, `setChanged` per touched container), `StorageContainers.at` (never loads a chunk),
+`ContainerBinder`, `StorageSites.collect` (reads `Buildings.all`), `Stockpiles` facade (server thread only), `StockpileSystem` registered as `villageheart:stockpile`; `SimMetricsCollector` now reports `stockpile.items.*`.
+Tests: L1 `StockpileTest` (17), `StorageSetTest`, `StorageAlertTest`, `StockpileCostTest` (slot-read counts), `StockpilePerfTest` (perf tag: snapshot of 13 824 slots ~0.3 ms, spill across 64 sites ~0.4-1.2 ms);
+L2 `StockpileGameTests` (double chest halves, components vs `isSameItemSameComponents`, comparator, unloaded/replaced) and `StockpileFacadeGameTests` (totals of two Storages, House chest in a shared wall,
+spill into a second Storage, no-storage / full alerts, off-thread refusal, real snapshot cost 32 chests ~0.26 ms, new/removed chest, invalid Storage, collector metric). Mutation check: no exclusion set -> shared-wall test red.
+Interface check vs merged M4 / M5 and all deviations: plan section 9. Docs: DESIGN section 6 (rules as built), TESTING "Stockpile tests".
+Next: M7 (workers deposit with `Stockpiles.deposit`/`nearestWithSpace`, stop gathering on `!hasSpaceFor`), M8 (Stockpile tab reads `Stockpiles.snapshot`, alert text), M20 (build reservations).
+Blockers: none. Doubts: the stockpile sees chests only through the building scans (up to 1 s per building behind a change; unknown right after a restart).
+
 ## 2026-11-07: L4 "Network synchronizer in invalid state" flake fixed (builder, branch l4-flake)
 Root cause is a lost-wakeup race in Fabric's `NetworkSynchronizer.waitForPacketHandlers` (fabric-client-gametest-api-v1 4.3.5; newer Fabric removed the class, and no newer
 fabric-api exists for 1.21.11). It tests "packet in flight, nothing queued" outside the lock, then `await(10 s)` without testing again. On the server's first tick of a new
@@ -160,3 +188,9 @@ and before the player logs in; a counter probe showed both counters at 0 during 
 Measured with 4 busy loops of mine (load 9-12): unpatched dev 1/10 failed (plus 3/6 in earlier probe runs); patched 12/12 green (2 rescues logged).
 Mutation: with a 30 ms sleep before the `lock()` the unpatched code failed 2/2 with the same stack; with the fix it passed with 3 rescues.
 Next: nothing on this item. Blockers: none.
+
+## 2026-11-07: M6 review r1 fixed (builder)
+- False "Storage full": `noteDepositShort(time, sitesSeen, unknownSites)` now ignores a short deposit that did not see every Storage (none, or any unknown). L1 `shortDepositThatSawNoStorageProvesNothing`;
+  GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
+- `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
+- `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.
