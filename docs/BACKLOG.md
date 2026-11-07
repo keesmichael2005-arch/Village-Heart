@@ -85,3 +85,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
 - [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
+
+## From M24-r1
+- [ ] Add a dedicated GameTest for the double-chest partner check (a ready-to-copy test is in docs/reviews/M24-r1.md); the demotion double-chest close branch is also untested
+- [ ] Add to DESIGN's "not stopped" list: a Visitor's projectile breaking a protected decorated pot (vanilla onProjectileHit skips the break event); a button sneak-placed on a protected dispenser/dropper/crafter; lectern books, item frames, armor stands
+- [ ] Heart snapshot headroom is now 31 KiB (481/512 KiB); recheck the caps when adding fields
+- [ ] MP_SESSION end is logged before the fake player leaves, so the gate misses shutdown errors
