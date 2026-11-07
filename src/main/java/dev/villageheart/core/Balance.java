@@ -42,4 +42,13 @@ public final class Balance {
 	public static final int STORAGE_FULL_HOLD_TICKS = 200;
 	/** A Storage is "unknown" while a room building within this many blocks has no cached scan yet (after a restart). */
 	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
+
+	/** An open Heart screen sends a fresh snapshot at most this often (and only when it changed). */
+	public static final int HEART_REFRESH_TICKS = 20;
+	/** Heart screen actions per player: token bucket capacity and ticks per refilled token. */
+	public static final int HEART_RATE_CAPACITY = 8;
+	public static final int HEART_RATE_REFILL_TICKS = 5;
+	/** Total XP at which a worker reaches level 2 and 3 (display only until M15 owns levelling, DESIGN section 4). */
+	public static final int LEVEL_2_XP = 100;
+	public static final int LEVEL_3_XP = 300;
 }
