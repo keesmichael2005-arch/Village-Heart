@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "name": "selftest_error",
+  "description": "Harness self-test, expected exit 2: a scenario action throws, the report must say ERROR with a stack trace.",
+  "default_days": 1,
+  "actions": [
+    { "action": "claim" },
+    { "action": "fail" }
+  ],
+  "assertions": []
+}

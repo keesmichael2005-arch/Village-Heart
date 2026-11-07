@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "name": "bare",
+  "description": "Claim the seed-1 plains village and do nothing else. Proves the harness and records the vanilla baseline.",
+  "default_days": 5,
+  "actions": [
+    { "action": "claim" }
+  ],
+  "assertions": [
+    "claimed == 1 on every day",
+    "population >= population@day1 - 1 on last day",
+    "village_ms.mean < 1 on every day"
+  ]
+}

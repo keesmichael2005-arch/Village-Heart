@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "name": "selftest_crash",
+  "description": "Harness self-test, expected exit 2: the server really crashes during the sprint (crash report, report stays RUNNING).",
+  "default_days": 1,
+  "actions": [
+    { "action": "claim" },
+    { "action": "crash", "day": 1, "tick": 100 }
+  ],
+  "assertions": []
+}
