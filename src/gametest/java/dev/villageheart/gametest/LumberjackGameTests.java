@@ -352,7 +352,7 @@ public class LumberjackGameTests {
 			var server = h.getLevel().getServer();
 			try {
 				var reloaded = VillageTestSupport.reload(server).village().orElseThrow();
-				h.assertValueEqual(1, reloaded.treeTasks().size(), "the saved data holds the felling task");
+				h.assertValueEqual(1, reloaded.treeTasks().size(), "the saved data holds the felling task: " + reloaded.treeTasks());
 				h.assertValueEqual(dev.villageheart.core.TreeTask.Stage.FELLING, reloaded.treeTasks().get(0).stage(), "as felling");
 			} catch (java.io.IOException e) {
 				throw new AssertionError(e);

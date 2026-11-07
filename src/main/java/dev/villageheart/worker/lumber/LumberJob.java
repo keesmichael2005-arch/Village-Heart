@@ -152,6 +152,7 @@ public final class LumberJob {
 		ws.lastPlan = now;
 		ws.needsPlan = false;
 		boolean valid = campValid(level, v);
+		if (TRACE && !valid) trace("{} @{} camp counts as invalid", v.getId(), now);
 		boolean deposit = valid && dev.villageheart.worker.DepositTrip.wanted(level, v);
 		CampTools.Result lease = valid ? CampTools.lease(server, v, JobType.LUMBERJACK.tool().orElseThrow().kind()) : CampTools.Missing.UNKNOWN;
 		ToolState tool = lease instanceof CampTools.Held ? ToolState.PRESENT : lease == CampTools.Missing.NONE ? ToolState.NONE : ToolState.UNKNOWN;

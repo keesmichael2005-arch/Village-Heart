@@ -197,6 +197,7 @@ public final class LumberTestSupport {
 	 * anything is built.
 	 */
 	public static void sweepStrayTrees(GameTestHelper h, int radius) {
+		clearYard(h);
 		ServerLevel level = h.getLevel();
 		BlockPos c = h.absolutePos(BlockPos.ZERO);
 		for (int x = -radius; x <= radius + 32; x++) for (int z = -radius; z <= radius + 32; z++) {
@@ -211,6 +212,19 @@ public final class LumberTestSupport {
 			}
 		}
 		for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(c).inflate(radius + 32.0))) e.discard();
+	}
+
+	/**
+	 * Empties the whole yard (except the corner where the bell and the Heart stand). The structure is one air block, so placing it clears
+	 * nothing: the rooms, torches and glass box of an earlier test that used the same place stay and wall off the trees (a lumberjack that
+	 * "cannot reach" an open tree in a full run was walking into the glass box of {@code radiusAndUnreachable}).
+	 */
+	public static void clearYard(GameTestHelper h) {
+		for (int x = 0; x < 32; x++) for (int y = 0; y < 28; y++) for (int z = 0; z < 32; z++) {
+			if (x <= 4 && y <= 3 && z <= 3) continue;
+			BlockPos p = new BlockPos(x, y, z);
+			if (!h.getBlockState(p).isAir()) h.getLevel().setBlock(h.absolutePos(p), Blocks.AIR.defaultBlockState(), 2 | 16);
+		}
 	}
 
 	// ---- bounds -----------------------------------------------------------------------------------

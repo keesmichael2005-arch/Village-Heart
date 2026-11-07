@@ -175,8 +175,9 @@ public final class WalkTo {
 			boolean moving = path != null && nav.moveTo(path, SPEED);
 			if (moving) v.getBrain().setMemory(MemoryModuleType.PATH, path);
 			if (TRACE) {
-				dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} path to {} from {}: {} nodes={} reached={} moving={}", v.getId(), now, target,
-						v.blockPosition(), path == null ? "null" : "ok", path == null ? 0 : path.getNodeCount(), path != null && path.canReach(), moving);
+				dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} path to {} from {}: {} nodes={} reached={} moving={} end={}", v.getId(), now, target,
+						v.blockPosition(), path == null ? "null" : "ok", path == null ? 0 : path.getNodeCount(), path != null && path.canReach(), moving,
+						path == null || path.getNodeCount() == 0 ? "-" : path.getNode(path.getNodeCount() - 1).asBlockPos());
 			}
 		} else if (!nav.isDone() && nav.getPath() != null) {
 			v.getBrain().setMemory(MemoryModuleType.PATH, nav.getPath());
