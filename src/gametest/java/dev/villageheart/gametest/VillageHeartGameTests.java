@@ -74,12 +74,7 @@ public class VillageHeartGameTests {
 
 	/** T-L2-6: reload from disk through a brand-new DimensionDataStorage after each mutator. */
 	private static VillageSavedData reload(MinecraftServer server) throws java.io.IOException {
-		server.overworld().getDataStorage().saveAndJoin();
-		java.nio.file.Path dir = DimensionType.getStorageFolder(Level.OVERWORLD, server.getWorldPath(LevelResource.ROOT)).resolve("data");
-		try (DimensionDataStorage fresh = new DimensionDataStorage(dir,
-				server.getFixerUpper(), server.registryAccess())) {
-			return fresh.get(VillageSavedData.TYPE);
-		}
+		return VillageTestSupport.reload(server);
 	}
 
 	@GameTest(environment = "villageheart-gametest:save_reload", maxTicks = 200)

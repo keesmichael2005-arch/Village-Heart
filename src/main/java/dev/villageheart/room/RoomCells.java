@@ -72,6 +72,7 @@ public final class RoomCells {
 			if (door == DoorPart.LOWER) contents.add(RoomContents.DOOR);
 			if (state.getBlock() instanceof ChestBlock) contents.add(RoomContents.CHEST);
 			if (state.getLightEmission() > 0) contents.add(RoomContents.LIGHT);
+			contents.addAll(dev.villageheart.building.BuildingContentKeys.groupsFor(state));
 		}
 		return new Cell(kind, door, partner, contents);
 	}

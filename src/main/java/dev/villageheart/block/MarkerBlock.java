@@ -4,11 +4,18 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.villageheart.building.BuildingSystem;
 import dev.villageheart.core.building.BuildingType;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelReader;
@@ -83,6 +90,26 @@ public class MarkerBlock extends HorizontalDirectionalBlock {
 			}
 		}
 		return null;
+	}
+
+	/** Any new marker (player, /setblock, /fill, structure) is noted; a STATUS recolour or a rotation is not a new marker. */
+	@Override
+	protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+		super.onPlace(state, level, pos, oldState, movedByPiston);
+		if (oldState.is(this) || !(level instanceof ServerLevel server)) return;
+		BuildingSystem.notePlaced(server, pos);
+	}
+
+	@Override
+	protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+		super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+		BuildingSystem.noteRemoved(level, pos);
+	}
+
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+		if (level instanceof ServerLevel server && player instanceof ServerPlayer sp) BuildingSystem.useMarker(server, pos, sp);
+		return InteractionResult.SUCCESS;
 	}
 
 	@Override

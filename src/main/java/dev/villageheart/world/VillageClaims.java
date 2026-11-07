@@ -61,8 +61,10 @@ public final class VillageClaims {
 	}
 
 	public static ClaimRules.Result claim(ServerLevel level, BlockPos pos, Player owner) {
-		return data(level.getServer()).claim(locate(level, pos), owner.getUUID(), owner.getGameProfile().name(),
+		ClaimRules.Result result = data(level.getServer()).claim(locate(level, pos), owner.getUUID(), owner.getGameProfile().name(),
 				bellDistance(level, pos), level.getGameTime());
+		if (result == ClaimRules.Result.CLAIMED) dev.villageheart.building.MarkerAdoption.adoptLoaded(level, pos);
+		return result;
 	}
 
 	public static Component refusalMessage(ClaimRules.Result result, Player player) {
@@ -79,6 +81,7 @@ public final class VillageClaims {
 	public static Optional<VillageState> releaseAt(ServerLevel level, BlockPos pos) {
 		Optional<VillageState> released = data(level.getServer()).releaseAt(locate(level, pos));
 		released.ifPresent(v -> {
+			dev.villageheart.building.MarkerAdoption.resetReleased(level.getServer(), v);
 			dropTreasury(level, pos, v.treasury());
 			ServerPlayer owner = level.getServer().getPlayerList().getPlayer(v.owner());
 			if (owner != null) owner.sendSystemMessage(Component.translatable("message.villageheart.heart.released"));
