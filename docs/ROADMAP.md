@@ -109,6 +109,7 @@ from there instead of hard-coding them.
 - **L1**: wage bill by level. Paid in hiring order when the treasury is short. Strikers produce nothing
 - **L2**: 3 workers and 2 emeralds → after dawn 2 are paid and 1 is on strike. The striking lumberjack chops 0 logs that day
 - **L4**: Overview tab screenshot showing the treasury, wage bill and a strike alert
+- Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
 
 ## M13: Cook / Kitchen
 - [ ] §5.5 recipes, fuel use, rates
@@ -181,12 +182,13 @@ from there instead of hard-coding them.
 - **L1**: breeding conditions (free bed, food days ≥3, ≥2 fed and housed adults)
 - **L2**: a free bed and plenty of food → a baby within 2 days. With no free bed → no baby in 3 days
 
-## M24: Ranks and multiplayer
-- [ ] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer
+## M24: Ranks and multiplayer ✅
+- [x] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer
 - **L1**: permission matrix for every rank × action
 - **L2**: a Visitor fake player cannot open a Storage chest, and a Resident can. A Steward can hire. Only the Owner can withdraw from the treasury
 - **L4**: Ranks tab screenshot with 3 players
-- Builder status (not ticked): everything above except "Only the Owner can withdraw" is built and tested on branch `m24`; that L2 (plan T-L2-6) waits for M12, see docs/plans/M24.md section 8.
+- Pending M12: "Only the Owner can withdraw from the treasury" (plan T-L2-6) is not built or tested yet, because the treasury actions do not exist. M12 adds
+  `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` with their rows in `PermissionsTest` and T-L2-6. Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
