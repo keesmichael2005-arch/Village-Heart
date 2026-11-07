@@ -135,6 +135,18 @@ public final class LumberTestSupport {
 		h.assertTrue(gu.isEmpty(), "a tree in the open was declared unreachable: " + gu);
 	}
 
+	/**
+	 * Like {@link #assertNoGiveUps} but only for the given trees: in a two-day test the replanted saplings grow into new trees whose canopy can
+	 * wall off their own trunk (leaves block the ground), and the worker rightly gives those up.
+	 */
+	public static void assertNoGiveUpsAt(GameTestHelper h, BlockPos... bases) {
+		var gu = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).giveUps();
+		for (BlockPos b : bases) {
+			String key = dev.villageheart.world.VillageClaims.locate(h.getLevel(), b).toString();
+			for (String g : gu) h.assertTrue(!g.startsWith(key), "a tree in the open was declared unreachable: " + g);
+		}
+	}
+
 	/** Where a lumberjack is spawned: next to the Chopping Block. */
 	public static BlockPos spawnSpot() { return BuildingTestSupport.inside(CAMP, 1, 0, 1); }
 

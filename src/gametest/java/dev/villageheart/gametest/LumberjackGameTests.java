@@ -487,7 +487,7 @@ public class LumberjackGameTests {
 			for (int i = 0; i < 6; i++) sb.append("oak ").append(i).append(": gone ").append(goneAt[i] - t0[0]).append(", replanted ").append(plantedAt[i] - t0[0]).append("; ");
 			System.out.println("[m9] sixOaksTwoDays: " + sb + "tick now " + (h.getTick() - t0[0]));
 			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
-			assertNoGiveUps(h);
+			assertNoGiveUpsAt(h, bases);
 			VillageTestSupport.done(h);
 			end(h);
 		});
