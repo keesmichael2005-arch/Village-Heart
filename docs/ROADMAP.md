@@ -50,11 +50,11 @@ from there instead of hard-coding them.
 - **L1**: the scanner on a 16×16×8 room finishes in under 5 ms
 - **L2**: build a real room in a GameTest structure. The scan finds enclosed, the door, and the bed/chest contents. Break one roof block → invalid with that position
 
-## M5: Building registry and validation
-- [ ] Building types with their requirements (§3.3), registered when a marker is placed and removed when it is broken
-- [ ] Round-robin re-validation once per second, plus on use. Marker state grey, red or green. Right-click a marker → reasons in chat
-- [ ] Outdoor site validators: Mineshaft, Hunting Ground, Training Yard, plus linking to the nearest parent building
-- [ ] Tier gate: markers above the current tier show red with "Requires <tier>"
+## M5: Building registry and validation ✅
+- [x] Building types with their requirements (§3.3), registered when a marker is placed and removed when it is broken
+- [x] Round-robin re-validation once per second, plus on use. Marker state grey, red or green. Right-click a marker → reasons in chat
+- [x] Outdoor site validators: Mineshaft, Hunting Ground, Training Yard, plus linking to the nearest parent building
+- [x] Tier gate: markers above the current tier show red with "Requires <tier>"
 - **L1**: each building type's requirement check against a fake scan result (all pass/fail cases in the §3.3 table)
 - **L2**: valid Storage (2 chests) → green within 2 s. Remove a chest → red with "Needs 1 more chest" within 2 s
 - **L2**: Mineshaft 12 deep with 8 rails and a torch → valid and linked to a Mine 20 blocks away. With 6 rails → invalid
