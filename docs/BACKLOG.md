@@ -43,3 +43,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] sweepStrayMarkers is only safe while each sweeping test has its own environment: add an assertion or a TESTING.md rule
 - [ ] L4 marker_validation checks the chat only via the screenshot; add a client-side assertion
 - [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
+
+## From l4flake-r1
+- [ ] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+- [ ] The wakeup wrapper doesn't check the `invalid` flag between slices (cosmetic; up to 10 s later failure)
