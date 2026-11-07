@@ -87,3 +87,21 @@ the 3:1 contrast rule. Next: M4. Blockers: none.
 On a clean checkout, `scripts/verify.sh` exited 0 twice (L2 38/38, L4 green, no synchronizer flake). The model-log fixtures are now tracked, and no other test reads an ignored file.
 Two mutations went red as expected (a storage recipe ingredient, and the kitchen marker's loot item). Both screenshots were looked at: the marker_items shot is clean now.
 M3 ticked in ROADMAP. 3 non-blocking notes in `docs/reviews/M3-r2.md`. Next: M4. Blockers: none.
+
+## 2026-11-07: M7 plan written (docs/plans/M7.md), villager-control spike decided
+11-step plan for hiring and the worker framework, written ahead of M4-M6. It talks to them only through a narrow `JobSiteSource`
+(`sites(job)`, `isRegistered(building)`, `reservable()`), plus M6's `Stockpiles.depositTarget/deposit`, which is needed for step 9 only.
+**Spike decision: (a), a brain mixin** (recorded in DESIGN §12). A throwaway GameTest spike (8 tests, deleted) gave this evidence:
+- With a mixin at the head of `Villager.registerBrainGoals`, a mod-built brain walked through a closed door to its job block in 60 ticks,
+  slept in a bed at night, worked after dawn, and survived an NBT reload. A mod profession with no trades gives 0 offers.
+- (b), the runner with the brain suspended, got stuck at the closed door (no `InteractWithDoor`).
+- With the vanilla brain kept, `ResetProfession` cleared the mod profession within 200 ticks.
+- The mod holding a composter's POI ticket blocked vanilla for 1200 ticks; a free composter was taken by tick 200.
+Findings for later milestones:
+- 1.21.11's villager schedule is a timeline-driven `EnvironmentAttribute`.
+- POI add/remove is deferred through `server.execute`, so reservations retry and evict.
+- Calling `runAfterDelay` inside a `runAfterDelay` callback crashes the GameTest server.
+Revised after a fresh critique (26 findings): a stable slot cut, reserving every mod-job workstation, no chunk loading, real zombie
+conversion in tests, stronger L2 assertions and isolation, breeding kept.
+Next: BUILD M7 steps 1-4 (no dependencies); steps 5-8 after M5, step 9 after M6. Top risk: brain ownership (one mixin into a private
+vanilla method; vanilla behaviours reused by hand).
