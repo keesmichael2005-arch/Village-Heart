@@ -135,7 +135,7 @@ public final class SimMetricsCollector {
 				village.map(v -> v.workers().size()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() == dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() != dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
-				Map.of(), 0, 0.0, village.map(VillageState::treasury).orElse(0),
+				village.isPresent() ? dev.villageheart.stock.Stockpiles.totalsById(server) : Map.of(), 0, 0.0, village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)));
 	}
 

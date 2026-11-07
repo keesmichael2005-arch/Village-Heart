@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -137,6 +138,12 @@ public final class Stockpile<K> {
 
 	/** Takes up to {@code n} of the first matching key (in withdraw order) that can be taken at all. */
 	public Optional<Taken<K>> withdrawFirst(@Nullable Pos from, Predicate<? super K> match, int n, @Nullable UUID holder) {
+		return withdrawFirst(from, match, k -> n, n, holder);
+	}
+
+	/** As above, but never more than {@code cap(key)} of the key found (e.g. its stack size). */
+	public Optional<Taken<K>> withdrawFirst(@Nullable Pos from, Predicate<? super K> match, ToIntFunction<? super K> cap, int n,
+			@Nullable UUID holder) {
 		checkAmount(n);
 		if (n == 0) return Optional.empty();
 		Set<K> tried = new LinkedHashSet<>();
@@ -146,7 +153,7 @@ public final class Stockpile<K> {
 				for (int i = 0, size = inv.size(); i < size; i++) {
 					K k = inv.key(i);
 					if (k == null || !match.test(k) || !tried.add(k)) continue;
-					int taken = withdraw(from, k, n, holder);
+					int taken = withdraw(from, k, Math.min(n, cap.applyAsInt(k)), holder);
 					if (taken > 0) return Optional.of(new Taken<>(k, taken));
 				}
 			}

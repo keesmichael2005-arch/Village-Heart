@@ -111,3 +111,16 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - L4 `MarkerClientTests.validationReport` (`marker_validation.png`): claims by `VillageClaims.claim` (a `/setblock` Heart never runs `setPlacedBy`), builds two rooms with commands, waits until the
   server says green and red, aims at the red plaque (asserts `mc.hitResult` is on it, so it cannot click air), presses the right mouse button and shoots the chat.
   The player must be within the block reach (about 5), so FOV is 100 to get both plaques into the frame.
+
+## Stockpile tests (M6+)
+- **Core** (`src/test/java/dev/villageheart/core/stock/`): `FakeInventory` (strings as items, per-key limits, refuse sets, call counters) feeds `StockpileTest`
+  (routing, fill order, spill, limits, reservations), `StorageSetTest`, `StorageAlertTest`. `StockpileCostTest` pins the work deterministically by counting slot reads
+  (a spill across 64 sites reads each slot at most twice); the wall-clock budgets are in `StockpilePerfTest` (tag `perf`, run by `perfTest`):
+  snapshot of 13 824 slots under 3 ms, full-storage deposit under 1 ms, a deposit spilling across 64 sites under 3 ms.
+- **Glue GameTests** (`StockpileGameTests`, environment `villageheart-gametest:stockpile_glue`, no claim, no buildings): build a stockpile from hand-placed chests with
+  `StockpileTestSupport.siteOf` (it goes through `ContainerBinder`, like the real code). Cover double chests, components, comparator update, unloaded/replaced positions.
+  A comparator's `FACING` points at its input, so a comparator reading the chest to its west faces WEST.
+- **Facade GameTests** (`StockpileFacadeGameTests`): follow the Building GameTests rules (own environment `stockpile_<name>`, `yard`, `skyAccess`, `begin`/`done`, `awaitWithin`).
+- **Rule: stockpile code never calls `level.getBlockEntity`** (it loads the chunk synchronously on the server thread); it uses `StorageContainers.at` (`getChunkNow` + `LevelChunk.getBlockEntity`).
+- **Budget** (docs/plans/M6.md 3.4): one snapshot (= one `StockpileSystem` refresh) of 32 full containers under 1 ms (asserted at 3 ms in `snapshotCostReal` because it shares a machine with other work), a deposit/withdraw under 0.3 ms.
+

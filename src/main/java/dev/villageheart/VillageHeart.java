@@ -43,6 +43,7 @@ public class VillageHeart implements ModInitializer {
 		PlayerBlockBreakEvents.BEFORE.register(VillageHeart::allowBreak);
 		dev.villageheart.world.VillageTicker.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }
