@@ -28,7 +28,17 @@ VERIFY  verifier (Opus)   fresh every round: full verify.sh + adversarial review
   real issues and the list is shrinking (a healthy loop), it continues. If the same items keep coming
   back, or the blocker needs a human decision, it marks the milestone `BLOCKED` in LOOP_STATE with
   the reason and moves on to the next milestone that doesn't depend on it.
-- Only one milestone is in progress at a time, all on `dev`. `main` only moves when the human merges.
+- **Parallelism** (added after run 1 used only ~40% of a 5-hour window):
+  - **Plan ahead:** while milestone N builds or verifies, the planner for the next milestone(s) can run.
+    Plans are docs only.
+  - **Parallel builds:** at most **2** build/verify tracks at once (the container has 4 CPUs and 15 GB;
+    each track runs its own Minecraft). Only milestones whose ROADMAP dependencies have all passed can run.
+  - **Isolation:** every parallel worker runs in its **own git worktree** on a branch `mNN`, created from
+    `dev`. When its review passes, the orchestrator merges `mNN` into `dev` (rebasing first) and re-runs
+    `verify.sh --fast` on dev. A worker never shares a working directory with another worker.
+  - **Simulations:** don't run two `scripts/simulate.sh` at once, and don't run one while another track runs
+    `verify.sh`, until the BACKLOG item "concurrent sims kill each other" is fixed.
+- `main` only moves when the human merges.
 
 ## How the orchestrator knows when to act
 - **It doesn't watch workers.** They run in the background and report back when they finish, and
