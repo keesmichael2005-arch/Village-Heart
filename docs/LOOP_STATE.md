@@ -2,8 +2,8 @@ status: RUNNING         # RUNNING | PAUSED | DONE
 budget: "stop at 2026-11-08 07:00 NZDT (2026-11-07T18:00Z): no new worker after this"
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: unknown    # weekly-% per $ of run cost; user reports % after run 1
-run_cost_usd: 0
-current: M3 / BUILD   (plan 9685153; M2 PASS r1; M1 PASS r3)
+run_cost_usd: "~38 at 10:45Z (orchestrator session usage incl. workers)"
+current: "track A: M3 VERIFY r1 (dev) | track B: M4 BUILD (branch m4) | plan-ahead: M5 PLAN (branch m5-plan)"
 blocked: []
 wakes:                  # send_later wake-ups scheduled while usage was available
   - 2026-11-07T10:45Z   # reset 10:40Z + 5 min   (trig_014Ka2PfmCo3kBeuYqyYWdVb)
