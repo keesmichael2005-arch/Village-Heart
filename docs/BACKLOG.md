@@ -55,7 +55,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
 - [ ] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
 - [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
-- [ ] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so
+- [x] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so (done in M8: "... (1 Storage not checked yet)")
 
 ## From M7-r1/r2
 - [ ] Deterministic regression tests for the deposit-trip guards: (a) erase the walk target mid-trip and assert it is re-pointed at Storage, not the job block; (b) only one of the WORK/go_home trips starts

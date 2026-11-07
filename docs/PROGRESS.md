@@ -249,3 +249,13 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Worst-case snapshot encodes to 469 KiB with 3-byte chars (< 512 KiB asserted).
 - verify --fast green after each step. Deviations are in docs/plans/M8.md section 8.
 - Next: when M7 is on dev, rebase, re-check A1-A12, then steps 4-9 (facts from the world, menu, actions, screen, tabs, L4).
+
+## 2026-11-07: M8 built (Heart screen v1), steps 4-9 after M7 merged
+- Step 4 `HeartFacts` (collect/cached/invalidate), `VillageCensus`, public `Workers.findLoaded`, tag `#villageheart:not_village_food`.
+- Step 5 `ModMenus.HEART` (`ExtendedScreenHandlerType`), `HeartMenu` (slotless; per-viewer snapshot at most 1 Hz and only when changed; closes on distance, Heart gone, release/re-claim),
+  `VillageHeartBlock.useWithoutItem`, `HeartNetwork` sender seam.
+- Step 6 `HeartActions.handle` (rate limit first, `ActionGate`, assign/fire/check now, replies, throttled WARN, cleared on disconnect and server stop).
+- Steps 7-8 `HeartScreen` (own tabs/lists, Overview/Villagers/Buildings/Stockpile, action bar, status line, layout self-check), client receivers.
+- Step 9 L4 `HeartScreenClientTests` with 4 screenshots (looked at), UI fire, scrolling, ellipsis; docs (TESTING, DESIGN 10, ROADMAP deferrals, BACKLOG tick).
+- Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
+- Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.

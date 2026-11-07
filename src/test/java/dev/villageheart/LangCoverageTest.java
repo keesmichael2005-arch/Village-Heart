@@ -43,6 +43,32 @@ class LangCoverageTest {
 		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
 	}
 
+	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */
+	@Test
+	void heartScreenClientTexts() throws Exception {
+		Map<String, Object> lang = lang();
+		for (Map.Entry<String, String> e : dev.villageheart.core.heart.HeartTexts.EN.entrySet()) {
+			assertEquals(e.getValue(), lang.get(e.getKey()), e.getKey());
+		}
+		for (dev.villageheart.core.heart.ActivityKind a : dev.villageheart.core.heart.ActivityKind.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("activity." + a.name().toLowerCase(java.util.Locale.ROOT));
+		}
+		dev.villageheart.core.heart.HeartTexts.key("activity.workplace_invalid");
+		for (BuildingType t : BuildingType.values()) {
+			assertEquals(t.displayName(), dev.villageheart.core.heart.HeartTexts.english("building." + t.id()), t.id());
+		}
+		for (dev.villageheart.core.heart.RowStatus s : dev.villageheart.core.heart.RowStatus.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("status." + s.name().toLowerCase(java.util.Locale.ROOT));
+		}
+		for (dev.villageheart.core.heart.DetailKind d : dev.villageheart.core.heart.DetailKind.values()) {
+			dev.villageheart.core.heart.HeartTexts.key("detail." + (d == dev.villageheart.core.heart.DetailKind.WORKER_SLOTS ? "slots"
+					: d.name().toLowerCase(java.util.Locale.ROOT)));
+		}
+		for (dev.villageheart.core.worker.JobType j : dev.villageheart.core.worker.JobType.values()) {
+			assertEquals(j.displayName(), lang.get("entity.villageheart.villager." + j.id()), j.id());
+		}
+	}
+
 	@Test
 	void everyNameIsPresent() throws Exception {
 		Map<String, Object> lang = lang();
