@@ -194,3 +194,19 @@ Next: nothing on this item. Blockers: none.
   GameTest `depositWithoutStorageDoesNotRaiseFull` (deposit with no Storage, then an empty Storage appears: alert stays OK). Mutation (rule removed): that test red ("an empty Storage is not full: was FULL").
 - `depositMarksChestChanged` now pre-fills 27 slots, tops them up (grow path, signal 1 -> 15) and partially withdraws (shrink path, -> 8). Mutation (`changed()` empty): red ("signal after the grow to be 15: was 1").
 - `snapshotCostReal` no longer asserts wall-clock (prints it); `StockpilePerfTest` uses the best-batch retry window like `RoomScannerPerfTest`. Enchanted sword added to the pairwise StackKey check (55 pairs); `depositHere` Javadoc says it never raises FULL.
+
+## 2026-11-07: M9 plan written (docs/plans/M9.md), Lumberjack
+12-step plan for the first real job, written while M7 is still being built (assumptions M7-1..8 and M8-1 are in §3.1; the main ones: `JobBehaviours.work`
+is the per-job plug-in point, and M7 step 9's `DepositTrip` deposits everything at GO_HOME and gets three small hooks: keep, free-slot, `wanted`).
+- Core: a reusable job toolkit (`core.job`: tool tiers, `WorkSpeed` = tool × level × needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), tree detection
+  over a `TreeView` grid (a 26-connected natural-log component with ≥ 3 non-persistent leaf contacts, a soil base inside 2×2, no log in a valid room,
+  ≤ 192 logs), a budgeted nearest-first `TreeFinder`, a `LumberjackPlanner` decision table, and `TreeTask`s saved in `VillageState`, so an interrupted fell resumes.
+- Pace: stone ×1.25 → 40 ticks per log (1 log per 2 s). Copper, gold and netherite multipliers are pinned. The axe is used in place in the camp chest
+  (1 durability per log), never held, so it cannot be dropped or duplicated. Drops are picked up by mod code (vanilla looting needs `mob_griefing` and
+  `requestedItems`). No new fells after day time 5000, so the canopy (≈ 5 600 ticks to decay) drops before night. Never loads chunks.
+- Verified for the plan: villagers have FOLLOW_RANGE 16 (partial paths, so a progress watchdog is needed); random ticks run in GameTests without a player;
+  the GameTest server does not pace ticks.
+- Tests: 13 L1, 14 L2 (feature-grown trees with fixed seeds, measured `fellBound`, stray-tree sweep), 1-2 L4. L3: `work.<job>.<counter>`,
+  `workers.status.<status>` and the reserved `stockpile.tag.*` get filled for M11.
+Revised after a fresh critique (22 findings; I refuted 3 against the sources: random ticks, StandAtJobBlock, GameTest tick pacing).
+Next: BUILD M9 after M7 (including step 9) is merged. Top risk: the DepositTrip interplay (M7 step 9 does not exist yet).
