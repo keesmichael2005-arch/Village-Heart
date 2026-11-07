@@ -24,5 +24,21 @@
 	"block.villageheart.chopping_block": "Chopping Block",
 	"block.villageheart.builders_table": "Builder's Table",
 	"block.villageheart.market_stall": "Market Stall",
-	"itemGroup.villageheart.main": "Village Heart"
+	"itemGroup.villageheart.main": "Village Heart",
+	"message.villageheart.heart.not_this_village": "This Heart does not hold a village.",
+	"message.villageheart.heart.rejected.not_open": "That screen is no longer open.",
+	"message.villageheart.heart.rejected.stale": "The village changed. Open the Heart again.",
+	"message.villageheart.heart.rejected.no_village": "There is no village here.",
+	"message.villageheart.heart.rejected.no_permission": "You are not allowed to do that.",
+	"message.villageheart.heart.rejected.rate_limited": "Slow down.",
+	"message.villageheart.heart.rejected.unknown_job": "That job does not exist.",
+	"message.villageheart.heart.rejected.villager_not_found": "That villager is not here.",
+	"message.villageheart.heart.rejected.not_a_building": "That is not a building of this village.",
+	"gui.villageheart.heart.alert.no_storage": "No Storage: items have nowhere to go",
+	"gui.villageheart.heart.alert.storage_full": "Storage full: no empty slot in any readable Storage",
+	"gui.villageheart.heart.alert.storage_full_unchecked": "Storage full: no empty slot in any readable Storage (%s Storage not checked yet)",
+	"gui.villageheart.heart.alert.invalid_building": "1 building needs attention",
+	"gui.villageheart.heart.alert.invalid_buildings": "%s buildings need attention",
+	"gui.villageheart.heart.alert.workplace_invalid_one": "1 worker has no valid workplace",
+	"gui.villageheart.heart.alert.workplace_invalid": "%s workers have no valid workplace"
 }

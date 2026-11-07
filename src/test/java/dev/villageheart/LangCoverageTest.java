@@ -19,6 +19,28 @@ class LangCoverageTest {
 		}
 	}
 
+	/** Heart screen texts the server builds: each key exists and its English matches the fallback the server sends. */
+	@Test
+	void heartScreenServerTexts() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.heart.Rejection r : dev.villageheart.core.heart.Rejection.values()) {
+			assertTrue(lang.containsKey(r.langKey()), r.langKey());
+		}
+		assertTrue(lang.containsKey("message.villageheart.heart.not_this_village"));
+		// Every alert text the builder can produce.
+		dev.villageheart.core.heart.TextLine[] alerts = {
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.no_storage", "No Storage: items have nowhere to go"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.storage_full",
+						"Storage full: no empty slot in any readable Storage"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.storage_full_unchecked",
+						"Storage full: no empty slot in any readable Storage (%s Storage not checked yet)"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_building", "1 building needs attention"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_buildings", "%s buildings need attention"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace")};
+		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
+	}
+
 	@Test
 	void everyNameIsPresent() throws Exception {
 		Map<String, Object> lang = lang();

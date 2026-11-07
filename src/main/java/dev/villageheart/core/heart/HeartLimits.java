@@ -15,8 +15,9 @@ public final class HeartLimits {
 	public static final int MAX_NAME = 32;
 	public static final int MAX_KEY = 64;
 	public static final int MAX_ID = 64;
-	public static final int MAX_TEXT_ARGS = 4;
-	public static final int MAX_ARG = 64;
+	/** Format args of a {@link TextLine}: counts and short names only (kept small so 512 reason lines stay under the size cap). */
+	public static final int MAX_TEXT_ARGS = 2;
+	public static final int MAX_ARG = 16;
 	/** Longest job id a client may send. */
 	public static final int MAX_JOB_ID = 32;
 
