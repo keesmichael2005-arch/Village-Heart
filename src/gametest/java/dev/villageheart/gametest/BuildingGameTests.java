@@ -203,6 +203,7 @@ public class BuildingGameTests {
 			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isEmpty(), "no claim");
 			rec.player = recordingPlayer(h, "clicker");
 			rightClick(h, rec.player, m1, Direction.NORTH, ItemStack.EMPTY);
+			h.assertTrue(!rec.player.messages.isEmpty(), "a report was sent");
 			h.assertValueEqual("message.villageheart.reason.no_village", lineKey(rec.player.messages.get(0)), "NO_VILLAGE key");
 			h.setBlock(BELL, Blocks.BELL);
 		}).thenIdle(3).thenExecute(() -> claim(h));
@@ -216,6 +217,7 @@ public class BuildingGameTests {
 			rec.player.messages.clear();
 			rightClick(h, rec.player, m2, Direction.NORTH, ItemStack.EMPTY);
 			h.assertTrue(record(h, m2).isPresent(), "the right-click registered it");
+			h.assertTrue(!rec.player.messages.isEmpty(), "the right-click sent a report");
 			h.assertValueEqual("message.villageheart.marker.valid", translatable(rec.player.messages.get(0)).getKey(), "first report is the real verdict");
 		});
 		// (b) far outside the claim, in a chunk loaded and forced by the test
@@ -237,6 +239,7 @@ public class BuildingGameTests {
 					"out-of-claim marker is not registered");
 			rec.player.messages.clear();
 			rightClickAbs(level, rec.player, rec.far, Direction.NORTH, ItemStack.EMPTY);
+			h.assertTrue(rec.player.messages.size() >= 2, "header and reason were sent: " + rec.player.messages);
 			h.assertValueEqual("Outside the village: 100000 blocks from the Heart (max 80)", lineBody(rec.player.messages.get(1)).getFallback(), "reason");
 			level.setBlock(rec.far, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			level.setBlock(rec.far.south(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -266,6 +269,7 @@ public class BuildingGameTests {
 			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isEmpty(), "released");
 			var rp = recordingPlayer(h, "clicker");
 			rightClick(h, rp, marker, Direction.NORTH, ItemStack.EMPTY);
+			h.assertTrue(!rp.messages.isEmpty(), "a report was sent");
 			h.assertValueEqual("message.villageheart.reason.no_village", lineKey(rp.messages.get(0)), "NO_VILLAGE");
 			VillageTestSupport.done(h);
 		});

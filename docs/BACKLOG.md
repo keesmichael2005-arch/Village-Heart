@@ -8,10 +8,12 @@ Planners: scan this list. Pick up an item when it touches your milestone or is c
 when it's fixed. Source reviews: docs/reviews/.
 
 ## From M1-r3
-- [ ] No test for the `already_claimed_other` message or the "released" chat notice
+- [x] No test for the `already_claimed_other` message or the "released" chat notice
+  - Fixed (backlog-1): `claimRefusalAndReleaseMessages` (own environment `claim_messages`); `RecordingPlayer` now also records action-bar messages.
 - [x] Tidy imports in VillageHeartGameTests (duplicate ModBlocks import)
 - [ ] plans/M1.md §3.4 table says evaluate() runs the stale heal; the code (correctly) doesn't
-- [ ] The save/reload test doesn't assert the destroyBlock return value during release
+- [x] The save/reload test doesn't assert the destroyBlock return value during release
+  - Fixed (backlog-1): the release step asserts `destroyBlock` returns true.
 - [x] An absent owner's Heart can only be removed by an op (/setblock). Ownership transfer is planned for M24
   - Fixed in M24: `/villageheart owner <player>` (op) hands the village over while the owner is offline; the Owner can also transfer in the Ranks tab.
 
@@ -39,9 +41,12 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Escapee marker not scoped to SIM_DIR; rename `escapee_killed (exit 2)` ok-line to avoid confusion next to the real check
 
 ## From M5-r1
-- [ ] `outsideClaimAndNoClaim` reads messages.get(0) without a non-empty assert (BuildingGameTests ~L205/218/239): a broken report crashes the whole GameTest server
-- [ ] GameTest filter quirk: a non-exact filter runs 0 tests and "passes". Fail when a filter is set and 0 tests ran
-- [ ] sweepStrayMarkers is only safe while each sweeping test has its own environment: add an assertion or a TESTING.md rule
+- [x] `outsideClaimAndNoClaim` reads messages.get(0) without a non-empty assert (BuildingGameTests ~L205/218/239): a broken report crashes the whole GameTest server
+  - Fixed (backlog-1): every `messages.get(n)` in the Building GameTests is preceded by a non-empty/size assert.
+- [x] GameTest filter quirk: a non-exact filter runs 0 tests and "passes". Fail when a filter is set and 0 tests ran
+  - Fixed (backlog-1): `scripts/check-gametest-log.sh` (run by verify.sh, self-tested) fails on "All 0 required tests passed"; documented in TESTING.md.
+- [x] sweepStrayMarkers is only safe while each sweeping test has its own environment: add an assertion or a TESTING.md rule
+  - Fixed (backlog-1): TESTING.md rule plus `BuildingTestSupport.assertOwnEnvironment` (run-time guard inside `sweepStrayMarkers`).
 - [ ] L4 marker_validation checks the chat only via the screenshot; add a client-side assertion
 - [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
 
@@ -53,8 +58,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Treat `unreadContainers > 0` like an unknown Storage when noting a short deposit (up to 10 s false FULL after a hidden chest loads)
 - [ ] "Readable full + unknown" alert case is tested at L1 only; a glue mutation passing 0 for unknownSites survives. Add an L2 test
 - [ ] StockpilePerfTest has 4–10× headroom (a 3× slowdown stays green); tighten the limits or document StockpileCostTest as the regression guard
-- [ ] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
-- [ ] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
+- [x] TESTING.md ~L139 still says snapshotCostReal asserts 3 ms (now print-only)
+  - Fixed (backlog-1).
+- [x] Pre-M6 `villageTickerTimesSystems` still has a wall-clock assert (`meanMs() < 0.5`) inside a GameTest; move it to perfTest
+  - Fixed (backlog-1): the GameTest now counts runs (deterministic); the idle-tick wall-clock bound is `VillageTickerPerfTest` in perfTest.
 - [ ] The depositMarksChestChanged shrink step mostly empties slots; add a partial-shrink check that alone catches a missing changed() on withdraw
 - [x] M8 alert text: one readable full Storage plus one unknown shows FULL by design; say so (done in M8: "... (1 Storage not checked yet)")
 
