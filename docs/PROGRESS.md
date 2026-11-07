@@ -224,3 +224,15 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - depositTripWhenFull flake: cause was a stolen walk target (GoToJobBlock took the target once the sink dropped it) and two DepositTrip instances (WORK and go_home) running at once. Workers.tripRunning now gates both; the trip re-sets its target whenever it is missing (unless the pathfinder said unreachable in the last 20 ticks). Bound stays 600. Evidence: 11 consecutive full runGameTest runs, all "All 102 required tests passed".
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
+
+## 2026-11-07: M13 plan written (docs/plans/M13.md)
+12-step plan for the Cook / Kitchen, revised after a fresh critique (24 findings: 22 taken, 2 refuted against dev code). Decisions: a mod-side
+timed conversion (125 ticks per output, M9 `WorkClock`) at the cook's own smoker instead of the vanilla smoker block entity (the smoker only
+takes smoking recipes, its pace is fixed, its slots are open to players); visuals by setting `LIT` (vanilla `animateTick` adds smoke and sound,
+`serverTick` leaves an external `LIT` alone, verified in bytecode) plus a clean-up sweep through an accessor mixin. Every recipe needs fuel;
+fuel = heat (coal/charcoal 1600, logs 300, 200 per item) in a saved per-smoker bank. Inputs and fuel are reserved under the cook's UUID and
+fetched from the Storage that holds them; outputs are kept until the batch ends, then deposited; no new work after 10500 so food is in Storage
+before dinner. L3: `starter_cook` = `starter` + a wheat field + a cook + 32 coal, compared with a committed `sim/baselines/starter.json`
+through a new `@base` assertion ref (staleness guarded by a canonical scenario hash).
+Next: BUILD M13 after M9, M10 and M11 are merged (steps 1-3 are pure core and can start once M9 step 1 and M11 step 1 are on dev).
+Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Blockers: none.
