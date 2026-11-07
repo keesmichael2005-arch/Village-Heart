@@ -1,43 +1,48 @@
-# Overnight agent loop
+# Agent loop (on-demand runs)
 
-A scheduled task starts a **fresh cloud session every hour** during the overnight window. Each
-session is one "tick" of the loop. Nothing lives in an agent's memory: all state is in git
-(`dev` branch), so any tick can die at any moment (usage limit, crash, timeout) and the next
-one carries on.
+The loop only runs when the human starts one ("run until 07:00", "run until weekly usage hits 70%").
+It never runs on a fixed schedule.
 
-## One tick
-1. `git fetch origin && git checkout dev && git pull` (create `dev` from `main` if missing).
-2. **Stop checks** (exit immediately, spending almost nothing):
-   - `docs/LOOP_STATE.md` says `status: DONE` or `status: PAUSED`.
-   - `.loop/lock` exists and its timestamp is less than 90 minutes old (another tick is running).
-3. Take the lock: write `.loop/lock` (UTC timestamp + session URL), commit, push. If the push is
-   rejected, someone else took it, so exit.
-4. **Build:** pick the first unchecked item in `docs/ROADMAP.md`. If `docs/PROGRESS.md` lists an
-   open verifier rejection, fix that first. Work in small steps. After each step that passes
-   `scripts/verify.sh --fast`, commit and push to `dev`, so a usage-limit cut loses at most one step.
-5. **Verify:** run the full `scripts/verify.sh`. Then start a *separate* verifier subagent. Give it
-   the milestone's acceptance criteria, the diff (`git diff <start>..HEAD`), `reports/verify-summary.md`
-   and the screenshots, but **not** the builder's reasoning. Its brief: try to prove the milestone is
-   NOT done (missing tests, tests that can't fail, weakened tests, screenshots that look wrong,
-   behaviour that only works in the test fixture).
-6. **Record:** if the verifier passes it, tick the milestone in ROADMAP. Otherwise write the
-   rejection reasons into PROGRESS as an open item. Append a PROGRESS entry either way.
-   Delete `.loop/lock`, commit, push.
-7. Keep going with the next item while time and usage last (stop starting new work after ~50
-   minutes so the next tick isn't blocked by the lock).
+## Who does what
+- **Orchestrator:** the long-running main session the human talks to. It doesn't write mod code.
+  It starts workers, reads their output files, decides what happens next, enforces the budget, and
+  keeps `docs/LOOP_STATE.md` up to date. Auto-compaction keeps it alive for long runs. All real state is in git.
+- **Workers:** a **fresh** agent for every phase, briefed only from files in the repo, so no single
+  agent's context gets stale or biased. Briefs: `docs/agents/`.
 
-## Usage limits (5-hour windows)
-When the plan's usage limit is hit, the running tick just stops. Its last pushed step is safe;
-its lock goes stale after 90 minutes. Ticks that fire while still limited end immediately. The
-first tick after the window resets picks up from git. No manual restart needed.
+## One milestone = plan → build → verify (roughly 40 / 20 / 40)
+```
+PLAN (planner)        writes docs/plans/Mxx.md, has it critiqued by a fresh subagent, revises
+  ↓
+BUILD (builder)       implements the plan, tests first; small commits to `dev`, each green on verify --fast
+  ↓
+VERIFY (verifier)     full verify.sh + adversarial review → docs/reviews/Mxx-rN.md: PASS or FAIL + fix list
+  ↓ FAIL                                   ↓ PASS
+BUILD again (fresh builder, given the review) → VERIFY again      tick ROADMAP, next milestone
+```
+- At most **4 build/verify rounds** per milestone. After that the orchestrator marks it `BLOCKED` in
+  LOOP_STATE with the reason, skips to the next milestone that doesn't depend on it, and flags it for the human.
+- Only one worker runs at a time, all on `dev`. `main` only moves when the human merges.
 
-## Release gate → v1
-When every ROADMAP item including the **v1.0 release gate** is ticked:
-- build `build/libs/village-heart-*.jar`, create a GitHub release `v1.0.0-rc1` on the `dev` commit
-  with the jar attached, and add a screenshot gallery from `reports/screenshots/` to its notes;
-- set `docs/LOOP_STATE.md` to `status: DONE`; later ticks then exit straight away.
-The human tests the release in a real launcher and merges `dev` → `main`.
+## How the orchestrator knows when to act
+- Workers run as background agents, so the orchestrator is woken **as soon as one finishes**.
+  There are no fixed slots.
+- **Heartbeat:** while a run is active, the orchestrator keeps one wake-up scheduled about 60 minutes
+  ahead and pushes it back each time it wakes. If a worker or the orchestrator dies (usage limit,
+  crash), the heartbeat brings it back, re-reads git and LOOP_STATE, and restarts the interrupted
+  phase with a fresh worker ("continue from what is on `dev`").
+- **5-hour usage window hit:** everything pauses. The orchestrator schedules its wake-up for just
+  after the reset time and resumes from git.
 
-## Human controls
-- Pause: set `status: PAUSED` in `docs/LOOP_STATE.md` on `dev` (or disable the scheduled task).
-- Redirect: edit ROADMAP order, or add a `## Human notes` entry at the top of PROGRESS. Ticks read it first.
+## Budget
+Set per run by the human and recorded in `docs/LOOP_STATE.md` (`budget:`), e.g. a stop time,
+"stop at 70% weekly", or "spend $X". The orchestrator checks it **before starting each new worker**,
+never mid-phase, so work is always left committed and green.
+The weekly-usage % isn't machine-readable from a session. The orchestrator tracks the summed cost
+of the run and converts it using a %-per-dollar figure the human calibrates (see LOOP_STATE).
+
+## End of a run
+- Budget reached: finish nothing new, write a morning summary to `docs/PROGRESS.md`, set
+  `status: PAUSED`, and send the human a notification.
+- v1.0 release gate passed: build the jar, create GitHub release `v1.0.0-rc1` with screenshots,
+  set `status: DONE`. The human tests it in a real launcher and merges `dev` → `main`.
