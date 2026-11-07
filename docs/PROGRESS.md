@@ -24,3 +24,7 @@ Tests: L1 `ClaimRulesTest`, `VillageStateTest`, `WorldClaimTest`, `VillageCodecs
 treasury drop incl. block-drops gamerule off, save/reload from disk after each mutator, piston, stale heal, inert heart, isolation probes);
 L4 `refusedPlacementKeepsClientItem` (real right-click, screenshot `heart_refused_no_bell`).
 Per-test GameTest environments worked first time (see docs/TESTING.md). Next: M2. Blockers: none.
+
+## 2026-11-07: M1 review round 1 fixes (builder)
+T-L4-1 now teleports to a block centre and asserts the client can predict the placement; verified red without `sendAllDataToRemote()`.
+`purgePoi` lets vanilla remove bell POIs (set to air) and only calls `poi.remove` for non-bell POIs: no more "POI data mismatch" errors.

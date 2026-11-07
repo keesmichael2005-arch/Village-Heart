@@ -58,9 +58,11 @@ public final class VillageTestSupport {
 		for (var rec : poi.getInRange(t -> true, centre, 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).toList()) {
 			BlockPos p = rec.getPos().immutable();
 			if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.BELL)) {
+				// vanilla removes the POI itself when the block goes; removing it here too logs "never registered"
 				h.getLevel().setBlock(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+			} else {
+				poi.remove(p);
 			}
-			poi.remove(p);
 		}
 	}
 

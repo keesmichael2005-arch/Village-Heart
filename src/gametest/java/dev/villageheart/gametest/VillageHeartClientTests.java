@@ -32,9 +32,19 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			sp.getServer().runCommand("gamemode survival @a");
 			sp.getServer().runCommand("clear @a");
 			sp.getServer().runCommand("give @a villageheart:village_heart 1");
-			sp.getServer().runCommand("tp @a ~ ~ ~ 0 60");
+			sp.getServer().runCommand("tp @a ~0.5 ~ ~0.5 0 60");
 			context.waitTicks(20);
 			sp.getClientWorld().waitForChunksRender();
+			// Precondition: the client must be able to predict the placement (target cell free of the player's hitbox),
+			// otherwise the ghost-item case is never exercised.
+			boolean clientCanPredict = context.computeOnClient(mc -> {
+				if (!(mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit)
+						|| hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return false;
+				var target = hit.getBlockPos().relative(hit.getDirection());
+				return mc.level.isUnobstructed(dev.villageheart.block.ModBlocks.VILLAGE_HEART.defaultBlockState(), target,
+						net.minecraft.world.phys.shapes.CollisionContext.of(mc.player));
+			});
+			if (!clientCanPredict) throw new AssertionError("precondition: client could not predict the Heart placement (player in the way or no block targeted)");
 			context.getInput().pressMouse(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT);
 			context.waitTicks(5);
 			context.takeScreenshot("heart_refused_no_bell");
