@@ -58,3 +58,16 @@ harness `dev.villageheart.sim.*`, off unless `-Dvillageheart.sim.request` is set
 ~450-840 server tps, 8 villagers throughout); red-is-red `--assert "population >= 1000 on day 1"` exit 1; bad assertion exit 2 in 21 s; `selftest_error|crash|hang` exit 2;
 JVM killed mid-run exit 2; `bare 4 --reload-at 2` exit 0 (`reloads [2]`, day 3 has 23999 samples).
 Note: one earlier `bare 2` lost 3 villagers to zombies on night one (unseeded AI); the collector recorded them correctly. Next: M3. Blockers: none.
+
+## 2026-11-07: M3 plan written (docs/plans/M3.md)
+7-step plan for markers, recipes and the 3 new job blocks, with APIs checked against the 1.21.11 decompiled sources (`genSources`).
+- One core enum `core.building.BuildingType` (id, name, tier, kind, ring, parent site link) + `JobBlockType` + `ShapedSpec` drives
+  registration, assets, recipes and later M4/M5/M7. `MarkerBlock` is wall-sign style (`isSolid()` support, 8-arg `updateShape` returns air →
+  drops via loot table) with `facing` (out of the wall) and a `status` property (unchecked/invalid/valid) added now for M5.
+- Assets (blockstates, models, item defs, loot, recipes, recipe-unlock advancements, axe tag, 16×16 PNG textures) come from a pure-Java
+  generator in the test source set (`./gradlew genAssets`), committed, and pinned by an L1 golden test; lang stays hand-written with an L1 check.
+- Verified gotchas: block models cannot use item textures in 1.21.11 (separate `items` atlas); `GameTestHelper.placeAt` clicks the air in front
+  of the target, so marker tests use their own `clickFace` helper; creative tab contents are only built on the client.
+- L4: a wall with all 14 markers + 3 job blocks (+ one fence-post marker) under noon + night vision, plus an inventory screenshot, and a
+  `check-model-log.sh` gate on missing-model/texture warnings.
+Revised after a fresh critique (20 findings, 0 blockers). Next: BUILD M3. Top risk: readability of 14 distinct 16×16 icons (judged by eye).
