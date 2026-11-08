@@ -75,4 +75,66 @@ public final class NeedsTestSupport {
 	}
 
 	public static long lastDinnerDay(GameTestHelper h) { return VillageClaims.data(h.getLevel().getServer()).lastDinnerDay().orElse(Long.MIN_VALUE); }
+
+	// ---- houses and beds -----------------------------------------------------------------------
+
+	/** A House (5x4 room, the door in the north wall) south of the Farmhouse. */
+	public static final BlockPos HOUSE = new BlockPos(8, 0, 14);
+
+	public static BlockPos houseMarker() { return BuildingTestSupport.markerPos(HOUSE, 5); }
+
+	/** Interior position of bed {@code i} (foot); the head is one block south. */
+	public static BlockPos houseBedFoot(int i) { return BuildingTestSupport.inside(HOUSE, i == 0 ? 0 : 4, 0, 0); }
+
+	public static BlockPos houseBedHead(int i) { return houseBedFoot(i).south(); }
+
+	/** The roof block above the middle of the House (breaking it makes the House invalid). */
+	public static BlockPos houseRoof() { return BuildingTestSupport.inside(HOUSE, 2, 3, 1); }
+
+	/** Builds the House with {@code beds} beds (0..2) and a torch, and places its marker. */
+	public static void buildHouse(GameTestHelper h, int beds) {
+		BuildingTestSupport.room(h, HOUSE, 5, 4);
+		for (int i = 0; i < beds; i++) WorkerTestSupport.bed(h, houseBedFoot(i));
+		h.setBlock(BuildingTestSupport.inside(HOUSE, 2, 0, 3), net.minecraft.world.level.block.Blocks.TORCH);
+		BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.HOUSE, houseMarker(), net.minecraft.core.Direction.NORTH);
+	}
+
+	/** Claim, sweep, grass, a valid Farmhouse (1 composter) and a valid House with {@code beds} beds. Hooks are NOT enabled yet. */
+	public static GameTestSequence houseScene(GameTestHelper h, int beds) { return houseScene(h, beds, 1); }
+
+	public static GameTestSequence houseScene(GameTestHelper h, int beds, int composters) {
+		return BuildingTestSupport.begin(h).thenExecute(() -> {
+			sweepVillagers(h);
+			FarmTestSupport.assertRandomTicksOff(h);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			WorkerTestSupport.farmhouse(h, FarmTestSupport.FARM, composters);
+			FarmTestSupport.placeMarkers(h, false);
+			buildHouse(h, beds);
+		}).thenWaitUntil(() -> {
+			FarmTestSupport.assertValid(h, false);
+			BuildingTestSupport.assertStatus(h, houseMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			for (int i = 0; i < beds; i++) h.assertTrue(WorkerTestSupport.poiPresent(h, houseBedHead(i)), "the POI of House bed " + i + " exists");
+		});
+	}
+
+	/** Gives {@code v} the bed whose head is at {@code headRel}: takes its POI ticket and sets HOME. */
+	public static void claimBed(GameTestHelper h, Villager v, BlockPos headRel) {
+		net.minecraft.core.BlockPos abs = h.absolutePos(headRel);
+		var poi = h.getLevel().getPoiManager();
+		var got = poi.take(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME), (t, p) -> p.equals(abs), abs, 1);
+		h.assertTrue(got.isPresent(), "the bed at " + headRel + " had a free ticket");
+		v.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME,
+				net.minecraft.core.GlobalPos.of(h.getLevel().dimension(), abs));
+	}
+
+	public static boolean homeIs(GameTestHelper h, Villager v, BlockPos headRel) {
+		return dev.villageheart.needs.Housing.home(v).filter(g -> g.pos().equals(h.absolutePos(headRel))).isPresent();
+	}
+
+	public static dev.villageheart.core.worker.Needs needs(Villager v) {
+		return v.getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).needs();
+	}
+
+	/** A bed in the open, away from the buildings: foot at {@code footRel}, head to the south. */
+	public static void outsideBed(GameTestHelper h, BlockPos footRel) { WorkerTestSupport.bed(h, footRel); }
 }

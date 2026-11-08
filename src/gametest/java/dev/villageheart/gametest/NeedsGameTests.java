@@ -110,6 +110,8 @@ public class NeedsGameTests {
 				h.assertValueEqual(k, wd.needs().hungryDays(), "the worker's needs mirror the diet after dinner " + k);
 				h.assertFalse(wd.needs().fed(), "the worker is not fed");
 				h.assertValueEqual(k == 1 ? 0.5 * Balance.UNHOUSED_SPEED : 0.0, wd.needs().speed(), "work speed after dinner " + k);
+				h.assertValueEqual(k >= 2 ? dev.villageheart.core.worker.WorkerStatus.TOO_HUNGRY : dev.villageheart.core.worker.WorkerStatus.OK,
+						FarmTestSupport.status(h, farmer[0]), "the worker's status after dinner " + k);
 			});
 		}
 		seq.thenExecute(() -> {

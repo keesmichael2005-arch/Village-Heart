@@ -126,9 +126,18 @@ public final class Workers {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
 		if (slot != WorkerStatus.OK) return slot;
+		if (tooHungry(server, record)) return WorkerStatus.TOO_HUNGRY;
 		if (trip != null) return trip;
 		WorkerStatus job = dev.villageheart.worker.job.WorkerStatuses.get(record.villager());
 		return job == null ? WorkerStatus.OK : job;
+	}
+
+	/** Two missed dinners: the worker stops working until it has eaten (M11). Read from the loaded worker's needs. */
+	private static boolean tooHungry(MinecraftServer server, WorkerRecord record) {
+		Villager v = WorkerSystem.findLoaded(server, record.villager());
+		if (v == null) return false;
+		WorkerData d = v.getAttached(WorkerAttachments.WORKER);
+		return d != null && d.needs().hungryDays() >= 2;
 	}
 
 	private static WorkerStatus slotStatus(MinecraftServer server, WorkerRecord record) {

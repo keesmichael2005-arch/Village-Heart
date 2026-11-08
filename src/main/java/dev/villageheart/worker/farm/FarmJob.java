@@ -290,7 +290,7 @@ public final class FarmJob {
 
 		boolean inProgress = isTargeted(ws.action) && targetValid(level, v, rt, ws, surplus, ready, now);
 		Snapshot snap = new Snapshot(valid, deposit, blocked, inProgress, freeSlots(v), surplus, mature != null, collect != null,
-				plantAt != null, plantChest != null, ready, boneAt != null, idx.sweepComplete(), noFarmland);
+				plantAt != null, plantChest != null, ready, boneAt != null, idx.sweepComplete(), noFarmland, data.needs().speed() <= 0);
 		Decision d = FarmerPlanner.decide(snap);
 		applyStatus(v.getUUID(), d.status());
 		if (TRACE && (ws.decision == null || ws.decision.action() != d.action())) {

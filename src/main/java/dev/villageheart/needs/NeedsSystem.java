@@ -45,8 +45,8 @@ public final class NeedsSystem implements VillageSystem {
 	public void tick(MinecraftServer server, VillageState village) {
 		if (server.getTickCount() % Balance.NEEDS_REFRESH_TICKS != 0) return;
 		Housing.rebuild(server);
-		mirror(server, village);
 		if (!NeedsOverride.forceDefaultNeeds) rehome(server, village);
+		mirror(server, village);
 	}
 
 	/** The needs a worker has right now. */

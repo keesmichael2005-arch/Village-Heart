@@ -132,6 +132,8 @@ public final class LumberJob {
 	private static void guard(ServerLevel level, Villager v, WorkerState ws, long now) {
 		if (ws.tree == null || ws.needsPlan || (now + v.getId()) % PLAN_INTERVAL != 0) return;
 		if (!campValid(level, v) || dev.villageheart.worker.DepositTrip.wanted(level, v)) ws.needsPlan = true;
+		WorkerData data = v.getAttached(WorkerAttachments.WORKER);
+		if (data != null && data.needs().speed() <= 0) ws.needsPlan = true; // too hungry (or unpaid): stop felling at once
 	}
 
 	// ---- planning ----------------------------------------------------------------------------------
@@ -164,7 +166,7 @@ public final class LumberJob {
 		FinderState finder = valid ? finderState(level, v, data, rt, now) : FinderState.EXHAUSTED;
 		boolean fell = ws.tree != null;
 		Snapshot snap = new Snapshot(valid, deposit, fell, tool, replant != null, item != null, task,
-				level.getDayTime() % Balance.DAY_TICKS, finder);
+				level.getDayTime() % Balance.DAY_TICKS, finder, data.needs().speed() <= 0);
 		Decision d = LumberjackPlanner.plan(snap);
 		applyStatus(v.getUUID(), d.status());
 		Action before = ws.action;
