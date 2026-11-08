@@ -1,5 +1,5 @@
 status: RUNNING         # RUNNING | PAUSED | DONE
-budget: "run 2: stop new workers at run-2 cost ~$400 (session cost_usd ~588) or 07:00 NZ Mon 9 Nov (2026-11-08T18:00Z), whichever first"
+budget: "run 2 (user, 2026-11-08 20:20 NZ): NO cost cap. Use as much usage as possible until the weekly reset at 16:00 NZ Mon 9 Nov (2026-11-09T03:00Z). Up to 3 build tracks."
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
@@ -13,4 +13,5 @@ plans_ready_not_built: [M9 (needs M7), M10 (needs M9), M11 (needs M7, M9, M10)]
 partially_built: [M8 steps 1-3 on m8 (steps 4-9 need M7)]
 wakes:                  # run 2, scheduled while usage was available (NZ times)
   - 2026-11-08 09:45, 14:50, 19:55; 2026-11-09 01:00, 06:05 (5 min after each 5h reset)
-  - 2026-11-09 07:00 stop
+  - 2026-11-09 11:10 (extra reset wake)
+  - 2026-11-09 16:00 run end (weekly reset)
