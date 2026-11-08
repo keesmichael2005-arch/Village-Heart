@@ -11,6 +11,7 @@ import dev.villageheart.client.build.BuildersTableScreen;
 import dev.villageheart.client.heart.HeartScreen;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.blueprint.BuildStatus;
+import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.worker.JobType;
@@ -123,7 +124,7 @@ final class BuildClientTests {
 				context.waitForScreen(BuildersTableScreen.class);
 				context.waitTicks(5);
 				var snap = context.computeOnClient(mc -> table(mc).getMenu().snapshot());
-				if (snap.blueprints().size() != 3 || snap.blueprints().get(0).materials().size() != 6 || snap.blueprints().get(0).locked()) {
+				if (snap.blueprints().size() != Blueprints.all().size() || snap.blueprints().get(0).materials().size() != 6 || snap.blueprints().get(0).locked()) {
 					throw new AssertionError("the table's blueprints: " + snap.blueprints());
 				}
 				var planks = snap.blueprints().get(0).materials().get(1);

@@ -4,7 +4,10 @@ import dev.villageheart.build.BuildersTableMenu;
 import dev.villageheart.build.net.CancelBuildPayload;
 import dev.villageheart.build.net.TakeBlueprintPayload;
 import dev.villageheart.core.Balance;
+import dev.villageheart.core.blueprint.Blueprint;
+import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.blueprint.BuildStatus;
+import dev.villageheart.core.blueprint.PlacementMode;
 import dev.villageheart.core.blueprint.TableSnapshot;
 import dev.villageheart.core.blueprint.TableSnapshot.TableBlueprint;
 import dev.villageheart.core.blueprint.TableSnapshot.TableBuild;
@@ -40,7 +43,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 	static final int MARGIN = 8;
 	static final int TOP = 26;
 	static final int LIST_W = 150;
-	static final int ROW_H = 22;
+	static final int ROW_H = 16;
 	static final int BUILD_H = 13;
 	static final int FOOTER_H = 33;
 	static final int WHITE = 0xFFFFFFFF, GREY = 0xFFAAAAAA, DARK_GREY = 0xFF808080, GREEN = 0xFF55FF55, RED = 0xFFFF5555, YELLOW = 0xFFFFD45A;
@@ -96,7 +99,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		TableBlueprint b = selectedBlueprint();
 		if (b == null) return t("select");
 		if (!mayStart()) return t("no_permission");
-		if (b.locked()) return t("locked", dev.villageheart.core.Tier.VILLAGE.displayName());
+		if (b.locked()) return t("locked", Blueprints.byId(b.id()).map(bp -> bp.tier().displayName()).orElse(dev.villageheart.core.Tier.VILLAGE.displayName()));
 		if (snap().builds().size() >= Balance.MAX_ACTIVE_BUILDS) return t("too_many");
 		return null;
 	}
@@ -243,9 +246,12 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			if (i == selected) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x66FFFFFF);
 			else if (hover) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x33FFFFFF);
 			String name = Component.translatableWithFallback("build.villageheart.blueprint." + b.id(), b.id()).getString();
-			line(g, name, MARGIN + 4, y + 3, LIST_W - 8, b.locked() ? DARK_GREY : WHITE);
-			line(g, b.locked() ? t("locked", dev.villageheart.core.Tier.VILLAGE.displayName()).getString() : t("size", b.width(), b.depth(), b.height()).getString(), MARGIN + 4, y + 12,
-					LIST_W - 8, b.locked() ? RED : GREY);
+			Blueprint bp = Blueprints.byId(b.id()).orElse(null);
+			String info = b.locked() ? (bp == null ? "" : bp.tier().displayName()) : bp != null && bp.mode() == PlacementMode.LINE ? t("line_tag").getString()
+					: b.width() + "x" + b.depth() + "x" + b.height();
+			int iw = font.width(info);
+			line(g, name, MARGIN + 4, y + 4, LIST_W - 12 - iw, b.locked() ? DARK_GREY : WHITE);
+			g.drawString(font, info, MARGIN + LIST_W - 4 - iw, y + 4, b.locked() ? RED : GREY);
 		}
 
 		// the selected blueprint
@@ -254,8 +260,14 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		if (sel != null) {
 			String name = Component.translatableWithFallback("build.villageheart.blueprint." + sel.id(), sel.id()).getString();
 			line(g, name, rx, TOP, rw, WHITE);
-			line(g, t("size", sel.width(), sel.depth(), sel.height()).getString(), rx, TOP + 12, rw, GREY);
-			line(g, t("materials").getString(), rx, TOP + 28, rw, GREY);
+			Blueprint selBp = Blueprints.byId(sel.id()).orElse(null);
+			boolean isLine = selBp != null && selBp.mode() == PlacementMode.LINE;
+			if (sel.locked() && selBp != null) {
+				line(g, t("locked", selBp.tier().displayName()).getString(), rx, TOP + 12, rw, RED);
+			} else {
+				line(g, isLine ? t("line_hint").getString() : t("size", sel.width(), sel.depth(), sel.height()).getString(), rx, TOP + 12, rw, GREY);
+			}
+			line(g, t(!isLine ? "materials" : sel.id().equals("gate") ? "materials_gate" : "materials_wall").getString(), rx, TOP + 28, rw, GREY);
 			int y = TOP + 40;
 			for (TableMaterial m : sel.materials()) {
 				boolean enough = m.have() >= m.needed();
@@ -264,6 +276,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 				g.drawString(font, have, rx + rw - font.width(have), y, enough ? GREEN : RED);
 				y += 10;
 			}
+			if (sel.id().equals("gate")) line(g, t("gate_note").getString(), rx, TOP + 88, rw, DARK_GREY);
 		}
 		take.setPosition(rx, TOP + 100);
 

@@ -122,7 +122,7 @@ public final class SiteValidation {
 		return s.getFluidState().isEmpty() && !s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
 	}
 
-	private static boolean free(BlockState s) {
+	public static boolean free(BlockState s) {
 		return s.getFluidState().isEmpty() && s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
 	}
 }
