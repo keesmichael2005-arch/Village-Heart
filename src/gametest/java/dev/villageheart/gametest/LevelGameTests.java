@@ -182,6 +182,189 @@ public class LevelGameTests {
 		});
 	}
 
+	// ---- T-L2-5 ----------------------------------------------------------------------------------
+
+	/** Samples every tick: XP must equal the start XP plus the logs felled so far (no level-up changes that), and the level must be right. */
+	private static final class XpSampler {
+		final java.util.Set<BlockPos> logs;
+		final int startXp;
+		int cap;
+		boolean active;
+		final java.util.List<String> problems = new java.util.ArrayList<>();
+		long levelChangeTick = -1;
+		int lastLevel;
+
+		XpSampler(java.util.Set<BlockPos> logs, int startXp, int cap) {
+			this.logs = logs;
+			this.startXp = startXp;
+			this.cap = cap;
+		}
+
+		void sample(GameTestHelper h, Villager v) {
+			if (!active || problems.size() >= 5) return;
+			int down = logs.size() - standing(h, logs);
+			var d = data(v);
+			if (d.xp() != Math.min(dev.villageheart.core.Balance.MAX_BANKED_XP, startXp + down)) {
+				problems.add("@" + h.getTick() + " " + down + " logs down but xp " + d.xp());
+			}
+			if (d.level() != lastLevel) {
+				if (levelChangeTick < 0) levelChangeTick = h.getTick();
+				lastLevel = d.level();
+			}
+			if (d.level() > cap) problems.add("@" + h.getTick() + " level " + d.level() + " above the expected cap " + cap);
+		}
+	}
+
+	/** Records the events of {@link dev.villageheart.worker.WorkerLevels}. */
+	private static final class EventLog implements dev.villageheart.worker.WorkerLevels.LevelListener {
+		int levelUps;
+		int capped;
+
+		@Override
+		public void onLevelChanged(net.minecraft.server.level.ServerLevel level, Villager villager, XpChange change) { levelUps++; }
+
+		@Override
+		public void onCapped(net.minecraft.server.level.ServerLevel level, Villager villager, XpChange change) { capped++; }
+	}
+
+	@GameTest(environment = "villageheart-gametest:levels_felling_speed", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void levelUpSpeedsUpFelling(GameTestHelper h) {
+		begin(h);
+		Watcher w = new Watcher();
+		XpSampler[] xs = new XpSampler[1];
+		Villager[] v = new Villager[1];
+		EventLog events = new EventLog();
+		h.onEachTick(() -> {
+			w.sample(h);
+			if (xs[0] != null) xs[0].sample(h, v[0]);
+		});
+		BlockPos treeRel = new BlockPos(2, 0, 8);
+		java.util.Set<BlockPos>[] logs = new java.util.Set[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			LevelTestSupport.tier(h, Tier.VILLAGE);
+			BlockPos base = growOak(h, treeRel, 3L);
+			logs[0] = logsOf(h, base);
+			h.assertTrue(logs[0].size() >= 6, "the oak (seed 3) has 6 logs: " + logs[0].size());
+			putInChest(h, chest(), 0, axe(dev.villageheart.core.job.ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			put(v[0], 1, 97);
+			dev.villageheart.worker.WorkerLevels.register(events);
+			xs[0] = new XpSampler(logs[0], 97, 2);
+			xs[0].lastLevel = 1;
+			xs[0].active = true;
+			w.start(h, logs[0]);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "logs of the tree left"));
+		seq.thenExecute(() -> {
+			dev.villageheart.worker.WorkerLevels.unregister(events);
+			var gaps = w.gaps();
+			System.out.println("[m15] levelUpSpeedsUpFelling: " + logs[0].size() + " logs, gaps " + gaps);
+			h.assertTrue(xs[0].problems.isEmpty(), "xp per log: " + xs[0].problems);
+			h.assertValueEqual(new Progress(2, 97 + logs[0].size()), progress(v[0]), "XP grew by exactly one per log; level 2 at 100");
+			h.assertValueEqual(1, events.levelUps, "one level-up event");
+			h.assertTrue(gaps.size() >= 5, "enough logs to see both paces: " + gaps);
+			h.assertTrue(Math.abs(gaps.get(0) - 40) <= 1, "log 1 to 2 with the stone axe at level 1: " + gaps.get(0));
+			h.assertTrue(Math.abs(gaps.get(1) - 40) <= 1, "log 2 to 3 with the stone axe at level 1: " + gaps.get(1));
+			for (int i = 2; i < gaps.size(); i++) {
+				h.assertTrue(Math.abs(gaps.get(i) - 32) <= 1, "gap " + i + " after the level-up should be 32 (50 / (1.25 * 1.25)): " + gaps.get(i));
+			}
+			h.assertValueEqual(logs[0].size(), StockpileTestSupport.container(h, chest()).getItem(0).getDamageValue(), "one durability per log");
+			assertNoGiveUps(h);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-6 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:levels_hamlet_cap", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void hamletCapHoldsPace(GameTestHelper h) {
+		begin(h);
+		Watcher w = new Watcher();
+		XpSampler[] xs = new XpSampler[1];
+		Villager[] v = new Villager[1];
+		EventLog events = new EventLog();
+		h.onEachTick(() -> {
+			w.sample(h);
+			if (xs[0] != null) xs[0].sample(h, v[0]);
+		});
+		BlockPos treeRel = new BlockPos(2, 0, 8);
+		java.util.Set<BlockPos>[] logs = new java.util.Set[1];
+		boolean[] raised = new boolean[1];
+		long[] raisedAt = new long[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			BlockPos base = growOak(h, treeRel, 3L);
+			logs[0] = logsOf(h, base);
+			h.assertTrue(logs[0].size() >= 6, "the oak (seed 3) has 6 logs: " + logs[0].size());
+			putInChest(h, chest(), 0, axe(dev.villageheart.core.job.ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			put(v[0], 1, 99);
+			dev.villageheart.worker.WorkerLevels.register(events);
+			xs[0] = new XpSampler(logs[0], 99, 1);
+			xs[0].lastLevel = 1;
+			xs[0].active = true;
+			w.start(h, logs[0]);
+		});
+		// the cap holds until two logs are down; then the village grows
+		seq = seq.thenWaitUntil(() -> h.assertTrue(logs[0].size() - standing(h, logs[0]) >= 2, "two logs down"));
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(new Progress(1, 101), progress(v[0]), "XP passed 100 at Hamlet, the level stayed 1");
+			h.assertValueEqual(1, events.capped, "one capped notice");
+			h.assertValueEqual(0, events.levelUps, "no level-up at Hamlet");
+			LevelTestSupport.tier(h, Tier.VILLAGE);
+			xs[0].cap = 2;
+			raisedAt[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 21, "the level after the tier-up", () -> h.assertValueEqual(2, data(v[0]).level(), "level 2"));
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "logs of the tree left"));
+		seq.thenExecute(() -> {
+			dev.villageheart.worker.WorkerLevels.unregister(events);
+			var gaps = w.gaps();
+			var rem = w.removals;
+			System.out.println("[m15] hamletCapHoldsPace: " + logs[0].size() + " logs, removals " + rem + ", level raised after tick " + raisedAt[0] + ", gaps " + gaps);
+			h.assertTrue(xs[0].problems.isEmpty(), "xp per log: " + xs[0].problems);
+			h.assertTrue(xs[0].levelChangeTick >= raisedAt[0], "the level only changed after the tier-up: " + xs[0].levelChangeTick + " vs " + raisedAt[0]);
+			int checked32 = 0;
+			for (int i = 0; i < gaps.size(); i++) {
+				long start = rem.get(i);
+				if (start < xs[0].levelChangeTick - 0) {
+					if (rem.get(i + 1) <= xs[0].levelChangeTick) h.assertTrue(Math.abs(gaps.get(i) - 40) <= 1, "gap " + i + " at level 1 is " + gaps.get(i));
+				} else {
+					h.assertTrue(Math.abs(gaps.get(i) - 32) <= 1, "gap " + i + " after the level change is " + gaps.get(i));
+					checked32++;
+				}
+			}
+			h.assertTrue(checked32 >= 1, "at least one gap measured at level 2");
+			h.assertValueEqual(1, events.levelUps, "one level-up event, after the tier-up");
+			assertNoGiveUps(h);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-7 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:levels_farmer_xp", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void farmerEarnsXpPerCrop(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		long[] stat = new long[1];
+		GameTestSequence seq = FarmTestSupport.scene(h, 1, true).thenExecute(() -> {
+			FarmTestSupport.field(h, 8, 14, 10, 15, dev.villageheart.core.farm.CropKind.WHEAT, 7, false);
+			stat[0] = dev.villageheart.worker.job.WorkStats.get("farmer", "harvested");
+			h.getLevel().setDayTime(1000);
+			v[0] = FarmTestSupport.hire(h, FarmTestSupport.spawnSpot());
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(6L, dev.villageheart.worker.job.WorkStats.get("farmer", "harvested") - stat[0], "crops harvested"));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(new Progress(1, 6), progress(v[0]), "one XP per harvested crop");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	/** The villager the cure produced: any live villager around the camp (the converted one was discarded). */
 	private static Villager cured(GameTestHelper h) {
 		var box = new net.minecraft.world.phys.AABB(h.absolutePos(spawnSpot())).inflate(10);
