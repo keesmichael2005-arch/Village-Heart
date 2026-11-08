@@ -181,6 +181,7 @@ public class LumberjackGameTests {
 		BlockPos[] base = new BlockPos[1];
 		Set<BlockPos>[] logs = new Set[1];
 		long[] stat = new long[3];
+		long[] cuttings0 = new long[1];
 		long[] t0 = new long[1];
 		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
 			base[0] = growOak(h, treeRel, 1L);
@@ -189,6 +190,7 @@ public class LumberjackGameTests {
 			stat[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "logs");
 			stat[1] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "trees");
 			stat[2] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted");
+			cuttings0[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings");
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
 			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING));
@@ -217,6 +219,7 @@ public class LumberjackGameTests {
 			int n = logs[0].size();
 			h.assertValueEqual((long) n, (long) carried(v[0], Items.OAK_LOG) + stored(h, "minecraft:oak_log"), "all the logs are carried or stored");
 			h.assertValueEqual(stat[2] + 1, dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted"), "work.lumberjack.saplings_planted");
+			h.assertValueEqual(cuttings0[0], dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings"), "a sapling on hand: the tree gives no cutting");
 			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().treeTasks().isEmpty(),
 					"the replant task is done and gone");
 			assertNoGiveUps(h);
@@ -374,6 +377,62 @@ public class LumberjackGameTests {
 		});
 	}
 
+	// ---- T-L2-16 (backlog-2) ----------------------------------------------------------------------
+
+	/**
+	 * The {@code fellResumesAfterInterrupt} flake: the fired first lumberjack, now a plain villager, idled on the grass right outside the
+	 * camp door while the second one left the camp for the next oak. The worker stood in the doorway, its jam rule only "stepped back" to
+	 * where it stood (the idler has the lower id and never moves for it), and after 201 ticks without a step it declared the open oak
+	 * unreachable for 6000 ticks ("no movement for 201 ticks, 21.9 blocks from ..."). Here a plain villager is held on that spot, as an
+	 * idler that stands longer than the stall limit, until a walker asks it to step aside ({@code WalkTo.setNudgeListenerForTest}); the
+	 * lumberjack, hired inside the camp, must get out and fell the oak with no give-up.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void idlerInTheDoorwayStepsAside(GameTestHelper h) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24);
+		BlockPos doorFront = new BlockPos(11, 0, 3);
+		Villager[] v = new Villager[2];
+		Set<BlockPos>[] logs = new Set[1];
+		boolean[] asked = {false};
+		long[] t0 = {-1}, askedAt = {-1};
+		h.onEachTick(() -> {
+			if (v[1] == null || asked[0] || !v[1].isAlive()) return;
+			// an idler: back on its spot every tick, standing still, until it is asked to move
+			BlockPos p = h.absolutePos(doorFront);
+			v[1].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+			v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			v[1].getNavigation().stop();
+			v[1].getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			logs[0] = logsOf(h, growOak(h, spot, 12L));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			v[1] = WorkerTestSupport.spawnVillager(h, doorFront);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(o -> {
+				if (o == v[1] && !asked[0]) {
+					asked[0] = true;
+					askedAt[0] = h.getTick();
+				}
+			});
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			t0[0] = h.getTick();
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "the first log falls; idler asked " + asked[0] + "; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])
+				+ "; give-ups " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).giveUps()));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] idlerInTheDoorwayStepsAside: the idler was asked to step aside " + (askedAt[0] - t0[0])
+					+ " ticks after the hire, the first log fell " + (h.getTick() - t0[0]) + " ticks after it");
+			h.assertTrue(asked[0], "the idler in the doorway was asked to step aside");
+			assertNoGiveUps(h);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:lumber_keep", structure = YARD, skyAccess = true, maxTicks = 2500)
@@ -488,6 +547,64 @@ public class LumberjackGameTests {
 			System.out.println("[m9] sixOaksTwoDays: " + sb + "tick now " + (h.getTick() - t0[0]));
 			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
 			assertNoGiveUpsAt(h, bases);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-15 (backlog-2) ----------------------------------------------------------------------
+
+	/**
+	 * Oak leaves draw their drops from the per-world loot sequence {@code minecraft:blocks/oak_leaves}, so which leaf gives a sapling
+	 * depends on how many oak leaves decayed earlier in the world (in a full GameTest run: in earlier tests, in a random order). Measured
+	 * over this world's sequence, a window of 250-300 leaf rolls (six small oaks) holds fewer than six saplings at 2-5% of the offsets:
+	 * the cause of the {@code sixOaksTwoDays} "not replanted within a day" flake. This test resets the sequence to salt 553 (independent
+	 * of the world seed), whose first 150 rolls give no sapling at all, fells two oaks (about 110 leaves) and requires every stump to be
+	 * replanted within 200 ticks of its last log all the same: from the tree's own sapling ({@link dev.villageheart.core.lumber.ReplantRules#cuttings}).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_lean_leaves", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void stumpsReplantedWhenLeavesDropNoSapling(GameTestHelper h) {
+		begin(h);
+		BlockPos[] spots = {new BlockPos(3, 0, 21), new BlockPos(14, 0, 25)};
+		Set<BlockPos>[] logs = new Set[2];
+		long[] lastLogAt = new long[2], plantedAt = new long[2], stat = new long[2];
+		boolean[] droppedSapling = {false};
+		boolean[] on = {false};
+		Villager[] v = new Villager[1];
+		h.onEachTick(() -> {
+			if (!on[0]) return;
+			for (int i = 0; i < 2; i++) {
+				if (lastLogAt[i] == 0 && standing(h, logs[i]) == 0) lastLogAt[i] = h.getTick();
+				if (lastLogAt[i] != 0 && plantedAt[i] == 0 && h.getBlockState(spots[i]).is(Blocks.OAK_SAPLING)) plantedAt[i] = h.getTick();
+			}
+			if (!droppedSapling[0] && (plantedAt[0] == 0 || plantedAt[1] == 0)) {
+				var area = new net.minecraft.world.phys.AABB(h.absolutePos(new BlockPos(0, -2, 0)).getCenter(), h.absolutePos(new BlockPos(31, 16, 31)).getCenter()).inflate(8);
+				droppedSapling[0] = !h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area,
+						e -> e.getItem().is(net.minecraft.tags.ItemTags.SAPLINGS)).isEmpty();
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			h.getLevel().getRandomSequences().reset(net.minecraft.resources.Identifier.parse("minecraft:blocks/oak_leaves"), 0L, 553, false, true);
+			for (int i = 0; i < 2; i++) logs[i] = logsOf(h, growOak(h, spots[i], 11L + 3 * i));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			stat[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings");
+			stat[1] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted");
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			on[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> {
+			for (int i = 0; i < 2; i++) h.assertTrue(plantedAt[i] != 0, "oak " + i + " is replanted (last log at " + lastLogAt[i] + "); "
+					+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
+		});
+		seq.thenExecute(() -> {
+			System.out.println("[b2] stumpsReplantedWhenLeavesDropNoSapling: replanted " + (plantedAt[0] - lastLogAt[0]) + " and "
+					+ (plantedAt[1] - lastLogAt[1]) + " ticks after the last log");
+			h.assertFalse(droppedSapling[0], "premise: the leaves dropped no sapling before both stumps were replanted");
+			for (int i = 0; i < 2; i++) h.assertTrue(plantedAt[i] - lastLogAt[i] <= 200, "oak " + i + " replanted " + (plantedAt[i] - lastLogAt[i]) + " ticks after its last log (bound 200)");
+			h.assertValueEqual(stat[0] + 2, dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings"), "work.lumberjack.cuttings: one per stump");
+			h.assertValueEqual(stat[1] + 2, dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted"), "work.lumberjack.saplings_planted");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});

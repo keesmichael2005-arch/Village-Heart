@@ -354,18 +354,40 @@ public final class LumberJob {
 		if (tree == null || key == null) return;
 		trace("{} finished the tree at {}", v.getId(), key);
 		clearCrack(level, v, ws);
+		String[] sapling = {null};
 		VillageClaims.data(level.getServer()).update(s -> {
 			Optional<TreeTask> t = s.treeTask(key);
 			if (t.isEmpty()) return s;
+			sapling[0] = t.get().sapling();
 			List<HeartLocation> base = new ArrayList<>();
 			for (Pos p : tree.base()) base.add(loc(level, new BlockPos(p.x(), p.y(), p.z())));
 			return s.withoutTreeTask(key).withTreeTask(t.get().withStage(TreeTask.Stage.REPLANT, base).withSince(now));
 		});
+		if (sapling[0] != null) giveCuttings(level, v, data, sapling[0], tree.base().size(), pos(key));
 		WorkStats.add(JOB, "trees", 1);
 		releaseTree(rt, v.getUUID(), ws);
 		ws.clock.reset();
 		ws.walk.clear();
 		ws.needsPlan = true;
+	}
+
+	/**
+	 * The felled tree's own saplings ({@link ReplantRules#cuttings}): what its stump still lacks after counting the worker's and the camp
+	 * chests' saplings against the camp's open spots. A tree drop like its logs, so none with the {@code block_drops} gamerule off.
+	 */
+	private static void giveCuttings(ServerLevel level, Villager v, WorkerData data, String saplingId, int stumpCells, BlockPos at) {
+		if (!level.getGameRules().get(GameRules.BLOCK_DROPS)) return;
+		Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(saplingId));
+		if (item == Items.AIR) return;
+		int available = v.getInventory().countItem(item);
+		Optional<List<CampContainers.Chest>> chests = CampContainers.of(level.getServer(), data.building());
+		if (chests.isPresent()) for (CampContainers.Chest ch : chests.get()) available += containerCount(ch.container(), saplingId);
+		int n = ReplantRules.cuttings(stumpCells, saplingsNeeded(level.getServer(), data, item), available);
+		trace("{} cuttings {} x{} ({} on hand)", v.getId(), saplingId, n, available);
+		if (n <= 0) return;
+		ItemStack rest = v.getInventory().addItem(new ItemStack(item, n));
+		if (!rest.isEmpty()) Block.popResource(level, at, rest);
+		WorkStats.add(JOB, "cuttings", n);
 	}
 
 	/** The tree cannot be reached: it is left alone for 6000 ticks, a task it had is dropped when nothing was cut yet. */

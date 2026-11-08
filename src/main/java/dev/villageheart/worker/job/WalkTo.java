@@ -75,6 +75,34 @@ public final class WalkTo {
 		nextPathAt = 0;
 	}
 
+	/** Called with each villager a walker asks to step aside (tests observe it; null in play). */
+	private static java.util.function.Consumer<Villager> nudgeSeam;
+
+	public static void setNudgeListenerForTest(java.util.function.Consumer<Villager> listener) { nudgeSeam = listener; }
+
+	/**
+	 * A villager within a block that stands still (its navigation is idle, it has no walk of its own, it is not asleep): a plain villager
+	 * idling in a doorway, which no rule of ours moves and which can stand there for longer than {@link Balance#WALK_STALL_TICKS}.
+	 */
+	private static Villager idleBlocker(Villager v) {
+		Villager best = null;
+		for (Villager o : v.level().getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(1.0), x -> x != v && x.isAlive())) {
+			if (!o.getNavigation().isDone() || o.isSleeping() || o.isNoAi() || o.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) continue;
+			if (best == null || o.distanceToSqr(v) < best.distanceToSqr(v)) best = o;
+		}
+		return best;
+	}
+
+	/** Asks {@code o} to step aside: a vanilla WALK_TARGET a few blocks away from {@code from} (vanilla's MoveToTargetSink walks it there). */
+	private static boolean stepAside(Villager o, Villager from) {
+		Vec3 away = net.minecraft.world.entity.ai.util.LandRandomPos.getPosAway(o, 4, 2, from.position());
+		if (away == null) away = net.minecraft.world.entity.ai.util.DefaultRandomPos.getPosAway(o, 4, 2, from.position());
+		if (away == null) return false;
+		o.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new net.minecraft.world.entity.ai.memory.WalkTarget(away, SPEED, 0));
+		if (nudgeSeam != null) nudgeSeam.accept(o);
+		return true;
+	}
+
 	/** True when another villager stands within a block and has the lower id: this one gives way. */
 	private static boolean jamNeighbour(Villager v) {
 		for (Villager o : v.level().getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(1.0), x -> x != v && x.isAlive())) {
@@ -164,11 +192,18 @@ public final class WalkTo {
 			jamAnchor = v.position();
 			jamAt = now;
 		} else if (now - jamAt >= JAM_TICKS && !nav.isDone()) {
-			// Stopped on the way (another villager in the doorway). The one with the higher id steps back along its own path and waits,
-			// so the other one gets through; the one with the lower id just goes on. Moving back counts as moving for the stall rule.
+			// Stopped on the way (another villager in the doorway). A villager that just stands there is asked to step aside (otherwise an
+			// idle villager outside a door makes a worker give up a tree in the open: backlog-2). Of two walkers, the one with the higher id
+			// steps back along its own path and waits, so the other one gets through; the one with the lower id just goes on. Moving back
+			// counts as moving for the stall rule.
 			jamAnchor = null;
 			Path cur = nav.getPath();
-			if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+			Villager idle = idleBlocker(v);
+			if (idle != null && stepAside(idle, v)) {
+				jamAt = now;
+				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: asks the idle villager {} at {} to step aside", v.getId(), now,
+						v.blockPosition(), idle.getId(), idle.blockPosition());
+			} else if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
 				var back = cur.getNode(Math.max(0, cur.getNextNodeIndex() - 4)).asBlockPos();
 				nav.moveTo(back.getX() + 0.5, back.getY(), back.getZ() + 0.5, SPEED);
 				mine = nav.getPath();
