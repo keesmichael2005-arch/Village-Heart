@@ -371,3 +371,9 @@ Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: b
 - Forced repro (my own probe, removed afterwards): red without the mixin (invalid state 10 s after the first close), green with it (7 of 10 closes cleared). The verify.sh gate fails when the mixin is not installed.
 - Under load (load 12 to 16): 6 of 6 L4 runs green, plus the full verify.sh green. One natural leak (1 packet) was cleared after `WorkerClientTests` killed 10 villagers.
 - Notes: `WorkerClientTests:122` and `LumberClientTests:109,174` kill villagers without quiescing (covered by the mixin; hygiene).
+
+## 2026-11-08: M20 verifier review r2: FAIL (docs/reviews/M20-r2.md)
+- Rule 11b refuses 25 of 28 attachment probes (doors, signs of every kind, lanterns, buttons, plates, bells, ladders, paintings, item frames...). Two still break: carpets (the reflective `LevelReader` proxy runs default methods such as `isEmptyBlock` on the real level; `InvocationHandler.invokeDefault` fixes it, tried) and ascending rails (removed in `neighborChanged`, not `canSurvive`).
+- Farm Plot bug, flaky `farmPlotBuilt` (1 of 17 L2 runs): the check pass clears dried or trampled farmland next to the water in one action and places it in the next, so water flows in and the build finishes with 79 farmland. Reproduced deterministically.
+- Mutations of the 3 new tests all go red; the touched-cell exemption in `SiteSupport` has no test. verify.sh green; `workerOpensDoors` 0 failures in 18 runs (one 301-tick run).
+- Next: builder fixes items 1 to 3, then round 3.
