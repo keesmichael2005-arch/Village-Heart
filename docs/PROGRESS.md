@@ -353,9 +353,14 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 
 ## 2026-11-08: M10 built (Farmer), branch m10
 - Farm core (`core.farm`: crops, `FieldIndex`, compost rule, `FarmerPlanner`, keep rules), BONUS tool mode, food keep rule in `DepositTrip` (food kept only up to 12 points), `FarmJob`/`FarmRuntime`/`FarmerWork` glue (own behaviour, 20-tick re-plan, server-wide index budget, claims, hoe lease, COLLECT, FETCH, compost, bone meal), `WalkTo.release` (PATH-memory fix). 14 L2 tests (`FarmerGameTests`), L4 `FarmerClientTests.farmerField`. Deviations: `docs/plans/M10.md` section 8 (D1-D12).
-- Flake `storageFullStopsHarvest` (1 loose wheat never collected): a COLLECT interrupted by a deposit trip kept its old start time, so a trip longer than the 400-tick timeout blacklisted the item (6000 ticks) on return. COLLECT now restarts its clock when entered from another action. Found by reading, not reproduced (old code: 8/8 green); the fix is in the 9-run series below.
+- Collect-timeout bug (D10): a COLLECT interrupted by a deposit trip kept its old start time and the item was blacklisted for 6000 ticks on return. Fixed for both orders (planner YIELD first; trip behaviour first), with two L2 tests that go red when the fix is reverted. **The cause of the original `storageFullStopsHarvest` flake (1 loose wheat never collected) is still unconfirmed**: a traced run never COLLECTs before its trip in phase 2. It has not failed in about 30 runs since.
 - Second flake found by the series: `invalidBuildingKeepsWorker` (M7) expected status OK for a farmer with no farmland, now NO_WORK after a sweep (1 in 9); the test places one farmland block (D12).
 - Evidence: 9 consecutive full `./gradlew --no-daemon runGameTest` runs on the final code, 158/158 each (an earlier series with the flake fix but before D12: 7 of 8 green, the failure being the M7 test above).
 - Screenshot looked at: `farmer_field.png` (farmer at the Farmhouse door, mature wheat field, banner on the wall).
 - Next: M10 review; ROADMAP is the orchestrator's. Doubt: the collect-timeout cause is inferred, not observed.
 - Verify note: one full verify run failed on M8's `fireUnloadedWorker` (population 2 instead of 1 at tick 5, a stray loaded villager counted; not farmer code, not reproduced in 9 L2 runs + 2 verify runs); the rerun was green (158/158, L4, perf).
+
+### M10 review r1 fixes (builder)
+1. Stray farmland made an M7 test flaky (`hiredWorkerReachesJobBlock`: a hired farmer chased farmland 22 blocks away left by a farm test). `clearStrayFarmland` runs in both `begin`s; rule in TESTING; D12's field is removed at the test's end.
+2. D10 covered only the planner-yield order: now also the trip-first order (`FarmJob.tick` drops the collect target while a trip runs). New L2 tests `collectSurvivesTripThatStartsFirst` / `collectSurvivesTripThatPlannerYieldsTo`; both red with the fix reverted. `loose()` now counts the farmer's work area only. Original flake cause stays unconfirmed (see above).
+3. `farmer_field.png` re-framed from the Farmhouse side: the farmer stands between the replanted sprouts (front) and the ripe wheat (behind). Looked at.

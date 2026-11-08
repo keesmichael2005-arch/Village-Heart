@@ -835,4 +835,54 @@ public class FarmerGameTests {
 			end(h);
 		});
 	}
+
+	// ---- extra: a deposit trip during a COLLECT -----------------------------------------------------
+
+	/** The trip's own start check runs first (its tick comes before the planner's), so the planner never says YIELD. */
+	@GameTest(environment = "villageheart-gametest:farm_trip_first", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void collectSurvivesTripThatStartsFirst(GameTestHelper h) {
+		collectAcrossATrip(h, true);
+	}
+
+	/** The planner sees the wanted trip first and yields. */
+	@GameTest(environment = "villageheart-gametest:farm_trip_planner", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void collectSurvivesTripThatPlannerYieldsTo(GameTestHelper h) {
+		collectAcrossATrip(h, false);
+	}
+
+	/**
+	 * A wheat item far from the farmer (no field), the farmer walks to it; mid-walk its inventory fills (a trip is now wanted) at a tick
+	 * chosen so that the trip starts first or the planner yields first. The trip takes longer than the 400-tick collect timeout, and the
+	 * item must still be collected afterwards (it used to be blacklisted for 6000 ticks on the way back).
+	 */
+	private static void collectAcrossATrip(GameTestHelper h, boolean tripFirst) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		long[] filledAt = new long[1];
+		GameTestSequence seq = scene(h, 1, true).thenExecute(() -> {
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			h.spawnItem(Items.WHEAT, new BlockPos(4, 0, 27));
+		});
+		seq = seq.thenIdle(90).thenWaitUntil(() -> {
+			long next = h.getLevel().getGameTime() + 1;
+			boolean tripCheck = (next + v[0].getId()) % 20 == 0;
+			long planAt = FarmRuntime.get(h.getLevel().getServer()).nextPlanAt(v[0].getUUID());
+			h.assertTrue(carried(v[0], Items.WHEAT) == 0 && loose(h, Items.WHEAT) == 1, "still on its way to the item");
+			if (tripFirst) h.assertTrue(tripCheck, "wait for a tick where the trip check comes first");
+			else h.assertTrue(!tripCheck && planAt == next, "wait for a tick where the planner runs and the trip check does not: plan at " + planAt + ", next " + next);
+			for (int i = 0; i < v[0].getInventory().getContainerSize(); i++) v[0].getInventory().setItem(i, new ItemStack(Items.COBBLESTONE, 64));
+			filledAt[0] = next;
+		});
+		seq = seq.thenIdle(450).thenExecute(() -> {
+			log("collectAcrossATrip(tripFirst=" + tripFirst + "): inventory filled at " + filledAt[0] + ", now " + h.getLevel().getGameTime() + " [" + inventory(v[0]) + "]");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "the wheat is collected after the trip", () ->
+				h.assertValueEqual(1L, carried(v[0], Items.WHEAT) + stored(h, "minecraft:wheat"), "wheat carried or stored; " + looseDescription(h, Items.WHEAT, v[0])));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(0, loose(h, Items.WHEAT), "nothing is left lying; " + looseDescription(h, Items.WHEAT, v[0]));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

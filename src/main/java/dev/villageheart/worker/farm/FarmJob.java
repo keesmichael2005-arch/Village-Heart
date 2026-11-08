@@ -74,7 +74,7 @@ import net.minecraft.world.phys.AABB;
  */
 public final class FarmJob {
 	private static final String JOB = "farmer";
-	private static final int PLAN_INTERVAL = 20;
+	static final int PLAN_INTERVAL = 20;
 	private static final int ITEM_TIMEOUT = 400;
 	private static final double COLLECT_TAKE = 2.2;
 	private static final double CHEST_REACH = 2.0;
@@ -106,7 +106,13 @@ public final class FarmJob {
 		ws.lastTick = now;
 		rt.indexFor(data.jobBlock(), now);
 		rt.pump(level, now);
-		if (Workers.tripRunning(v)) return; // a deposit trip owns the walk
+		if (Workers.tripRunning(v)) {
+			// a deposit trip owns the walk. Whichever of the two ways it started (this planner's YIELD, or the trip behaviour's own
+			// start check running first), the collect target is dropped: the time away must not count against ITEM_TIMEOUT
+			ws.item = null;
+			ws.needsPlan = true;
+			return;
+		}
 		if (ws.decision == null || ws.needsPlan || now - ws.lastPlan >= PLAN_INTERVAL) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
 	}

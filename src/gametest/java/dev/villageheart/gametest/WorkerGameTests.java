@@ -872,6 +872,7 @@ public class WorkerGameTests {
 		seq.thenExecute(() -> {
 			h.assertValueEqual(java.util.Optional.of(rec[0]), record(h, a[0]), "same record, same slot");
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status after the fix");
+			FarmTestSupport.clearStrayFarmland(h, 40); // the field of this test must not stay for the next one
 			VillageTestSupport.done(h);
 			end(h);
 		});

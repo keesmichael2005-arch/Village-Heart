@@ -164,6 +164,15 @@ public final class FarmTestSupport {
 	 */
 	public static void sweepStrayCrops(GameTestHelper h, int radius) {
 		LumberTestSupport.clearYard(h);
+		clearStrayFarmland(h, radius);
+	}
+
+	/**
+	 * Farmland, crops, stems and crop items of other tests around this one (a hired farmer works any farmland within 24 blocks of its
+	 * composter, and that reaches into the neighbouring test boxes). {@code BuildingTestSupport.begin} and {@code WorkerTestSupport.begin}
+	 * call it with 40, so no test that hires a farmer starts next to a field it did not build. Call it before anything is built.
+	 */
+	public static void clearStrayFarmland(GameTestHelper h, int radius) {
 		ServerLevel level = h.getLevel();
 		BlockPos c = h.absolutePos(BlockPos.ZERO);
 		for (int x = -radius; x <= radius + 32; x++) for (int z = -radius; z <= radius + 32; z++) {
@@ -189,11 +198,17 @@ public final class FarmTestSupport {
 
 	public static int carried(Villager v, net.minecraft.world.item.Item item) { return v.getInventory().countItem(item); }
 
-	/** Items of this kind lying around the farm (loose item entities within the box of the yard). */
+	/**
+	 * Items of this kind lying in the farmer's work area: the disc of {@code Balance.FARM_RADIUS} around the Farmhouse composter (as a
+	 * box, +-12 in y). An item outside it is not the farmer's to collect, so it cannot make a test wait for nothing.
+	 */
 	public static int loose(GameTestHelper h, net.minecraft.world.item.Item item) {
 		int n = 0;
-		for (ItemEntity e : h.getLevel().getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(60.0))) {
-			if (e.getItem().is(item)) n += e.getItem().getCount();
+		net.minecraft.world.phys.Vec3 c = net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(composter()));
+		double r = dev.villageheart.core.Balance.FARM_RADIUS;
+		for (ItemEntity e : h.getLevel().getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(c, c).inflate(r, 12.0, r))) {
+			double dx = e.getX() - c.x, dz = e.getZ() - c.z;
+			if (dx * dx + dz * dz <= r * r && e.getItem().is(item)) n += e.getItem().getCount();
 		}
 		return n;
 	}

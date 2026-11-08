@@ -78,7 +78,7 @@ final class FarmerClientTests {
 				}
 				return null;
 			});
-			srv.runCommand("tp @a 0.5 " + (y + 4) + " 25.5 facing 0.5 " + (y + 0.3) + " 17.5");
+			srv.runCommand("tp @a 5.5 " + (y + 3) + " 12.5 facing -0.5 " + (y + 0.2) + " 18.0"); // from the farmhouse side: the farmer harvests the rows nearest its door first, so the sprouts are in front and the ripe rows behind
 			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
 			int fov = context.computeOnClient(mc -> mc.options.fov().get());
 			context.runOnClient(mc -> { mc.options.hideGui = true; mc.options.fov().set(70); });
