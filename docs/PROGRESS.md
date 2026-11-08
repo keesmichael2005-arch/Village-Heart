@@ -350,3 +350,11 @@ Plan: `docs/plans/M10.md` (13 steps). The farmer reuses M9's job toolkit (`core.
 - L2 determinism: each farmer test has its own environment with `random_tick_speed 0` (verified: batches run sequentially, teardown resets the rule).
 Revised after a fresh critique (22 findings; 2 blockers fixed: a night-time control and wrong compost arithmetic; 1 refuted against the sources).
 Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is on dev). Top risk: dependency on unbuilt M9 code.
+
+## 2026-11-08: M10 built (Farmer), branch m10
+- Farm core (`core.farm`: crops, `FieldIndex`, compost rule, `FarmerPlanner`, keep rules), BONUS tool mode, food keep rule in `DepositTrip` (food kept only up to 12 points), `FarmJob`/`FarmRuntime`/`FarmerWork` glue (own behaviour, 20-tick re-plan, server-wide index budget, claims, hoe lease, COLLECT, FETCH, compost, bone meal), `WalkTo.release` (PATH-memory fix). 14 L2 tests (`FarmerGameTests`), L4 `FarmerClientTests.farmerField`. Deviations: `docs/plans/M10.md` section 8 (D1-D12).
+- Flake `storageFullStopsHarvest` (1 loose wheat never collected): a COLLECT interrupted by a deposit trip kept its old start time, so a trip longer than the 400-tick timeout blacklisted the item (6000 ticks) on return. COLLECT now restarts its clock when entered from another action. Found by reading, not reproduced (old code: 8/8 green); the fix is in the 9-run series below.
+- Second flake found by the series: `invalidBuildingKeepsWorker` (M7) expected status OK for a farmer with no farmland, now NO_WORK after a sweep (1 in 9); the test places one farmland block (D12).
+- Evidence: 9 consecutive full `./gradlew --no-daemon runGameTest` runs on the final code, 158/158 each (an earlier series with the flake fix but before D12: 7 of 8 green, the failure being the M7 test above).
+- Screenshot looked at: `farmer_field.png` (farmer at the Farmhouse door, mature wheat field, banner on the wall).
+- Next: M10 review; ROADMAP is the orchestrator's. Doubt: the collect-timeout cause is inferred, not observed.

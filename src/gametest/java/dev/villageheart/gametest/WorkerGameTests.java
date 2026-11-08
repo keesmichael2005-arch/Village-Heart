@@ -849,6 +849,8 @@ public class WorkerGameTests {
 			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
 			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
 			rec[0] = record(h, a[0]).orElseThrow();
+			// a farmer with no farmland in reach is "No work" (M10); the test is about the building, so give it a field
+			FarmTestSupport.emptyFarmland(h, 20, 8);
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status while valid");
 			h.destroyBlock(roof);
 		});
