@@ -40,6 +40,10 @@ if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: NetworkSynchronizer lost-wakeup fix installed" lost-wakeup-fix.log \
     grep -m1 "LOST_WAKEUP_FIX installed" reports/clienttest.log
   echo "    lost wakeups rescued in layer 4: $(grep -c "LOST_WAKEUP_RESCUED" reports/clienttest.log)" >> "$SUMMARY"
+  # The second gametest mixin clears Fabric's clientbound in-flight count leaked when a singleplayer world closes (docs/TESTING.md).
+  step "Layer 4: NetworkSynchronizer disconnect-leak fix installed" disconnect-leak-fix.log \
+    grep -m1 "DISCONNECT_LEAK_FIX installed" reports/clienttest.log
+  echo "    world closes with a leaked in-flight count cleared in layer 4: $(grep -c "DISCONNECT_LEAK_CLEARED" reports/clienttest.log)" >> "$SUMMARY"
   step "Client log has no villageheart model warnings" model-log-gate.log scripts/check-model-log.sh reports/clienttest.log
   # The 2-player dedicated-server session (MultiplayerClientTests): no server error and no disconnect between its markers.
   step "2-player session: no server errors or disconnects" mp-log-gate.log scripts/check-mp-log.sh reports/clienttest.log
