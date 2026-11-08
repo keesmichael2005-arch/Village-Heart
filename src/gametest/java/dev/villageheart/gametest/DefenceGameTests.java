@@ -538,6 +538,8 @@ public class DefenceGameTests {
 		Cells cells = lampCells();
 		var rng = net.minecraft.util.RandomSource.create(21);
 		int[] before = new int[1];
+		// block light of every cell before the lamp: neighbouring tests' torches may reach the edges of the yard in a full run
+		Map<BlockPos, Integer> lightBefore = new HashMap<>();
 		int[] idx = {0};
 		int[] lit = {0}, ring = {0}, control = {0}, controlPlateau = {0};
 		long t0 = 12500, step = 100;
@@ -552,6 +554,7 @@ public class DefenceGameTests {
 			System.out.println("[m21] sky darken at 18000: " + level.getSkyDarken() + ", lit set " + cells.lit().size() + ", ring " + cells.ring().size()
 					+ ", control " + cells.control().size());
 			h.assertTrue(level.getSkyDarken() >= 8, "it is dark at 18000: " + level.getSkyDarken());
+			for (BlockPos p : cells.all()) lightBefore.put(p, blockLight(h, p));
 			// the counterfactual: without the lamp these very cells can spawn
 			for (int i = 0; i < 20; i++) before[0] += spawnable(h, cells.lit(), rng);
 			System.out.println("[m21] spawnable lit cells before the lamp (20 samples): " + before[0]);
@@ -562,9 +565,9 @@ public class DefenceGameTests {
 			h.assertTrue(blockLight(h, lantern) == 15, "the lantern shines: " + blockLight(h, lantern));
 			h.assertTrue(blockLight(h, rel(LAMP_X + 12, 0, LAMP_Z)) == 1 && blockLight(h, rel(LAMP_X - 12, 0, LAMP_Z)) == 1, "the light reached the edge of the diamond");
 		}).thenExecute(() -> {
-			// (a) the light map is the formula: 15 minus the steps from the lantern
+			// (a) the light map is the formula: the larger of what was there before and 15 minus the steps from the lantern
 			for (BlockPos p : cells.all()) {
-				int expected = Math.max(0, 15 - Math.abs(p.getX() - LAMP_X) - Math.abs(p.getY() - 2) - Math.abs(p.getZ() - LAMP_Z));
+				int expected = Math.max(lightBefore.get(p), Math.max(0, 15 - Math.abs(p.getX() - LAMP_X) - Math.abs(p.getY() - 2) - Math.abs(p.getZ() - LAMP_Z)));
 				h.assertTrue(blockLight(h, p) == expected, "block light at " + p + " is " + blockLight(h, p) + ", expected " + expected);
 			}
 			h.assertTrue(h.getBlockState(lantern).is(Blocks.LANTERN) && !h.getBlockState(lantern).getValue(LanternBlock.HANGING), "a standing lantern");
