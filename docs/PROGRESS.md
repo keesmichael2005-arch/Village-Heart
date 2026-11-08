@@ -549,3 +549,6 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
 - Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
 - Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.

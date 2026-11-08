@@ -102,6 +102,32 @@ public class FarmerGameTests {
 		});
 	}
 
+	/**
+	 * Review of M11 round 3 (a starter run left its farmer for days at the same spot, one block above its composter, harvesting nothing): a farmer
+	 * standing on top of its composter still walks to the ripe crops.
+	 */
+	@GameTest(environment = "villageheart-gametest:farm_on_composter", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void farmerOnTopOfItsComposterStillHarvests(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		long[] stat = new long[1];
+		GameTestSequence seq = scene(h, 1, true).thenExecute(() -> {
+			field(h, 8, 14, 10, 18, CropKind.WHEAT, 7, false);
+			stat[0] = WorkStats.get("farmer", "harvested");
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			var jb = v[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).jobBlock();
+			v[0].teleportTo(jb.x() + 0.5, jb.y() + 1.0, jb.z() + 0.5);
+		});
+		seq = seq.thenIdle(5).thenExecute(() -> System.out.println("[m11] farmer on its composter at " + v[0].position()));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(WorkStats.get("farmer", "harvested") - stat[0] >= 3,
+				"cells harvested by a farmer that started on top of its composter: " + (WorkStats.get("farmer", "harvested") - stat[0]) + ", it is at " + v[0].position()));
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-2 ----------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:farm_harvest", structure = YARD, skyAccess = true, maxTicks = 3000)

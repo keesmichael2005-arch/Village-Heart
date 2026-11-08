@@ -138,10 +138,25 @@ public final class FarmJob {
 	 */
 	private static void stallWatchdog(ServerLevel level, Villager v, WorkerState ws, long now) {
 		if (ws.lastProgress < 0) ws.lastProgress = now;
+		// only work time counts: the night (the job does not tick) is not a stall
+		if (ws.lastWatch > 0 && now - ws.lastWatch > 40) ws.lastProgress += now - ws.lastWatch;
+		ws.lastWatch = now;
 		if (now - ws.lastProgress < stallTicks || ws.seenMature == 0 || v.getAttached(WorkerAttachments.WORKER).needs().speed() <= 0) return;
 		WorkerStatuses.set(v.getUUID(), WorkerStatus.SITE_UNREACHABLE);
 		if (now - ws.stallLoggedAt < stallTicks) return;
 		ws.stallLoggedAt = now;
+		// a worker that has not moved since the last report is stuck in place: it is set down beside the spot and its walk is planned again
+		boolean pinned = ws.stallPos != null && ws.stallPos.distanceTo(v.position()) < 0.75;
+		ws.stallPos = v.position();
+		if (pinned) {
+			BlockPos to = dev.villageheart.worker.job.WorkerUnstick.findFree(level, v, v.blockPosition(), 4, 2);
+			if (to != null) {
+				VillageHeart.LOG.warn("[farm-stall] farmer {} has not moved for {} ticks: moved from {} to {}", v.getUUID(), stallTicks, v.blockPosition().toShortString(), to.toShortString());
+				dev.villageheart.worker.job.WorkerUnstick.move(v, to);
+				ws.walk.clear();
+				ws.needsPlan = true;
+			}
+		}
 		var path = v.getNavigation().getPath();
 		VillageHeart.LOG.warn("[farm-stall] farmer {} made no progress for {} ticks with {} mature cells: pos {} (chunk entity-ticking {}), action {} decision {}, "
 				+ "cells {} mature {} mature-in-ticking-chunks {} claimed-or-blacklisted {}, trip running {}, walk {} ({}), nav {}, inventory load {}, status {}",
