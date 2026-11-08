@@ -117,3 +117,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] assertNoGiveUpsAt comment and PROGRESS give the wrong reason (a regrown tree stands on the same base)
 - [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
 - [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
+
+## From M20-r1 (builder)
+- [ ] `workerOpensDoors` (M9) rarely fails with "reaching the job block through the closed door took 456 ticks, bound 400". Seen once in about 18 full Layer 2 runs on the M20 branch, never alone (6 of 6 pass) and never in the 17 other runs. Measured: it takes exactly 156 ticks every time otherwise, and the failure is 300 ticks later, which is three `GoToJobBlock` back-offs of 100 ticks (three consecutive failed paths out of the closed room). Not reproduced, so no root cause yet. Next step if it shows again: run the suite with `-Dvillageheart.lumber.trace=true` plus a log of `CANT_REACH_WALK_TARGET_SINCE` in `GoToJobBlock.start`.
