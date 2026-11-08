@@ -377,10 +377,10 @@ public class SelfCraftLifecycleGameTests {
 			add(h, LumberTestSupport.storeChest2(), new ItemStack(Items.IRON_AXE));
 			v[0] = lumberjack(h);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "Needs axe (camp chest full)", () -> h.assertValueEqual("Needs axe (camp chest full)", words(h, v[0]), "words"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "Needs axe (no room)", () -> h.assertValueEqual("Needs axe (no room)", words(h, v[0]), "words"));
 		seq = seq.thenExecute(() -> t0[0] = h.getTick());
 		seq = seq.thenWaitUntil(() -> {
-			h.assertValueEqual("Needs axe (camp chest full)", words(h, v[0]), "the job's Needs axe never wins");
+			h.assertValueEqual("Needs axe (no room)", words(h, v[0]), "the job's Needs axe never wins");
 			h.assertTrue(h.getTick() - t0[0] >= 300, "sampling");
 		});
 		seq = seq.thenExecute(() -> {
@@ -398,13 +398,13 @@ public class SelfCraftLifecycleGameTests {
 		});
 	}
 
-	/** Nothing to make a tool from: "Needs axe (no wood in Storage)". */
+	/** Nothing to make a tool from: "Needs axe (no wood)". */
 	@GameTest(environment = "villageheart-gametest:selfcraft_no_wood", structure = YARD, skyAccess = true, maxTicks = 600)
 	public void noWoodSaysSo(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];
 		GameTestSequence seq = lumberScene(h, false, items()).thenExecute(() -> v[0] = lumberjack(h));
-		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "Needs axe (no wood in Storage)", () -> h.assertValueEqual("Needs axe (no wood in Storage)", words(h, v[0]), "words"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "Needs axe (no wood)", () -> h.assertValueEqual("Needs axe (no wood)", words(h, v[0]), "words"));
 		seq.thenExecute(() -> {
 			VillageTestSupport.done(h);
 			end(h);
@@ -426,7 +426,7 @@ public class SelfCraftLifecycleGameTests {
 			h.assertValueEqual(1L, stored(h, Items.WOODEN_AXE), "the axe went to Storage");
 			h.assertValueEqual(0, countIn(h, LumberTestSupport.chest(), Items.WOODEN_AXE), "...not the chest");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 140, "Needs axe (camp chest full)", () -> h.assertValueEqual("Needs axe (camp chest full)", words(h, v[0]), "words"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 140, "Needs axe (no room)", () -> h.assertValueEqual("Needs axe (no room)", words(h, v[0]), "words"));
 		seq = seq.thenExecute(() -> StockpileTestSupport.container(h, LumberTestSupport.chest()).setItem(7, ItemStack.EMPTY));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the axe is fetched into the chest", () -> h.assertTrue(countIn(h, LumberTestSupport.chest(), Items.WOODEN_AXE) == 1, "not yet"));
 		seq.thenExecute(() -> {

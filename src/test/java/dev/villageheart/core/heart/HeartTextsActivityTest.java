@@ -15,10 +15,10 @@ class HeartTextsActivityTest {
 		assertEquals("Making a wooden axe", text(ActivityKind.MAKING_WOODEN_TOOL, "lumberjack"));
 		assertEquals("Making a wooden hoe", text(ActivityKind.MAKING_WOODEN_TOOL, "farmer"));
 		assertEquals("Making a wooden tool", text(ActivityKind.MAKING_WOODEN_TOOL, "unlisted_job"));
-		assertEquals("Needs axe (no wood in Storage)", text(ActivityKind.TOOL_NO_MATERIALS, "lumberjack"));
-		assertEquals("Needs bow or sword (no wood in Storage)", text(ActivityKind.TOOL_NO_MATERIALS, "hunter"));
-		assertEquals("Needs axe (camp chest full)", text(ActivityKind.TOOL_NO_SPACE, "lumberjack"));
-		assertEquals("Needs a tool (camp chest full)", text(ActivityKind.TOOL_NO_SPACE, "unlisted_job"));
+		assertEquals("Needs axe (no wood)", text(ActivityKind.TOOL_NO_MATERIALS, "lumberjack"));
+		assertEquals("Needs sword (no wood)", text(ActivityKind.TOOL_NO_MATERIALS, "hunter"));
+		assertEquals("Needs axe (no room)", text(ActivityKind.TOOL_NO_SPACE, "lumberjack"));
+		assertEquals("Needs a tool (no room)", text(ActivityKind.TOOL_NO_SPACE, "unlisted_job"));
 	}
 
 	@Test

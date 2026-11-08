@@ -224,3 +224,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
 - [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
 - [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+
+## From M19a (builder)
+- [ ] Out of scope by plan: copper or better tools (M19), shovels/spears, bows (string), a crafting-table station or held-item animation, repairing tools, XP for crafting, a Heart UI for craft times
+- [ ] M26 tuning: `SELF_TOOL_TICKS` (wooden 2400, stone 4800) and `GEAR_MIN_DURABILITY`; in a dense forest a lumberjack spends about 45 % of its time on axes (plan 3.7)
+- [ ] Wooden pickaxes mine iron (M16 rule as built): self-made wooden pickaxes make this common (plan risk 6)
+- [ ] L3 by hand when M11's `starter` scenario exists: `starter` + Mine with a miner and no tools, 10 oak logs in Storage, 5 days; report `work.<job>.tools_made.<tier>` per day (expected wooden day 1, stone from day 2)
+- [ ] M19 r3 note: the census uses lead 0 whatever `SmithService` says (the plan's 3.8 #4 gives the smith's lead when one serves); M19 passes its lead when it registers the service
+- [ ] `ToolAllocation` still ranks by tier enum order (gold below iron); unchanged here, see the tool-speed item above

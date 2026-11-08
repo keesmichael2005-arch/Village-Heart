@@ -144,6 +144,7 @@ from there instead of hard-coding them.
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
 ## M19a: Self-made basic tools
+- Status (builder, 2026-11-09): built on branch `m19a`, awaiting review (not ticked). Unit tests, 23 GameTests (`SelfCraft*GameTests`) and the L4 shot `villagers_tab_making_tool.png` are in; deviations in the plan's section 8.
 - Depends on M15 (tools) and the tool jobs M9, M10, M16, M17. Not on M11, M18 or M19 (M19 later extends the same core). Plan: `docs/plans/M19a.md`.
 - [ ] (owner 2026-11-09) §4.1: a hired lumberjack, miner, hunter or farmer with no usable tool in its job chest, or one about to wear out
       (the M19 worn line), makes its **own** wooden or stone tool from Storage materials at its job block, at any tier, slowly and in its own

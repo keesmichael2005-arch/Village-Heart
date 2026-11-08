@@ -208,6 +208,13 @@ in stone they can start making stone etc." Plan: `docs/plans/M19a.md`.
   better tiers); a self-craft already started finishes. A worker whose required tool has been missing for 3000 work ticks with no order
   may still make its own.
 
+#### Rules as built (M19a)
+- Pure core in `core.gear` (demand per camp and need, the worn line `ToolWear.worn`, `TierChoice.selfMade`, the cancel hysteresis, `SupplyRule`, `SelfCraftPlanner`); glue in `worker.gear` (`SelfCraftJob` is called at the top of each tool job's tick and owns the tick while it fetches or crafts; `SelfCraftSystem` checks every saved craft every 100 ticks).
+- **Worn line** (self-craft, lead 0): below the larger of 10 % of the durability, two work units, so a stone axe (131) is replaced at 13 left, a wooden pickaxe (59, 10 per haul) at 19. Within a tier the tool with less left is used first.
+- **Fetch and commit**: the worker reserves the planned items, walks to the Storage holding them and withdraws exactly those into its saved record (never into its inventory, so a death or a deposit trip cannot touch them); a withdraw that comes up short puts everything back. Then it works at its job block. A cancel (a fresh tool now covers the slot, the worker was fired or died, the building went) needs two checks 100 ticks apart and refunds the committed items to Storage.
+- **Status**: "Making a wooden/stone <tool>"; "Needs axe (no wood)" when it cannot start for lack of material, "Needs axe (no room)" when the chest has no free slot.
+- **Not here**: a crafting-table station, bows, shovels and spears, XP for crafting, copper or better (M19).
+
 ## 5. Jobs in detail
 
 The work style is **hybrid**. Lumberjacks, farmers, cooks, builders, guards and blacksmiths act in the
