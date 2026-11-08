@@ -10,6 +10,9 @@ import dev.villageheart.core.MemberRepair;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.TreeTask;
+import dev.villageheart.core.blueprint.BlueprintParams;
+import dev.villageheart.core.blueprint.BuildJob;
+import dev.villageheart.core.blueprint.Rotation4;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
@@ -159,10 +162,42 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(kept);
 	}
 
+	public static final Codec<Rotation4> ROTATION = enumCodec(Rotation4.class);
+
+	private static final Codec<BuildJob> RAW_BUILD = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("id").forGetter(BuildJob::id),
+			Codec.STRING.fieldOf("blueprint").forGetter(BuildJob::blueprintId),
+			Codec.INT.optionalFieldOf("length", 0).forGetter(b -> b.params().length()),
+			HEART_LOCATION.fieldOf("ground").forGetter(BuildJob::ground),
+			ROTATION.optionalFieldOf("rotation", Rotation4.NONE).forGetter(BuildJob::rotation),
+			Codec.LONG.optionalFieldOf("created_at", 0L).forGetter(BuildJob::createdAt),
+			UUID_STRING.fieldOf("started_by").forGetter(BuildJob::startedBy),
+			Codec.INT.optionalFieldOf("cursor", 0).forGetter(BuildJob::cursor),
+			Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("carried", java.util.Map.of()).forGetter(BuildJob::carried),
+			UUID_STRING.optionalFieldOf("carrier").forGetter(b -> java.util.Optional.ofNullable(b.carrier()))
+	).apply(i, (id, bp, length, ground, rot, created, by, cursor, carried, carrier) ->
+			new BuildJob(id, bp, new BlueprintParams(Math.max(0, length)), ground, rot, created, by, Math.max(0, cursor), carried, carrier.orElse(null))));
+
+	/** A saved build whose blueprint is unknown or whose cursor is past its last step is dropped (logged), never failing the village. */
+	public static final Codec<BuildJob> BUILD = RAW_BUILD.flatXmap(b -> {
+		java.util.Optional<dev.villageheart.core.blueprint.Blueprint> bp = dev.villageheart.core.blueprint.Blueprints.resolve(b.blueprintId(), b.params());
+		if (bp.isEmpty()) return DataResult.error(() -> "Unknown blueprint " + b.blueprintId());
+		int steps = dev.villageheart.core.blueprint.BuildPlan.of(bp.get(), b.placement()).size();
+		if (b.cursor() > steps) return DataResult.error(() -> "Build cursor " + b.cursor() + " is past the last step " + steps);
+		return DataResult.success(b);
+	}, DataResult::success);
+
+	/** The first build wins when two share an id. */
+	private static java.util.List<BuildJob> dedupeBuilds(java.util.List<BuildJob> in) {
+		java.util.Map<UUID, BuildJob> byId = new java.util.LinkedHashMap<>();
+		for (BuildJob b : in) byId.putIfAbsent(b.id(), b);
+		return java.util.List.copyOf(byId.values());
+	}
+
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
-			java.util.List<TreeTask> treeTasks) {}
+			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -175,7 +210,8 @@ public final class VillageCodecs {
 			TIER.optionalFieldOf("tier", Tier.HAMLET).forGetter(Raw::tier),
 			BUILDING.listOf().optionalFieldOf("buildings", java.util.List.of()).forGetter(Raw::buildings),
 			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers),
-			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks)
+			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
+			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
@@ -183,12 +219,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds())));
 
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
 	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {

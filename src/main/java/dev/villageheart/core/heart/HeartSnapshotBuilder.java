@@ -27,6 +27,7 @@ public final class HeartSnapshotBuilder {
 		int moreVillagers = 0;
 		List<BuildingRow> buildings = List.of();
 		int moreBuildings = 0;
+		List<BuildRow> builds = List.of();
 		List<JobChoice> choices = List.of();
 		if (details) {
 			List<VillagerRow> all = villagerRows(f.villagers());
@@ -35,6 +36,7 @@ public final class HeartSnapshotBuilder {
 			List<BuildingRow> allB = buildingRows(f.buildings());
 			buildings = allB.subList(0, Math.min(allB.size(), HeartLimits.MAX_BUILDINGS));
 			moreBuildings = allB.size() - buildings.size();
+			builds = buildRows(f.builds());
 		} else {
 			stock = Stock.EMPTY;
 		}
@@ -54,7 +56,18 @@ public final class HeartSnapshotBuilder {
 			moreMembers = all.size() - members.size();
 		}
 		return new HeartSnapshot(viewer, overview(f), villagers, moreVillagers, choices, buildings, moreBuildings, stock, members,
-				moreMembers);
+				moreMembers, builds);
+	}
+
+	/** At most {@link HeartLimits#MAX_BUILDS} rows, each with at most {@link HeartLimits#MAX_BUILD_MISSING} missing lines and cut names. */
+	private static List<BuildRow> buildRows(List<BuildRow> in) {
+		List<BuildRow> out = new ArrayList<>();
+		for (BuildRow r : in) {
+			if (out.size() == HeartLimits.MAX_BUILDS) break;
+			out.add(new BuildRow(HeartLimits.cut(r.blueprintId(), HeartLimits.MAX_ID), r.x(), r.y(), r.z(), r.state(), r.placed(), r.total(), r.status(),
+					r.missing().subList(0, Math.min(r.missing().size(), HeartLimits.MAX_BUILD_MISSING)), HeartLimits.cut(r.builderName(), HeartLimits.MAX_NAME)));
+		}
+		return out;
 	}
 
 	// ---- overview -----------------------------------------------------------------------------------------------------

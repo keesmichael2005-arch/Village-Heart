@@ -84,6 +84,7 @@ public class MarkerGameTests {
 		expected.add(ModItems.BLANK_MARKER);
 		for (BuildingType t : BuildingType.values()) expected.add(MarkerBlocks.ITEMS.get(t));
 		for (JobBlockType t : JobBlockType.values()) expected.add(JobBlocks.ITEMS.get(t));
+		for (int i = 0; i < dev.villageheart.core.blueprint.Blueprints.all().size(); i++) expected.add(ModItems.BLUEPRINT); // M20: one Blueprint per blueprint
 		List<Item> actual = new ArrayList<>();
 		for (ItemStack s : tab.getDisplayItems()) actual.add(s.getItem());
 		h.assertTrue(!actual.isEmpty(), "creative tab contents non-empty");
