@@ -133,7 +133,11 @@ public final class HeartFacts {
 			ActivityKind activity = dev.villageheart.worker.job.AwayTrips.isAway(v) ? ActivityKind.AWAY_WORKING : switch (status) {
 				case STORAGE_FULL -> ActivityKind.STORAGE_FULL;
 				case STORAGE_UNREACHABLE -> ActivityKind.STORAGE_UNREACHABLE;
-				case NEEDS_TOOL -> ActivityKind.NEEDS_TOOL;
+				case NEEDS_TOOL -> switch (dev.villageheart.worker.gear.SelfCraftRuntime.blockOf(server, rec.villager())) {
+					case NO_MATERIALS -> ActivityKind.TOOL_NO_MATERIALS;
+					case NO_SPACE -> ActivityKind.TOOL_NO_SPACE;
+					case null -> ActivityKind.NEEDS_TOOL;
+				};
 				case NO_WORK -> ActivityKind.NO_WORK;
 				case SITE_UNREACHABLE -> ActivityKind.SITE_UNREACHABLE;
 				case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;

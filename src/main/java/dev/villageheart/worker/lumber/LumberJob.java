@@ -93,6 +93,7 @@ public final class LumberJob {
 		ws.lastTick = now;
 		if (Workers.tripRunning(v)) return; // a deposit trip owns the walk target
 		guard(level, v, ws, now);
+		if (dev.villageheart.worker.gear.SelfCraftJob.tick(level, v, now)) return; // making its own axe (M19a): guard() and the search wait
 		if (ws.decision == null || ws.needsPlan || (now - ws.lastPlan >= PLAN_INTERVAL && ws.action != Action.CONTINUE_FELL)) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
 		backgroundSearch(level, v, data, rt, ws, now);
@@ -109,6 +110,15 @@ public final class LumberJob {
 		search(level, v, data, rt, now);
 	}
 
+	/**
+	 * M19a: between two units of work. A tree being felled and a drop being collected are not interrupted by a self-craft; replanting and
+	 * idling are.
+	 */
+	public static boolean atBoundary(ServerLevel level, Villager v) {
+		WorkerState ws = LumberRuntime.get(level.getServer()).workers.get(v.getUUID());
+		return ws == null || (ws.action != Action.CONTINUE_FELL && ws.action != Action.COLLECT);
+	}
+
 	/** The worker was fired or died: its claims and running task are forgotten (the saved tree task stays for the next lumberjack). */
 	public static void forget(MinecraftServer server, UUID villager) {
 		LumberRuntime rt = LumberRuntime.get(server);
@@ -118,6 +128,7 @@ public final class LumberJob {
 
 	/** The behaviour ended (night, panic, raid, fired): the crack overlay goes, the claim is released, the saved task stays. */
 	public static void stop(ServerLevel level, Villager v) {
+		dev.villageheart.worker.gear.SelfCraftJob.stop(level, v);
 		LumberRuntime rt = LumberRuntime.get(level.getServer());
 		WorkerState ws = rt.workers.get(v.getUUID());
 		if (ws == null) return;

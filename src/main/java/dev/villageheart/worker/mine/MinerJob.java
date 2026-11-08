@@ -83,6 +83,7 @@ public final class MinerJob {
 		if (data == null || data.job() != JobType.MINER) return;
 		if (AwayTrips.isAway(v)) return; // hidden: MinerSystem steps it
 		if (Workers.tripRunning(v)) return; // a deposit trip owns the walk
+		if (dev.villageheart.worker.gear.SelfCraftJob.tick(level, v, now)) return; // making its own pickaxe (M19a)
 		State ws = state(v.getUUID());
 		MinerHauls.flushPending(v);
 		if (ws.decision == null || now - ws.lastPlan >= PLAN_INTERVAL) plan(level, v, data, ws, now);
@@ -90,6 +91,7 @@ public final class MinerJob {
 	}
 
 	public static void stop(ServerLevel level, Villager v) {
+		dev.villageheart.worker.gear.SelfCraftJob.stop(level, v);
 		State ws = STATES.get(v.getUUID());
 		if (ws == null) return;
 		ws.walk.release(v);

@@ -314,6 +314,8 @@ public class MinerGameTests {
 		long[] t0 = new long[1];
 		GameTestSequence seq = scene(h, dy, false, SHAFT1).thenExecute(() -> {
 			lightYard(h, dy);
+			// M19a: this test is about the old "Needs <tool>" row (no tool, nothing to make one from is a *different* row now); self-crafting is not its subject
+			dev.villageheart.worker.gear.SelfCraftSwitch.off();
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, dy);
 			tr.start();
