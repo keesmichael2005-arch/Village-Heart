@@ -382,3 +382,13 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+
+## 2026-11-08: M17 plan (Hunter + Hunting Ground), branch m17-plan
+- `docs/plans/M17.md`: 10 build steps, 12 L1 + 9 L2 + 1 L4 test groups. Reuses M16's away machinery (AwayTrips hide/surface, AwayCheck,
+  AwayProgress with a unit-cost overload, HaulRng, ShaftChoice); hunter-specific core in `core.hunt` (yield table with a pinned draw order,
+  biome meat weights from vanilla creature spawn weights, flat pace 3000 ticks/trip at L1, cap 2/day, departure cut-off 7700, arrows taken
+  at return for +1 meat, bow/crossbow ranked over swords, wear 5/trip).
+- M5 rule change planned: Hunting Ground link range 40 (was unlimited), so a hunter can always walk out and back.
+- Critique: fresh remote session, 27 findings; all but 2 taken (table in the plan's section 7).
+- Assumptions about M16 (built on origin/m16 only up to step 3 when planned): A1-A9 in section 3.1. Top risk: M16's glue API differs.
+- Next: build after M16 is merged on dev. No blockers.
