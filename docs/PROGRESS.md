@@ -450,3 +450,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
 - Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
 - Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-08: M21 plan (defence blueprints), branch m21-plan (planner)
+- **Plan:** docs/plans/M21.md, 11 steps. Wall Segment and Gate use the LINE mode (click start, click end, click the line to confirm, sneak to start over), straight along x or z, 1-32 long (gate 5-32, a centred 3-wide fence-gate opening under a lintel), level at the start's height; generated blueprints parsed by the normal parser, so every M20 safety rule applies. Lamp Post = 2 fences + lantern: vanilla's block-light rule (overworld limit 0, verified) gives a 12-step diamond on level ground. Watchtower (Town) = 3x3 shaft, ladder, 5x5 platform, rail. New site rule FOOTING (defences only); touching defence builds allowed; finished lamp posts and towers are saved as patrol-point sources for M18.
+- **Lamp L2 is deterministic:** the spawner's own predicate (`SpawnPlacements.checkSpawnRules` + `isSpawnPositionOk`, seeded random) on every cell over a real night: lit set 0 passes, the hd 13 ring and a control set > 0, the lit cells before the lamp > 0.
+- Critique: remote critic session, 25 findings (8 MAJOR): 23 taken, 2 refuted with reasons (reach formula, byId audit). Top risk: level-only walls on real terrain (no terrain following).
+- Blockers: none. M18 must register `Defences::patrolPoints` if it merges after M21.
