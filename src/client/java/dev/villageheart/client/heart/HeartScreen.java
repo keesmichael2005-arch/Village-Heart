@@ -880,6 +880,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case WORKER_SLOTS -> t("detail.slots", b.workersHere(), b.detailCount());
 			case HOMES -> t("detail.homes", b.detailCount());
 			case CONTAINERS -> t("detail.containers", b.detailCount());
+			case NONE -> Component.empty();
 		};
 		textRight(g, detail, x + w - 4, y + 2, 70, WHITE, AREA_BODY, grp);
 		if (!b.reasons().isEmpty()) {

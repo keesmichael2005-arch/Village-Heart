@@ -81,6 +81,14 @@ public final class Buildings {
 		if (VillageClaims.current(server).flatMap(v -> v.building(loc)).isPresent()) BuildingSystem.runtime(server).schedule.prioritise(loc);
 	}
 
+	/**
+	 * The deepest point of a Mineshaft at its last complete survey, or empty when it has not been surveyed since the restart (M16: a miner
+	 * does not go down a shaft whose depth is unknown).
+	 */
+	public static Optional<dev.villageheart.core.building.ShaftScanner.ShaftDepth> shaftDepth(MinecraftServer server, HeartLocation loc) {
+		return Optional.ofNullable(BuildingSystem.runtime(server).shaftDeepest.get(loc));
+	}
+
 	/** The latest verdict of a building, without checking. */
 	public static Optional<Verdict> report(MinecraftServer server, HeartLocation loc) {
 		return Optional.ofNullable(BuildingSystem.runtime(server).verdicts.get(loc));

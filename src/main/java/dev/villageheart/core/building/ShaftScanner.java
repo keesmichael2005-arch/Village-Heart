@@ -22,9 +22,15 @@ public final class ShaftScanner {
 	/**
 	 * @param depth     marker y minus the lowest visited y
 	 * @param deepestY  the lowest visited y
+	 * @param deepestCell the first open cell the fill reached at {@code deepestY} (where a miner is held, M16)
 	 * @param notLoaded the first unloaded position the fill touched (the survey is then incomplete), else null
 	 */
-	public record ShaftSurvey(int depth, int deepestY, int rails, int lights, @Nullable Pos notLoaded) {}
+	public record ShaftSurvey(int depth, int deepestY, Pos deepestCell, int rails, int lights, @Nullable Pos notLoaded) {
+		public ShaftDepth shaftDepth() { return new ShaftDepth(deepestY, deepestCell); }
+	}
+
+	/** The deepest point of a shaft: what the miner's haul table and hold spot are taken from (runtime data, not saved). */
+	public record ShaftDepth(int deepestY, Pos deepestCell) {}
 
 	public static ShaftSurvey scan(BlockView v, Pos marker) {
 		Set<Long> visited = new HashSet<>();
@@ -33,10 +39,14 @@ public final class ShaftScanner {
 		visited.add(marker.pack());
 		queue.add(marker);
 		int minY = marker.y(), rails = 0, lights = 0;
+		Pos deepest = marker;
 		boolean capped = false;
 		while (!queue.isEmpty() && !capped) {
 			Pos p = queue.poll();
-			minY = Math.min(minY, p.y());
+			if (p.y() < minY) {
+				minY = p.y();
+				deepest = p;
+			}
 			if (!p.equals(marker)) {
 				Cell here = v.cell(p);
 				if (here.contents().contains("#rail")) rails++;
@@ -50,7 +60,7 @@ public final class ShaftScanner {
 				if (n.y() >= marker.y() - 1 && Math.max(dx, dz) > 1) continue; // entrance rule: no surface spread
 				if (visited.contains(n.pack())) continue;
 				Cell c = v.cell(n);
-				if (c.kind() == CellKind.UNLOADED) return new ShaftSurvey(marker.y() - minY, minY, rails, lights, n);
+				if (c.kind() == CellKind.UNLOADED) return new ShaftSurvey(marker.y() - minY, minY, deepest, rails, lights, n);
 				if (c.kind() == CellKind.SOLID) {
 					if (c.contents().contains(RoomContents.LIGHT) && litSolids.add(n.pack())) lights++;
 					continue;
@@ -64,7 +74,12 @@ public final class ShaftScanner {
 			}
 		}
 		// cells queued but never processed still count towards the depth reached
-		for (Pos q : queue) minY = Math.min(minY, q.y());
-		return new ShaftSurvey(marker.y() - minY, minY, rails, lights, null);
+		for (Pos q : queue) {
+			if (q.y() < minY) {
+				minY = q.y();
+				deepest = q;
+			}
+		}
+		return new ShaftSurvey(marker.y() - minY, minY, deepest, rails, lights, null);
 	}
 }

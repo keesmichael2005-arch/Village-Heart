@@ -16,5 +16,7 @@ public enum WorkerStatus {
 	/** A builder waits for materials the build needs (M20): the exact words are on the build row ("Needs 12 more planks"). */
 	NEEDS_MATERIALS,
 	/** A builder cannot go on: a block that is not natural is in the way (M20). */
-	BLOCKED
+	BLOCKED,
+	/** The job's site (the Mineshaft) could not be reached: it retries after a while (M16). */
+	SITE_UNREACHABLE
 }

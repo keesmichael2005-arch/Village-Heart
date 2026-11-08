@@ -236,6 +236,25 @@ the rails (cosmetic, post-M-mining polish). The haul comes from a table chosen b
 
 There is no real tunnelling in v1 (post-v1 idea).
 
+  Rules as built (M16): **"disappears inside"** means the villager stays a loaded entity: at the shaft entrance it is moved to the shaft's
+  deepest cell (up the column if that cell is under a fluid or a full block; never the marker cell) and made Invisible, Invulnerable, Silent
+  and NoAI (NoAI freezes the vanilla brain, invulnerable mobs are never targeted). The flags it had are saved in its own persistent
+  attachment and given back when it comes up at the spot it went down from (or, if that is blocked, the nearest free standable cell within
+  2 blocks of the marker; with none it stays hidden and reports "Can't reach the Mineshaft"). `Invisible` is not saved by vanilla, so it is set
+  again when the entity loads. Players cannot trade with or hit a hidden miner; it is re-pinned to its cell every step (pistons). Firing,
+  releasing the village, a conversion or an unreadable trip all bring it up (a villager is never left hidden). **2 in-game hours** means
+  *underground work time*: a haul costs 2500 work units and a stone pickaxe at level 1 earns 1.25 per tick (2000 ticks; wood 2500, iron
+  1667, diamond 1429, netherite 1250), counted in 20-tick steps; the walk to the shaft and the deposit trip are on top, so a real cycle is
+  about 2340 ticks. Progress is kept per shaft (reset when the miner uses another one) and overnight: it comes up at 11000 without a haul,
+  and no new descent starts after 10400. The pickaxe stays in the Mine chest (M9) and loses 10 durability per haul. The band comes from the
+  shaft's deepest Y at its last complete survey (unknown after a restart until the shaft is re-checked: the miner then waits). Diamonds need an iron
+  pickaxe or better and Y < 0; every chance entry draws one number from a generator seeded by (world seed, villager UUID, the miner's haul
+  counter), so a reload never re-rolls a haul. 4 redstone or lapis per hit, 1 gold, 1 diamond (DESIGN gave no counts). A wooden pickaxe uses the stone table,
+  slower. What does not fit into the inventory stays pending and is delivered later (never dropped); the miner hands in everything but food
+  as soon as it is up. A shaft that stops being valid (rails removed) brings the miner up at once with its progress reset; the Mine
+  then turns invalid ("Needs a linked Mineshaft") and its miners report "Workplace invalid" until it is fixed. Statuses: "Needs pickaxe",
+  "No valid Mineshaft", "Can't reach the Mineshaft", and "Away (mining)" on the Heart screen while it is down.
+
 ### 5.4 Hunter (Hunting Lodge + Hunting Ground, Fletching Table, *requires bow or sword*)
 It walks to the Hunting Ground, is gone for **3 in-game hours** per trip, and returns with
 2–4 raw meat (beef, pork, mutton or chicken, weighted by nearby biome), 1–2 leather, 1–2 feathers and 0–1 rabbit hide.
