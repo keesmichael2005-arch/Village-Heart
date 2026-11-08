@@ -377,3 +377,8 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Forced repro (my own probe, removed afterwards): red without the mixin (invalid state 10 s after the first close), green with it (7 of 10 closes cleared). The verify.sh gate fails when the mixin is not installed.
 - Under load (load 12 to 16): 6 of 6 L4 runs green, plus the full verify.sh green. One natural leak (1 packet) was cleared after `WorkerClientTests` killed 10 villagers.
 - Notes: `WorkerClientTests:122` and `LumberClientTests:109,174` kill villagers without quiescing (covered by the mixin; hygiene).
+
+## 2026-11-08: M10 verifier review r2: PASS (docs/reviews/M10-r2.md)
+- All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
+- Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
+- Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
