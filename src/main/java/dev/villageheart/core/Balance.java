@@ -275,4 +275,30 @@ public final class Balance {
 
 	/** The daily wage of a worker of this level; a level below 1 reads as 1 and above 3 as 3. */
 	public static int wageForLevel(int level) { return WAGES[Math.max(1, Math.min(level, WAGES.length)) - 1]; }
+
+	// ---- M13: Cook + Kitchen --------------------------------------------------------------------------
+
+	/** Work-clock cost of one output item: 1000 ticks per in-game hour / 8 items per hour (DESIGN 5.5) at speed 1.0. */
+	public static final double COOK_TICKS_PER_ITEM = 125;
+	/** Most output items one batch makes. */
+	public static final int COOK_BATCH = 8;
+	/** The cook starts no work that ends later than this day time (it must hand the food to Storage before dinner at 11000). */
+	public static final int COOK_DONE_BY = WORK_END - 500;
+	/** The cook works at its smoker from this close (3D). */
+	public static final double COOK_REACH = 2.0;
+	/** Ticks the cook stands at the crafting table before a CRAFT batch. */
+	public static final int COOK_PREP_TICKS = 20;
+	/** Ticks of slack added to the walk estimate of a batch. */
+	public static final int COOK_WALK_SLACK = 100;
+	/** Estimated ticks per block of straight distance walked (batch planning only). */
+	public static final int COOK_WALK_TICKS_PER_BLOCK = 10;
+	/** A fetch times out after this plus {@link #COOK_FETCH_TICKS_PER_BLOCK} per block of its legs. */
+	public static final int COOK_FETCH_TIMEOUT = 400;
+	public static final int COOK_FETCH_TICKS_PER_BLOCK = 20;
+	/** Most (key, Storage) stops of one fetch. */
+	public static final int COOK_MAX_STOPS = 6;
+	/** A crafting table the cook cannot reach within this many ticks is skipped. */
+	public static final int COOK_PREP_TIMEOUT = 200;
+	/** Fuel kinds in the order they are burnt: charcoal and coal before logs (building wood is protected). */
+	public static final java.util.List<String> COOK_FUEL_ORDER = java.util.List.of("minecraft:charcoal", "minecraft:coal");
 }
