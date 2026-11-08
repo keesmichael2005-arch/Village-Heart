@@ -428,9 +428,10 @@ public final class StarterActions {
 
 	/** Called every 100 ticks: a standing hire whose job has nobody gets a replacement (a worker died). */
 	public static void maintain(Host ctx) {
-		if (STANDING.isEmpty()) return;
 		Optional<VillageState> village = VillageClaims.current(ctx.server());
 		if (village.isEmpty()) return;
+		sampleNotTicking(ctx, village.get());
+		if (STANDING.isEmpty()) return;
 		for (Map.Entry<String, BuildingType> e : STANDING.entrySet()) {
 			boolean staffed = village.get().workers().stream().anyMatch(w -> w.jobId().equals(e.getKey()));
 			if (staffed) continue;
@@ -440,6 +441,22 @@ public final class StarterActions {
 			} catch (RuntimeException ex) {
 				VillageHeart.LOG.info("[sim] could not re-hire a {} yet: {}", e.getKey(), ex.getMessage());
 			}
+		}
+	}
+
+	/**
+	 * Counts (into {@code work.workers.not_ticking}) the hired workers that stand in a chunk that does not tick entities, or are not loaded: such a
+	 * villager never runs its brain again and looks "ok" for good. {@code starter} asserts the sum is 0.
+	 */
+	private static void sampleNotTicking(Host ctx, VillageState village) {
+		long n = 0;
+		for (var w : village.workers()) {
+			Villager v = Workers.findLoaded(ctx.server(), w.villager()).orElse(null);
+			if (v == null || !(v.level() instanceof ServerLevel l) || !l.isPositionEntityTicking(v.blockPosition())) n++;
+		}
+		if (n > 0) {
+			dev.villageheart.worker.job.WorkStats.add("workers", "not_ticking", n);
+			VillageHeart.LOG.warn("[sim] {} hired worker(s) are not in an entity-ticking chunk", n);
 		}
 	}
 

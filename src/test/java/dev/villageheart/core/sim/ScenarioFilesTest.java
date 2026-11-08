@@ -30,7 +30,7 @@ class ScenarioFilesTest {
 		Scenario s = ScenarioParser.parse("starter", Files.readString(Path.of("sim/scenarios/starter.json")));
 		assertEquals(12, s.actions().size());
 		assertEquals(10, s.defaultDays());
-		assertEquals(8 + 1, s.assertions().size());
+		assertEquals(9 + 1, s.assertions().size());
 		var hires = s.actions().stream().filter(a -> a.type().equals("hire")).toList();
 		assertEquals(2, hires.size());
 		for (var h : hires) {

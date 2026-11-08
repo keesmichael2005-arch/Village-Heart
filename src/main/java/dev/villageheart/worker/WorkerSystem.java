@@ -95,7 +95,6 @@ public final class WorkerSystem implements VillageSystem {
 			Villager v = findLoaded(server, rec.villager());
 			if (v == null || !(v.level() instanceof ServerLevel level)) continue;
 			dev.villageheart.worker.job.WorkerUnstick.rescue(level, v);
-			farFromWork(server, level, v, rec);
 			if (!WorkerAttachments.isWorker(v)) {
 				JobType.byId(rec.jobId()).ifPresent(job -> Workers.install(level, v, WorkerData.hired(job, rec.building(), rec.jobBlock())));
 			} else {
@@ -107,49 +106,6 @@ public final class WorkerSystem implements VillageSystem {
 				WorkXp.pass(level, v, village.tier());
 			}
 		}
-	}
-
-	private static double FAR_BLOCKS = 40;
-
-	/** Tests shrink the distance; a value below 1 restores the default. */
-	public static void setFarBlocksForTest(double blocks) { FAR_BLOCKS = blocks < 1 ? 40 : blocks; }
-	/** Time a worker may stay further than that from its job block before it is put back. */
-	private static long LOST_TICKS = 2400;
-
-	/** Tests shorten the time before a lost worker is put back; a value below 1 restores the default. */
-	public static void setLostTicksForTest(long ticks) { LOST_TICKS = ticks < 1 ? 2400 : ticks; }
-	private final java.util.Map<java.util.UUID, Long> farSince = new java.util.HashMap<>();
-	private final java.util.Map<java.util.UUID, Long> farLogged = new java.util.HashMap<>();
-
-	/** Evidence for a worker that is far from its job block (further than a path can reach): one line per 2400 ticks with what its brain is doing. */
-	private void farFromWork(MinecraftServer server, ServerLevel level, Villager v, WorkerRecord rec) {
-		if (dev.villageheart.worker.job.AwayTrips.isAway(v) || !level.dimension().identifier().toString().equals(rec.jobBlock().dimension())) return;
-		double d = Math.hypot(v.getX() - rec.jobBlock().x() - 0.5, v.getZ() - rec.jobBlock().z() - 0.5);
-		long now = level.getGameTime();
-		if (d <= FAR_BLOCKS) {
-			farSince.remove(v.getUUID());
-			return;
-		}
-		long since = farSince.computeIfAbsent(v.getUUID(), k -> now);
-		if (now - since >= LOST_TICKS && level.hasChunkAt(new net.minecraft.core.BlockPos(rec.jobBlock().x(), rec.jobBlock().y(), rec.jobBlock().z()))) {
-			// lost: further than a path reaches for a long time (a panic ran it off, or it wandered). It is put back next to its job block.
-			var jb = new net.minecraft.core.BlockPos(rec.jobBlock().x(), rec.jobBlock().y(), rec.jobBlock().z());
-			var to = dev.villageheart.worker.job.WorkerUnstick.findFree(level, v, jb, 4, 1);
-			farSince.remove(v.getUUID());
-			if (to != null) {
-				VillageHeart.LOG.warn("[far-worker] {} {} was {} blocks from its job block for {} ticks: moved from {} to {}", rec.jobId(), v.getUUID(), Math.round(d), now - since,
-						v.blockPosition().toShortString(), to.toShortString());
-				dev.villageheart.worker.job.WorkerUnstick.move(v, to);
-				return;
-			}
-		}
-		if (now - farLogged.getOrDefault(v.getUUID(), Long.MIN_VALUE / 2) < 2400) return;
-		farLogged.put(v.getUUID(), now);
-		var brain = v.getBrain();
-		VillageHeart.LOG.warn("[far-worker] {} {} is {} blocks from its job block {},{},{}: pos {} hp {} activities {} walk-target {} path {} nav-done {} trip {} status {} daytime {}",
-				rec.jobId(), v.getUUID(), Math.round(d), rec.jobBlock().x(), rec.jobBlock().y(), rec.jobBlock().z(), v.blockPosition().toShortString(), v.getHealth(),
-				brain.getActiveActivities(), brain.getMemory(MemoryModuleType.WALK_TARGET).map(w -> w.getTarget().currentBlockPosition().toShortString()).orElse("-"),
-				brain.hasMemoryValue(MemoryModuleType.PATH), v.getNavigation().isDone(), Workers.tripRunning(v), Workers.status(server, rec), level.getDayTime() % 24000);
 	}
 
 	/** Entities that loaded this tick: orphan workers back to vanilla, vanilla claimants of reserved blocks evicted. */

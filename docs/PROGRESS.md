@@ -578,3 +578,7 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Cause of the "silent stall" found: the sim force-loads only 9x9 chunks around the village start chunk (south edge z = 895, 15 blocks past the site). Morning strolls take workers up the hill to z = 896, where the chunk is not entity-ticking and they freeze for good. `starter` failed 2 of 4 runs, each with the farmer frozen at z = 896. Net (b) cannot see it (the job never ticks), and net (c) needs > 40 blocks (the farmer is 31-34).
 - The `[far-worker]` rescue teleports a builder working at a far site and a sleeper in a far House (probes). verify.sh exit 0, L2 3/3 green.
 - Next: notes in `docs/reviews/M11-r4.md` (sim forced area plus a not-ticking metric; remove or narrow net (c); drop net (b)'s teleport).
+
+## 2026-11-08: M11 round-4 fixes (builder, finisher)
+- Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
+- Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
