@@ -236,7 +236,7 @@ public class LumberjackGameTests {
 		Watcher w = new Watcher();
 		h.onEachTick(() -> w.sample(h));
 		ToolTier[] tiers = {ToolTier.WOOD, ToolTier.IRON, ToolTier.DIAMOND};
-		double[] expected = {50.0, 100.0 / 3.0, 50.0 / 1.75};
+		double[] expected = {80.0, 80.0 / 3.0, 80.0 / 4.0};
 		BlockPos[] spots = {new BlockPos(3, 0, 12), new BlockPos(3, 0, 20), new BlockPos(3, 0, 28)};
 		Set<BlockPos>[] logs = new Set[3];
 		Villager[] v = new Villager[1];

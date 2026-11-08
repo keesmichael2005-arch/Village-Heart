@@ -268,7 +268,7 @@ public class LevelGameTests {
 			h.assertTrue(Math.abs(gaps.get(0) - 40) <= 1, "log 1 to 2 with the stone axe at level 1: " + gaps.get(0));
 			h.assertTrue(Math.abs(gaps.get(1) - 40) <= 1, "log 2 to 3 with the stone axe at level 1: " + gaps.get(1));
 			for (int i = 2; i < gaps.size(); i++) {
-				h.assertTrue(Math.abs(gaps.get(i) - 32) <= 1, "gap " + i + " after the level-up should be 32 (50 / (1.25 * 1.25)): " + gaps.get(i));
+				h.assertTrue(Math.abs(gaps.get(i) - 32) <= 1, "gap " + i + " after the level-up should be 32 (80 / (2.0 * 1.25)): " + gaps.get(i));
 			}
 			h.assertValueEqual(logs[0].size(), StockpileTestSupport.container(h, chest()).getItem(0).getDamageValue(), "one durability per log");
 			assertNoGiveUps(h);
@@ -630,7 +630,7 @@ public class LevelGameTests {
 					h.assertTrue(collected >= s.total[k] - 1, "level " + k + ": " + collected + " logs carried or stored for " + s.total[k] + " felled");
 				}
 				h.assertTrue(wood < stone && stone < iron, "wood < stone < iron: " + wood + " " + stone + " " + iron);
-				h.assertTrue(iron >= 1.1 * stone, "iron fells at least 1.1x stone: " + iron + " vs " + stone + " (" + ironStone + ")");
+				h.assertTrue(iron >= 1.3 * stone, "iron fells at least 1.3x stone (ROADMAP M15 criterion, restored by the human 2026-11-09): " + iron + " vs " + stone + " (" + ironStone + ")");
 				h.assertTrue(iron >= 1.3 * wood, "iron fells at least 1.3x wood: " + iron + " vs " + wood + " (" + ironWood + ")");
 			assertNoGiveUps(h);
 			} finally {

@@ -161,7 +161,7 @@ building behaves exactly as in vanilla.
   it walks to the nearest Storage, deposits, and returns. Inputs (tools, seeds, raw food, ore) are fetched
   the same way.
 - **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
-  wood ×1.0, stone ×1.25, iron ×1.5, diamond ×1.75 *(tunable)*. Tools lose durability as they are used.
+  vanilla mining speed / 2, anchored on stone (wood 2, stone 4, copper 5, iron 6, diamond 8, netherite 9, gold 12 in vanilla): wood ×1.0, stone ×2.0, copper ×2.5, iron ×3.0, diamond ×4.0, netherite ×4.5, gold ×6.0 *(`Balance.VANILLA_TOOL_SPEED`; the base work constants are scaled so a stone tool is as fast as before)*. Tools lose durability as they are used.
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
   The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
@@ -202,8 +202,8 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
   2x2 footprint at its lowest y, with no log inside a valid building's room (interior or walls, any building type), at most 192 logs, 17
   wide and 48 tall. The base rule is what protects log walls and cabins; a lone log post on soil under 3 or more natural leaves is the one
   documented false positive, and mangroves, trees on sand and trees merged with player logs are skipped. It fells top-down (base last)
-  inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 1.25, copper
-  1.375, iron 1.5, gold 1.0, diamond 1.75, netherite 2.0, times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
+  inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 2.0, copper
+  2.5, iron 3.0, gold 6.0, diamond 4.0, netherite 4.5 (wood 1.0; vanilla speed / 2, anchored on stone: 80 work units per log, so stone fells a log in 40 ticks, wood in 80, iron in 27), times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
   out there, 1 durability per log (Unbreaking applies); several lumberjacks share the camp's axes best-first in hiring order. Without an
   axe the status is "Needs axe" (an unreadable chest is unknown, not missing); replanting and collecting still run. No new tree starts after
   day time 5000 (drops despawn after 6000 ticks); a fell in progress is saved with the village (`tree_tasks`) and any lumberjack of the camp
@@ -261,8 +261,8 @@ There is no real tunnelling in v1 (post-v1 idea).
   2 blocks of the marker; with none it stays hidden and reports "Can't reach the Mineshaft"). `Invisible` is not saved by vanilla, so it is set
   again when the entity loads. Players cannot trade with or hit a hidden miner; it is re-pinned to its cell every step (pistons). Firing,
   releasing the village, a conversion or an unreadable trip all bring it up (a villager is never left hidden). **2 in-game hours** means
-  *underground work time*: a haul costs 2500 work units and a stone pickaxe at level 1 earns 1.25 per tick (2000 ticks; wood 2500, iron
-  1667, diamond 1429, netherite 1250), counted in 20-tick steps; the walk to the shaft and the deposit trip are on top, so a real cycle is
+  *underground work time*: a haul costs 4000 work units and a stone pickaxe at level 1 earns 2.0 per tick (2000 ticks; wood 4000, copper 1600, iron
+  1333, diamond 1000, netherite 889, gold 667; vanilla speed / 2, anchored on stone), counted in 20-tick steps; the walk to the shaft and the deposit trip are on top, so a real cycle is
   about 2340 ticks. Progress is kept per shaft (reset when the miner uses another one) and overnight: it comes up at 11000 without a haul,
   and no new descent starts after 10400. The pickaxe stays in the Mine chest (M9) and loses 10 durability per haul. The band comes from the
   shaft's deepest Y at its last complete survey (unknown after a restart until the shaft is re-checked: the miner then waits). Diamonds need an iron

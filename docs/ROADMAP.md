@@ -129,7 +129,7 @@ from there instead of hard-coding them.
 ## M15: Job levels and tools ✅
 - [x] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
 - **L1**: speed = tool × level × needs. XP thresholds. The level cap holds at the Hamlet tier
-- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
+- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.3× the logs of a stone-axe one and ≥1.3× a wooden-axe one (the original criterion, restored by the human 2026-11-09 with the vanilla-speed tool table: iron 3.0 / stone 2.0 = 1.5; it had been relaxed to ≥1.1× by orchestrator decision D1, 2026-11-08, when iron/stone was only 1.2)
 - **L2**: the tool in the camp chest loses durability while it is used
 
 ## M16: Miner + Mineshaft ✅

@@ -23,8 +23,8 @@ class BalanceLevelsTest {
 		assertEquals(100, Balance.LEVEL_2_XP);
 		assertEquals(300, Balance.LEVEL_3_XP);
 		assertEquals(1.0, Balance.TOOL_SPEED[ToolTier.WOOD.ordinal()]);
-		assertEquals(1.25, Balance.TOOL_SPEED[ToolTier.STONE.ordinal()]);
-		assertEquals(1.5, Balance.TOOL_SPEED[ToolTier.IRON.ordinal()]);
-		assertEquals(1.75, Balance.TOOL_SPEED[ToolTier.DIAMOND.ordinal()]);
+		assertEquals(2.0, Balance.TOOL_SPEED[ToolTier.STONE.ordinal()]);
+		assertEquals(3.0, Balance.TOOL_SPEED[ToolTier.IRON.ordinal()]);
+		assertEquals(4.0, Balance.TOOL_SPEED[ToolTier.DIAMOND.ordinal()]);
 	}
 }
