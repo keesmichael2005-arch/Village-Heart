@@ -593,3 +593,9 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - L3 `starter 10` PASS by hand with the seeded treasury. Daily treasury: 30, 28, 26, 24, 22, 20, 18, 16, 14, 12 (2 hires charged on day 1; 9 runs; a dawn lands in the record of the day that ends at it, so day 1 has runs 0). The poor variant was not run (10 min): `StarterAssertionsTest.wageAssertionsOfTheStarterScenario` proves the assertions fail for an unfunded village.
 - Deviations: docs/plans/M12.md section 8 (no GatedWork wrapper, Permissions already min-rank, `toDawn(h, seq, out)` is sequence-style). Bug found by L4: `Treasury.refreshInventory`.
 - Next: M12 review. Blockers: none. ROADMAP not ticked.
+
+## 2026-11-08: M12 review round 1 (verifier): FAIL, 2 fix items
+- L1 red at `69321c9`: `ScenarioFilesTest.starterHasItsActionsAndAssertions` still expects M11's starter counts (12 actions, 7+1 assertions); M12's starter has 13 / 11.
+- `Treasury.depositInventory`/`depositFromHand`: a throw after the treasury write puts the emeralds back (or skips the shrink): duplication. Put back only when the write did not happen; test it.
+- Otherwise sound: 6 mutations all red (strike gate, Owner-only withdraw, deposit-all removal, hire charge, unloaded freeze, pay order). L2 4 full runs: 3 green, 1 known M9 `six_oaks_two_days` flake. L4 screenshots show treasury, red wage bill, strike and short alerts, "On strike". L3 skipped (another agent's sim was running).
+- Merge with newer origin/m11 (`27e087d`): 7 trivial conflicts, merged tree compiles, 271 L2 green; ScenarioFilesTest then needs 13 / 11 / 12. Details: docs/reviews/M12-r1.md.
