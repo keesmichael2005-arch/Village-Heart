@@ -641,6 +641,48 @@ public class WageGameTests {
 
 	private static long dayIndexOf(GameTestHelper h) { return dev.villageheart.core.time.DailyClock.dayIndex(h.getLevel().getDayTime()); }
 
+	// ---- review r1: a failure around the treasury write never makes or loses an emerald ------------------
+
+	private static void expectThrow(GameTestHelper h, Runnable r, String what) {
+		try {
+			r.run();
+		} catch (IllegalStateException e) {
+			return;
+		}
+		throw h.assertionException(what + ": the hook should have thrown");
+	}
+
+	@GameTest(environment = "villageheart-gametest:wages_throw", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void depositFailureConservesEmeralds(GameTestHelper h) {
+		GameTestSequence seq = HeartTestSupport.seed(h).thenExecute(() -> {
+			ServerPlayer p = HeartTestSupport.player(h, "res", Rank.RESIDENT);
+			try {
+				for (boolean afterWrite : new boolean[] {false, true}) {
+					for (boolean hand : new boolean[] {false, true}) {
+						VillageClaims.data(server(h)).update(s -> s.withTreasury(0));
+						for (int i = 0; i < p.getInventory().getContainerSize(); i++) p.getInventory().setItem(i, ItemStack.EMPTY);
+						if (hand) p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.EMERALD, 10));
+						else p.getInventory().add(new ItemStack(Items.EMERALD, 10));
+						Runnable boom = () -> { throw new IllegalStateException("test failure"); };
+						dev.villageheart.economy.Treasury.setTestHooks(afterWrite ? null : boom, afterWrite ? boom : null);
+						String what = (hand ? "hand" : "inventory") + (afterWrite ? " after" : " before") + " the write";
+						expectThrow(h, () -> {
+							if (hand) dev.villageheart.economy.Treasury.depositFromHand(p, InteractionHand.MAIN_HAND);
+							else dev.villageheart.economy.Treasury.depositInventory(p);
+						}, what);
+						dev.villageheart.economy.Treasury.setTestHooks(null, null);
+						int total = carried(p) + treasury(h);
+						h.assertValueEqual(10, total, what + ": inventory + treasury is unchanged");
+						h.assertValueEqual(afterWrite ? 10 : 0, treasury(h), what + ": the treasury holds them only if the write happened");
+					}
+				}
+			} finally {
+				dev.villageheart.economy.Treasury.setTestHooks(null, null);
+			}
+			HeartTestSupport.done(h);
+		});
+	}
+
 	// ---- M24 T-L2-6: only the Owner can withdraw ---------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:wages_owner", structure = YARD, skyAccess = true, maxTicks = 900)

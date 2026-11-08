@@ -599,3 +599,5 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - `Treasury.depositInventory`/`depositFromHand`: a throw after the treasury write puts the emeralds back (or skips the shrink): duplication. Put back only when the write did not happen; test it.
 - Otherwise sound: 6 mutations all red (strike gate, Owner-only withdraw, deposit-all removal, hire charge, unloaded freeze, pay order). L2 4 full runs: 3 green, 1 known M9 `six_oaks_two_days` flake. L4 screenshots show treasury, red wage bill, strike and short alerts, "On strike". L3 skipped (another agent's sim was running).
 - Merge with newer origin/m11 (`27e087d`): 7 trivial conflicts, merged tree compiles, 271 L2 green; ScenarioFilesTest then needs 13 / 11 / 12. Details: docs/reviews/M12-r1.md.
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.

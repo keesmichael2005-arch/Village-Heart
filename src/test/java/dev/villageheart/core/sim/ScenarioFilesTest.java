@@ -28,17 +28,18 @@ class ScenarioFilesTest {
 	@Test
 	void starterHasItsActionsAndAssertions() throws Exception {
 		Scenario s = ScenarioParser.parse("starter", Files.readString(Path.of("sim/scenarios/starter.json")));
-		assertEquals(12, s.actions().size());
+		assertEquals(13, s.actions().size()); // M12 added `villageheart treasury add 32` (a real scenario change)
 		assertEquals(10, s.defaultDays());
-		assertEquals(7 + 1, s.assertions().size());
+		assertEquals(12, s.assertions().size()); // M11 8 + the farmer work line, M12 + 3 wage assertions
 		var hires = s.actions().stream().filter(a -> a.type().equals("hire")).toList();
 		assertEquals(2, hires.size());
 		for (var h : hires) {
 			assertEquals(1, h.day());
 			assertEquals(200, h.tick());
 		}
-		assertEquals(10, s.actions().stream().filter(a -> a.day() == 0).count());
+		assertEquals(11, s.actions().stream().filter(a -> a.day() == 0).count());
 		assertEquals("claim", s.actions().get(0).type());
-		assertEquals("site", s.actions().get(1).type());
+		assertEquals("command", s.actions().get(1).type());
+		assertEquals("site", s.actions().get(2).type());
 	}
 }

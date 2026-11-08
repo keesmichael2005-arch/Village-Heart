@@ -31,6 +31,16 @@ import org.jetbrains.annotations.Nullable;
 public final class Treasury {
 	private Treasury() {}
 
+	/** Counts treasury writes made by {@link #writeAndSettle}: a caller that sees it move knows the emeralds it offered are in the treasury. */
+	private static long writes;
+	/** Test hooks: run right before and right after the treasury write (a throw in either simulates a failure at that point). */
+	static volatile Runnable testBeforeWrite, testAfterWrite;
+
+	public static void setTestHooks(Runnable beforeWrite, Runnable afterWrite) {
+		testBeforeWrite = beforeWrite;
+		testAfterWrite = afterWrite;
+	}
+
 	/** @param accepted emeralds that went in (less than offered when the treasury is nearly full) */
 	public record DepositResult(int accepted, int settledWorkers, int treasuryAfter) {}
 
@@ -70,7 +80,12 @@ public final class Treasury {
 			if (settled > 0) data.setPayroll(s.payroll());
 		}
 		int write = left;
+		Runnable before = testBeforeWrite;
+		if (before != null) before.run();
 		data.update(v -> v.withTreasury(write));
+		writes++; // from here on the emeralds are in the treasury, whatever the side effects below do
+		Runnable after = testAfterWrite;
+		if (after != null) after.run();
 		if (settled > 0) Wages.mirrorNeeds(server);
 		changed(server);
 		return settled;
@@ -102,7 +117,20 @@ public final class Treasury {
 			player.displayClientMessage(Component.translatable("message.villageheart.treasury.not_allowed"), true);
 			return HandResult.PASS;
 		}
-		DepositResult r = deposit(server, stack.getCount(), player);
+		int offered = stack.getCount();
+		int expected = TreasuryMath.depositable(village.get().treasury(), offered);
+		long w0 = writes;
+		DepositResult r;
+		try {
+			r = deposit(server, offered, player);
+		} catch (RuntimeException e) {
+			// a failure after the write must still take the emeralds out of the hand, else they would be in both places
+			if (writes != w0) {
+				stack.shrink(expected);
+				refreshInventory(player);
+			}
+			throw e;
+		}
 		if (r.accepted() == 0) {
 			player.displayClientMessage(Component.translatable("message.villageheart.treasury.full"), true);
 			return HandResult.CONSUMED;
@@ -132,10 +160,13 @@ public final class Treasury {
 		int removed = player.getInventory().clearOrCountMatchingItems(s -> s.is(Items.EMERALD), room, player.inventoryMenu.getCraftSlots());
 		player.inventoryMenu.slotsChanged(player.getInventory());
 		DepositResult r;
+		long w0 = writes;
 		try {
 			r = deposit(server, removed, player);
 		} catch (RuntimeException e) {
-			player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, removed));
+			// only when the write did NOT happen are the emeralds given back; after it they are in the treasury
+			if (writes == w0) player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, removed));
+			refreshInventory(player);
 			throw e;
 		}
 		if (r.accepted() < removed) player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, removed - r.accepted()));

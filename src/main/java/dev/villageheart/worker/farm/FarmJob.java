@@ -117,6 +117,53 @@ public final class FarmJob {
 		}
 		if (ws.decision == null || ws.needsPlan || now - ws.lastPlan >= PLAN_INTERVAL) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
+		stallWatchdog(level, v, ws, now);
+	}
+
+	/** Ticks of ripe crops without a harvest or planting before the farmer is reported as stalled. */
+	private static boolean allCellsTaken;
+
+	/** Tests: every field cell counts as claimed by someone else (ripe crops the farmer may not touch). */
+	public static void setAllCellsTakenForTest(boolean on) { allCellsTaken = on; }
+
+	private static final long STALL_TICKS_DEFAULT = 12000;
+	private static long stallTicks = STALL_TICKS_DEFAULT;
+
+	/** Tests shorten the watchdog; a value below 1 restores the default. */
+	public static void setStallTicksForTest(long ticks) { stallTicks = ticks < 1 ? STALL_TICKS_DEFAULT : ticks; }
+
+	/**
+	 * A farmer must not sit at status OK while ripe crops wait. When it made no progress for stallTicks while the field has mature cells (and
+	 * it is not too hungry), the worker is reported SITE_UNREACHABLE and one line says where it is and what it saw, so a failing run leaves evidence.
+	 */
+	private static void stallWatchdog(ServerLevel level, Villager v, WorkerState ws, long now) {
+		if (ws.lastProgress < 0) ws.lastProgress = now;
+		// only work time counts: the night (the job does not tick) is not a stall
+		if (ws.lastWatch > 0 && now - ws.lastWatch > 40) ws.lastProgress += now - ws.lastWatch;
+		ws.lastWatch = now;
+		if (now - ws.lastProgress < stallTicks || ws.seenMature == 0 || v.getAttached(WorkerAttachments.WORKER).needs().speed() <= 0) return;
+		WorkerStatuses.set(v.getUUID(), WorkerStatus.SITE_UNREACHABLE);
+		if (now - ws.stallLoggedAt < stallTicks) return;
+		ws.stallLoggedAt = now;
+		// a worker that has not moved since the last report is stuck in place: it is set down beside the spot and its walk is planned again
+		boolean pinned = ws.stallPos != null && ws.stallPos.distanceTo(v.position()) < 0.75;
+		ws.stallPos = v.position();
+		if (pinned) {
+			BlockPos to = dev.villageheart.worker.job.WorkerUnstick.findFree(level, v, v.blockPosition(), 4, 2);
+			if (to != null) {
+				VillageHeart.LOG.warn("[farm-stall] farmer {} has not moved for {} ticks: moved from {} to {}", v.getUUID(), stallTicks, v.blockPosition().toShortString(), to.toShortString());
+				dev.villageheart.worker.job.WorkerUnstick.move(v, to);
+				ws.walk.clear();
+				ws.needsPlan = true;
+			}
+		}
+		var path = v.getNavigation().getPath();
+		VillageHeart.LOG.warn("[farm-stall] farmer {} made no progress for {} ticks with {} mature cells: pos {} (chunk entity-ticking {}), action {} decision {}, "
+				+ "cells {} mature {} mature-in-ticking-chunks {} claimed-or-blacklisted {}, trip running {}, walk {} ({}), nav {}, inventory load {}, status {}",
+				v.getUUID(), now - ws.lastProgress, ws.seenMature, v.blockPosition().toShortString(), level.isPositionEntityTicking(v.blockPosition()), ws.action,
+				ws.decision == null ? null : ws.decision.action(), ws.seenCells, ws.seenMature, ws.seenMatureTicking, ws.seenUnavailable, Workers.tripRunning(v),
+				ws.walk.active() ? ws.walk.target().toShortString() : "-", ws.walk.reason(), path == null ? "no path" : path.getNextNodeIndex() + "/" + path.getNodeCount(),
+				DepositTrip.load(v), Workers.tripStatus(v.getUUID()));
 	}
 
 	/** The worker was fired or died: its claims and running task are forgotten. */
@@ -225,7 +272,17 @@ public final class FarmJob {
 		Set<Pos> unavailable = new HashSet<>();
 		for (Pos c : rt.claims.keySet()) if (rt.claimedByOther(c, v.getUUID(), now)) unavailable.add(c);
 		for (var e : rt.cellBlacklist.entrySet()) if (e.getValue() > now) unavailable.add(e.getKey());
+		if (allCellsTaken) unavailable.addAll(byPos.keySet());
 
+		ws.seenCells = cells.size();
+		ws.seenUnavailable = unavailable.size();
+		ws.seenMature = 0;
+		ws.seenMatureTicking = 0;
+		for (FieldIndex.Indexed i : cells) {
+			if (!i.cell().isMature()) continue;
+			ws.seenMature++;
+			if (level.isPositionEntityTicking(bp(i.pos()))) ws.seenMatureTicking++;
+		}
 		Pos mature = null;
 		double matureD = Double.MAX_VALUE;
 		List<Pos> emptyCells = new ArrayList<>();
@@ -559,6 +616,7 @@ public final class FarmJob {
 		}
 		if (held != null) CampTools.use(level, held.lease(), 1);
 		WorkStats.add(JOB, "harvested", 1);
+		ws.lastProgress = now;
 		WorkXp.award(v, WorkUnit.CROP_HARVESTED, 1);
 		WorkStats.add(JOB, kind.productId().substring("minecraft:".length()), gainedProduct);
 		WorkStats.add(JOB, "seeds", gainedSeeds);
@@ -578,6 +636,7 @@ public final class FarmJob {
 		level.gameEvent(GameEvent.BLOCK_PLACE, bp, GameEvent.Context.of(v, fresh));
 		level.playSound(null, bp, SoundEvents.CROP_PLANTED, SoundSource.BLOCKS, 1.0F, 1.0F);
 		WorkStats.add(JOB, "planted", 1);
+		ws.lastProgress = now;
 		rt.log(now, v, "PLANT", bp);
 		trace("{} plants {} at {}", v.getId(), kind, cell);
 	}
