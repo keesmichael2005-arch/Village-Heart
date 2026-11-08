@@ -110,3 +110,10 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From backlog1-r1
 - [ ] VillageTickerPerfTest times only the empty-registry path (~600× headroom): time the real systems with a live claim, or document its scope
 - [ ] assertOwnEnvironment reads the private GameTestHelper.testInfo by reflection; fix it on a Minecraft version bump
+
+## From M9-r1/r2
+- [ ] WalkTo clock restart after a gap in ticking has no test
+- [ ] Path re-plan on vanilla path replacement has only a statistical guard; add a deterministic GameTest (open a door on the worker's path, assert the long path is planned again)
+- [ ] assertNoGiveUpsAt comment and PROGRESS give the wrong reason (a regrown tree stands on the same base)
+- [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
+- [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
