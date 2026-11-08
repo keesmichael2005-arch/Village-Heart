@@ -108,7 +108,7 @@ public final class Treasury {
 			return HandResult.CONSUMED;
 		}
 		stack.shrink(r.accepted()); // after the write
-		player.containerMenu.broadcastChanges();
+		refreshInventory(player);
 		depositedMessage(player, r);
 		return HandResult.CONSUMED;
 	}
@@ -130,7 +130,6 @@ public final class Treasury {
 		}
 		// never ask vanilla to remove 0: that only counts (the /clear path)
 		int removed = player.getInventory().clearOrCountMatchingItems(s -> s.is(Items.EMERALD), room, player.inventoryMenu.getCraftSlots());
-		player.containerMenu.broadcastChanges();
 		player.inventoryMenu.slotsChanged(player.getInventory());
 		DepositResult r;
 		try {
@@ -140,6 +139,7 @@ public final class Treasury {
 			throw e;
 		}
 		if (r.accepted() < removed) player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, removed - r.accepted()));
+		refreshInventory(player);
 		depositedMessage(player, r);
 		return r;
 	}
@@ -158,11 +158,20 @@ public final class Treasury {
 		data.update(v -> v.withdrawTreasury(n)); // the treasury first, the items after
 		changed(server);
 		player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, n));
-		player.containerMenu.broadcastChanges();
+		refreshInventory(player);
 		int after = village.get().treasury() - n;
 		VillageHeart.LOG.info("[treasury] {} withdrew {} emeralds, treasury {} -> {}", player.getGameProfile().name(), n, village.get().treasury(), after);
 		player.displayClientMessage(Component.translatable("message.villageheart.treasury.withdrawn", n, after), true);
 		return n;
+	}
+
+	/**
+	 * Tells the client what its inventory holds now. While the Heart screen is open (a menu with no slots) the usual broadcast does not reach the
+	 * inventory, and a creative client ignores single-slot updates for it, so the whole inventory menu is sent again (the Deposit button reads it).
+	 */
+	private static void refreshInventory(ServerPlayer player) {
+		if (player.containerMenu == player.inventoryMenu) player.containerMenu.broadcastChanges();
+		else player.inventoryMenu.sendAllDataToRemote();
 	}
 
 	private static void depositedMessage(ServerPlayer player, DepositResult r) {
