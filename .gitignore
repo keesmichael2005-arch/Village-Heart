@@ -2,6 +2,8 @@
 
 .gradle/
 build/
+# M20: the packages named build under src (dev.villageheart.build, ...worker.build, ...client.build) are source, not build output
+!src/**/build/
 out/
 classes/
 

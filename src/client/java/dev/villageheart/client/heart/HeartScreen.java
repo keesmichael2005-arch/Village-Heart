@@ -3,6 +3,7 @@ package dev.villageheart.client.heart;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.heart.AlertLine;
+import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.BuildingRow;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.HeartSnapshot;
@@ -67,6 +68,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int ROW_H = 22;
 	static final int MEMBER_ROW_H = 16;
 	static final int RANKS_HEADER_H = 14;
+	static final int BUILDS_HEADER_H = 14;
 	public static final int TAB_RANKS = 4;
 	static final int STOCK_ROW_H = 18;
 	static final int MARGIN = 8;
@@ -301,7 +303,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		HeartSnapshot s = snap();
 		return switch (tab) {
 			case 1 -> (s.villagers().size() + (s.moreVillagers() > 0 ? 1 : 0)) * ROW_H;
-			case 2 -> (s.buildings().size() + (s.moreBuildings() > 0 ? 1 : 0)) * ROW_H;
+			case 2 -> (s.buildings().size() + (s.moreBuildings() > 0 ? 1 : 0)) * ROW_H + (s.builds().isEmpty() ? 0 : BUILDS_HEADER_H + s.builds().size() * ROW_H);
 			case 3 -> ((s.stock().items().size() + 1) / 2 + (s.stock().moreKinds() > 0 ? 1 : 0)) * STOCK_ROW_H;
 			case TAB_RANKS -> (s.members().size() + (s.moreMembers() > 0 ? 1 : 0)) * MEMBER_ROW_H;
 			default -> 0;
@@ -818,13 +820,43 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 			y += ROW_H;
 		}
-		if (s.moreBuildings() > 0 && y + ROW_H > r[1] && y < r[1] + r[3]) {
-			text(g, t("buildings.more", s.moreBuildings()), r[0] + 4, y + 7, rowW - 8, GREY, AREA_BODY, groupCounter++);
+		if (s.moreBuildings() > 0) {
+			if (y + ROW_H > r[1] && y < r[1] + r[3]) text(g, t("buildings.more", s.moreBuildings()), r[0] + 4, y + 7, rowW - 8, GREY, AREA_BODY, groupCounter++);
+			y += ROW_H;
+		}
+		if (!s.builds().isEmpty()) {
+			if (y + BUILDS_HEADER_H > r[1] && y < r[1] + r[3]) text(g, t("buildings.builds"), r[0] + 4, y + 3, rowW - 8, GREY, AREA_BODY, groupCounter++);
+			y += BUILDS_HEADER_H;
+			for (BuildRow b : s.builds()) {
+				if (y + ROW_H > r[1] && y < r[1] + r[3]) drawBuildRow(g, b, r[0], y, rowW);
+				y += ROW_H;
+			}
 		}
 		g.disableScissor();
 		clip = new int[] {0, bodyTop(), width, bodyBottom()};
-		scrollbar(g, r, s.buildings().size() * ROW_H);
+		scrollbar(g, r, contentHeight());
 		if (hoverTip != null) g.setTooltipForNextFrame(font, hoverTip, mx, my);
+	}
+
+	/** A build of the Buildings tab: blueprint, where, its status line (what it needs, what is in the way) and the builder; two lines like a building. */
+	private void drawBuildRow(GuiGraphics g, BuildRow b, int x, int y, int w) {
+		int grp = groupCounter++;
+		Component name = Component.translatableWithFallback("build.villageheart.blueprint." + b.blueprintId(), b.blueprintId());
+		int nameW = text(g, name, x + 4, y + 2, 110, WHITE, AREA_BODY, grp);
+		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 4 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
+		int color = switch (b.state()) {
+			case WAITING_FOR_BUILDER -> GREY;
+			case CLEARING, BUILDING, CHECKING -> GREEN;
+			default -> YELLOW;
+		};
+		text(g, text(b.status()), x + 250, y + 2, w - 254, color, AREA_BODY, grp);
+		if (!b.missing().isEmpty()) {
+			Component first = text(b.missing().get(0));
+			Component line = b.missing().size() > 1 ? Component.empty().append(first).append(" ").append(t("reasons.more", b.missing().size() - 1)) : first;
+			text(g, line, x + 4, y + 12, w - 8, YELLOW, AREA_BODY, grp);
+		} else if (!b.builderName().isEmpty()) {
+			text(g, t("builds.builder", b.builderName()), x + 4, y + 12, w - 8, DARK_GREY, AREA_BODY, grp);
+		}
 	}
 
 	private void drawBuildingRow(GuiGraphics g, BuildingRow b, int x, int y, int w, int mx, int my) {

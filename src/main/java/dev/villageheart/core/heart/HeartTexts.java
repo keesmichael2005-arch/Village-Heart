@@ -86,6 +86,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.no_work", "Nothing to do");
 		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
 		EN.put(PREFIX + "activity.no_work.builder", "No blueprint to build");
+		EN.put(PREFIX + "buildings.builds", "Builds");
+		EN.put(PREFIX + "builds.builder", "Builder: %s");
 		EN.put(PREFIX + "activity.needs_materials", "Needs materials");
 		EN.put(PREFIX + "activity.blocked", "Build blocked");
 		EN.put(PREFIX + "rank.owner", "Owner");

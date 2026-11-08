@@ -244,5 +244,7 @@
 	"gui.villageheart.table.builder": "Builder: %s",
 	"gui.villageheart.table.no_builder": "No builder yet",
 	"gui.villageheart.table.select": "Select a blueprint",
-	"gui.villageheart.table.stale": "This screen is out of date"
+	"gui.villageheart.table.stale": "This screen is out of date",
+	"gui.villageheart.heart.buildings.builds": "Builds",
+	"gui.villageheart.heart.builds.builder": "Builder: %s"
 }
