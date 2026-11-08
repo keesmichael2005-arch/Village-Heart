@@ -96,9 +96,21 @@ public final class Balance {
 	/** Heart screen actions per player: token bucket capacity and ticks per refilled token. */
 	public static final int HEART_RATE_CAPACITY = 8;
 	public static final int HEART_RATE_REFILL_TICKS = 5;
-	/** Total XP at which a worker reaches level 2 and 3 (display only until M15 owns levelling, DESIGN section 4). */
+	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;
+
+	// ---- levels (M15) ----
+	/** The highest job level an earned level may reach per tier (indexed by {@code Tier.ordinal()}): Hamlet 1, Village 2, Town 3. */
+	public static final int[] LEVEL_CAPS = {1, 2, 3};
+	/** XP beyond level 3 has no use; XP below a capped level is banked up to here and turns into levels when the village grows. */
+	public static final int MAX_BANKED_XP = LEVEL_3_XP;
+	/** Thousandths of an XP per unit of work, indexed by {@code WorkUnit.ordinal()} (integers, so 0.2 never drifts). Tunable in M26. */
+	private static final int[] MILLI_XP_PER_UNIT = {1000, 1000, 1000, 1000, 5000, 5000, 1000, 2000, 200, 2000};
+
+	public static int milliXpPerUnit(dev.villageheart.core.job.WorkUnit unit) { return MILLI_XP_PER_UNIT[unit.ordinal()]; }
+
+	public static int workUnitXpEntries() { return MILLI_XP_PER_UNIT.length; }
 
 	/** The village's name book (M24): players it remembers by name. Ranked players are never evicted, so at most one less can be ranked. */
 	public static final int MAX_KNOWN_PLAYERS = 64;

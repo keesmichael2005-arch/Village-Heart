@@ -166,6 +166,16 @@ building behaves exactly as in vanilla.
   The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
   ×1.0 / ×1.25 / ×1.5. Tier caps: Hamlet caps at level 1, Village at 2, Town at 3.
+
+  Rules as built (M15): XP is cumulative and **banked up to 300** even when the tier holds the level back; a worker with 300 XP at Hamlet
+  stays level 1 and becomes level 2 within a second of the Village tier-up and level 3 at Town. Levels are **never lowered** (a level
+  written above the cap, which only tests and admin tools do, is kept and used). XP per unit *(tunable)*: log felled 1, crop harvested 1,
+  cooked item 1, mined item 1, hunting trip 5, kill 5, sparring unit 1, smithed item 2, block placed 0.2, trade 2 (fractions carry per worker;
+  walking, replanting and deposit trips earn nothing). **Firing a worker drops its level and XP**; a rehire starts at level 1 with 0 XP;
+  unloaded workers earn nothing. A level-up shows happy-villager particles and the celebrate sound, tells every online Resident or above
+  in chat (at most 3 lines per tick, then one "and N more" line), and moves the vanilla level badge on the villager's belt (stone, iron, gold).
+  The first time a worker has the XP for a level its tier forbids, the same members hear "needs a Village / a Town"; the Villagers tab shows
+  that worker's XP bar full and gold, with a tooltip.
 - **Needs** (status icons on the Heart screen, not a mood number):
   - **Fed**: ate ≥10 nutrition at the last dinner. Hungry 1 day → work at ×0.5. Hungry 2+ days → stops
     working. **Never dies of hunger.**

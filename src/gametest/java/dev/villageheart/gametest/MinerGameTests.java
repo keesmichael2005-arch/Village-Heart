@@ -195,6 +195,8 @@ public class MinerGameTests {
 				var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(e.getKey()));
 				h.assertValueEqual((long) e.getValue(), count(h, item), "Storage holds exactly the predicted " + e.getKey());
 			}
+			int hauled = want.values().stream().mapToInt(Integer::intValue).sum();
+			h.assertValueEqual(Math.min(300, hauled), dev.villageheart.worker.WorkerAttachments.get(v[0]).orElseThrow().xp(), "M15: one XP per item hauled");
 			h.assertFalse(want.containsKey("minecraft:cobbled_deepslate"), "no deepslate in the HIGH band");
 			h.assertValueEqual(0L, count(h, net.minecraft.world.item.Items.COBBLED_DEEPSLATE), "no cobbled deepslate in Storage");
 			h.assertValueEqual((int) (10 * rolls), chestSlot(h, chest(dy), 0).getDamageValue(), "10 durability per haul");

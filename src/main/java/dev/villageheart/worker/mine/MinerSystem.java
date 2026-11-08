@@ -9,6 +9,7 @@ import dev.villageheart.core.building.ShaftScanner.ShaftDepth;
 import dev.villageheart.core.job.ToolRequirement;
 import dev.villageheart.core.job.ToolTier;
 import dev.villageheart.core.job.WorkSpeed;
+import dev.villageheart.core.job.WorkUnit;
 import dev.villageheart.core.mine.AwayCheck;
 import dev.villageheart.core.mine.AwayState;
 import dev.villageheart.core.mine.AwayState.AwayTrip;
@@ -22,6 +23,7 @@ import dev.villageheart.core.worker.DaySchedule;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.core.worker.WorkerStatus;
+import dev.villageheart.worker.WorkXp;
 import dev.villageheart.world.VillageSystem;
 import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.worker.Workers;
@@ -101,6 +103,7 @@ public final class MinerSystem implements VillageSystem {
 			if (lease instanceof CampTools.Held held) CampTools.use(level, held.lease(), Balance.MINER_WEAR_PER_HAUL);
 			MinerHauls.give(v, haul);
 			WorkStats.add(MinerJob.JOB, "hauls", 1);
+			WorkXp.award(v, WorkUnit.ITEM_MINED, haul.values().stream().mapToInt(Integer::intValue).sum());
 		} else {
 			AwayTrips.set(v, after);
 			WorkStats.add(MinerJob.JOB, "aborted", 1);

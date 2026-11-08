@@ -450,3 +450,35 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
 - Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
 - Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
+- Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
+  `core.job.Leveling` applies M14's `TierRules.levelFor` (banked XP up to 300, level = max(stored, levelFor), never lowered); level changes
+  written to attachment and `WorkerRecord.level` at once via M12's `Workers.setLevel`; a 20-tick pass turns banked XP into levels after a tier-up.
+- Feedback: HAPPY_VILLAGER particles, VILLAGER_CELEBRATE sound, chat to online Resident+ members (max 3 lines + summary), a one-off "needs a Village"
+  notice, the vanilla belt badge (VillagerData level 1/2/3), a gold "capped" XP bar on the Villagers tab. Listener seam for M18 perks.
+- Tools: nothing to redo (M9 has tiers, multipliers, sharing, wear per log); M15 extends the speed table test, audits `CampTools.use` per job, and
+  re-proves wear in the side-by-side test.
+- **Blocked on decision D1:** the roadmap's "iron ≥1.3× stone" is impossible with DESIGN's multipliers (iron/stone = 1.5/1.25 = 1.2 is the
+  ceiling, walking only lowers it). Recommended: "≥1.1× stone and ≥1.3× wood" in one three-way test (stacked identical yards at +30/+60 on glass platforms).
+- Critique: a separate critic session, 19 findings (1 blocker = D1 confirmed, 9 major, 9 minor), all taken (plan section 7).
+- Top risk: D1, then the stacked-platform layout of the side-by-side test (fallback: three sequential days, recorded as a deviation).
+
+## 2026-11-08: M15 (job levels and XP; tools done in M9), branch m15
+- **What changed.** Core: `WorkUnit`, `Progress`, `XpChange`, `Leveling` (gain / levelNow / capped / tierForNext / sanitize), `XpAccumulator` (integer milli-XP, 0.2 per block never drifts), `Balance.LEVEL_CAPS`, `MAX_BANKED_XP`, `milliXpPerUnit`; `core.tier.TierRules` (levelCap, levelFromXp, levelFor; M14 was absent, M14 adds the rest to that class). Glue: `Workers.addXp` / `Workers.setLevel`, `WorkXp.award` (what jobs call), `WorkerLevels` (listeners for M18 perks), the 20-tick level pass in `WorkerSystem` (banked XP becomes a level after a tier-up, never lowers a level), the vanilla belt badge follows the level (also on install), `LevelUpFeedback` (particles, celebrate sound, chat to online Resident+, max 3 lines per tick then "and N more", "needs a Village/Town" notice once per threshold, test seam). XP wired into the lumberjack (log), farmer (crop) and builder (0.2 per block placed). Heart screen: `VillagerRow.levelCapped` (+1 byte in the codec), gold full bar and tooltip. Codec clamps values above the table. Zombie conversion also resets the badge level.
+- **Tests.** L1: `LevelingTest`, `XpAccumulatorTest`, `BalanceLevelsTest`, `WorkSpeedTest.fullToolLevelNeedsTable` (7 tiers x 3 levels x needs), codec clamp, snapshot `levelCappedFlag`, codec round trip with the new flag, `LangCoverageTest.levelUpMessages`. L2 (`LevelGameTests`, 10 tests): API and badge, tier-up turns banked XP into levels, reload and fire, cured zombie, felling pace after a level-up (40, 40, then 32 ticks), the Hamlet cap holds pace then lifts after `setTier`, farmer XP, feedback audience (Owner/Resident yes, Visitor no), tier-up flood summary, side-by-side; plus a builder XP assertion in `BuildGameTests.smallHouseWithinTwoDays`. L4: `LevelClientTests` (badges, Villagers tab).
+- **D1 (orchestrator, option A).** Side by side over day ticks [1000, 5000) at Hamlet: wood 71, stone 89, iron 106-107 logs; iron/stone 1.191-1.202 (>= 1.1), iron/wood 1.493-1.507 (>= 1.3), stone/wood 1.254. Eight full Layer 2 runs, each with the test: iron/stone 1.191, 1.202, 1.191, 1.202, 1.191, 1.191, 1.191, 1.202; iron/wood 1.493, 1.507, 1.493, 1.507, 1.493, 1.493, 1.493, 1.507 (plus 5 runs alone: all 1.191 / 1.493). Villager walking is deterministic in the stacked setup (about 4-6 ticks per log). Mutation: iron speed set to stone's turns it red.
+- **Verify.** 8 of 8 full Layer 2 runs green (196 tests). One earlier `./gradlew build` showed the known M9 flake `six_oaks_two_days` ("oak 0 went at tick 600 and was not replanted within a day"), before any glue change; not seen again in 14 runs.
+- **Deviations** (docs/plans/M15.md section 8): no `WorkerRecord.level` (M12 absent: T-L2-4 not written, re-install resets to level 1; M12 note in ROADMAP), codec clamps only above the table (M7's test pins the lower bound), oak trees have only 4-6 logs (T-L2-5/6 use oak seed 3), side-by-side offsets 28 instead of 30/60.
+- **Next.** M16-M19, M22 each call `WorkXp.award` (notes in ROADMAP). M12 adds the record mirror in `WorkXp`. M14 adds tier progression to `TierRules`.
+
+## 2026-11-08: M15 verifier review r1: FAIL (docs/reviews/M15-r1.md)
+- Merged origin/dev (M16, M20) into m15. The five conflicts (docs, client and reset hooks, gametest entrypoints) kept both sides. No enum conflicted. `levelCapped` is appended at the end of the row codec.
+- Every criterion goes red under its mutation: thresholds, cap ignored (L1 and 6 L2 tests), level not applied to speed (L1 and the felling-pace tests), XP not awarded (lumberjack, farmer, builder), the level pass removed, wear off, and the codec lower bound.
+- Fix 1: the merged miner (M16) never calls `WorkXp.award(ITEM_MINED)`, so a miner's level never rises (DESIGN §4: "mined item 1"). It needs the call in `MinerSystem`'s haul branch and an L2 assertion.
+- Full L2: 6 of 6 green in the foreground (209 tests). Side by side: iron/stone 1.191 or 1.202, iron/wood 1.493 or 1.507. No M9 flakes. M16's stray-item flake was seen once, in a mutated run. `scripts/verify.sh` exit 0. I looked at both M15 screenshots.
+- Next: M15 round 2 (fix 1).
+
+## 2026-11-08: M15 review r1 fixes
+- The merged miner (M16) now earns XP: `MinerSystem` awards `ITEM_MINED` (sum of the haul's item counts) next to `work.miner.hauls`; `minerHaulsFortyCobblestone` asserts XP == min(300, items hauled) and goes red without the call ("expected 77, was 0"). Builder, lumberjack and farmer were already wired and tested; no other job is merged. Stale M16 "Note (M15)" removed from ROADMAP.
+- Side-by-side test: the final assertions run in try/finally so a failed assertion still clears the upper platforms (a timeout is still covered only by the clear at the next run's start). T-L2-11 keeps the reflection (a rename fails loudly).

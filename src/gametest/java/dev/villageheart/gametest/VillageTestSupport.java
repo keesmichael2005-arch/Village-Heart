@@ -50,6 +50,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();
 		dev.villageheart.worker.farm.FarmJob.testKeepAll = i -> false;
 		dev.villageheart.worker.job.WorkerStatuses.clearAll();
+		dev.villageheart.worker.LevelUpFeedback.resetForTests();
+		dev.villageheart.worker.WorkXp.clear();
 		dev.villageheart.worker.job.AwayTrips.clearForTests();
 		dev.villageheart.worker.mine.MinerJob.clearForTests();
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world

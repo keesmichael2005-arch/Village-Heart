@@ -37,6 +37,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "villagers.more", "+%s more villagers");
 		EN.put(PREFIX + "villagers.unemployed", "Unemployed");
 		EN.put(PREFIX + "villagers.level", "%s L%s");
+		EN.put(PREFIX + "villagers.level_capped", "Needs a %s to reach level %s");
 		EN.put(PREFIX + "villagers.nitwit", "Nitwit");
 		EN.put(PREFIX + "villagers.nitwit_note", "Nitwits cannot work.");
 		EN.put(PREFIX + "villagers.job", "Job: %s (%s free)");

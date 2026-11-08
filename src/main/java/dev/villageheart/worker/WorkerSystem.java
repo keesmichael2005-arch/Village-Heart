@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.MinecraftServer;
@@ -54,6 +55,8 @@ public final class WorkerSystem implements VillageSystem {
 				JobSiteReservations.processPending(server);
 			}
 		});
+		LevelUpFeedback.register();
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> WorkXp.clear());
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());
 		});
@@ -61,7 +64,8 @@ public final class WorkerSystem implements VillageSystem {
 			if (previous instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());
 			// unconditional on the namespace, no record lookup: the result of a conversion never keeps a mod profession
 			if (converted instanceof VillagerDataHolder holder && ModProfessions.isModProfession(holder.getVillagerData().profession())) {
-				holder.setVillagerData(holder.getVillagerData().withProfession(converted.level().registryAccess(), VillagerProfession.NONE));
+				// level 1 too: the level badge of a worker (M15) must not survive as a vanilla level on the cured villager
+				holder.setVillagerData(holder.getVillagerData().withProfession(converted.level().registryAccess(), VillagerProfession.NONE).withLevel(1));
 			}
 		});
 	}
@@ -98,6 +102,7 @@ public final class WorkerSystem implements VillageSystem {
 					v.setVillagerData(v.getVillagerData().withProfession(ModProfessions.holder(job.get())));
 				}
 				if (!v.isBaby() && !WorkerBrain.isWorkerBrain(v)) v.refreshBrain(level);
+				WorkXp.pass(level, v, village.tier());
 			}
 		}
 	}
