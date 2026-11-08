@@ -1,6 +1,8 @@
 # Backlog (non-blocking review notes)
 
 ## Priority (flaky infrastructure)
+- [ ] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+- [ ] **M9 `workerOpensDoors` slow outliers** (456 vs 400 once; 301 once): add walk-time logging and root-cause it
 - [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
   - **Fixed (branch l4-flake).** Root cause is in Fabric, not our tests: a lost-wakeup race in `NetworkSynchronizer.waitForPacketHandlers` (predicate tested outside the lock, then `await(10 s)` with no re-test). The server thread's first tick of a new world misses the signal for the client's login packet and sleeps 10 s, which the synchronizer reports as invalid. Fixed by a gametest-only mixin that re-tests before parking and parks in 20 ms slices (no retry). See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 
