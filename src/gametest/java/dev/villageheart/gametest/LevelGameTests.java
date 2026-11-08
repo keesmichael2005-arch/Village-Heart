@@ -22,6 +22,7 @@ import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Layer 2: job levels and XP (M15). Own environment per test ({@code levels_<name>}), the lumber scene, {@code begin}/{@code done}/{@code end}.
@@ -464,6 +465,174 @@ public class LevelGameTests {
 			h.assertValueEqual(1L, LevelTestSupport.count(owner[0], more), "and one summary line");
 			var line = owner[0].messages.stream().filter(m -> LevelTestSupport.keyOf(m).equals(more)).findFirst().orElseThrow();
 			h.assertValueEqual(2, ((net.minecraft.network.chat.contents.TranslatableContents) line.getContents()).getArgs()[0], "'and 2 more'");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-10 (roadmap) -----------------------------------------------------------------------
+
+	/** Per-tick measurement of the side-by-side test: logs per grove in the felling window, claims, axe wear, "Needs axe" spells. */
+	private static final class SideSampler {
+		final SideBySide.Grove[] groves;
+		final Villager[] workers;
+		final int[][] startDamage;
+		final int baseY;
+		final int[] last = new int[3];
+		final int[] window = new int[3];
+		final int[] total = new int[3];
+		final int[] needsAxeSteps = new int[3];
+		final int[] longestNeedsAxe = new int[3];
+		final java.util.List<String> problems = new java.util.ArrayList<>();
+		final java.util.Set<BlockPos>[] sets = new java.util.Set[3];
+		long windowStartDay = 1000, windowEndDay = 5000;
+		boolean active;
+
+		SideSampler(SideBySide.Grove[] groves, Villager[] workers, int[][] startDamage, int[] maxDamageByLevel, int baseY) {
+			this.groves = groves;
+			this.workers = workers;
+			this.startDamage = startDamage;
+			this.maxDamageByLevel = maxDamageByLevel;
+			this.baseY = baseY;
+			for (int k = 0; k < 3; k++) sets[k] = groves[k].all();
+		}
+
+		final int[] maxDamageByLevel;
+
+		void start(GameTestHelper h) {
+			for (int k = 0; k < 3; k++) last[k] = LumberTestSupport.standing(h, sets[k]);
+			active = true;
+		}
+
+		void sample(GameTestHelper h) {
+			if (!active) return;
+			long day = h.getLevel().getDayTime() % 24000;
+			for (int k = 0; k < 3; k++) {
+				int now = LumberTestSupport.standing(h, sets[k]);
+				int d = last[k] - now;
+				if (d > 0) {
+					total[k] += d;
+					if (day >= windowStartDay && day < windowEndDay) window[k] += d;
+				}
+				last[k] = now;
+			}
+			var claims = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).claims();
+			for (var e : claims.entrySet()) {
+				long idx = Math.round((e.getKey().y() - baseY) / (double) SideBySide.DY);
+				if (idx < 0 || idx > 2 || !e.getValue().equals(workers[(int) idx].getUUID())) {
+					if (problems.size() < 6) problems.add("@" + h.getTick() + " tree at " + e.getKey() + " claimed by " + e.getValue() + " (level " + idx + ")");
+				}
+			}
+			if (h.getTick() % 5 == 0) {
+				for (int k = 0; k < 3; k++) {
+					if (LumberTestSupport.status(h, workers[k]) == dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL) {
+						needsAxeSteps[k]++;
+						longestNeedsAxe[k] = Math.max(longestNeedsAxe[k], needsAxeSteps[k]);
+					} else {
+						needsAxeSteps[k] = 0;
+					}
+				}
+			}
+			if (h.getTick() % 100 == 0) checkWear(h);
+		}
+
+		void checkWear(GameTestHelper h) {
+			for (int k = 0; k < 3; k++) {
+				int wear = SideBySide.wear(h, k, startDamage[k], maxDamageByLevel[k]);
+				if (wear != total[k] && problems.size() < 6) problems.add("@" + h.getTick() + " level " + k + ": axe wear " + wear + " but " + total[k] + " logs felled");
+			}
+		}
+	}
+
+	@GameTest(environment = "villageheart-gametest:levels_side_by_side", structure = YARD, skyAccess = true, maxTicks = 6500)
+	public void ironAxeOutFellsStoneSideBySide(GameTestHelper h) {
+		begin(h);
+		SideBySide.clearUpper(h);
+		dev.villageheart.core.job.ToolTier[] tier = {dev.villageheart.core.job.ToolTier.IRON, dev.villageheart.core.job.ToolTier.STONE,
+				dev.villageheart.core.job.ToolTier.WOOD};
+		SideBySide.Grove[] groves = new SideBySide.Grove[3];
+		Villager[] w = new Villager[3];
+		int[][] startDamage = new int[3][2];
+		int[] maxDamage = new int[3];
+		SideSampler[] sampler = new SideSampler[1];
+		h.onEachTick(() -> {
+			if (sampler[0] != null) sampler[0].sample(h);
+		});
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			LumberTestSupport.sweepStrayTrees(h, 48);
+			for (int k = 0; k < 3; k++) {
+				SideBySide.platform(h, k);
+				SideBySide.buildBuildings(h, k);
+			}
+		}).thenWaitUntil(() -> SideBySide.assertValid(h));
+		seq = seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			var heart = dev.villageheart.world.VillageClaims.current(server).orElseThrow().heart();
+			int baseY = h.absolutePos(BlockPos.ZERO).getY();
+			for (int k = 0; k < 3; k++) {
+				groves[k] = SideBySide.grow(h, k);
+				int total = 0;
+				for (var tree : groves[k].trees()) {
+					h.assertTrue(tree.size() >= 20, "every tree has at least 20 logs: " + tree.size());
+					total += tree.size();
+				}
+				h.assertValueEqual(total, groves[k].logs(), "the trees of grove " + k + " do not touch each other");
+				h.assertTrue(total >= 160, "grove " + k + " holds at least 160 logs: " + total);
+				for (BlockPos p : groves[k].all()) {
+					h.assertTrue(dev.villageheart.core.ClaimGeometry.inClaim(heart, dev.villageheart.world.VillageClaims.locate(h.getLevel(), p)),
+							"log " + p + " of grove " + k + " lies inside the claim");
+					h.assertTrue(p.getY() - baseY - SideBySide.dy(k) <= 12, "a log at " + p + " is more than 12 above its ground");
+				}
+				h.assertValueEqual(SideBySide.normalised(groves[0]), SideBySide.normalised(groves[k]), "grove " + k + " is grove 0 translated");
+				for (BlockPos p : new BlockPos[] {SideBySide.chop(k), SideBySide.storeChest1(k), SideBySide.chest(k)}) {
+					h.assertTrue(dev.villageheart.core.ClaimGeometry.inClaim(heart, BuildingTestSupport.loc(h, p)), p + " lies inside the claim");
+				}
+				ItemStack worn = axe(tier[k]);
+				maxDamage[k] = worn.getMaxDamage();
+				worn.setDamageValue(maxDamage[k] - 29); // every first axe breaks after 29 logs, the second takes over
+				startDamage[k][0] = worn.getDamageValue();
+				putInChest(h, SideBySide.chest(k), 0, worn);
+				putInChest(h, SideBySide.chest(k), 1, axe(tier[k]));
+			}
+			h.getLevel().setDayTime(1000);
+			for (int k = 0; k < 3; k++) w[k] = SideBySide.hireAt(h, k);
+			sampler[0] = new SideSampler(groves, w, startDamage, maxDamage, baseY);
+			sampler[0].start(h);
+		});
+		seq = seq.thenIdle(5);
+		seq = seq.thenExecute(() -> h.assertTrue(h.getLevel().getDayTime() > 1004, "the day advances"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() % 24000 >= 5000, "day tick 5000"));
+		seq.thenExecute(() -> {
+			SideSampler s = sampler[0];
+			s.active = false;
+			s.checkWear(h);
+			int iron = s.window[0], stone = s.window[1], wood = s.window[2];
+			double ironStone = iron / (double) Math.max(1, stone), ironWood = iron / (double) Math.max(1, wood);
+			StringBuilder wlog = new StringBuilder();
+			for (int k = 0; k < 3; k++) {
+				double wait = s.window[k] == 0 ? -1 : (4000.0 - s.window[k] * LumberTestSupport.ticksPerLog(tier[k])) / s.window[k];
+				wlog.append(String.format(" %s=%.1f", tier[k], wait));
+			}
+			System.out.println(String.format("[m15] side-by-side wood=%d stone=%d iron=%d ratios iron/stone=%.3f iron/wood=%.3f stone/wood=%.3f overhead(ticks per log)%s felled-total=%s",
+					wood, stone, iron, ironStone, ironWood, stone / (double) Math.max(1, wood), wlog, java.util.Arrays.toString(s.total)));
+			h.assertTrue(s.problems.isEmpty(), "measurement problems: " + s.problems);
+			for (int k = 0; k < 3; k++) {
+				int standing = LumberTestSupport.standing(h, s.sets[k]);
+				h.assertTrue(standing >= 20, "grove ran out at level " + k + " (" + standing + " logs stand): the comparison is invalid");
+				h.assertTrue(s.total[k] > 0 && SideBySide.wear(h, k, startDamage[k], maxDamage[k]) == s.total[k], "level " + k + ": axe wear = logs felled");
+				h.assertTrue(s.longestNeedsAxe[k] <= 8, "level " + k + " was without an axe for " + s.longestNeedsAxe[k] * 5 + " ticks");
+				h.assertValueEqual(1, data(w[k]).level(), "level " + k + " worker stays level 1 at Hamlet");
+				h.assertValueEqual(Math.min(300, s.total[k]), data(w[k]).xp(), "level " + k + " worker: one XP per log felled");
+				var collected = w[k].getInventory().countItem(net.minecraft.world.item.Items.DARK_OAK_LOG)
+						+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest1(k)), net.minecraft.world.item.Items.DARK_OAK_LOG)
+						+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest2(k)), net.minecraft.world.item.Items.DARK_OAK_LOG);
+				h.assertTrue(collected >= s.total[k] - 1, "level " + k + ": " + collected + " logs carried or stored for " + s.total[k] + " felled");
+			}
+			h.assertTrue(wood < stone && stone < iron, "wood < stone < iron: " + wood + " " + stone + " " + iron);
+			h.assertTrue(iron >= 1.1 * stone, "iron fells at least 1.1x stone: " + iron + " vs " + stone + " (" + ironStone + ")");
+			h.assertTrue(iron >= 1.3 * wood, "iron fells at least 1.3x wood: " + iron + " vs " + wood + " (" + ironWood + ")");
+			assertNoGiveUps(h);
+			SideBySide.clearAll(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});
