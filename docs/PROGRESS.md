@@ -443,3 +443,10 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
 - Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
 - Next: M21 (Defence blueprints).
+
+## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
+- Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
+- Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
+- Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
+- Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
+- Next: M17 (Hunter) reuses AwayTrips.

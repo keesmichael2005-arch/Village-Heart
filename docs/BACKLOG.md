@@ -153,3 +153,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
 - [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
 - [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared
+
+## From M16-r1
+- [ ] A miner stuck hidden (no free cell to come up) has job status SITE_UNREACHABLE, but the Heart row shows "Away (mining)" (`HeartFacts` checks `isAway` first), not "Can't reach the Mineshaft"
+- [ ] No committed test releases the Heart while a hidden miner is unloaded (the verifier's probe passed)
+- [ ] `PriorFlags.invisible` records a potion's Invisible flag; if the effect ends underground the miner comes up invisible until the next effect change or reload (cosmetic)
+- [ ] A hidden miner that dies (`/kill`, void) loses its pending haul (release drops it, death does not)
+- [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic
