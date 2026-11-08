@@ -77,7 +77,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] processPending "skip blocks the current village holds" branch has no test
 - [ ] Tiny window: a pending release runs up to 20 ticks after the chunk loads; a break/re-place plus a vanilla claim in that window would free the new ticket
 - [ ] Crash between the POI save and the saved-data save can leave a stale ticket (documented in TESTING.md)
-- [ ] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic)
+- [x] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic) (fixed in M15)
 - [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
