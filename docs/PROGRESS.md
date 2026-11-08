@@ -572,3 +572,16 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
 - `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
 - Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.
+## 2026-11-07: M12 plan written (docs/plans/M12.md, branch m12-plan)
+8-step plan for the treasury and wages. APIs checked with javap against the 1.21.11 jar (no Gradle run).
+- Deposit: right-click the Heart with emeralds in the main hand (`useItemOn`; other items `TRY_WITH_EMPTY_HAND` → M8's screen) plus "Deposit all" on the Overview;
+  Owner-only "Withdraw 1/64" buttons through M8's validated action path. New permissions DEPOSIT_TREASURY (Resident+) / WITHDRAW_TREASURY (Owner only; M8's Steward-gets-all case rewritten).
+- Dawn: shared pure `DailyClock` (M11's dinner clock delegates); wages when the day index changes, Heart chunk loaded, once per day, no catch-up; dawn listeners for M14/M23.
+- Pay rule (core `PayRun`): hiring order, skip on when a wage does not fit; `Payroll(lastWageDay, paidToday, unpaid with stored wages)` saved in the claim.
+  Strike = in today's unpaid list; any treasury increase settles strikers at once; hires are charged at once (closes the fire/rehire free-day exploit).
+- Strike → `needs.paid` false → speed 0, enforced by one `GatedWork` wrapper in `JobBehaviours.work` (deposit trips still run); status ON_STRIKE.
+- `WorkerRecord.level` mirror so unloaded workers are paid and the wage bill is known. Overview: wage bill, STRIKE (danger) and TREASURY_SHORT alerts, severity-first alert order.
+- Cross-milestone catch: M11's `starter` L3 scenario would strike from day 2 with treasury 0: M12 adds `villageheart treasury add 32` and wage assertions, re-run by hand.
+Revised after a fresh critique (25 findings; 22 taken, 2 partly, 1 refuted).
+Assumptions: built after M8, M9, M11 are merged on dev (names from their plans/branches, plan 3.1); steps 1-2 only need M7.
+Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: three unmerged dependencies' APIs.
