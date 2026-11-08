@@ -459,3 +459,9 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Fixed on the way: the sim's forced chunks became entity-ticking at different speeds (site search was luck): `waitBell` now waits for them; the same race made `forcedChunkGrowsWithoutPlayer` flaky (now waits for ticking, and pins noon: saplings need daylight).
 - Doubt: in 1 of ~6 early 4-day runs the lumberjack's deposit trip reported STORAGE_UNREACHABLE from day 2 on (logs flat). It did not recur in 5 later runs (2x 10 days, 3x 4 days); a `[trip]` log line now names position and door if it does.
 - Next: M12 treasury (add `treasury add` to `starter`, see its description), M13 compares `food.eaten_nutrition / food.eaten_items`.
+
+## 2026-11-08: M11 verifier review r2: FAIL (docs/reviews/M11-r2.md)
+- Both round-1 items are fixed. Cooked-before-raw L1 and L2 tests go red when the raw key is removed. `starter` 10 days: 3 of 3 runs exit 0, logs rise daily, 100 % fed, 0 failed trips.
+- New real-game bug: `LeafEscape` breaks persistent (player-placed) leaves on every failed trip or tree give-up; a probe hedge lost 14 blocks in one give-up. The ramp's 1-block-per-step claim is false, and canopy air pockets leave floating grass (harness).
+- Merged origin/dev (M20): enum conflicts resolved with M20 values first, TOO_HUNGRY appended. L2 205/205 in 6 of 6 foreground runs plus verify.sh; no M9 flakes. verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 3.
