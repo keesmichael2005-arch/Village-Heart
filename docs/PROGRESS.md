@@ -471,3 +471,10 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - **Verify.** 8 of 8 full Layer 2 runs green (196 tests). One earlier `./gradlew build` showed the known M9 flake `six_oaks_two_days` ("oak 0 went at tick 600 and was not replanted within a day"), before any glue change; not seen again in 14 runs.
 - **Deviations** (docs/plans/M15.md section 8): no `WorkerRecord.level` (M12 absent: T-L2-4 not written, re-install resets to level 1; M12 note in ROADMAP), codec clamps only above the table (M7's test pins the lower bound), oak trees have only 4-6 logs (T-L2-5/6 use oak seed 3), side-by-side offsets 28 instead of 30/60.
 - **Next.** M16-M19, M22 each call `WorkXp.award` (notes in ROADMAP). M12 adds the record mirror in `WorkXp`. M14 adds tier progression to `TierRules`.
+
+## 2026-11-08: M15 verifier review r1: FAIL (docs/reviews/M15-r1.md)
+- Merged origin/dev (M16, M20) into m15. The five conflicts (docs, client and reset hooks, gametest entrypoints) kept both sides. No enum conflicted. `levelCapped` is appended at the end of the row codec.
+- Every criterion goes red under its mutation: thresholds, cap ignored (L1 and 6 L2 tests), level not applied to speed (L1 and the felling-pace tests), XP not awarded (lumberjack, farmer, builder), the level pass removed, wear off, and the codec lower bound.
+- Fix 1: the merged miner (M16) never calls `WorkXp.award(ITEM_MINED)`, so a miner's level never rises (DESIGN §4: "mined item 1"). It needs the call in `MinerSystem`'s haul branch and an L2 assertion.
+- Full L2: 6 of 6 green in the foreground (209 tests). Side by side: iron/stone 1.191 or 1.202, iron/wood 1.493 or 1.507. No M9 flakes. M16's stray-item flake was seen once, in a mutated run. `scripts/verify.sh` exit 0. I looked at both M15 screenshots.
+- Next: M15 round 2 (fix 1).

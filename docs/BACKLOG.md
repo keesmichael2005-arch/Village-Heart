@@ -160,3 +160,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `PriorFlags.invisible` records a potion's Invisible flag; if the effect ends underground the miner comes up invisible until the next effect change or reload (cosmetic)
 - [ ] A hidden miner that dies (`/kill`, void) loses its pending haul (release drops it, death does not)
 - [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic
+
+## From M15-r1
+- [ ] "needs a Town" never fires for a worker that reached level 2 through a tier-up with 300 XP banked (XP clamps at 300, so no threshold is crossed again; the gold bar shows it)
+- [ ] `LevelUpFeedback.onCapped` lines beyond the 3-per-tick budget are dropped, not counted in the "and N more" summary
+- [ ] `ironAxeOutFellsStoneSideBySide` clears its upper platforms only on success; a failed run leaves glass, dark oaks and villagers above its slot
+- [ ] T-L2-11 starts the cure by reflection (`ZombieVillager.startConverting`); the public path (Weakness + golden apple via `mobInteract`) would survive a rename
+- [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
