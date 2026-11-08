@@ -111,6 +111,7 @@ from there instead of hard-coding them.
 - **L2**: 3 workers and 2 emeralds → after dawn 2 are paid and 1 is on strike. The striking lumberjack chops 0 logs that day
 - **L4**: Overview tab screenshot showing the treasury, wage bill and a strike alert
 - Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
+- Built (M12 builder, branch `m12`; boxes left for the verifier): `WageGameTests` (12 tests incl. the roadmap case `threeWorkersTwoEmeraldsOneStrikes`, M24's `onlyOwnerCanWithdraw`, M15's `workerComesBackAtItsLevel`), L1 `PayRunTest`/`PayrollTest`/`WageRulesTest`/`StrikersProduceNothingTest`/`DailyClockTest`/..., L4 `TreasuryClientTests` (`treasury_overview.png`, `treasury_villagers.png`), L3 `starter` seeded and asserted. See PROGRESS for deviations.
 
 ## M13: Cook / Kitchen
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_COOKED, n)` next to the cook counter (one per output item).

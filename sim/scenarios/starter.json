@@ -1,10 +1,11 @@
 {
   "schema": 1,
   "name": "starter",
-  "description": "M11: a small working village on the seed-1 plains village. Prebuilt House x2, Storage (2 days of bread), Farmhouse + 9x9 mature carrot field, Lumber Camp (diamond axe, oak grove), Kitchen; a farmer and a lumberjack hired on day 1 (teleported to their door; a replacement is hired when one dies). Normal difficulty, mobs on. M12 HOOK: once the treasury exists add a day-0 action { \"action\": \"command\", \"command\": \"villageheart treasury add 32\" } so the workers are paid.",
+  "description": "M11: a small working village on the seed-1 plains village. Prebuilt House x2, Storage (2 days of bread), Farmhouse + 9x9 mature carrot field, Lumber Camp (diamond axe, oak grove), Kitchen; a farmer and a lumberjack hired on day 1 (teleported to their door; a replacement is hired when one dies). Normal difficulty, mobs on. M12: the owner puts 32 emeralds in the treasury at setup (villageheart treasury add 32): each hire is charged 1 at once (2 on day 1) and the dawns of days 2..10 cost 2 each, 20 in all, so nobody strikes; wages leave the treasury every day (the assertions say so).",
   "default_days": 10,
   "actions": [
     { "action": "claim" },
+    { "action": "command", "command": "villageheart treasury add 32" },
     { "action": "site", "size": [44, 32], "min_distance": 24, "max_distance": 72, "max_deviation": 5, "odd_percent": 4 },
     { "action": "prefab", "building": "house",       "at": [2, 2],   "size": [5, 4], "door": "south", "contents": ["bed", "bed", "light"] },
     { "action": "prefab", "building": "house",       "at": [10, 2],  "size": [5, 4], "door": "south", "contents": ["bed", "bed", "light"] },
@@ -27,6 +28,9 @@
     "sum(food.fed) >= 0.9 * sum(food.diners) from day 3",
     "max(food.max_hungry_days) < 3 from day 3",
     "stockpile.tag.minecraft:logs > stockpile.tag.minecraft:logs@prev on every day",
+    "max(wages.strikers) == 0 from day 1",
+    "sum(wages.runs) >= 8 from day 1",
+    "treasury <= treasury@prev - 2 from day 3",
     "village_ms.mean < 1 on every day"
   ]
 }

@@ -413,6 +413,24 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
 - **Treasury**: emeralds deposited at the Heart (Resident+). Only the Owner can withdraw.
 - **Wages**: paid at **dawn**: **1 / 1 / 2 emeralds** per day for levels 1 / 2 / 3 *(tunable)*. If the treasury is short,
   workers are paid in hiring order, and the rest strike for the day.
+  Rules as built (M12):
+  - **Deposit** = right-click the Heart with emeralds in the main hand: the whole stack goes in (as much as fits under 100 000), for Owner, Steward
+    and Resident; a Visitor gets a message and the Overview opens instead. Sneaking with an item skips the block (vanilla). "Deposit all" on the
+    Overview takes every emerald in the inventory. **Withdraw 1 / 64** (Overview, Owner only) puts emeralds in the inventory (what does not fit drops at
+    the player). Any emerald counts (a renamed one loses its name). Every deposit and withdraw is one INFO log line with the player's name.
+  - **Dawn** = the first tick of a new day index (`floorDiv(dayTime, 24000)`, also where sleeping lands). It runs once per index change and only while
+    the Heart chunk is loaded: no catch-up for skipped days or unloaded time, `/time set` back pays once. A new claim or an old save starts at today
+    (no instant charge). With `advance_time` off nobody is paid. `VillageDawn.register(id, listener)` lets later milestones react to the same dawn
+    (after wages, with the pre- and post-wage treasury in `PayResult`).
+  - **Pay rule.** Every registered worker, loaded or not (its level is mirrored in `WorkerRecord.level`), in hiring order; a worker whose wage fits what
+    is left is paid, one that does not strikes **and the walk goes on** (a cheaper later worker can still be paid). Owed wages are never carried over.
+  - **Strike** = on today's unpaid list. A striker's work speed is 0 (all jobs, via `needs.paid`; deposit trips still run), its status is "On strike"
+    and it outranks hunger. **Every treasury increase** (deposit, the `treasury add` and `set` commands, a merchant's sale in M22) pays the strikers at
+    their wage as charged at dawn, in hiring order, at once. **A hire is charged at once** (a fresh hire strikes when the treasury cannot pay), so
+    firing at dusk and hiring again at dawn is no free day; a worker already paid today costs nothing to hire again the same day.
+  - **Overview.** Treasury, "Wages tomorrow: N emeralds" (red when the treasury is short), a danger line "N workers are on strike" and a warning "Treasury
+    short: X of Y". Alerts are ordered severity first (danger, then warning), so the five-line cap never hides a strike.
+  - The treasury is capped at 100 000 emeralds (`Balance.MAX_TREASURY`). `/villageheart treasury get|add n|set n` (op) is the admin and test way in.
 - **Simulation is frozen when the village's chunks are unloaded**, as in vanilla. There is no catch-up. Dinner and
   dawn events fire only while the Heart chunk is loaded.
 

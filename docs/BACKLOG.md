@@ -83,7 +83,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
 ## Cross-milestone (from the M12 plan)
-- [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+- [x] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+  - Done in M12: `starter.json` seeds 32 emeralds and asserts the wage metrics (hand run recorded in PROGRESS).
 
 ## From M8-r1
 - [x] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
@@ -99,7 +100,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] **Creative pick-block with data copies a protected chest:** `PlayerPickItemEvents.BLOCK` exists in Fabric for a later fix
 - [ ] Should breaking a registered marker be Steward-only (today Residents can, Visitors cannot)?
 - [ ] No self step-down: an Owner can demote anyone but must transfer to stop being Owner
-- [ ] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+- [x] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+  - Done in M12: both permissions and rows, `WageGameTests.onlyOwnerCanWithdraw`; the multiplayer deposit/withdraw step: see "From M12" below.
 - [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
 - [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
@@ -212,3 +214,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
 - [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+
+## From M12 (builder notes)
+- [ ] **No `GatedWork` wrapper** (plan 3.2 #7): a striker stops through M11's per-job speed-0 handling (planner rows and `WorkSpeed`), which every current job already honours; `core.worker.WorkGate.mayWork` exists and `StrikersProduceNothingTest` pins speed 0 for every `JobType`. A wrapper around `JobBehaviours.work` would also stop the idle walk-back of a hungry or unpaid lumberjack/farmer (M11 r2 legs), so it was left out. M13+ jobs must read `needs.speed()` themselves (or call `WorkGate.mayWork`).
+- [ ] `NeedsOverride.forceDefaultNeeds` keeps its name (plan: `forceFedAndHoused`) to keep M11's tests untouched; its Javadoc says `paid` is never forced
+- [ ] `frozenWhileHeartUnloaded` has no workers in the far village (building one 100 000 blocks away is heavy): it proves `lastWageDay` and the dawn counter do not move while unloaded and that exactly one run happens on load, not that a treasury figure stays put
+- [ ] `threeWorkersTwoEmeraldsOneStrikes` watches the working day's first 2 500 ticks (not all 11 000) and tells C from A by distance to the trees, not by a per-villager log watcher (none exists)
+- [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
+- [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
+- [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+- [ ] A multiplayer deposit/withdraw step in `MultiplayerClientTests` (M24 backlog) is not built: `TreasuryClientTests` covers the UI path in singleplayer and `onlyOwnerCanWithdraw` the ranks at L2

@@ -135,6 +135,13 @@ public final class MetricsJson {
 		hs.put("house_beds", d.needs().houseBeds());
 		m.put("housing", hs);
 		m.put("treasury", (long) d.treasury());
+		Map<String, Object> wg = new LinkedHashMap<>();
+		wg.put("runs", d.wages().runs());
+		wg.put("bill", d.wages().bill());
+		wg.put("paid", d.wages().paid());
+		wg.put("spent", d.wages().spent());
+		wg.put("strikers", d.wages().strikers());
+		m.put("wages", wg);
 		Map<String, Object> de = new LinkedHashMap<>();
 		de.put("total", (long) d.deaths().size());
 		de.put("mobs", (long) d.mobDeaths());
@@ -226,6 +233,7 @@ public final class MetricsJson {
 		Map<String, Object> s = Json.obj(m.get("stockpile"), "stockpile");
 		Map<String, Object> f = Json.obj(m.get("food"), "food");
 		Map<String, Object> hs = m.get("housing") == null ? Map.of() : Json.obj(m.get("housing"), "housing");
+		Map<String, Object> wg = m.get("wages") == null ? Map.of() : Json.obj(m.get("wages"), "wages");
 		Map<String, Object> de = Json.obj(m.get("deaths"), "deaths");
 		Map<String, Object> vm = Json.obj(m.get("village_ms"), "village_ms");
 		Map<String, Object> sv = Json.obj(m.get("server"), "server");
@@ -245,6 +253,7 @@ public final class MetricsJson {
 				dbl(sv, "mspt"), dbl(sv, "tps"), dbl(m, "wall_seconds"), lng(sv, "heap_used_mb"), lng(w, "save_bytes"),
 				readLongs(m.get("work")), readLongs(m.get("worker_status")), readLongs(m.get("stockpile_tags")),
 				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
-						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")));
+						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
+				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")));
 	}
 }
