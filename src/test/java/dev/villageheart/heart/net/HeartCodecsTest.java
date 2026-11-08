@@ -160,7 +160,16 @@ class HeartCodecsTest {
 				Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, StorageAlert.FULL);
 		List<MemberRow> members = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_MEMBERS; i++) members.add(new MemberRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), Rank.RESIDENT, true));
-		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE);
+		TextLine bt = new TextLine("build.villageheart." + s(HeartLimits.MAX_KEY - 19), s(HeartLimits.MAX_TEXT),
+				List.of(s(HeartLimits.MAX_BUILD_ARG), s(HeartLimits.MAX_BUILD_ARG)));
+		assertEquals(HeartLimits.MAX_BUILD_ARG, bt.args().get(0).length(), "the build texts keep their long args");
+		List<dev.villageheart.core.heart.BuildRow> builds = new ArrayList<>();
+		for (int i = 0; i < HeartLimits.MAX_BUILDS; i++) {
+			builds.add(new dev.villageheart.core.heart.BuildRow(s(HeartLimits.MAX_ID), Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
+					dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, Integer.MIN_VALUE, Integer.MIN_VALUE, bt,
+					java.util.Collections.nCopies(HeartLimits.MAX_BUILD_MISSING, bt), s(HeartLimits.MAX_NAME)));
+		}
+		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE, builds);
 	}
 
 	@Test void worstCaseSize() {
@@ -169,6 +178,21 @@ class HeartCodecsTest {
 		System.out.println("heart snapshot worst case: " + size + " bytes (" + size / 1024 + " KiB)");
 		assertTrue(size < 512 * 1024, "worst case " + size + " bytes must stay under half the 1 MiB vanilla S2C cap");
 		assertEquals(s, roundTrip(HeartCodecs.SNAPSHOT, s), "and it still decodes");
+	}
+
+	@Test void buildRowsRoundTripAndAreBounded() {
+		TextLine status = new TextLine("build.villageheart.needs", "Needs %s more %s", List.of("12", "planks"));
+		dev.villageheart.core.heart.BuildRow row = new dev.villageheart.core.heart.BuildRow("small_house", 10, 64, -3,
+				dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, 86, 172, status, List.of(status), "Ada");
+		assertEquals(row, roundTrip(HeartCodecs.BUILD_ROW, row));
+		Overview o = new Overview("", Tier.TOWN, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, -1, 0, -1, List.of(), 0);
+		List<dev.villageheart.core.heart.BuildRow> many = new ArrayList<>();
+		for (int i = 0; i <= HeartLimits.MAX_BUILDS; i++) many.add(row);
+		HeartSnapshot tooMany = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0, many);
+		assertThrows(RuntimeException.class, () -> encodedSize(tooMany));
+		HeartSnapshot ok = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0, List.of(row));
+		assertEquals(ok, roundTrip(HeartCodecs.SNAPSHOT, ok));
+		assertEquals(List.of(row), roundTrip(HeartCodecs.SNAPSHOT, ok).builds());
 	}
 
 	// ---- limits -------------------------------------------------------------------------------------------------------

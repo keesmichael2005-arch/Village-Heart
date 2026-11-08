@@ -11,6 +11,7 @@ public class VillageHeart implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		dev.villageheart.build.ModComponents.register();
 		ModBlocks.register();
 		dev.villageheart.item.ModItems.register();
 		dev.villageheart.block.MarkerBlocks.register();
@@ -23,9 +24,11 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.room.RoomCells.register();
 		dev.villageheart.heart.ModMenus.register();
 		dev.villageheart.heart.net.HeartNetwork.register();
+		dev.villageheart.build.net.BuildNetwork.register();
 		dev.villageheart.rank.ContainerProtection.register();
 		dev.villageheart.rank.Members.register();
 		dev.villageheart.rank.RankCommands.register();
+		dev.villageheart.build.BuildCommands.register();
 		dev.villageheart.world.VillageTicker.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:job_reservations", dev.villageheart.worker.JobSiteReservations.INSTANCE);
@@ -33,6 +36,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:lumber", dev.villageheart.worker.lumber.LumberSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:builds", dev.villageheart.build.BuildSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }

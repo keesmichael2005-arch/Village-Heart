@@ -337,6 +337,27 @@ Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `tr
 - marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
 - Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
 
+## 2026-11-07: M20 plan written (docs/plans/M20.md)
+12-step plan for the Builder and blueprints (buildings). APIs checked against the 1.21.11 sources and data tags (no Gradle run).
+- Core `core.blueprint`: a text format (palette + layers, `base`, `anchor`, `front`, passes, two-block `part=` units, `converts`, room-cell annotations),
+  `Rotation4` (vanilla position rule), `Placement`, `BuildPlan` (clear top-down, place bottom-up, attached, last, check pass, marker last),
+  `SiteRules` (12 ordered refusals incl. overlap with any registered room's interior/shell), `MaterialPlanner`, `FetchBatch`, `BuilderPlanner`, saved `BuildJob`.
+- The three blueprints as data: Small House and Storage Shed (5x5 floor inside a 7x7 shell, marker included: 49 cobblestone, 119 planks, ...), Farm Plot
+  (80 dirt to farmland, water from a bucket, 39 fences, a gate). An L1 test proves both houses are valid rooms in all 4 rotations through the real `RoomScanner`.
+- "Player-placed" = anything outside `#villageheart:builder_clearable` (plus persistent leaves, fluids, block entities, logs); every marked room is protected by the overlap rule.
+- Builder reuses M9's `WorkClock`/`WalkTo`/`WorkerStatuses`/`WorkStats`/`keep`; works only from stand points outside the site; reservations keyed by build id.
+- Revised after a fresh critique (24 findings: confirm click below a base-1 box, check-pass reservations, double-counted carried items, unpinned gamerules, test layouts).
+Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: builder movement (WalkTo to stand points around real village terrain).
+
+## 2026-11-08: M20 Builder and blueprints (buildings), branch m20
+- Core `core.blueprint` (format, parser, Rotation4, BuildPlan, SiteRules with 12 refusals, MaterialPlanner, FetchBatch, BuilderPlanner, BuildJob) plus saved builds in VillageState; Small House, Storage Shed, Farm Plot as data. Glue in `dev.villageheart.build` and `worker.build` (BuilderJob, BuilderKeep), Builders Table menu and screen, blueprint item with green/red footprint particles, Buildings tab Builds section, START_BLUEPRINT enforced.
+- Deviations from the plan: see docs/plans/M20.md section 8. DepositTrip/ToolRequirement changes kept minimal (M10 overlap: only the builder keep rule hook).
+- Measured: House built in about 5206 ticks (172 places), Farm Plot about 5870 ticks (121 places, 81 clears); pause after 600 ticks of "Needs 12 more planks" resumes cleanly.
+- Pitfall: `.gitignore` `build/` hid the new `src/**/build/` packages from git; fixed with `!src/**/build/`, checked by a fresh-clone compile.
+- Roots fixed on the way: WalkTo stall at 1.2 blocks (ARRIVE 1.4, outward aim), stale pause (150 ticks), TextLine 16-char arg cap (32 for build keys), table menu not syncing the inventory (broadcastChanges), farmland drying (moisture 7).
+- Verify: 8 consecutive full runGameTest runs, 164/164 each. L4 screenshots viewed: builders_table, blueprint_footprint, blueprint_footprint_red, build_mid, heart_buildings_build, build_finished.
+- Next: M21 (defences reuse BuildPlan/SiteRules; add LINE mode). No blockers. M14 tiers not built: tests set the tier directly.
+
 ## 2026-11-07: M10 planned (planner): Farmer
 Plan: `docs/plans/M10.md` (13 steps). The farmer reuses M9's job toolkit (`core.job`, `CampTools`, `WalkTo`, `ItemPickup`, `WorkStats`, `JobBehaviours.keep`,
 `DepositTrip.wanted`) and M7's DepositTrip; it adds no second version of any of them and no saved data.
@@ -378,7 +399,31 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Under load (load 12 to 16): 6 of 6 L4 runs green, plus the full verify.sh green. One natural leak (1 packet) was cleared after `WorkerClientTests` killed 10 villagers.
 - Notes: `WorkerClientTests:122` and `LumberClientTests:109,174` kill villagers without quiescing (covered by the mixin; hygiene).
 
+## 2026-11-08: M20 verifier review r2: FAIL (docs/reviews/M20-r2.md)
+- Rule 11b refuses 25 of 28 attachment probes (doors, signs of every kind, lanterns, buttons, plates, bells, ladders, paintings, item frames...). Two still break: carpets (the reflective `LevelReader` proxy runs default methods such as `isEmptyBlock` on the real level; `InvocationHandler.invokeDefault` fixes it, tried) and ascending rails (removed in `neighborChanged`, not `canSurvive`).
+- Farm Plot bug, flaky `farmPlotBuilt` (1 of 17 L2 runs): the check pass clears dried or trampled farmland next to the water in one action and places it in the next, so water flows in and the build finishes with 79 farmland. Reproduced deterministically.
+- Mutations of the 3 new tests all go red; the touched-cell exemption in `SiteSupport` has no test. verify.sh green; `workerOpensDoors` 0 failures in 18 runs (one 301-tick run).
+- Next: builder fixes items 1 to 3, then round 3.
+
+## 2026-11-08: M20 review rounds 1 and 2 (branch m20)
+- Round 1: clearing no longer breaks things of a player that rest on the site (rule 11b `Code.SUPPORT`, `SiteSupport`, per-step re-check in `BuildExecutor.cellState`). Round 2: carpets (default methods on the proxy), ascending rails, and the Farm Plot flood (clear and place in one action; water in a CHECK cell is wrong). Details in docs/plans/M20.md sections 8 and the review notes.
+- New tests: `SiteRulesTest.ruleOrder11b`, `attachedThingsRefuseTheSite`, `attachmentAfterConfirmBlocksTheBuilder`, `checkPassDoesNotFloodAFarmland`, `ownTorchDoesNotBlockTheCheckPass`; each mutation-checked.
+- Open: `workerOpensDoors` (M9) rare 300-tick stall, see BACKLOG. Lesson: the scratchpad is shared between agents, so keep helper scripts in an own subdirectory.
 ## 2026-11-08: M10 verifier review r2: PASS (docs/reviews/M10-r2.md)
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+
+## 2026-11-08: M20 verifier review r3: FAIL (docs/reviews/M20-r3.md)
+- All round-2 items are fixed. Carpets, moss carpets and ascending rails and powered rails in all 4 directions are refused, as are the door, lantern, wall sign and painting probes, and nothing is broken. The flood test goes red only with both mechanisms off. The planner rule is pinned at L2: a livelock when it is reverted. Short materials pause with "Needs N more dirt" in the main pass and in the check pass, with no gap left.
+- New regression: the check pass's "fluid in a CHECK cell is wrong" rule matches any fluid state, so it overwrites a player's waterlogged stair or chest. The support check's fluid skip (from round 1) misses a waterlogged sign attached after the confirm, and the real builder breaks it. Both are fixed by testing for `LiquidBlock` (tried, then removed).
+- M10 merged cleanly (all conflicts kept both sides). Full L2: 10 of 11 green. The one red was M9's `fellResumesAfterInterrupt` (known signature). verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 4.
+
+- M20 review round 3: waterlogged player blocks are left alone by the check pass and protected by the support check (`LiquidBlock` instead of "holds a fluid"); instant builder takes the material before it clears; "Needs materials" fallback; planner L1 case. See docs/plans/M20.md.
+
+## 2026-11-08: M20 verifier review r4: PASS (docs/reviews/M20-r4.md)
+- Both round-3 items are fixed (`LiquidBlock` only, in `BuildExecutor.cellState` and `SiteSupport.dependent`). The two new GameTests and the new L1 planner case each go red on the old code. M20 is ticked in ROADMAP.
+- Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
+- Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
+- Next: M21 (Defence blueprints).

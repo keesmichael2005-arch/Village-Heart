@@ -120,6 +120,15 @@ public final class Stockpiles {
 		return view(server, c).nearestWithSpace(RoomScans.pos(from), key).map(s -> RoomScans.blockPos(s.anchor()));
 	}
 
+	/** M20: the anchor (door) of the nearest Storage that holds an item matching {@code match}: where a builder walks to fetch materials. */
+	public static Optional<BlockPos> nearestHolding(ServerLevel level, BlockPos from, Predicate<StackKey> match) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (c.level() != level) return Optional.empty();
+		return view(server, c).nearestHolding(RoomScans.pos(from), match).map(s -> RoomScans.blockPos(s.anchor()));
+	}
+
 	// ---- writing ---------------------------------------------------------------------------------
 
 	/** Moves as much of {@code stack} as fits (nearest first, spilling); shrinks the stack by that amount; returns it. */

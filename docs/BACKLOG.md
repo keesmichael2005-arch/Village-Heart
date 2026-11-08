@@ -121,6 +121,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
 - [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
 
+## From M20-r1 (builder)
+- [ ] `workerOpensDoors` (M9) rarely fails with "reaching the job block through the closed door took 456 ticks, bound 400". Seen once in about 18 full Layer 2 runs on the M20 branch, never alone (6 of 6 pass) and never in the 17 other runs. Measured: it takes exactly 156 ticks every time otherwise, and the failure is 300 ticks later, which is three `GoToJobBlock` back-offs of 100 ticks (three consecutive failed paths out of the closed room). Not reproduced, so no root cause yet. Next step if it shows again: run the suite with `-Dvillageheart.lumber.trace=true` plus a log of `CANT_REACH_WALK_TARGET_SINCE` in `GoToJobBlock.start`.
+
+## From M20-r2 (verifier)
+- [ ] `SiteSupport` touched-cell exemption has no L2 test (a check-pass case with the build's own torch on a cell turned to dirt)
+- [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell fall into the box (not broken; untested)
+- [ ] `workerOpensDoors` took 301 ticks once in 16 measured runs (156 otherwise): slowdown is not only 100-tick back-offs
+
 ## From l4flake2-r1
 - [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)
 
