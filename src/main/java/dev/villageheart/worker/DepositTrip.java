@@ -2,6 +2,7 @@ package dev.villageheart.worker;
 
 import com.google.common.collect.ImmutableMap;
 import dev.villageheart.core.Balance;
+import dev.villageheart.core.job.FoodKeep;
 import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
 import dev.villageheart.core.worker.WorkerStatus;
@@ -21,7 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A worker carries what it holds (the villager inventory, minus the food vanilla villagers keep for themselves) to Storage: when the
+ * A worker carries what it holds (the villager inventory, minus what its job keeps and up to 12 food points for itself and breeding) to Storage: when the
  * load reaches {@link Balance#WORKER_CARRY_STACKS} stacks' worth (sum of count / max stack size), or when the day's work is over (go_home)
  * with anything carried. It walks to the door of the nearest Storage with space and hands the stacks to that Storage; whatever does not fit
  * is kept. No Storage with space: status STORAGE_FULL (and the village's "Storage full" alert is asked for). A trip times out after 600
@@ -45,25 +46,45 @@ public final class DepositTrip extends Behavior<Villager> {
 	}
 
 	/**
-	 * How many of this item the worker never hands in: the food it needs for itself and for breeding, plus what its job keeps
-	 * ({@link JobBehaviours#keep}, M9: the saplings a lumberjack plants). {@code Integer.MAX_VALUE} = all of it.
+	 * What the worker never hands in, per item type: what its job keeps ({@link JobBehaviours#keep}: the saplings a lumberjack plants, the
+	 * seeds a farmer sows) plus the food it needs for itself and for breeding ({@link FoodKeep}: up to
+	 * {@link Balance#WORKER_FOOD_KEEP} food points, bread first, counting the food the job keeps).
 	 */
-	private static int keepOf(Villager v, ItemStack s) {
-		if (Villager.FOOD_POINTS.containsKey(s.getItem())) return Integer.MAX_VALUE;
-		return JobBehaviours.keep(v, s.getItem());
+	private static java.util.Map<net.minecraft.world.item.Item, Integer> kept(Villager v) {
+		java.util.Map<net.minecraft.world.item.Item, Integer> have = new java.util.LinkedHashMap<>();
+		SimpleContainer inv = v.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack s = inv.getItem(i);
+			if (!s.isEmpty()) have.merge(s.getItem(), s.getCount(), Integer::sum);
+		}
+		java.util.Map<net.minecraft.world.item.Item, Integer> keep = new java.util.HashMap<>();
+		java.util.Map<String, Integer> byId = new java.util.HashMap<>();
+		java.util.Map<String, Integer> jobKept = new java.util.HashMap<>();
+		for (var e : have.entrySet()) {
+			int k = Math.min(e.getValue(), JobBehaviours.keep(v, e.getKey()));
+			keep.put(e.getKey(), k);
+			String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(e.getKey()).toString();
+			byId.put(id, e.getValue());
+			jobKept.put(id, k);
+		}
+		for (var e : FoodKeep.topUp(byId, jobKept).entrySet()) {
+			net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(e.getKey()));
+			keep.merge(item, e.getValue(), Integer::sum);
+		}
+		return keep;
 	}
 
 	/** The portions to hand in: (slot, count) per inventory slot, after the kept amounts of each item type are set aside. */
 	private static java.util.List<int[]> depositable(Villager v) {
 		java.util.List<int[]> out = new java.util.ArrayList<>();
-		java.util.Map<net.minecraft.world.item.Item, Integer> keepLeft = new java.util.HashMap<>();
+		java.util.Map<net.minecraft.world.item.Item, Integer> keepLeft = kept(v);
 		SimpleContainer inv = v.getInventory();
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack s = inv.getItem(i);
 			if (s.isEmpty()) continue;
-			int left = keepLeft.computeIfAbsent(s.getItem(), k -> keepOf(v, s));
+			int left = keepLeft.getOrDefault(s.getItem(), 0);
 			int keptHere = Math.min(left, s.getCount());
-			if (left != Integer.MAX_VALUE) keepLeft.put(s.getItem(), left - keptHere);
+			keepLeft.put(s.getItem(), left - keptHere);
 			if (s.getCount() - keptHere > 0) out.add(new int[] {i, s.getCount() - keptHere});
 		}
 		return out;
@@ -176,7 +197,7 @@ public final class DepositTrip extends Behavior<Villager> {
 	@Override
 	protected void stop(ServerLevel level, Villager villager, long gameTime) {
 		Workers.setTripRunning(villager, false);
-		walk.clear();
+		walk.release(villager);
 		if (!delivered && load(villager) > 0 && (failed || gameTime - started >= TIMEOUT)) {
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;

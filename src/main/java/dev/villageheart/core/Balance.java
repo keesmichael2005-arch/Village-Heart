@@ -105,4 +105,35 @@ public final class Balance {
 	public static final int MAX_PLAYER_NAME = 32;
 	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
 	public static final int GUARD_FALLBACK_RADIUS = 16;
+
+	// ---- farmer (M10) ----
+	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
+	public static final int FARM_RADIUS = 24;
+	public static final int FARM_DY = 8;
+	/** The farmer works a cell from this close (3D, to the bottom centre of the crop cell). */
+	public static final double FARM_REACH = 3.0;
+	/** Work units (ticks at multiplier 1.0) per action. */
+	public static final double FARM_TICKS_HARVEST = 20;
+	public static final double FARM_TICKS_PLANT = 10;
+	public static final double FARM_TICKS_BONEMEAL = 20;
+	public static final double FARM_TICKS_COMPOST = 10;
+	/** Seeds (and carrots, potatoes) of each kind the farmer keeps for replanting; seeds above this are composted. */
+	public static final int SEED_RESERVE = 16;
+	/** The farmer walks to the composter once this many seeds are surplus. */
+	public static final int COMPOST_BATCH = 8;
+	/** Work speed with a hoe in the Farmhouse chest (any tier); without one it is 1.0. */
+	public static final double HOE_BONUS = 1.25;
+	/** Food points every worker keeps for itself (bread 4, potato/carrot/beetroot 1): vanilla's breeding threshold. */
+	public static final int WORKER_FOOD_KEEP = 12;
+	/** Block reads per server tick for discovering farmland, and for re-reading indexed cells. */
+	public static final int FIELD_SWEEP_READS_PER_TICK = 2048;
+	public static final int FIELD_REFRESH_READS_PER_TICK = 512;
+	/** A complete field sweep is repeated after this many ticks (new farmland). */
+	public static final int FIELD_INDEX_TTL = 1200;
+	/** Farm cells beyond this many per Farmhouse are ignored (nearest first). */
+	public static final int MAX_FIELD_CELLS = 2048;
+	/** At most one stack of each seed is kept, so seeds can never fill the inventory. */
+	public static final int SEED_KEEP_MAX = 64;
+	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
+	public static final int SLOT_PRESSURE_FREE_SLOTS = 2;
 }

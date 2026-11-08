@@ -85,6 +85,20 @@ public final class WalkTo {
 
 	public void clear() { target = null; }
 
+	/**
+	 * Ends a walk for good: forgets the target, stops the navigation and erases the PATH memory. The vanilla {@code MoveToTargetSink} only
+	 * starts while PATH is absent, so a path left behind by a walk that was cut short (the work day ended on the way) would keep a worker
+	 * from ever walking to its bed again.
+	 */
+	public void release(Villager v) {
+		target = null;
+		if (mine != null || v.getBrain().hasMemoryValue(MemoryModuleType.PATH)) {
+			v.getNavigation().stop();
+			v.getBrain().eraseMemory(MemoryModuleType.PATH);
+		}
+		mine = null;
+	}
+
 	/** The 3D distance from the villager to the bottom centre of the target block. */
 	public static double distance(Villager v, BlockPos target) { return v.position().distanceTo(Vec3.atBottomCenterOf(target)); }
 

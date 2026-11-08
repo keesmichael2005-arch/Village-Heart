@@ -32,10 +32,12 @@ class DayMetricsTest {
 	@Test
 	void workFamiliesFlatten() {
 		DayMetrics d = new DayMetrics(3, 100, true, 8, 7, 1, 2, 1, 3, Map.of(), 0, 0, 0, List.of(), TickStats.EMPTY, 1, 2, 3, 4, 5,
-				Map.of("lumberjack.logs", 24L, "lumberjack.trees", 4L), Map.of("needs_tool", 1L, "ok", 2L), Map.of("minecraft:logs", 30L));
+				Map.of("lumberjack.logs", 24L, "lumberjack.trees", 4L, "farmer.wheat", 60L, "farmer.bone_meal_used", 3L), Map.of("needs_tool", 1L, "ok", 2L), Map.of("minecraft:logs", 30L));
 		Map<String, Double> f = d.flatten();
 		assertEquals(24.0, f.get("work.lumberjack.logs"));
 		assertEquals(4.0, f.get("work.lumberjack.trees"));
+		assertEquals(60.0, f.get("work.farmer.wheat"));
+		assertEquals(3.0, f.get("work.farmer.bone_meal_used"));
 		assertEquals(1.0, f.get("workers.status.needs_tool"));
 		assertEquals(2.0, f.get("workers.status.ok"));
 		assertEquals(30.0, f.get("stockpile.tag.minecraft:logs"));

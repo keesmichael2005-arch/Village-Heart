@@ -192,6 +192,35 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - Leaf drops are random (5% saplings per oak leaf): only T-L2-6 relies on them, as the roadmap asks; the others put saplings in the chest or the worker's inventory.
 - The roadmap tests: `sixOaksTwoDays` (at least 16 logs in Storage, every felled oak replanted, a 4x3 log wall whole for 30 000 ticks), `noAxeNoLogs` (status and text "Needs axe", a day without logs, then the same village produces with an axe).
 - **Layer 4:** `LumberClientTests.lumberjackFelling` (`lumberjack_felling.png`) stages the scene (oak from the real feature, three logs gone, crack overlay on the next one, sapling on a stump, drops) and checks the client-side profession and blocks; real felling is covered by Layer 2.
+## Farmer GameTests (M10)
+`FarmerGameTests` (helpers in `FarmTestSupport`; the class is listed under `fabric-gametest` in `src/gametest/resources/fabric.mod.json`). Rules:
+- **Frozen crops.** Every farmer test has its own environment `villageheart-gametest:farm_<name>`, a `minecraft:game_rules` environment
+  (`{"type": "minecraft:game_rules", "rules": {"minecraft:random_tick_speed": 0}}`): crops never grow and farmland never dries, so every age in a
+  test comes from the setup, the farmer's replant (age 0) or its bone meal. `FarmTestSupport.scene` asserts the rule first (a mis-parsed
+  environment fails loudly). Batches run one after another and the teardown resets the rule to its default.
+- **Fields** are built after the buildings validate: moist farmland at relative y = -1 and the crop at y = 0 (`plantAt`, `field`, `emptyFarmland`; crops
+  with `setBlock(..., 2)`, so nothing re-checks the cell). The Farmhouse of `WorkerTestSupport.farmhouse` has its door in the **north** wall, so fields
+  lie south of it (z 13-30) and the farmer walks around the room (about 10 ticks per block). `sweepStrayCrops` empties the yard and removes farmland,
+  crops and crop items within 40 blocks (a 24-block work area reaches into the neighbouring test boxes).
+- **Stray farmland (rule for every test that hires a farmer).** A hired farmer works any farmland within 24 blocks of its composter, and farm tests leave their fields behind. `WorkerTestSupport.begin` and `BuildingTestSupport.begin` therefore call `FarmTestSupport.clearStrayFarmland(h, 40)` (farmland, crops, stems, crop items) before the test builds anything; a test that builds a field of its own and does not need it afterwards removes it again at its end (`invalidBuildingKeepsWorker`). Any new test helper that skips both `begin`s must call it itself. `FarmTestSupport.loose` counts items only inside the farmer's work area (24-block disc around the composter), so an item the farmer cannot collect cannot hang a wait unseen.
+- **A trip during a COLLECT** (`collectSurvivesTripThatStartsFirst`, `collectSurvivesTripThatPlannerYieldsTo`): the inventory is filled on a tick chosen by the trip's `(gameTime + id) % 20` check: on a check tick the trip behaviour starts first; on any other tick the test forces a plan (`FarmRuntime.forcePlanForTest`) so the planner yields first. Both go red when the collect clock is not restarted after a trip.
+- **Unit log.** `FarmRuntime.unitLog()` records every finished unit (tick, worker, HARVEST / PLANT / BONEMEAL / COMPOST / TAKE_BONE_MEAL / FETCH / COLLECT, absolute cell,
+  position of the worker). `FarmTestSupport.Watcher` samples only the cells of its own field at the end of every tick: a watched cell is never air ("harvest and
+  replant are one tick"), every logged HARVEST reads age 0 at the next sample. Problems are collected and asserted at the end (never thrown inside a tick callback).
+  Level events (bone meal particles) reach only clients, so bone meal is asserted through the log and the age change.
+- **Pace** is exact while the worker stands still: `stationaryGaps` takes the HARVEST entries of a patch and keeps the pairs whose positions differ by less than
+  0.3 blocks: 20 ticks without a hoe, 16 with any hoe (asserted +-1). Everything that involves walking uses `farmBound(units, unitTicks, dist) = units * (unitTicks + 20) + 10 * dist + 200`.
+- **Keep rules**: `FarmJob.testKeepAll` (reset by `VillageTestSupport.reset`) lets a test fill the inventory with items the farmer "keeps" (a full inventory without a trip).
+  `SimpleContainer.addItem` puts a whole oversized stack into one empty slot: add stacks of at most 64 (a 200-seed stack lost 136 seeds in the first draft of `depositKeepsSeedsAndFood`).
+  `h.relativePos` does not undo the structure rotation: compare absolute positions (`h.absolutePos(rel)`).
+- **Stale PATH memory.** `WalkTo` publishes its path in the PATH memory so doors open, and the vanilla `MoveToTargetSink` only starts while PATH is **absent**. A walk cut short
+  (the work day ended on the way, a trip ended) left PATH behind and the worker never walked to its bed (`workerFollowsDaySchedule` failed with a farmer that idled at its
+  composter). `WalkTo.release(villager)` erases it; the job `stop`, idling at the job block and `DepositTrip.stop` call it.
+- Roadmap tests: `nineByNineWheatOneDay` (9x9 wheat, at least 60 wheat in Storage within a day, every cell farmland with wheat, nothing outside the field changed) and
+  `immatureAndOutsideUntouched` (immature crops and cells outside the 24-block circle, the diagonal (17, 17) at 24.04 and dy +9 are never touched for 24 000 ticks; a control cell that ripens at tick 8000 is harvested).
+  Every test logs its tick counts (`[m10] ...`). Debug a stuck farmer with `-Dvillageheart.farm.trace=true`.
+- **Layer 4:** `FarmerClientTests.farmerField` (`farmer_field.png`): its farmer between replanted sprouts and ripe wheat. The camera stands on the Farmhouse side of the field (the farmer harvests the rows nearest its door first, so the sprouts lie in front of the ripe rows; from the far side they hide behind the tall wheat).
+
 ## Heart screen tests (M8+)
 - **L1**: `core/heart/*Test` (permissions matrix, action gate order, rate limiter, snapshot builder: rank filter, order, caps, alerts) and `heart/net/HeartCodecsTest` (round trips, the worst-case snapshot size with 3-byte characters, printed and asserted under 512 KiB, bounded strings and lists). `ByteBufCodecs` initialises in plain JUnit. `LangCoverageTest` pins every Heart text (`HeartTexts.EN`, rejections, alerts) against `en_us.json`.
 - **L2** `HeartScreenGameTests` (menu, opening, refresh, snapshot numbers) and `HeartActionGameTests` (ranks, gate, bad packets, rate limit). Helpers in `HeartTestSupport`: `seed(h)` (claim, Storage with 64 logs and 20 bread, Farmhouse), `open(h, player)` (the real `useWithoutItem` path), `recorder()` (replaces `HeartNetwork`'s sender, restored by `done`), `send(player, codec, payload)` (encodes and decodes with the real codec, then `player.connection.handleCustomPayload`: Fabric dispatches it to our receiver synchronously on the server thread). Test players have random UUIDs, so rate-limit buckets are never shared; `HeartActions.reset()` clears them. An unloaded worker is simulated by discarding the entity while its record stays.
