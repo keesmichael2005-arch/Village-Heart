@@ -348,3 +348,12 @@ Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `tr
 - Builder reuses M9's `WorkClock`/`WalkTo`/`WorkerStatuses`/`WorkStats`/`keep`; works only from stand points outside the site; reservations keyed by build id.
 - Revised after a fresh critique (24 findings: confirm click below a base-1 box, check-pass reservations, double-counted carried items, unpinned gamerules, test layouts).
 Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: builder movement (WalkTo to stand points around real village terrain).
+
+## 2026-11-08: M20 Builder and blueprints (buildings), branch m20
+- Core `core.blueprint` (format, parser, Rotation4, BuildPlan, SiteRules with 12 refusals, MaterialPlanner, FetchBatch, BuilderPlanner, BuildJob) plus saved builds in VillageState; Small House, Storage Shed, Farm Plot as data. Glue in `dev.villageheart.build` and `worker.build` (BuilderJob, BuilderKeep), Builders Table menu and screen, blueprint item with green/red footprint particles, Buildings tab Builds section, START_BLUEPRINT enforced.
+- Deviations from the plan: see docs/plans/M20.md section 8. DepositTrip/ToolRequirement changes kept minimal (M10 overlap: only the builder keep rule hook).
+- Measured: House built in about 5206 ticks (172 places), Farm Plot about 5870 ticks (121 places, 81 clears); pause after 600 ticks of "Needs 12 more planks" resumes cleanly.
+- Pitfall: `.gitignore` `build/` hid the new `src/**/build/` packages from git; fixed with `!src/**/build/`, checked by a fresh-clone compile.
+- Roots fixed on the way: WalkTo stall at 1.2 blocks (ARRIVE 1.4, outward aim), stale pause (150 ticks), TextLine 16-char arg cap (32 for build keys), table menu not syncing the inventory (broadcastChanges), farmland drying (moisture 7).
+- Verify: 8 consecutive full runGameTest runs, 164/164 each. L4 screenshots viewed: builders_table, blueprint_footprint, blueprint_footprint_red, build_mid, heart_buildings_build, build_finished.
+- Next: M21 (defences reuse BuildPlan/SiteRules; add LINE mode). No blockers. M14 tiers not built: tests set the tier directly.

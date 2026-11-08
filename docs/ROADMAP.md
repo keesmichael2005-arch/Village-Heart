@@ -165,6 +165,9 @@ from there instead of hard-coding them.
 - **L2**: Small House materials in Storage + builder → a **valid green House** within 2 days, with materials deducted exactly
 - **L2**: missing materials → the build pauses with "Needs 12 more planks". Adding them → it resumes and completes
 - **L4**: screenshot mid-build and one of the finished Small House
+- Built in M20 (branch m20, see docs/plans/M20.md section 8 for the deviations; the boxes above are ticked by the orchestrator, not the builder). Ready for M21: the blueprint
+  format has `kind` (BUILDING/DEFENCE), `mode` (`PlacementMode.FOOTPRINT`; M21 adds `LINE` and its two-click flow in `BlueprintUse`) and `BlueprintParams.length`
+  (`Blueprints.resolve(id, params)` is where a generated Wall Segment goes); `BuildPlan`, `SiteRules`, `BuildExecutor` and the builder need no change for new blueprints.
 
 ## M21: Defence blueprints
 - [ ] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
