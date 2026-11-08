@@ -961,13 +961,13 @@ public class LumberjackGameTests {
 	 * Review of M11 round 2: a tree inside a player's hedge (persistent leaves) is unreachable and is given up. The worker is not enclosed and the
 	 * hedge is not natural, so not one of its blocks may break.
 	 */
-	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 5000)
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_hedge", structure = YARD, skyAccess = true, maxTicks = 5000)
 	public void lumberjackLeavesPlayerHedgeAloneOnGiveUp(GameTestHelper h) {
 		hedgeSurvivesGiveUp(h, true);
 	}
 
 	/** The same with natural leaves (kept from decaying by a roof of logs): a worker that is not boxed in breaks nothing, whatever the leaves are. */
-	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 5000)
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_hedge_natural", structure = YARD, skyAccess = true, maxTicks = 5000)
 	public void lumberjackLeavesNaturalHedgeAloneWhenNotBoxedIn(GameTestHelper h) {
 		hedgeSurvivesGiveUp(h, false);
 	}
@@ -1015,7 +1015,7 @@ public class LumberjackGameTests {
 	}
 
 	/** A worker walled in by a PLAYER's leaves (persistent) is not freed by breaking them: that is somebody's build, and its trip just fails. */
-	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 1500)
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_keep", structure = YARD, skyAccess = true, maxTicks = 1500)
 	public void lumberjackKeepsPersistentLeavesItIsBoxedInBy(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];

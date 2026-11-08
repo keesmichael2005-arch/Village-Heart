@@ -469,4 +469,5 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 ## 2026-11-08: M11 round-2 fixes (builder, finisher)
 - `LeafEscape` (real-game bug): never breaks persistent leaves, acts only when the worker is enclosed (4 sides at feet and head blocked, one natural leaf), respects `mobGriefing` (D15). `lumberjackBoxedInByLeavesGetsOut` now uses natural leaves (and lost its always-true filler); three new L2 tests: player hedge and natural hedge survive a give-up, persistent cube is kept. Mutation-checked (persistent check, enclosed check, no-break, old behaviour): each is caught by the test meant for it.
 - Harness ramp: `core/sim/RampProfile` (pure, L1 `RampProfileTest`) gives a 1-block-per-step slope that meets the land; `StarterActions.ramp` reads the ground through canopies (no floating grass). L2 `siteRampHasOneBlockSteps` (red without the slope and without the canopy skip).
+- Found by the 3rd sim run (1 of 6 failed): an idle lumberjack had drifted 45 blocks from camp and could not path back (range 48). `LumberJob.idle` walks back in legs of 24 blocks (D17). Farmer has the same gap (BACKLOG).
 - Next: round 3 review.

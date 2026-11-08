@@ -124,6 +124,8 @@ public final class LumberRuntime {
 		LumberjackPlanner.Decision decision;
 		LumberjackPlanner.Action action = LumberjackPlanner.Action.IDLE_AT_CAMP;
 		long idleBackoffUntil;
+		/** The point an idle worker is walking to: its job block, or the end of a leg of the way back when it is far from it. */
+		BlockPos idleGoal;
 		final WalkTo walk = new WalkTo();
 		final WorkClock clock = new WorkClock(Balance.BASE_TICKS_PER_LOG);
 		@Nullable HeartLocation clockKey;
