@@ -126,8 +126,8 @@ from there instead of hard-coding them.
 - **L2**: a village set up to meet the Village goals → tier becomes Village at the next dawn, and a Mine marker turns from red ("Requires Village") to green
 - **L4**: Overview screenshot with a partially met goal checklist
 
-## M15: Job levels and tools
-- [ ] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
+## M15: Job levels and tools ✅
+- [x] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
 - **L1**: speed = tool × level × needs. XP thresholds. The level cap holds at the Hamlet tier
 - **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
 - **L2**: the tool in the camp chest loses durability while it is used
