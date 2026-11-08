@@ -137,3 +137,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] clearStrayFarmland discards every item entity; javadoc and TESTING say crop items only
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
+
+## From M20-r1..r4
+- [ ] checkPassLeavesWaterloggedPlayerBlocks stocks exactly one house of materials, so on old code it fails via "needs planks" rather than at the chest check; add a spare stack
+- [ ] "Needs materials" fallback text has no test
+- [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
+- [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
+- [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared
