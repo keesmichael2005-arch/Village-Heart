@@ -1076,4 +1076,67 @@ public class LumberjackGameTests {
 			end(h);
 		});
 	}
+
+	/** The mobGriefing gamerule off: a worker boxed in by natural leaves breaks none of them (like vanilla villager farming); its trip just fails. */
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_griefing", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void lumberjackBreaksNoLeavesWhenMobGriefingIsOff(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		BlockPos spot = new BlockPos(24, 0, 24);
+		java.util.List<BlockPos> cube = new java.util.ArrayList<>();
+		var server = h.getLevel().getServer();
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			h.getLevel().getGameRules().set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING, false, server);
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			h.setBlock(spot.offset(0, 3, 0), Blocks.OAK_LOG); // keeps the natural leaves from decaying
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 0; dy <= 2; dy++) {
+				if (dx == 0 && dz == 0 && dy <= 1) { h.setBlock(spot.offset(dx, dy, dz), Blocks.AIR.defaultBlockState()); continue; }
+				BlockPos q = spot.offset(dx, dy, dz);
+				h.setBlock(q, Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, false).setValue(LeavesBlock.DISTANCE, 1));
+				cube.add(q);
+			}
+			BlockPos abs = h.absolutePos(spot);
+			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		});
+		seq = seq.thenIdle(1200);
+		seq.thenExecute(() -> {
+			h.getLevel().getGameRules().set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING, true, server); // restored before anything can fail
+			int gone = 0;
+			for (BlockPos q : cube) if (!h.getBlockState(q).is(Blocks.OAK_LEAVES)) gone++;
+			h.assertValueEqual(0, gone, "leaves broken with mobGriefing off (of " + cube.size() + ")");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A hidden away worker (a miner or hunter) belongs to AwayTrips: when a block lands in its hold cell it is not moved by the unstick rescue. */
+	@GameTest(environment = "villageheart-gametest:lumber_away_unstick", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void hiddenAwayWorkerIsNotUnstuck(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		BlockPos[] hold = new BlockPos[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = seq.thenIdle(20).thenExecute(() -> {
+			hold[0] = v[0].blockPosition();
+			dev.villageheart.worker.job.AwayTrips.hide(h.getLevel(), v[0], "miner", dev.villageheart.world.VillageClaims.locate(h.getLevel(), hold[0]), hold[0]);
+			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = 0; dy <= 2; dy++) {
+				h.getLevel().setBlock(hold[0].offset(dx, dy, dz), Blocks.OAK_LOG.defaultBlockState(), 3);
+			}
+			h.assertTrue(dev.villageheart.worker.job.AwayTrips.isAway(v[0]), "the worker is away");
+		});
+		seq = seq.thenIdle(120);
+		seq.thenExecute(() -> {
+			h.assertTrue(v[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(hold[0])) <= 0.5,
+					"the hidden worker stays on its hold cell " + hold[0] + ", it is at " + v[0].position());
+			dev.villageheart.worker.job.AwayTrips.release(h.getLevel(), v[0]);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

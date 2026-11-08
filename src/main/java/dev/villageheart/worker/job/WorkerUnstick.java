@@ -17,6 +17,7 @@ public final class WorkerUnstick {
 
 	/** @return true when the worker was inside a block and was moved (or could not be, and stays) */
 	public static boolean rescue(ServerLevel level, Villager v) {
+		if (AwayTrips.isAway(v)) return false; // a hidden miner or hunter belongs to AwayTrips (it pins it to its hold cell)
 		if (level.noBlockCollision(v, v.getBoundingBox())) return false;
 		BlockPos base = v.blockPosition();
 		BlockPos best = null;
