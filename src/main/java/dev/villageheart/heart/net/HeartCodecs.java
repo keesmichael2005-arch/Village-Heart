@@ -2,7 +2,9 @@ package dev.villageheart.heart.net;
 
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.Tier;
+import dev.villageheart.core.blueprint.BuildStatus;
 import dev.villageheart.core.heart.ActivityKind;
+import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.AlertCode;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildingRow;
@@ -183,6 +185,26 @@ public final class HeartCodecs {
 				INT.encode(buf, b.workersHere());
 			});
 
+	private static final StreamCodec<ByteBuf, BuildStatus> BUILD_STATUS = enumCodec(BuildStatus.class);
+
+	public static final StreamCodec<ByteBuf, BuildRow> BUILD_ROW = codec(
+			buf -> new BuildRow(ID.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), BUILD_STATUS.decode(buf), INT.decode(buf),
+					INT.decode(buf), TEXT_LINE.decode(buf), TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).decode(buf), NAME.decode(buf)),
+			(buf, b) -> {
+				ID.encode(buf, b.blueprintId());
+				INT.encode(buf, b.x());
+				INT.encode(buf, b.y());
+				INT.encode(buf, b.z());
+				BUILD_STATUS.encode(buf, b.state());
+				INT.encode(buf, b.placed());
+				INT.encode(buf, b.total());
+				TEXT_LINE.encode(buf, b.status());
+				TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).encode(buf, b.missing());
+				NAME.encode(buf, b.builderName());
+			});
+
+	private static final StreamCodec<ByteBuf, List<BuildRow>> BUILDS = BUILD_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILDS));
+
 	private static final StreamCodec<ByteBuf, StockLine> STOCK_LINE = codec(
 			buf -> new StockLine(ID.decode(buf), LONG.decode(buf), INT.decode(buf)),
 			(buf, s) -> {
@@ -227,7 +249,7 @@ public final class HeartCodecs {
 	public static final StreamCodec<ByteBuf, HeartSnapshot> SNAPSHOT = codec(
 			buf -> new HeartSnapshot(RANK.decode(buf), OVERVIEW.decode(buf), VILLAGERS.decode(buf), INT.decode(buf),
 					JOB_CHOICES.decode(buf), BUILDINGS.decode(buf), INT.decode(buf), STOCK.decode(buf), MEMBERS.decode(buf),
-					INT.decode(buf)),
+					INT.decode(buf), BUILDS.decode(buf)),
 			(buf, s) -> {
 				RANK.encode(buf, s.viewerRank());
 				OVERVIEW.encode(buf, s.overview());
@@ -239,5 +261,6 @@ public final class HeartCodecs {
 				STOCK.encode(buf, s.stock());
 				MEMBERS.encode(buf, s.members());
 				INT.encode(buf, s.moreMembers());
+				BUILDS.encode(buf, s.builds());
 			});
 }

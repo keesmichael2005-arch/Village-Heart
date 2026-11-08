@@ -190,7 +190,17 @@ public final class HeartFacts {
 		}
 
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
-				villagers, jobs, buildings, stock(server), List.of(), members(server, state)));
+				villagers, jobs, buildings, stock(server), List.of(), members(server, state), builds(server)));
+	}
+
+	/** The builds in progress, oldest first (M20). */
+	private static List<dev.villageheart.core.heart.BuildRow> builds(MinecraftServer server) {
+		List<dev.villageheart.core.heart.BuildRow> out = new ArrayList<>();
+		for (dev.villageheart.build.BuildSystem.BuildView b : dev.villageheart.build.BuildSystem.views(server)) {
+			out.add(new dev.villageheart.core.heart.BuildRow(b.blueprint().id(), b.job().ground().x(), b.job().ground().y(), b.job().ground().z(),
+					b.status(), b.placed(), b.total(), b.line(), b.missing(), b.builderName()));
+		}
+		return out;
 	}
 
 	/** The owner, every known player and every online player the village has not seen yet (online Visitors are always rankable). */

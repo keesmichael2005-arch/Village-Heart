@@ -216,5 +216,11 @@
 	"build.villageheart.site.tree": "Tree in the way at %s: fell it first",
 	"build.villageheart.site.blocked": "%s in the way at %s",
 	"build.villageheart.site.no_stand": "No place to stand near %s",
-	"build.villageheart.site.unchecked": "The %s at %s has not been checked yet; try again"
+	"build.villageheart.site.unchecked": "The %s at %s has not been checked yet; try again",
+	"item.villageheart.blueprint": "Blueprint",
+	"item.villageheart.blueprint.named": "Blueprint: %s",
+	"build.villageheart.msg.no_village": "Not inside a village",
+	"build.villageheart.msg.site_ok": "Site ok. Sneak to rotate, click inside the outline to confirm",
+	"build.villageheart.msg.site_set": "%s site set at %s",
+	"build.villageheart.msg.no_builder": "No builder yet"
 }

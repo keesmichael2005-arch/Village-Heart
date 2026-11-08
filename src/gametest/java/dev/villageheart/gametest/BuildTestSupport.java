@@ -28,6 +28,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 
@@ -267,4 +268,38 @@ public final class BuildTestSupport {
 	}
 
 	public static boolean claimed(GameTestHelper h) { return VillageClaims.current(server(h)).isPresent(); }
+
+	// ---- players ---------------------------------------------------------------------------------
+
+	/** A recording player of the given rank standing at {@link #PLAYER_SPOT}, looking north (yaw 180) at the standard site. */
+	public static BuildingTestSupport.RecordingPlayer playerWithRank(GameTestHelper h, String name, dev.villageheart.core.Rank rank) {
+		// survival: a creative player keeps the stack that a use consumed (vanilla restores its count)
+		var p = (BuildingTestSupport.RecordingPlayer) VillageTestSupport.player(h, name, net.minecraft.world.level.GameType.SURVIVAL,
+				BuildingTestSupport.RecordingPlayer::new);
+		VillageClaims.setRank(server(h), p.getUUID(), rank);
+		var at = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(PLAYER_SPOT));
+		p.setPos(at.x, at.y, at.z);
+		MarkerTestSupport.look(p, Direction.NORTH);
+		return p;
+	}
+
+	/** A hash of every block of the yard (and two layers below): "nothing changed" is a hash that stays equal. */
+	public static int worldHash(GameTestHelper h) {
+		int hash = 1;
+		for (int x = 0; x < 32; x++) for (int z = 0; z < 32; z++) for (int y = -2; y < 12; y++) {
+			hash = 31 * hash + Block.getId(h.getBlockState(new BlockPos(x, y, z)));
+		}
+		return hash;
+	}
+
+	/** The last chat message's translation key, after asserting there is one (BACKLOG M5-r1: never get(0) of an empty list). */
+	public static String lastKey(GameTestHelper h, BuildingTestSupport.RecordingPlayer p) {
+		h.assertTrue(!p.messages.isEmpty(), "the player got a chat message");
+		return BuildingTestSupport.translatable(p.messages.get(p.messages.size() - 1)).getKey();
+	}
+
+	public static String lastOverlayKey(GameTestHelper h, BuildingTestSupport.RecordingPlayer p) {
+		h.assertTrue(!p.overlays.isEmpty(), "the player got an action bar message");
+		return BuildingTestSupport.translatable(p.overlays.get(p.overlays.size() - 1)).getKey();
+	}
 }

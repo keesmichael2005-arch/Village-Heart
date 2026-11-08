@@ -5,12 +5,18 @@ import static dev.villageheart.gametest.BuildTestSupport.YARD;
 import static dev.villageheart.gametest.BuildTestSupport.env;
 
 import dev.villageheart.block.MarkerStatus;
+import dev.villageheart.build.BlueprintItem;
+import dev.villageheart.build.BlueprintSite;
+import dev.villageheart.build.ModComponents;
 import dev.villageheart.build.BuildJobs;
 import dev.villageheart.build.LevelSiteView;
 import dev.villageheart.build.PaletteStates;
 import dev.villageheart.build.SiteValidation;
 import dev.villageheart.building.Buildings;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.Rank;
+import dev.villageheart.stock.StackKey;
+import java.util.UUID;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.blueprint.BuildJob;
@@ -34,10 +40,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -353,5 +361,164 @@ public class BuildGameTests {
 		h.assertTrue(LevelSiteView.classify(Blocks.OAK_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.SlabBlock.WATERLOGGED, true)) == SiteRules.SiteCell.FLUID,
 				"waterlogged blocks hold a fluid");
 		h.succeed();
+	}
+
+	// ---- T-L2-4 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_item_flow", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void blueprintItemFlow(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		BuildingTestSupport.RecordingPlayer[] steward = new BuildingTestSupport.RecordingPlayer[1];
+		ItemStack[] stack = new ItemStack[1];
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			steward[0] = BuildTestSupport.playerWithRank(h, "steward", Rank.STEWARD);
+			stack[0] = BlueprintItem.of(bp);
+			BlockPos ground = BuildTestSupport.GROUND;
+			// 1: the first click shows the footprint, the front towards the player (who stands south and looks north)
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, stack[0]);
+			BlueprintSite site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site != null, "the first click stores a site");
+			h.assertTrue(site.ground().equals(h.absolutePos(ground)), "the site is at the clicked ground: " + site.ground());
+			h.assertTrue(site.rotationEnum() == Rotation4.CLOCKWISE_180, "the door faces the player: " + site.rotationEnum());
+			h.assertTrue(site.ok(), "the site is fine: " + site.reason().english());
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "nothing is built by showing the site");
+			// 2: sneak-click turns it a quarter, the box is checked again
+			steward[0].setShiftKeyDown(true);
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, stack[0]);
+			steward[0].setShiftKeyDown(false);
+			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site.rotationEnum() == Rotation4.COUNTERCLOCKWISE_90, "a sneak-click rotates: " + site.rotationEnum());
+			h.assertTrue(site.ground().equals(h.absolutePos(ground)) && site.ok(), "the same ground, still fine");
+			// 3: a click outside the box moves the site (and picks the facing again)
+			BlockPos other = new BlockPos(12, -1, 12);
+			BuildingTestSupport.rightClick(h, steward[0], other, Direction.UP, stack[0]);
+			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site.ground().equals(h.absolutePos(other)) && site.rotationEnum() == Rotation4.CLOCKWISE_180, "a click outside moves the site: " + site);
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, stack[0]);
+			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site.ground().equals(h.absolutePos(ground)), "and back");
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "still nothing built");
+			// 4: a click on the same ground block again (one below the box) confirms
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, stack[0]);
+			List<BuildJob> builds = BuildTestSupport.builds(h);
+			h.assertTrue(builds.size() == 1, "the second click confirms: " + builds.size() + " builds");
+			h.assertTrue(builds.get(0).rotation() == Rotation4.CLOCKWISE_180, "with the shown rotation: " + builds.get(0).rotation());
+			h.assertTrue(builds.get(0).ground().x() == h.absolutePos(ground).getX() && builds.get(0).blueprintId().equals("small_house"), "at the shown site");
+			h.assertTrue(stack[0].isEmpty(), "the blueprint is used up");
+			h.assertTrue(steward[0].messages.size() == 2, "two chat lines: " + steward[0].messages.size());
+			var set = BuildingTestSupport.translatable(steward[0].messages.get(0));
+			h.assertTrue(set.getKey().equals("build.villageheart.msg.site_set"), "the site is named in chat: " + set.getKey());
+			h.assertTrue(BuildTestSupport.lastKey(h, steward[0]).equals("build.villageheart.msg.no_builder"), "and there is no builder yet");
+			// 5: a Resident may look but not confirm
+			var resident = BuildTestSupport.playerWithRank(h, "resident", Rank.RESIDENT);
+			ItemStack rs = BlueprintItem.of(bp);
+			BuildingTestSupport.rightClick(h, resident, BuildTestSupport.GROUND, Direction.UP, rs);
+			BlueprintSite rsite = rs.get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(rsite != null && !rsite.ok(), "a Resident's site is not ok");
+			h.assertTrue(rsite.reason().english().equals("Only a Steward or the Owner can start a blueprint"), "with the rank text: " + rsite.reason().english());
+			BuildingTestSupport.rightClick(h, resident, BuildTestSupport.GROUND, Direction.UP, rs);
+			h.assertTrue(BuildTestSupport.builds(h).size() == 1, "a Resident's confirm creates nothing");
+			h.assertTrue(!rs.isEmpty(), "and keeps the blueprint");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_site_refusals", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void siteRefusals(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		BlockPos houseOrigin = new BlockPos(2, 0, 14);
+		BlockPos houseMarker = BuildingTestSupport.markerPos(houseOrigin, 5);
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			// a valid House (bed and a light) on the west side and, unmarked, a 3x3x3 cobblestone block of a player on the standard site
+			BuildingTestSupport.room(h, houseOrigin, 5, 4);
+			BlockPos bed = BuildingTestSupport.inside(houseOrigin, 0, 0, 3);
+			h.setBlock(bed, Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.PART, BedPart.HEAD).setValue(BedBlock.FACING, net.minecraft.core.Direction.WEST));
+			h.setBlock(bed.east(), Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.PART, BedPart.FOOT).setValue(BedBlock.FACING, net.minecraft.core.Direction.WEST));
+			h.setBlock(BuildingTestSupport.inside(houseOrigin, 2, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, net.minecraft.core.Direction.NORTH);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, houseMarker, MarkerStatus.VALID)).thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			var village = VillageClaims.current(server).orElseThrow();
+			// a player's 3x3x3 cobblestone block on the standard site, water next to the site at (20, 12), a natural oak on the site at (25, 24)
+			for (int x = 14; x <= 16; x++) for (int y = 0; y <= 2; y++) for (int z = 18; z <= 20; z++) h.setBlock(new BlockPos(x, y, z), Blocks.COBBLESTONE);
+			h.setBlock(new BlockPos(16, 0, 12), Blocks.WATER);
+			LumberTestSupport.growOak(h, new BlockPos(25, 0, 24), 1L);
+			int before = BuildTestSupport.worldHash(h);
+			var level = h.getLevel();
+			// 1: over the valid room's wall, and over its interior
+			var wall = SiteValidation.check(level, village, bp, BuildTestSupport.placement(h, new BlockPos(11, -1, 17), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(wall != null && wall.code() == SiteRules.Code.OVERLAP && wall.english().startsWith("Overlaps the House at ("), "over the wall: "
+					+ (wall == null ? "ok" : wall.english()));
+			var inside = SiteValidation.check(level, village, bp, BuildTestSupport.placement(h, new BlockPos(6, -1, 17), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(inside != null && inside.code() == SiteRules.Code.OVERLAP, "over the interior: " + (inside == null ? "ok" : inside.english()));
+			// 2: over a player's unmarked cobblestone
+			var hut = SiteValidation.check(level, village, bp, BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(hut != null && hut.code() == SiteRules.Code.BLOCKED && hut.english().startsWith("cobblestone in the way at ("), "over the unmarked hut: "
+					+ (hut == null ? "ok" : hut.english()));
+			// 3: 81 blocks from the Heart
+			var heart = village.heart();
+			var far = SiteValidation.check(level, village, bp, new Placement(new Pos(heart.x() + 78, heart.y() - 3, heart.z()), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(far != null && far.code() == SiteRules.Code.OUTSIDE && far.english().startsWith("Outside the village: 8"), "81 blocks away: "
+					+ (far == null ? "ok" : far.english()));
+			// 4: Hamlet tier
+			var hamlet = SiteValidation.check(level, village.withTier(dev.villageheart.core.Tier.HAMLET), bp,
+					BuildTestSupport.placement(h, new BlockPos(20, -1, 25), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(hamlet != null && hamlet.code() == SiteRules.Code.TIER && hamlet.english().equals("Requires Village tier"), "at Hamlet tier: "
+					+ (hamlet == null ? "ok" : hamlet.english()));
+			// 5: a natural oak in the site
+			var tree = SiteValidation.check(level, village, bp, BuildTestSupport.placement(h, new BlockPos(25, -1, 24), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(tree != null && tree.code() == SiteRules.Code.TREE && tree.english().startsWith("Tree in the way at ("), "a natural oak: "
+					+ (tree == null ? "ok" : tree.english()));
+			// 6: water next to the site
+			var wet = SiteValidation.check(level, village, bp, BuildTestSupport.placement(h, new BlockPos(20, -1, 12), Rotation4.NONE), Rank.OWNER);
+			h.assertTrue(wet != null && wet.code() == SiteRules.Code.FLUID && wet.english().startsWith("Water or lava at ("), "next to water: "
+					+ (wet == null ? "ok" : wet.english()));
+			// in every case no build exists and validation changed no block
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "no check started a build");
+			h.assertTrue(BuildTestSupport.worldHash(h) == before, "validation changed the world");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-6 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_reservations", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void reservationsHoldMaterials(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		StackKey planks = StackKey.of(Items.OAK_PLANKS), cobble = StackKey.of(Items.COBBLESTONE);
+		UUID[] id = new UUID[1];
+		GameTestSequence seq = BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
+			id[0] = BuildTestSupport.onlyBuild(h);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 4, "the materials are reserved", () -> {
+			var res = Stockpiles.reservations(h.getLevel().getServer());
+			h.assertTrue(res.reservedBy(id[0], planks) == 119, "119 planks reserved: " + res.reservedBy(id[0], planks));
+			h.assertTrue(res.reservedBy(id[0], cobble) == 49, "49 cobblestone reserved");
+		});
+		seq = seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			// another consumer cannot take what the build reserved
+			h.assertTrue(Stockpiles.withdraw(h.getLevel(), null, planks, 64, null).isEmpty(), "another consumer gets no planks");
+			// cancel: the reservations go and the same withdraw now works
+			h.assertTrue(BuildJobs.cancel(server, id[0]), "cancelled");
+			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 0, "no reservation after cancel");
+			ItemStack got = Stockpiles.withdraw(h.getLevel(), null, planks, 64, null);
+			h.assertTrue(got.getCount() == 64, "the planks are free again: " + got.getCount());
+			BuildTestSupport.stock(h, got);
+			// a restart forgets the reservations; one refresh brings them back
+			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
+			id[0] = BuildTestSupport.onlyBuild(h);
+			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 119, "reserved again by the new build");
+			Stockpiles.resetRuntimeForTests();
+			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 0, "a restart forgets them");
+		});
+		BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 4, "the reservations are back", () -> {
+			var res = Stockpiles.reservations(h.getLevel().getServer());
+			h.assertTrue(res.reservedBy(id[0], planks) == 119, "119 planks reserved again: " + res.reservedBy(id[0], planks));
+		}).thenExecute(() -> VillageTestSupport.done(h));
 	}
 }

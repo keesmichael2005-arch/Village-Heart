@@ -11,6 +11,7 @@ public class VillageHeart implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		dev.villageheart.build.ModComponents.register();
 		ModBlocks.register();
 		dev.villageheart.item.ModItems.register();
 		dev.villageheart.block.MarkerBlocks.register();
@@ -34,6 +35,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:lumber", dev.villageheart.worker.lumber.LumberSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:builds", dev.villageheart.build.BuildSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }

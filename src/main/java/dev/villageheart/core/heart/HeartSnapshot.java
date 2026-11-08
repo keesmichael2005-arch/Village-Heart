@@ -11,7 +11,13 @@ import java.util.Objects;
  */
 public record HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow> villagers, int moreVillagers,
 		List<JobChoice> jobChoices, List<BuildingRow> buildings, int moreBuildings, Stock stock,
-		List<MemberRow> members, int moreMembers) {
+		List<MemberRow> members, int moreMembers, List<BuildRow> builds) {
+	/** Without builds (the shape before M20). */
+	public HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow> villagers, int moreVillagers, List<JobChoice> jobChoices,
+			List<BuildingRow> buildings, int moreBuildings, Stock stock, List<MemberRow> members, int moreMembers) {
+		this(viewerRank, overview, villagers, moreVillagers, jobChoices, buildings, moreBuildings, stock, members, moreMembers, List.of());
+	}
+
 	public HeartSnapshot {
 		Objects.requireNonNull(viewerRank, "viewerRank");
 		Objects.requireNonNull(overview, "overview");
@@ -20,5 +26,6 @@ public record HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow
 		jobChoices = List.copyOf(jobChoices);
 		buildings = List.copyOf(buildings);
 		members = List.copyOf(members);
+		builds = List.copyOf(builds);
 	}
 }
