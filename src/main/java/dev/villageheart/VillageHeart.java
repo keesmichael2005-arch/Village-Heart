@@ -26,6 +26,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.rank.ContainerProtection.register();
 		dev.villageheart.rank.Members.register();
 		dev.villageheart.rank.RankCommands.register();
+		dev.villageheart.build.BuildCommands.register();
 		dev.villageheart.world.VillageTicker.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:job_reservations", dev.villageheart.worker.JobSiteReservations.INSTANCE);

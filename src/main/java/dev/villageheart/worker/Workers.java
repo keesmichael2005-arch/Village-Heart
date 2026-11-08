@@ -76,6 +76,7 @@ public final class Workers {
 		boolean attached = WorkerAttachments.isWorker(villager);
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager.getUUID());
+		dev.villageheart.build.BuildJobs.onWorkerRemoved(server, villager.getUUID(), villager);
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
 	}
@@ -139,6 +140,7 @@ public final class Workers {
 		VillageClaims.data(server).update(s -> s.withoutWorker(villager));
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager);
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager);
+		dev.villageheart.build.BuildJobs.onWorkerRemoved(server, villager, null);
 		return true;
 	}
 
