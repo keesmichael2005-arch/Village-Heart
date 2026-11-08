@@ -530,8 +530,15 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - **M7 `workerOpensDoors`**: walk-time logging + trace added; no outlier in 9 full + 8 isolated runs (all 64 ticks), not root-caused, BACKLOG left open.
 - Runs: full L2 green in 4 of 4 on backlog-2 and 5 of 5 on origin/m11 merged with backlog-2 (the coordinator saw 2 of 5 red on origin/m11), under load 2-10.
 - Next: review. No blockers.
+
 ## 2026-11-08: M21 review round 1 (verifier): PASS
 - Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
 - Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
 - `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
 - Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
