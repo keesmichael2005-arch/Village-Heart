@@ -20,7 +20,13 @@ import java.util.UUID;
  */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks) {
+
+	/** Without tree tasks (the shape before M9). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, List.of());
+	}
 
 	public VillageState {
 		Objects.requireNonNull(heart, "heart");
@@ -31,11 +37,19 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(tier, "tier");
 		Objects.requireNonNull(buildings, "buildings");
 		Objects.requireNonNull(workers, "workers");
+		Objects.requireNonNull(treeTasks, "treeTasks");
 		if (treasury < 0) throw new IllegalArgumentException("treasury must be >= 0: " + treasury);
 		ranks = Map.copyOf(ranks);
 		known = sortedKnown(known);
 		buildings = sortedBuildings(buildings);
 		workers = List.copyOf(workers);
+		treeTasks = List.copyOf(treeTasks);
+		Set<HeartLocation> seenCells = new HashSet<>();
+		for (TreeTask t : treeTasks) {
+			for (HeartLocation c : t.base()) {
+				if (!seenCells.add(c)) throw new IllegalArgumentException("two tree tasks share the cell " + c);
+			}
+		}
 		Set<UUID> seenVillagers = new HashSet<>();
 		Set<HeartLocation> seenBlocks = new HashSet<>();
 		for (WorkerRecord w : workers) {
@@ -85,14 +99,14 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	public static VillageState founded(HeartLocation heart, UUID owner, String ownerName, long gameTime) {
-		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), List.of(), 0, Tier.HAMLET, List.of(), List.of());
+		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), List.of(), 0, Tier.HAMLET, List.of(), List.of(), List.of());
 	}
 
 	// One place that rebuilds the record: later milestones add a component here and nowhere else.
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers);
+				newBuildings, newWorkers, treeTasks);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -256,6 +270,33 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	public List<WorkerRecord> workersAt(HeartLocation building) {
 		return workers.stream().filter(w -> w.building().equals(building)).toList();
+	}
+
+	// ---- tree tasks (M9) ----
+
+	/** Append a tree task. Throws when it shares a base cell with another task. */
+	public VillageState withTreeTask(TreeTask t) {
+		Objects.requireNonNull(t, "task");
+		List<TreeTask> next = new ArrayList<>(treeTasks);
+		next.add(t);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next);
+	}
+
+	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
+	public VillageState withoutTreeTask(HeartLocation key) {
+		if (treeTask(key).isEmpty()) return this;
+		List<TreeTask> next = new ArrayList<>(treeTasks);
+		next.removeIf(t -> t.key().equals(key));
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next);
+	}
+
+	public Optional<TreeTask> treeTask(HeartLocation key) {
+		for (TreeTask t : treeTasks) if (t.key().equals(key)) return Optional.of(t);
+		return Optional.empty();
+	}
+
+	public List<TreeTask> treeTasksAt(HeartLocation building) {
+		return treeTasks.stream().filter(t -> t.building().equals(building)).toList();
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

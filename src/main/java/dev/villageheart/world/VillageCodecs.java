@@ -9,6 +9,8 @@ import dev.villageheart.core.KnownPlayer;
 import dev.villageheart.core.MemberRepair;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.Tier;
+import dev.villageheart.core.TreeTask;
+import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.WorldClaim;
@@ -116,9 +118,51 @@ public final class VillageCodecs {
 			Codec.LONG.optionalFieldOf("last_seen", 0L).forGetter(KnownPlayer::lastSeen)
 	).apply(i, KnownPlayer::new));
 
+	public static final Codec<Pos> POS = RecordCodecBuilder.create(i -> i.group(
+			Codec.INT.fieldOf("x").forGetter(Pos::x),
+			Codec.INT.fieldOf("y").forGetter(Pos::y),
+			Codec.INT.fieldOf("z").forGetter(Pos::z)
+	).apply(i, Pos::new));
+
+	public static final Codec<TreeTask.Stage> TREE_STAGE = enumCodec(TreeTask.Stage.class);
+
+	private record RawTask(HeartLocation building, TreeTask.Stage stage, java.util.List<HeartLocation> base, String sapling, long since,
+			Pos boxMin, Pos boxMax) {}
+
+	private static final Codec<RawTask> RAW_TASK = RecordCodecBuilder.create(i -> i.group(
+			HEART_LOCATION.fieldOf("building").forGetter(RawTask::building),
+			TREE_STAGE.fieldOf("stage").forGetter(RawTask::stage),
+			HEART_LOCATION.listOf().fieldOf("base").forGetter(RawTask::base),
+			Codec.STRING.fieldOf("sapling").forGetter(RawTask::sapling),
+			Codec.LONG.optionalFieldOf("since", 0L).forGetter(RawTask::since),
+			POS.fieldOf("box_min").forGetter(RawTask::boxMin),
+			POS.fieldOf("box_max").forGetter(RawTask::boxMax)
+	).apply(i, RawTask::new));
+
+	public static final Codec<TreeTask> TREE_TASK = RAW_TASK.flatXmap(r -> {
+		try {
+			return DataResult.success(new TreeTask(r.building(), r.stage(), r.base(), r.sapling(), r.since(), r.boxMin(), r.boxMax()));
+		} catch (IllegalArgumentException e) {
+			return DataResult.error(() -> "Invalid tree task: " + e.getMessage());
+		}
+	}, t -> DataResult.success(new RawTask(t.building(), t.stage(), t.base(), t.sapling(), t.since(), t.boxMin(), t.boxMax())));
+
+	/** The first task wins when two share a base cell: one bad entry must not stop the village from loading. */
+	private static java.util.List<TreeTask> dedupeTasks(java.util.List<TreeTask> in) {
+		java.util.List<TreeTask> kept = new java.util.ArrayList<>();
+		for (TreeTask t : in) {
+			boolean clash = false;
+			for (TreeTask k : kept) if (k.sharesCellWith(t)) clash = true;
+			if (clash) System.getLogger("villageheart").log(System.Logger.Level.WARNING, "Dropped a saved tree task that shares a cell with another: {0}", t.key());
+			else kept.add(t);
+		}
+		return java.util.List.copyOf(kept);
+	}
+
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
-			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers) {}
+			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
+			java.util.List<TreeTask> treeTasks) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -130,7 +174,8 @@ public final class VillageCodecs {
 			Codec.INT.optionalFieldOf("treasury", 0).forGetter(Raw::treasury),
 			TIER.optionalFieldOf("tier", Tier.HAMLET).forGetter(Raw::tier),
 			BUILDING.listOf().optionalFieldOf("buildings", java.util.List.of()).forGetter(Raw::buildings),
-			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers)
+			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers),
+			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
@@ -138,12 +183,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers()));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks())));
 
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
 	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {

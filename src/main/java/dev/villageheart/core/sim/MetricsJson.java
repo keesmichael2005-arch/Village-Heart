@@ -75,6 +75,17 @@ public final class MetricsJson {
 		return m;
 	}
 
+	private static Map<String, Object> longs(Map<String, Long> in) {
+		return new LinkedHashMap<String, Object>(new TreeMap<>(in));
+	}
+
+	private static Map<String, Long> readLongs(Object o) {
+		Map<String, Long> out = new LinkedHashMap<>();
+		if (o == null) return out;
+		for (Map.Entry<String, Object> e : Json.obj(o, "counter map").entrySet()) out.put(e.getKey(), ((Number) e.getValue()).longValue());
+		return out;
+	}
+
 	private static Object pos(Pos p) {
 		return p == null ? null : new ArrayList<Object>(List.of((long) p.x(), (long) p.y(), (long) p.z()));
 	}
@@ -140,6 +151,9 @@ public final class MetricsJson {
 		w.put("save_bytes", d.worldSaveBytes());
 		m.put("world", w);
 		m.put("wall_seconds", d.wallSeconds());
+		m.put("work", longs(d.work()));
+		m.put("worker_status", longs(d.workerStatus()));
+		m.put("stockpile_tags", longs(d.stockpileTags()));
 		return m;
 	}
 
@@ -206,6 +220,7 @@ public final class MetricsJson {
 				(int) lng(b, "valid"), (int) lng(b, "invalid"), items,
 				(int) lng(f, "nutrition"), dbl(f, "days_left"), (int) lng(m, "treasury"), deaths,
 				new TickStats(lng(vm, "samples"), dbl(vm, "mean"), dbl(vm, "p95"), dbl(vm, "max")),
-				dbl(sv, "mspt"), dbl(sv, "tps"), dbl(m, "wall_seconds"), lng(sv, "heap_used_mb"), lng(w, "save_bytes"));
+				dbl(sv, "mspt"), dbl(sv, "tps"), dbl(m, "wall_seconds"), lng(sv, "heap_used_mb"), lng(w, "save_bytes"),
+				readLongs(m.get("work")), readLongs(m.get("worker_status")), readLongs(m.get("stockpile_tags")));
 	}
 }

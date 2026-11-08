@@ -8,5 +8,9 @@ public enum WorkerStatus {
 	/** The last deposit trip found no Storage with space (or the Storage it walked to filled up); the worker keeps what it carries. */
 	STORAGE_FULL,
 	/** The last deposit trip timed out: the Storage door could not be reached within 600 ticks. */
-	STORAGE_UNREACHABLE
+	STORAGE_UNREACHABLE,
+	/** The job needs a tool and the camp holds none for this worker ("Needs axe"). */
+	NEEDS_TOOL,
+	/** The job found nothing to do ("No trees within 32 blocks"). */
+	NO_WORK
 }

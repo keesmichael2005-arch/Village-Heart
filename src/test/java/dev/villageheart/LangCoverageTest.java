@@ -96,4 +96,22 @@ class LangCoverageTest {
 			assertTrue(lang.containsKey(k), k);
 		}
 	}
+
+	@Test
+	void everyWorkerStatusHasWordsForEveryJob() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.worker.WorkerStatus st : dev.villageheart.core.worker.WorkerStatus.values()) {
+			for (JobType j : JobType.values()) {
+				String key = dev.villageheart.worker.job.WorkerStatusText.key(st, j);
+				assertTrue(lang.containsKey(key), st + " for " + j.id() + " needs " + key);
+				assertTrue(key.startsWith("gui.villageheart.heart.activity."), "one set of words: " + key);
+			}
+		}
+		for (dev.villageheart.core.job.ToolKind k : dev.villageheart.core.job.ToolKind.values()) {
+			assertTrue(lang.containsKey("gui.villageheart.heart.activity.needs_tool." + k.id()), k.id());
+		}
+		assertEquals("Needs axe", lang.get("gui.villageheart.heart.activity.needs_tool.axe"));
+		assertEquals("No trees within 32 blocks", lang.get("gui.villageheart.heart.activity.no_work.lumberjack"));
+		assertTrue(lang.keySet().stream().noneMatch(k -> k.startsWith("status.villageheart.")), "M9's separate status keys are gone");
+	}
 }

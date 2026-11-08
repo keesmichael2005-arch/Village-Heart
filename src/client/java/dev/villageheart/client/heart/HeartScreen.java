@@ -753,13 +753,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (selected) g.fill(x, y, x + w, y + ROW_H - 1, 0x66FFFFFF);
 		else if (hover) g.fill(x, y, x + w, y + ROW_H - 1, 0x33FFFFFF);
 		int ty = y + 7;
-		text(g, Component.literal(v.name()), x + 4, ty, 72, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
+		text(g, Component.literal(v.name()), x + 4, ty, 56, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
 		Component job;
 		if (v.isWorker()) job = t("villagers.level", jobName(v.jobId()), v.level());
 		else if (v.nitwit()) job = t("villagers.nitwit");
 		else if (v.vanillaProfession().isEmpty() || v.vanillaProfession().equals("minecraft:none")) job = t("villagers.unemployed");
 		else job = Component.translatable("entity.minecraft.villager." + Identifier.parse(v.vanillaProfession()).getPath());
-		text(g, job, x + 80, ty, 68, v.isWorker() ? WHITE : GREY, AREA_BODY, grp);
+		text(g, job, x + 62, ty, 88, v.isWorker() ? WHITE : GREY, AREA_BODY, grp);
 		if (v.isWorker()) {
 			int bx = x + 152, by = y + 8;
 			g.fill(bx, by, bx + 40, by + 5, 0xFF404040);
@@ -777,8 +777,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 		}
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
-				: Component.translatable(HeartTexts.key("activity." + v.activity().name().toLowerCase(Locale.ROOT)));
-		int actColor = v.workplaceInvalid() && v.isWorker() ? RED : GREY;
+				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
+		boolean warn = v.workplaceInvalid() && v.isWorker() || v.activity() == dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL;
+		int actColor = warn ? RED : GREY;
 		text(g, act, x + 258, ty, w - 258 - 4, actColor, AREA_BODY, grp);
 	}
 

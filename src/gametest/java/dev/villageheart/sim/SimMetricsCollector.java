@@ -136,7 +136,27 @@ public final class SimMetricsCollector {
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() == dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() != dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
 				village.isPresent() ? dev.villageheart.stock.Stockpiles.totalsById(server) : Map.of(), 0, 0.0, village.map(VillageState::treasury).orElse(0),
-				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)));
+				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
+				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village));
+	}
+
+	/** Workers in each status right now (lowercase status name): "ok", "needs_tool", "no_work" ... */
+	private static Map<String, Long> workerStatuses(MinecraftServer server, Optional<VillageState> village) {
+		Map<String, Long> out = new java.util.TreeMap<>();
+		if (village.isEmpty()) return out;
+		for (var w : village.get().workers()) {
+			out.merge(dev.villageheart.worker.Workers.status(server, w).name().toLowerCase(java.util.Locale.ROOT), 1L, Long::sum);
+		}
+		return out;
+	}
+
+	/** Stockpile counts by item tag, for the families M11 asserts on (logs and saplings). */
+	private static Map<String, Long> stockpileTags(MinecraftServer server, Optional<VillageState> village) {
+		Map<String, Long> out = new java.util.TreeMap<>();
+		if (village.isEmpty()) return out;
+		out.put("minecraft:logs", dev.villageheart.stock.Stockpiles.count(server, net.minecraft.tags.ItemTags.LOGS));
+		out.put("minecraft:saplings", dev.villageheart.stock.Stockpiles.count(server, net.minecraft.tags.ItemTags.SAPLINGS));
+		return out;
 	}
 
 	private static long folderBytes(Path dir) {

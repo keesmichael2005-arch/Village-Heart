@@ -11,11 +11,24 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		Map<String, Long> stockpile,
 		int foodNutrition, double foodDaysLeft, int treasury,
 		List<DeathRecord> deaths,
-		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes) {
+		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
+		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags) {
 
 	public DayMetrics {
 		stockpile = Map.copyOf(stockpile);
 		deaths = List.copyOf(deaths);
+		work = Map.copyOf(work);
+		workerStatus = Map.copyOf(workerStatus);
+		stockpileTags = Map.copyOf(stockpileTags);
+	}
+
+	/** Without the M9 families (work counters, worker statuses, stockpile by tag): they read empty. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, Map.of(), Map.of(), Map.of());
 	}
 
 	public long stockpileTotal() {
@@ -44,6 +57,9 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("stockpile.total", (double) stockpileTotal());
 		m.put("stockpile.distinct", (double) stockpile.size());
 		for (Map.Entry<String, Long> e : stockpile.entrySet()) m.put("stockpile.items." + e.getKey(), (double) e.getValue());
+		for (Map.Entry<String, Long> e : stockpileTags.entrySet()) m.put("stockpile.tag." + e.getKey(), (double) e.getValue());
+		for (Map.Entry<String, Long> e : work.entrySet()) m.put("work." + e.getKey(), (double) e.getValue());
+		for (Map.Entry<String, Long> e : workerStatus.entrySet()) m.put("workers.status." + e.getKey(), (double) e.getValue());
 		m.put("food.nutrition", (double) foodNutrition);
 		m.put("food.days_left", foodDaysLeft);
 		m.put("treasury", (double) treasury);

@@ -225,6 +225,29 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
 
+## 2026-11-07: M9 plan written (docs/plans/M9.md), Lumberjack
+12-step plan for the first real job, written while M7 is still being built (assumptions M7-1..8 and M8-1 are in §3.1; the main ones: `JobBehaviours.work`
+is the per-job plug-in point, and M7 step 9's `DepositTrip` deposits everything at GO_HOME and gets three small hooks: keep, free-slot, `wanted`).
+- Core: a reusable job toolkit (`core.job`: tool tiers, `WorkSpeed` = tool × level × needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), tree detection
+  over a `TreeView` grid (a 26-connected natural-log component with ≥ 3 non-persistent leaf contacts, a soil base inside 2×2, no log in a valid room,
+  ≤ 192 logs), a budgeted nearest-first `TreeFinder`, a `LumberjackPlanner` decision table, and `TreeTask`s saved in `VillageState`, so an interrupted fell resumes.
+- Pace: stone ×1.25 → 40 ticks per log (1 log per 2 s). Copper, gold and netherite multipliers are pinned. The axe is used in place in the camp chest
+  (1 durability per log), never held, so it cannot be dropped or duplicated. Drops are picked up by mod code (vanilla looting needs `mob_griefing` and
+  `requestedItems`). No new fells after day time 5000, so the canopy (≈ 5 600 ticks to decay) drops before night. Never loads chunks.
+- Verified for the plan: villagers have FOLLOW_RANGE 16 (partial paths, so a progress watchdog is needed); random ticks run in GameTests without a player;
+  the GameTest server does not pace ticks.
+- Tests: 13 L1, 14 L2 (feature-grown trees with fixed seeds, measured `fellBound`, stray-tree sweep), 1-2 L4. L3: `work.<job>.<counter>`,
+  `workers.status.<status>` and the reserved `stockpile.tag.*` get filled for M11.
+Revised after a fresh critique (22 findings; I refuted 3 against the sources: random ticks, StandAtJobBlock, GameTest tick pacing).
+Next: BUILD M9 after M7 (including step 9) is merged. Top risk: the DepositTrip interplay (M7 step 9 does not exist yet).
+
+## M9 (builder, branch m9): Lumberjack
+Steps 1-12 done (the second L4 shot is skipped: M8 is not on dev; ROADMAP not ticked on instruction). Plan deviations: docs/plans/M9.md section 8.
+- core: `core.job` (tool kinds and tiers, `WorkSpeed` = tool x level x needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), `JobType.tool()`, `core.tree` (`TreeScanner`, `TreeFinder`, `FellOrder`, `Species`), `core.lumber` (`LumberjackPlanner`, `ReplantRules`), `TreeTask` saved in `VillageState.treeTasks` (`tree_tasks`), L3 families `work.<job>.<counter>`, `workers.status.<status>`, `stockpile.tag.<tag>` (`DayMetrics`, `MetricsJson`, collector).
+- glue: `worker.lumber` (`LumberjackWork`, `LumberJob`, `LumberRuntime`, `LevelTreeView`, `LumberSystem`, `LumberKeep`), `worker.job` (`CampContainers`, `CampTools`, `ItemPickup`, `WalkTo`, `WorkerStatuses`, `WorkerStatusText`, `WorkStats`); `DepositTrip` gets the keep rule, the free-slot rule, `wanted()` and long-range walking.
+- Main findings while building: the vanilla walk sink cannot bring a worker out of a room to a tree behind a wall (own pathing, `WalkTo`); leaves block the ground up to the trunk (chop from the nearest reachable spot); a worker idling at the camp does not see drops 20 blocks away (collect in the work area); two workers jam in a doorway (jam breaker).
+- Tests: 14 L2 lumberjack tests, 13+ L1 test classes for the toolkit, trees, planner, saved tasks and metrics; L4 `lumberjack_felling` and `villagers_tab_needs_axe`. Verify summary and flake counts are in the M9 round 1 fixes entry below.
+
 ## 2026-11-07: M8 plan written (docs/plans/M8.md)
 9-step plan for the Heart screen v1. APIs checked against the 1.21.11 sources and Fabric 0.141.6 sources jars (no Gradle run).
 - Opening: Fabric `ExtendedScreenHandlerType<HeartMenu, HeartOpenData>` (a menu with no slots; the first snapshot travels with the open packet,
@@ -260,6 +283,14 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
 - Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.
 
+## 2026-11-07: M9 review round 1: FAIL (verifier)
+- Merged origin/dev (M8) into m9; all conflicts additive (both sides kept). Review: docs/reviews/M9-r1.md.
+- Fix 1: a free oak in the open yard is sometimes judged unreachable (WalkTo gives up, 6000-tick blacklist): Layer 2 failed 3 of 9
+  merged runs (two_lumberjacks x2, fell_resumes x1, odd_shapes x1). Fix 2: the Heart Villagers tab shows "Working", not "Needs axe"
+  (HeartFacts ignores NEEDS_TOOL/NO_WORK; WorkerStatusText unused; two key sets for the same statuses).
+- All roadmap tests mutation-checked and real; M7 worker tests 12/12 green; L1, L4, perf green.
+- Next: builder round 2 on m9. Blockers: none.
+
 ## 2026-11-07: M24 plan (ranks and multiplayer), branch m24-plan
 - Plan: docs/plans/M24.md, 11 steps. `Permission(minimum rank)` + new OPEN_CONTAINERS/MANAGE_RANKS/TRANSFER_OWNERSHIP/BREAK_HEART/START_BLUEPRINT;
   `VillageState.known` name book (64, ranked never evicted, save key `known_players`, lenient + repaired on load); `RankRules`; transfer to a
@@ -284,6 +315,18 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
+
+### M9 review r1 fixes (builder)
+Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `treeTasks` as its last component next to M24's `known`; codec and fabric.mod.json merged).
+1. **False "cannot reach the tree" (roots found, three of them, none was the bound):**
+   - `WalkTo`'s give-up clocks ran while the worker stood at the tree chopping (a 40-log tree takes 1600 ticks): the first step away (a deposit trip, a push) read as an 800-tick walk. They now restart whenever the worker is at its spot, and after any gap in ticking.
+   - Vanilla replaces the navigation's path when a block on it changes (a door opens), recomputing with the villager's 16-block range; the new path led to the far corner of the yard (a 28-block detour and back, 300-600 ticks). `WalkTo` notices a path that is not its own and plans the long one again at once (the trace shows it about 3 times per walk through a door).
+   - The yard of a test is not cleared when the structure is placed (it is one air block): the glass box of `radiusAndUnreachable` and the rooms of other tests stayed and walled off trees of the next test that used the same place. `sweepStrayTrees` now empties the yard first.
+   - The planner started no new tree while a drop was waiting; with the leaves of the day's trees dropping, `oddShapesFelledWhole` never got to its 40-log dark oak before the cutoff. Trees now come before drops while a new fell is allowed (L1 `rows5to8_replantBeforeAFellBeforeCollect`).
+   - New guard: every "cannot reach" verdict is recorded (`LumberRuntime.giveUps`) and the open-yard tests fail on one (`assertNoGiveUps`; `sixOaksTwoDays` only for the six original trees, a regrown canopy can wall off its own trunk).
+   - Evidence: 12 consecutive full `./gradlew --no-daemon runGameTest` runs on the merged code, all 139 tests passed. Before the last fix 1 in 4 to 1 in 12 runs still failed (pace/fell bounds, six oaks), each with a traced cause above.
+2. **"Needs axe" on the Villagers tab:** `ActivityKind` has `NEEDS_TOOL` and `NO_WORK`; `HeartFacts` maps them; `HeartScreen` renders `HeartTexts.activityKey(activity, jobId)` ("Needs axe", "No trees within 32 blocks", red for a missing tool). One set of words: M9's `status.villageheart.*` keys are gone, `WorkerStatusText` now returns the `gui.villageheart.heart.activity.*` keys. The job column of the row is wider (the name column narrower): "Lumberjack L1" was cut off. L2: `noAxeNoLogs` asserts the snapshot row ("Needs axe"). L4: `villagers_tab_needs_axe` (looked at).
+3. Also: `DepositTrip.start` erases a left-over walk target; the felling shot shows the stump with its sapling.
 
 ## 2026-11-07: backlog hardening batch 1, branch backlog-1
 - Zero-test guard: `scripts/check-gametest-log.sh` (run by verify.sh, self-tested by `test-check-gametest-log.sh`) fails on "All 0 required tests passed"; TESTING.md says filters must be exact ids. Checked against a real partial-filter run (exit 0, 0 tests) which it rejects.

@@ -133,6 +133,8 @@ public final class HeartFacts {
 			ActivityKind activity = switch (status) {
 				case STORAGE_FULL -> ActivityKind.STORAGE_FULL;
 				case STORAGE_UNREACHABLE -> ActivityKind.STORAGE_UNREACHABLE;
+				case NEEDS_TOOL -> ActivityKind.NEEDS_TOOL;
+				case NO_WORK -> ActivityKind.NO_WORK;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
