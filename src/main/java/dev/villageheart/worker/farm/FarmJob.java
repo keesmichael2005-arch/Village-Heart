@@ -121,17 +121,26 @@ public final class FarmJob {
 	}
 
 	/** Ticks of ripe crops without a harvest or planting before the farmer is reported as stalled. */
-	private static final long STALL_TICKS = 6000;
+	private static boolean allCellsTaken;
+
+	/** Tests: every field cell counts as claimed by someone else (ripe crops the farmer may not touch). */
+	public static void setAllCellsTakenForTest(boolean on) { allCellsTaken = on; }
+
+	private static final long STALL_TICKS_DEFAULT = 6000;
+	private static long stallTicks = STALL_TICKS_DEFAULT;
+
+	/** Tests shorten the watchdog; a value below 1 restores the default. */
+	public static void setStallTicksForTest(long ticks) { stallTicks = ticks < 1 ? STALL_TICKS_DEFAULT : ticks; }
 
 	/**
-	 * A farmer must not sit at status OK while ripe crops wait. When it made no progress for STALL_TICKS while the field has mature cells (and
+	 * A farmer must not sit at status OK while ripe crops wait. When it made no progress for stallTicks while the field has mature cells (and
 	 * it is not too hungry), the worker is reported SITE_UNREACHABLE and one line says where it is and what it saw, so a failing run leaves evidence.
 	 */
 	private static void stallWatchdog(ServerLevel level, Villager v, WorkerState ws, long now) {
 		if (ws.lastProgress < 0) ws.lastProgress = now;
-		if (now - ws.lastProgress < STALL_TICKS || ws.seenMature == 0 || v.getAttached(WorkerAttachments.WORKER).needs().speed() <= 0) return;
+		if (now - ws.lastProgress < stallTicks || ws.seenMature == 0 || v.getAttached(WorkerAttachments.WORKER).needs().speed() <= 0) return;
 		WorkerStatuses.set(v.getUUID(), WorkerStatus.SITE_UNREACHABLE);
-		if (now - ws.stallLoggedAt < STALL_TICKS) return;
+		if (now - ws.stallLoggedAt < stallTicks) return;
 		ws.stallLoggedAt = now;
 		var path = v.getNavigation().getPath();
 		VillageHeart.LOG.warn("[farm-stall] farmer {} made no progress for {} ticks with {} mature cells: pos {} (chunk entity-ticking {}), action {} decision {}, "
@@ -248,6 +257,7 @@ public final class FarmJob {
 		Set<Pos> unavailable = new HashSet<>();
 		for (Pos c : rt.claims.keySet()) if (rt.claimedByOther(c, v.getUUID(), now)) unavailable.add(c);
 		for (var e : rt.cellBlacklist.entrySet()) if (e.getValue() > now) unavailable.add(e.getKey());
+		if (allCellsTaken) unavailable.addAll(byPos.keySet());
 
 		ws.seenCells = cells.size();
 		ws.seenUnavailable = unavailable.size();

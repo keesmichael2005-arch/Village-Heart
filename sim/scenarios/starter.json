@@ -27,6 +27,7 @@
     "sum(food.fed) >= 0.9 * sum(food.diners) from day 3",
     "max(food.max_hungry_days) < 3 from day 3",
     "stockpile.tag.minecraft:logs > stockpile.tag.minecraft:logs@prev on every day",
+    "min(work.farmer.harvested) > 0 from day 3",
     "village_ms.mean < 1 on every day"
   ]
 }

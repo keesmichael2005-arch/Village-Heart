@@ -146,6 +146,9 @@ public final class Workers {
 		return true;
 	}
 
+	/** A trip flag with no trip behind it, as a dropped behaviour leaves it (tests). */
+	public static void markTripRunningForTest(Villager v) { setTripRunning(v, true); }
+
 	static void setTripRunning(Villager v, boolean running) {
 		if (running) TRIPS.put(v, v.level().getGameTime()); else TRIPS.remove(v);
 	}

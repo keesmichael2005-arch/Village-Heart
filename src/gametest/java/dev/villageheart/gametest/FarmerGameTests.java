@@ -73,6 +73,35 @@ public class FarmerGameTests {
 		});
 	}
 
+	// ---- review of M11 round 3: a farmer that cannot harvest is not "ok" ------------------------------
+
+	@GameTest(environment = "villageheart-gametest:farm_stall", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void farmerThatCannotTouchRipeCropsIsNotOk(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		long[] stat = new long[1];
+		GameTestSequence seq = scene(h, 1, true).thenExecute(() -> {
+			dev.villageheart.worker.farm.FarmJob.setStallTicksForTest(400);
+			dev.villageheart.worker.farm.FarmJob.setAllCellsTakenForTest(true); // ripe crops the farmer may not touch
+			field(h, 8, 14, 10, 18, CropKind.WHEAT, 7, false);
+			stat[0] = WorkStats.get("farmer", "harvested");
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = seq.thenWaitUntil(() -> {
+			var rec = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().workers().stream().filter(r -> r.villager().equals(v[0].getUUID())).findFirst().orElseThrow();
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.SITE_UNREACHABLE, dev.villageheart.worker.Workers.status(h.getLevel().getServer(), rec),
+					"status of a farmer with ripe crops it cannot reach");
+		});
+		seq.thenExecute(() -> {
+			dev.villageheart.worker.farm.FarmJob.setStallTicksForTest(-1);
+			dev.villageheart.worker.farm.FarmJob.setAllCellsTakenForTest(false);
+			h.assertValueEqual(stat[0], WorkStats.get("farmer", "harvested"), "nothing was harvested");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-2 ----------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:farm_harvest", structure = YARD, skyAccess = true, maxTicks = 3000)
