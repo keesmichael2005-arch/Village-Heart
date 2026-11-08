@@ -95,6 +95,21 @@ class AwayCheckTest {
 	}
 
 	@Test
+	void theHunterNumbersMakeATripDueAt3000NotAt2500() {
+		double u = Balance.HUNTER_TRIP_UNITS;
+		int step = Balance.HUNTER_STEP_TICKS, lim = Balance.HUNTER_UNKNOWN_LIMIT;
+		Inputs at2500 = new Inputs(true, true, true, true, Lease.HELD, 1.0, true, new AwayProgress(2480), 0);
+		assertSurface(SurfaceReason.HAUL, AwayCheck.check(at2500)); // the miner's number: due
+		assertTrue(AwayCheck.check(at2500, u, step, lim).stays()); // the hunter's: not yet
+		Inputs at3000 = new Inputs(true, true, true, true, Lease.HELD, 1.0, true, new AwayProgress(2980), 0);
+		assertSurface(SurfaceReason.HAUL, AwayCheck.check(at3000, u, step, lim));
+		assertEquals(0.0, AwayCheck.check(at3000, u, step, lim).progress().units(), 1e-9);
+		// unknown limit is the caller's
+		assertTrue(AwayCheck.check(with(true, true, true, true, Lease.UNKNOWN, 1.0, true, 58), u, step, 60).stays());
+		assertSurface(SurfaceReason.STOPPED_WORKING, AwayCheck.check(with(true, true, true, true, Lease.UNKNOWN, 1.0, true, 58), u, step, 59));
+	}
+
+	@Test
 	void anUnknownDepthWithNoHaulDueStillMakesProgress() {
 		Outcome o = AwayCheck.check(with(true, true, true, true, Lease.HELD, 1.25, false, 0));
 		assertTrue(o.stays());

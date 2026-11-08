@@ -2,6 +2,7 @@ package dev.villageheart.core.building;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.building.BuildingRules.CheckContext;
 import dev.villageheart.core.building.BuildingRules.SiteFacts;
@@ -39,8 +40,11 @@ class SiteRulesTest {
 				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(39, false), LINKED)));
 		assertEquals(List.of("Must be outside House and Farmhouse rooms"),
 				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, true), LINKED)));
-		assertEquals(List.of("No Hunting Lodge in the village"),
+		// M17: a Hunting Ground links only to a Lodge within 40 blocks (was: anywhere in the village)
+		assertEquals(List.of("No Hunting Lodge within 40 blocks"),
 				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, false), ALONE)));
+		assertEquals(List.of(Reason.noParent(BuildingType.HUNTING_LODGE, Balance.HUNTING_GROUND_LINK_RANGE)),
+				BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, false), ALONE).reasons());
 	}
 
 	@Test void trainingYard() {

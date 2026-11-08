@@ -73,7 +73,7 @@ public final class AwayCodecs {
 	}, r -> r.name().toLowerCase(Locale.ROOT));
 
 	private record Raw(Slot slot, double progress, Optional<dev.villageheart.core.HeartLocation> progressShaft, long rolls,
-			Map<String, Integer> pending, Optional<SurfaceReason> lastReason, int unknownSteps) {}
+			Map<String, Integer> pending, Optional<SurfaceReason> lastReason, int unknownSteps, long doneDay, int doneToday) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			SLOT.optionalFieldOf("trip", Slot.EMPTY).forGetter(Raw::slot),
@@ -82,16 +82,19 @@ public final class AwayCodecs {
 			Codec.LONG.optionalFieldOf("rolls", 0L).forGetter(Raw::rolls),
 			Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("pending", Map.of()).forGetter(Raw::pending),
 			REASON.optionalFieldOf("last_reason").forGetter(Raw::lastReason),
-			Codec.INT.optionalFieldOf("unknown_steps", 0).forGetter(Raw::unknownSteps)
+			Codec.INT.optionalFieldOf("unknown_steps", 0).forGetter(Raw::unknownSteps),
+			// M17: absent in M16 saves (-1 = never counted); omitted again while at the default, so M16's pinned names are unchanged
+			Codec.LONG.optionalFieldOf("done_day", -1L).forGetter(Raw::doneDay),
+			Codec.INT.optionalFieldOf("done_today", 0).forGetter(Raw::doneToday)
 	).apply(i, Raw::new));
 
 	public static final Codec<AwayState> AWAY_STATE = RAW.flatXmap(r -> {
 		try {
 			return DataResult.success(new AwayState(r.slot().trip(), new AwayProgress(Math.max(0.0, r.progress())), r.progressShaft(),
-					Math.max(0L, r.rolls()), r.pending(), r.lastReason(), Math.max(0, r.unknownSteps()), r.slot().broken()));
+					Math.max(0L, r.rolls()), r.pending(), r.lastReason(), Math.max(0, r.unknownSteps()), r.slot().broken(), r.doneDay(), Math.max(0, r.doneToday())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid away state: " + e.getMessage());
 		}
 	}, s -> DataResult.success(new Raw(new Slot(s.trip(), false), s.progress().units(), s.progressShaft(), s.rolls(), s.pending(),
-			s.lastReason(), s.unknownSteps())));
+			s.lastReason(), s.unknownSteps(), s.doneDay(), s.doneToday())));
 }
