@@ -147,6 +147,8 @@ public class HunterGameTests {
 			for (int i = 0; i < 2; i++) h.assertValueEqual(SurfaceReason.HAUL, tr.ascents.get(i).record().reason(), "reason of trip " + i);
 			h.assertValueEqual(2L, WorkStats.get("hunter", "trips") - trips0[0], "work.hunter.trips");
 			h.assertValueEqual(2L, WorkStats.get("hunter", "returns") - returns0[0], "work.hunter.returns");
+			h.assertValueEqual((int) (2L * dev.villageheart.core.Balance.milliXpPerUnit(dev.villageheart.core.job.WorkUnit.GAME_HUNTED) / 1000),
+					dev.villageheart.worker.WorkerAttachments.get(v[0]).orElseThrow().xp(), "M15: XP per completed trip (GAME_HUNTED)");
 			h.assertValueEqual(10, chestSlot(h, 0).getDamageValue(), "5 durability per trip");
 			h.assertValueEqual(8, chestSlot(h, 1).getCount(), "a sword takes no arrows");
 			h.assertFalse(AwayTrips.isAway(v[0]), "back at the end of the day");
