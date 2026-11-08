@@ -450,3 +450,10 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
 - Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
 - Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-08: M23 plan (Population growth), branch m23-plan
+- Plan: docs/plans/M23.md, 9 steps. Builds after M11, M12 (`VillageDawn`) and M14 (dawn fires with wages off); fallback clock and codec field ready if `VillageDawn` is missing.
+- Rules: dawn licence for the closest pair of ready adults (fed per `Diet`, housed per `Housing`, age 0) when a valid House has a free bed and food days ≥ 3; the baby's House bed is reserved at dawn; courtship walks the pair together in a shared IDLE window and seeds `BREED_TARGET` on the initiator only; `foodLevel` topped up to 12 (no stockpile cost).
+- Gate: a `Villager.canBreed` mixin blocks every unlicensed villager inside the claim, which is what makes "1 birth per day" and "no free bed, no baby" hold against vanilla's own breeding; a `takeVacantBed` hook keeps outside pairs off claim beds.
+- Root cause of the M7 T-L2-14 abort (static reading): `MoveToTargetSink` stops at Manhattan block distance 2, but `VillagerMakeLove.tick` acts only within √5 and births on one tick only, so a pair can park 2.24-3 blocks apart and miss the birth. Fix for licensed pairs: close-enough 1 and re-issued walk targets when too far (mixins). Step 1 measures it with a 100-round probe before the fix, step 9 after. T-L2-14 loses its three-window retry.
+- Critique: remote critic session, 30 findings, 27 taken, 2 partly, 1 answered by a design statement. Top risk: the root cause is inferred, not measured yet.
