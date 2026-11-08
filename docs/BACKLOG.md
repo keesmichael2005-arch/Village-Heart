@@ -53,7 +53,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
 
 ## From l4flake-r1
-- [ ] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+- [x] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+  - **Fixed (branch l4-flake-2).** It returned in full verifies (M20 builder: 2 of 3, at the end of `heartTabs`). Root cause, in Fabric: `Minecraft.disconnect` resets `CLIENTBOUND` once, right after the client closed its end of the in-memory channel, but the server's end closes later on its own Netty event loop while the integrated server keeps ticking; packets the server sends in that window are counted after the reset and can never be received, so the next client tick waits 10 s for them. Instrumented natural failure: 41 packets (20 `set_entity_data`, 20 `set_entity_motion` from the 20 killed villagers, 1 `disconnect`). Fixed by a gametest-only mixin (`DisconnectInFlightLeakFix`) that resets the count again once the integrated server has stopped, plus `heartTabs` waiting for the deaths to finish before it closes. No retry. See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 - [ ] The wakeup wrapper doesn't check the `invalid` flag between slices (cosmetic; up to 10 s later failure)
 
 ## From M6-r1/r2
@@ -120,3 +121,6 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From M20-r1 (builder)
 - [ ] `workerOpensDoors` (M9) rarely fails with "reaching the job block through the closed door took 456 ticks, bound 400". Seen once in about 18 full Layer 2 runs on the M20 branch, never alone (6 of 6 pass) and never in the 17 other runs. Measured: it takes exactly 156 ticks every time otherwise, and the failure is 300 ticks later, which is three `GoToJobBlock` back-offs of 100 ticks (three consecutive failed paths out of the closed room). Not reproduced, so no root cause yet. Next step if it shows again: run the suite with `-Dvillageheart.lumber.trace=true` plus a log of `CANT_REACH_WALK_TARGET_SINCE` in `GoToJobBlock.start`.
+
+## From l4flake2-r1
+- [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)
