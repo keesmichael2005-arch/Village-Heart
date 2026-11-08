@@ -382,3 +382,19 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+## 2026-11-07: M11 plan written (docs/plans/M11.md)
+Planner. Food, dinner and needs, plus the first real L3 scenario `starter`. Planned on assumptions about M7 (origin/m7 at a49fa0f), M9 (origin/m9-plan)
+and M10 (no plan yet); section 3.1 lists them. M11 is built only after M7, M9 and M10 are on dev.
+- Dinner is abstract: at day tick 11000 a village system takes food straight from the Storage chests for every loaded villager in the claim
+  (no walking). Pure `core.food.DinnerPlanner`: hungriest first, then workers in hiring order; best food first (prepared before raw, then
+  nutrition); a villager eats only if it can reach its full need (10, children 5), so food is not wasted on partial meals. `DinnerClock` fires once per
+  day index (`!=`, so `/time set` works), saved as `last_dinner_day`; no catch-up.
+- Hunger lives in a persistent `villageheart:diet` attachment on every villager (epoch-checked); `WorkerData.needs` becomes a derived copy with
+  the invariant fed == (hungryDays == 0). `Needs.speed()` = hunger {1, 0.5, 0} x unhoused 0.75 x unpaid 0; paid is stubbed true (`PaidSource`) until M12.
+  Housed = HOME bed head is a `#bed` of a valid House scan (or the worker's own building). Workers are moved into free House beds (may take one
+  from an awake non-worker). Speed 0 gets a planner row in M9/M10 (idle + `TOO_HUNGRY`).
+- Harness: five new actions (`site` = deterministic flat-site search in core + flatten + light, `prefab` rooms, `field`, `grove` of worldgen oaks,
+  `hire` at day 1 tick 200), `food.*` and `housing.*` metrics, `sim/scenarios/starter.json` with the assertions for the roadmap criteria.
+- Roadmap correction to make in the build: 4 villagers + 20 bread leaves 12 bread (8 eaten), not 8.
+Revised after a fresh critique (22 findings; 3 refuted: `@prev` exists, `--reload-at` halts at dawn, job/building ids are core enums). Key fixes: test hooks so older worker GameTests keep full pace, adults-before-children tiebreak, lenient needs decode, dinner clock reset after the harness sets dawn.
+Next: BUILD M11 after M10 (orchestrator: approve the 12-bread roadmap correction). Top risk: `starter` relies on the unbuilt M9/M10 workers surviving and producing in an unseeded village for 10 days.
