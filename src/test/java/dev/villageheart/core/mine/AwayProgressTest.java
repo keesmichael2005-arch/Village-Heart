@@ -74,6 +74,43 @@ class AwayProgressTest {
 	}
 
 	@Test
+	void hunterTripCostsExactly150StepsAtPaceOne() {
+		AwayProgress p = AwayProgress.ZERO;
+		for (int i = 1; i <= 150; i++) {
+			AwayProgress.Step s = p.add(20, 1.0, Balance.HUNTER_TRIP_UNITS);
+			if (i < 150) assertEquals(0, s.hauls(), "step " + i);
+			else {
+				assertEquals(1, s.hauls());
+				assertEquals(0.0, s.next().units(), 1e-9);
+			}
+			p = s.next();
+		}
+	}
+
+	@Test
+	void hunterTripAtPace125IsDueAtStep120() {
+		AwayProgress p = AwayProgress.ZERO;
+		int trip = 0;
+		for (int i = 1; i <= 120; i++) {
+			AwayProgress.Step s = p.add(20, 1.25, Balance.HUNTER_TRIP_UNITS);
+			if (s.hauls() > 0) trip = i;
+			p = s.next();
+		}
+		assertEquals(120, trip);
+		assertTrue(new AwayProgress(3000).due(3000));
+		assertFalse(new AwayProgress(2999).due(3000));
+		assertEquals(3000, new AwayProgress(2990).addHeld(20, 1.0, 3000).units());
+	}
+
+	@Test
+	void theTwoArgumentMethodsStillUseTheMinersNumbers() {
+		AwayProgress.Step s = new AwayProgress(2490).add(20, 1.0);
+		assertEquals(1, s.hauls());
+		assertEquals(10.0, s.next().units(), 1e-9);
+		assertEquals(0, new AwayProgress(2400).add(20, 1.0).hauls());
+	}
+
+	@Test
 	void negativeProgressIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new AwayProgress(-1));
 	}

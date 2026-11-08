@@ -10,6 +10,8 @@ import dev.villageheart.worker.farm.FarmJob;
 import dev.villageheart.worker.farm.FarmerWork;
 import dev.villageheart.worker.lumber.LumberKeep;
 import dev.villageheart.worker.lumber.LumberjackWork;
+import dev.villageheart.worker.hunt.HuntGear;
+import dev.villageheart.worker.hunt.HunterWork;
 import dev.villageheart.worker.mine.MinerKeep;
 import dev.villageheart.worker.mine.MinerWork;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
@@ -53,6 +55,13 @@ final class JobBehaviours {
 					Pair.of(3, new MinerWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
+		if (jobOf(villager) == JobType.HUNTER) {
+			// the hunter walks to its Hunting Ground: no GoToJobBlock either
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new HunterWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
 		return ImmutableList.of(
 				Pair.of(1, new DepositTrip()),
 				Pair.of(2, new GoToJobBlock()),
@@ -79,7 +88,10 @@ final class JobBehaviours {
 	 * on the surface, however small). The trip still needs something to hand in.
 	 */
 	static boolean depositNow(Villager villager) {
-		return jobOf(villager) == JobType.MINER && MinerKeep.carriesNonFood(villager);
+		JobType job = jobOf(villager);
+		if (job == JobType.MINER) return MinerKeep.carriesNonFood(villager);
+		// the hunter's rule is by item id, not by the food component: raw meat has one, and it is handed in (M17)
+		return job == JobType.HUNTER && HuntGear.carriesYield(villager);
 	}
 
 	/** The behaviours of the go_home activity that come before walking to the bed (M9+: deposit trips). */

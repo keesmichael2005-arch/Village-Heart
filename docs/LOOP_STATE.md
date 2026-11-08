@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-08 20:20 NZ): NO cost cap. Use as much usage as po
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 | M15 merged | M11 finisher (m11) -> verify r3 | M17 VERIFY r1 (m17) | M21 BUILD (m21) | M22 planning | plans ready: M12 M13 M14 M18 M19 M23 (wait on M11; M23 also M12+M14)"
+current: "run 2 | M15, M17 merged | M17 XP follow-up (m17 builder) | M11 finisher (m11) -> verify r3 | M21 BUILD (m21) | M25 planning | plans ready: M12 M13 M14 M18 M19 M22 M23 (wait on M11)"
 blocked: []
 open_questions_for_human:
   - "Decided by the orchestrator, FYI: M23 blocks all vanilla villager breeding inside the claim (DESIGN §7: growth only via the dawn trigger), so feeding villagers bread does nothing there. M23 T-L2-2 (no baby in 3 days) watches days 1-2 only to dawn+1500 ticks, since births can only be licensed at dawn; the verifier must confirm no other birth path exists"

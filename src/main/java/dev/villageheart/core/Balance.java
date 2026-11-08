@@ -188,4 +188,36 @@ public final class Balance {
 	/** Depth bands of the haul tables by the shaft's deepest Y: HIGH from 40, MID from 0, DEEP below. */
 	public static final int BAND_HIGH_MIN_Y = 40;
 	public static final int BAND_MID_MIN_Y = 0;
+
+	// ---- M17: Hunter + Hunting Ground ---------------------------------------------------------------
+
+	/** Work units one hunting trip costs; at level 1 (1.0 unit per tick) a trip is 3000 ticks, 3 in-game hours away (DESIGN 5.4). */
+	public static final double HUNTER_TRIP_UNITS = 3000;
+	/** An away hunter is stepped every this many ticks. */
+	public static final int HUNTER_STEP_TICKS = 20;
+	/** Durability the leased weapon loses per completed trip. */
+	public static final int HUNTER_WEAR_PER_TRIP = 5;
+	/** Completed trips per day by level (index level - 1, clamped). */
+	public static final int[] HUNTER_TRIPS_PER_DAY = {2, 3, 3};
+	/** A trip starts only if it can end this many ticks before WORK_END. */
+	public static final int HUNTER_DEPART_MARGIN = 300;
+	/** After the ground turned out unreachable the hunter waits this long before it tries again. */
+	public static final int HUNTER_RETRY_TICKS = 600;
+	/** Away steps in a row with an unreadable weapon chest before the hunter comes back. */
+	public static final int HUNTER_UNKNOWN_LIMIT = 60;
+	/** A hunter farther than this from the ground marker walks to its fletching table first (WalkTo plans at most 48 blocks). */
+	public static final int HUNTER_FAR_FROM_GROUND = 40;
+	/** A Hunting Ground links only to a Hunting Lodge within this many blocks (an M5 rule change, M17). */
+	public static final int HUNTING_GROUND_LINK_RANGE = 40;
+	/** Arrived at the ground marker when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
+	public static final double HUNT_ENTRY_REACH = 3.0;
+	public static final double HUNT_ENTRY_CLOSEST = 6.0;
+	public static final int HUNT_MEAT_MIN = 2, HUNT_MEAT_MAX = 4;
+	public static final int HUNT_LEATHER_MIN = 1, HUNT_LEATHER_MAX = 2;
+	public static final int HUNT_FEATHER_MIN = 1, HUNT_FEATHER_MAX = 2;
+	public static final double HUNT_HIDE_CHANCE = 0.5;
+	/** Extra meat for a trip with a bow or crossbow and an arrow taken from the Lodge chest. */
+	public static final int HUNT_ARROW_BONUS_MEAT = 1;
+	/** Meat-kind draws per trip: always all of them, so an arrow never shifts the random stream. */
+	public static final int HUNT_MAX_MEAT_DRAWS = HUNT_MEAT_MAX + HUNT_ARROW_BONUS_MEAT;
 }

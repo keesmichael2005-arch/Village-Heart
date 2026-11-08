@@ -45,6 +45,18 @@ class ToolAllocationTest {
 	}
 
 	@Test
+	void aHigherRankBeatsAnyTierAndTheOldAssignIsRankedByTier() {
+		List<ToolAllocation.Tool<String>> t = List.of(new ToolAllocation.Tool<>("netherite", ToolTier.NETHERITE, 0),
+				new ToolAllocation.Tool<>("bow", ToolTier.WOOD, 9), new ToolAllocation.Tool<>("bow2", ToolTier.WOOD, 3));
+		Map<UUID, String> ranked = ToolAllocation.assign(t, List.of(A, B, C), tool -> tool.ref().startsWith("bow") ? 100 : tool.tier().ordinal());
+		assertEquals("bow2", ranked.get(A)); // equal ranks keep container/slot order
+		assertEquals("bow", ranked.get(B));
+		assertEquals("netherite", ranked.get(C));
+		assertEquals("netherite", ToolAllocation.assign(t, List.of(A)).get(A));
+		assertEquals(ToolAllocation.assign(t, List.of(A, B, C)), ToolAllocation.assign(t, List.of(A, B, C), tool -> tool.tier().ordinal()));
+	}
+
+	@Test
 	void noToolsMeansNoAssignment() {
 		assertTrue(ToolAllocation.assign(List.<ToolAllocation.Tool<String>>of(), List.of(A)).isEmpty());
 	}

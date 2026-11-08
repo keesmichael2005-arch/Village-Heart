@@ -137,9 +137,9 @@ from there instead of hard-coding them.
 - **L1**: haul tables by depth band and pickaxe tier (seeded RNG: fixed counts and entries with chance ≥30% within 5% of expected over 10k rolls; every entry incl. rare ones within 5% over 400k rolls; clarified by the orchestrator 2026-11-08, a 2% entry over 10k rolls is seed-dependent). Diamonds only with an iron pickaxe or better and Y < 0
 - **L2**: a miner with a stone pickaxe and a valid shaft → ≥40 cobblestone within 1 day. With the shaft invalidated (rails removed) → stops, with the reason
 
-## M17: Hunter + Hunting Ground
+## M17: Hunter + Hunting Ground ✅
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.GAME_HUNTED, 1)` per trip.
-- [ ] §5.4: trips, yields, arrow use
+- [x] §5.4: trips, yields, arrow use
 - **L1**: trip yield table with and without a bow
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
