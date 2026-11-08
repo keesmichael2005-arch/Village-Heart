@@ -460,3 +460,11 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Critique: fresh remote session, 27 findings; all but 2 taken (table in the plan's section 7).
 - Assumptions about M16 (built on origin/m16 only up to step 3 when planned): A1-A9 in section 3.1. Top risk: M16's glue API differs.
 - Next: build after M16 is merged on dev. No blockers.
+
+## 2026-11-08: M17 builder (Hunter + Hunting Ground), branch m17
+- Built on M16's real code (checkpoint A1-A9 in `docs/plans/M17.md` section 8): `AwayProgress`/`AwayCheck` unit-cost overloads, `ToolAllocation` ranked overload, `AwayHauls` (job-neutral give/flush), `CampTools.lease(..., rank)`, `AwayState` + `done_day`/`done_today` (M16 names and 8-arg constructor unchanged). New `core.hunt` (`MeatWeights`, `HuntTable`, `HuntPace`, `HunterWeapons`, `HuntBonus`, `TripDay`, `HunterPlanner`) and `worker.hunt` (`HunterJob`, `HunterWork`, `HunterSystem`, `HuntSites`, `HuntGear`, `HunterRuntime`). M5 rule change: a Hunting Ground links only to a Lodge within 40 blocks.
+- Tests: 10 L2 hunter tests (the roadmap test: 2 trips of 2989-2998 ticks away, exactly the predicted yields in Storage, 10 durability) and `villagers_tab_away_hunting.png` (looked at: "Hana / Hunter L1 / Away (hunting)", row readable). L2 is 209 tests; a hunter test costs 1000-6500 ticks, about 2 to 8 s of CPU each.
+- Two flakes found and fixed at the root, not by loosening bounds: a hunter walking behind a hidden one (solid NoAI villager) lost up to 2600 ticks under CPU load (3 of 8 runs under load, 0 of 8 after the fix; deterministic corridor test); `minerHaulsFortyCobblestone`'s stray-item check saw a neighbouring test's dropped chests (it now checks its own footprint: this is very likely the BACKLOG's "unexplained stray item"). A forced-chunk premise for the far-hunter test.
+- Existing assertions changed (reasons in the plan's section 8, item 5): `SiteRulesTest` text for the 40-block range, `HeartTextsActivityTest` generic-fallback examples, `minerHaulsFortyCobblestone` item box.
+- Docs: DESIGN 5.4 "Rules as built (M17)", TESTING "Hunter GameTests (M17)", BACKLOG "From M17".
+- Next: M17 review. ROADMAP not ticked (verifier does that). No blockers. The disk on this machine filled once during the L2 repeat loop (each full run leaves 740 MB in `build/run/gameTest/world`).

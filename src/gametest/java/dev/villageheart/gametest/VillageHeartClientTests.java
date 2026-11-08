@@ -37,6 +37,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		BuildClientTests.builderFlow(context);
 		LumberClientTests.villagersNeedsAxe(context);
 		MinerClientTests.villagersTabAwayMining(context);
+		HunterClientTests.villagersTabAwayHunting(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
 	}

@@ -160,3 +160,12 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `PriorFlags.invisible` records a potion's Invisible flag; if the effect ends underground the miner comes up invisible until the next effect change or reload (cosmetic)
 - [ ] A hidden miner that dies (`/kill`, void) loses its pending haul (release drops it, death does not)
 - [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic
+
+## From M17 (builder notes)
+- [ ] **Before v1:** a hidden hunter in the open keeps an invisible hitbox that can catch a player's crosshair (placing or breaking blocks next to the ground marker while a hunter is out); fix with a `Villager.isPickable` mixin (client side, guessing from the synced flags). Raised from the miner note: the hunter hides where players walk, the miner at the bottom of a pit
+- [ ] `DepositTrip` walks with `WalkTo` (range 48) and the Storage may be anywhere in the claim: a hunter that comes back 46 blocks out from a far Storage reports "Storage unreachable" and waits; give `DepositTrip` a walk-via-the-job-block step for all away jobs
+- [ ] Infinity bows are not modelled (an arrow is taken anyway); the crossbow counts as a bow; spears, the mace and the trident are not hunter weapons
+- [ ] The biome weights are read at the marker and 8 points 12 blocks away; a sample in an unloaded chunk is skipped and a partial result is not cached (the yield of a trip after a restart can differ from the one before it if a sample chunk is unloaded)
+- [ ] "Hunting Ground inside a house reads valid after a restart until re-scan" (M5): a hunter can go out to such a ground in the first re-check cycle after a restart (one trip at most); still open
+- [ ] `farHunterWalksViaLodge` forces two chunks outside the structure and unforces them at its end; a failed run leaves them forced (harmless, they are 10 blocks from the yard)
+- [ ] A hunter that arrives with a weapon that is unreadable for a moment (chest scan missing) does not go out and walks back to its table; the next plan decides again (not tested)
