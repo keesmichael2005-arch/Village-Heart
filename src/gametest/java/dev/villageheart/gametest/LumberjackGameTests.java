@@ -439,13 +439,31 @@ public class LumberjackGameTests {
 	 * (on its next path nodes) to step aside.
 	 */
 	@GameTest(environment = "villageheart-gametest:lumber_door_idler_ahead", structure = YARD, skyAccess = true, maxTicks = 1500)
-	public void idlerTwoCellsAheadIsAsked(GameTestHelper h) {
+	public void idlerTwoCellsAheadIsAsked(GameTestHelper h) { twoCellsAhead(h, "idlerTwoCellsAheadIsAsked", false, false); }
+
+	/**
+	 * The same, after the walker's navigation gave up: its navigation is stopped every tick once it planned, so the idler can only be found
+	 * on the last path {@code WalkTo} planned, and only if the jam rule runs while the navigation is idle (review backlog-2 r2).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_nav_gave_up", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerAheadIsAskedAfterTheNavigationGaveUp(GameTestHelper h) { twoCellsAhead(h, "idlerAheadIsAskedAfterTheNavigationGaveUp", true, false); }
+
+	/**
+	 * The same with an idler that holds a walk target of its own while it stands still (its brain picked a stroll it does not walk): it is
+	 * still in the way and must be asked (the r1 race: skipping a villager with a WALK_TARGET missed it; review backlog-2 r2).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_own_target", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerWithItsOwnWalkTargetIsAsked(GameTestHelper h) { twoCellsAhead(h, "idlerWithItsOwnWalkTargetIsAsked", false, true); }
+
+	private static void twoCellsAhead(GameTestHelper h, String name, boolean walkerNavGivesUp, boolean idlerOwnTarget) {
 		begin(h);
 		BlockPos spot = new BlockPos(3, 0, 24), doorFront = new BlockPos(11, 0, 3), inside = new BlockPos(11, 1, 5);
 		Villager[] v = new Villager[2];
 		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
-		boolean[] asked = {false};
+		boolean[] asked = {false}, planned = {false};
 		long[] t0 = {-1}, askedAt = {-1};
+		int[] idleChecks = {0}, ownTargetTicks = {0};
+		var wt = net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET;
 		h.onEachTick(() -> {
 			if (v[0] == null) return;
 			BlockPos w = h.absolutePos(inside);
@@ -458,11 +476,24 @@ public class LumberjackGameTests {
 				v[1].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
 				v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
 				v[1].getNavigation().stop();
-				v[1].getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+				if (idlerOwnTarget) {
+					v[1].getBrain().setMemory(wt, new net.minecraft.world.entity.ai.memory.WalkTarget(h.absolutePos(new BlockPos(2, 0, 1)), 0.5F, 0));
+					ownTargetTicks[0]++;
+				} else {
+					v[1].getBrain().eraseMemory(wt);
+				}
 			}
 			long now = h.getLevel().getGameTime();
 			if (!walk.active()) walk.begin(h.absolutePos(new BlockPos(11, 0, 0)), 1.0, now);
+			if (walkerNavGivesUp && planned[0]) {
+				h.assertTrue(v[0].getNavigation().isDone(), "premise: the walker's navigation is idle when its walk ticks");
+				idleChecks[0]++;
+			}
 			if (walk.tick(v[0], now) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
+			if (walkerNavGivesUp && v[0].getNavigation().getPath() != null) {
+				planned[0] = true;
+				v[0].getNavigation().stop();
+			}
 		});
 		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
 			growOak(h, spot, 12L);
@@ -479,7 +510,10 @@ public class LumberjackGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the walker asks the idler two cells ahead to step aside", () ->
 				h.assertTrue(asked[0], "the idler on the door front was not asked"));
 		seq.thenExecute(() -> {
-			System.out.println("[b2] idlerTwoCellsAheadIsAsked: asked " + (askedAt[0] - t0[0]) + " ticks after the walk began");
+			System.out.println("[b2] " + name + ": asked " + (askedAt[0] - t0[0]) + " ticks after the walk began (walk ticks with an idle navigation "
+					+ idleChecks[0] + ", idler ticks holding its own walk target " + ownTargetTicks[0] + ")");
+			if (walkerNavGivesUp) h.assertTrue(idleChecks[0] >= 30, "premise: the walker's navigation was idle for a jam period (" + idleChecks[0] + ")");
+			if (idlerOwnTarget) h.assertTrue(ownTargetTicks[0] >= 30, "premise: the idler held its own walk target for a jam period (" + ownTargetTicks[0] + ")");
 			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
 			VillageTestSupport.done(h);
 			end(h);
