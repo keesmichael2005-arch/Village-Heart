@@ -74,7 +74,7 @@ import net.minecraft.world.phys.AABB;
  */
 public final class FarmJob {
 	private static final String JOB = "farmer";
-	static final int PLAN_INTERVAL = 20;
+	private static final int PLAN_INTERVAL = 20;
 	private static final int ITEM_TIMEOUT = 400;
 	private static final double COLLECT_TAKE = 2.2;
 	private static final double CHEST_REACH = 2.0;

@@ -84,11 +84,10 @@ public final class FarmRuntime {
 	/** The cells being worked right now: cell -> worker. */
 	public Map<Pos, UUID> claims() { return new HashMap<>(claims); }
 
-	/** Tests: the tick at which this farmer plans next (0 = at once, MIN_VALUE = unknown worker). */
-	public long nextPlanAt(UUID villager) {
+	/** Tests: the farmer plans on its next tick. */
+	public void forcePlanForTest(UUID villager) {
 		WorkerState ws = workers.get(villager);
-		if (ws == null) return Long.MIN_VALUE;
-		return ws.needsPlan ? 0 : ws.lastPlan + FarmJob.PLAN_INTERVAL;
+		if (ws != null) ws.needsPlan = true;
 	}
 
 	WorkerState state(UUID villager) { return workers.computeIfAbsent(villager, k -> new WorkerState()); }

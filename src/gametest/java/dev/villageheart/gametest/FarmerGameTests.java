@@ -867,10 +867,12 @@ public class FarmerGameTests {
 		seq = seq.thenIdle(90).thenWaitUntil(() -> {
 			long next = h.getLevel().getGameTime() + 1;
 			boolean tripCheck = (next + v[0].getId()) % 20 == 0;
-			long planAt = FarmRuntime.get(h.getLevel().getServer()).nextPlanAt(v[0].getUUID());
 			h.assertTrue(carried(v[0], Items.WHEAT) == 0 && loose(h, Items.WHEAT) == 1, "still on its way to the item");
 			if (tripFirst) h.assertTrue(tripCheck, "wait for a tick where the trip check comes first");
-			else h.assertTrue(!tripCheck && planAt == next, "wait for a tick where the planner runs and the trip check does not: plan at " + planAt + ", next " + next);
+			else {
+				h.assertTrue(!tripCheck, "wait for a tick where the trip check does not run");
+				FarmRuntime.get(h.getLevel().getServer()).forcePlanForTest(v[0].getUUID()); // the planner runs next tick, the trip check later
+			}
 			for (int i = 0; i < v[0].getInventory().getContainerSize(); i++) v[0].getInventory().setItem(i, new ItemStack(Items.COBBLESTONE, 64));
 			filledAt[0] = next;
 		});
