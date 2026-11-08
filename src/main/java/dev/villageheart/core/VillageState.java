@@ -22,7 +22,15 @@ import dev.villageheart.core.defence.DefenceSite;
  */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
+		Map<HeartLocation, Integer> smokerHeat) {
+
+	/** Without smoker heat (the shape before M13). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, Map.of());
+	}
 
 	/** Without defence sites (the shape before M21). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
@@ -56,6 +64,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(treeTasks, "treeTasks");
 		Objects.requireNonNull(builds, "builds");
 		Objects.requireNonNull(defences, "defences");
+		Objects.requireNonNull(smokerHeat, "smokerHeat");
 		if (treasury < 0) throw new IllegalArgumentException("treasury must be >= 0: " + treasury);
 		ranks = Map.copyOf(ranks);
 		known = sortedKnown(known);
@@ -64,6 +73,11 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		treeTasks = List.copyOf(treeTasks);
 		builds = List.copyOf(builds);
 		defences = List.copyOf(defences);
+		for (var e : smokerHeat.entrySet()) {
+			Objects.requireNonNull(e.getKey(), "smoker");
+			if (e.getValue() == null || e.getValue() < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + e);
+		}
+		smokerHeat = Map.copyOf(smokerHeat);
 		Set<UUID> seenDefences = new HashSet<>();
 		for (DefenceSite d : defences) {
 			if (!seenDefences.add(d.id())) throw new IllegalArgumentException("two defence sites share the id " + d.id());
@@ -135,7 +149,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences);
+				newBuildings, newWorkers, treeTasks, builds, defences, smokerHeat);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -329,7 +343,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, smokerHeat);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -337,7 +351,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, smokerHeat);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -380,7 +394,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, smokerHeat);
 	}
 
 	// ---- defence sites (M21) ----
@@ -408,7 +422,33 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, smokerHeat);
+	}
+
+	// ---- smoker heat (M13) ----
+
+	/** The heat banked at a smoker (a Cook's partly used fuel); 0 when none. */
+	public int smokerHeat(HeartLocation smoker) { return smokerHeat.getOrDefault(smoker, 0); }
+
+	/** Sets the heat at a smoker; 0 removes the entry. */
+	public VillageState withSmokerHeat(HeartLocation smoker, int heat) {
+		Objects.requireNonNull(smoker, "smoker");
+		if (heat < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + heat);
+		if (smokerHeat(smoker) == heat) return this;
+		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
+		if (heat == 0) next.remove(smoker); else next.put(smoker, heat);
+		return withSmokerHeat(next);
+	}
+
+	/** Drops the heat of every smoker for which {@code gone} is true. */
+	public VillageState withoutSmokerHeat(java.util.function.Predicate<HeartLocation> gone) {
+		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
+		if (!next.keySet().removeIf(gone)) return this;
+		return withSmokerHeat(next);
+	}
+
+	private VillageState withSmokerHeat(Map<HeartLocation, Integer> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

@@ -217,11 +217,31 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(out);
 	}
 
+	/** The heat banked at one smoker (M13); a negative heat is an error for that entry only (the lenient list drops it). */
+	private record SmokerHeat(HeartLocation smoker, int heat) {}
+
+	private static final Codec<SmokerHeat> SMOKER_HEAT = RecordCodecBuilder.<SmokerHeat>create(i -> i.group(
+			HEART_LOCATION.fieldOf("smoker").forGetter(SmokerHeat::smoker),
+			Codec.INT.fieldOf("heat").forGetter(SmokerHeat::heat)
+	).apply(i, SmokerHeat::new)).flatXmap(h -> h.heat() < 0 ? DataResult.<SmokerHeat>error(() -> "Negative smoker heat " + h.heat()) : DataResult.success(h),
+			DataResult::success);
+
+	private static java.util.List<SmokerHeat> heatList(java.util.Map<HeartLocation, Integer> heat) {
+		return heat.entrySet().stream().map(e -> new SmokerHeat(e.getKey(), e.getValue()))
+				.sorted(java.util.Comparator.comparing(SmokerHeat::smoker, VillageState.locationOrder())).toList();
+	}
+
+	private static java.util.Map<HeartLocation, Integer> heatMap(java.util.List<SmokerHeat> list) {
+		java.util.Map<HeartLocation, Integer> out = new java.util.HashMap<>();
+		for (SmokerHeat h : list) if (h.heat() > 0) out.putIfAbsent(h.smoker(), h.heat());
+		return out;
+	}
+
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
-			java.util.List<dev.villageheart.core.defence.DefenceSite> defences) {}
+			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<SmokerHeat> smokerHeat) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -236,7 +256,8 @@ public final class VillageCodecs {
 			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers),
 			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
 			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds),
-			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences)
+			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences),
+			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(Raw::smokerHeat)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
@@ -244,12 +265,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), heatMap(r.smokerHeat())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), heatList(v.smokerHeat()))));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(
