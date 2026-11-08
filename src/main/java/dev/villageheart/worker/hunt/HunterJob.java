@@ -186,12 +186,23 @@ public final class HunterJob {
 		}
 	}
 
+	private static boolean touchesAwayVillager(ServerLevel level, Villager v) {
+		return !level.getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(0.4, 0.0, 0.4), o -> o != v && AwayTrips.isAway(o)).isEmpty();
+	}
+
 	private static void goOut(ServerLevel level, Villager v, WorkerData data, State ws, long now) {
 		HuntSites.GroundSite ground = ws.ground;
 		if (ground == null || ground.level() != level) return;
 		BlockPos target = ground.marker();
 		if (!ws.walk.active() || !ws.walk.target().equals(target)) ws.walk.begin(target, Balance.HUNT_ENTRY_REACH, Balance.HUNT_ENTRY_CLOSEST, now);
 		WalkTo.State st = ws.walk.tick(v, now);
+		// A hunter that is already out stands (hidden, but still solid for a walker) where it arrived, maybe right in the way of the next
+		// one; pushing against it can take hundreds of ticks. A hunter that touches an away villager near the ground counts as arrived
+		// (the hold cell below keeps the two apart).
+		if (st == WalkTo.State.WALKING && WalkTo.distance(v, target) <= Balance.HUNT_ENTRY_CLOSEST && touchesAwayVillager(level, v)) {
+			trace("{} @{} blocked by a hunter that is already out: goes out here", v.getId(), now);
+			st = WalkTo.State.ARRIVED;
+		}
 		if (st == WalkTo.State.WALKING) return;
 		if (st == WalkTo.State.UNREACHABLE) {
 			trace("{} @{} the ground at {} is unreachable: {}", v.getId(), now, target, ws.walk.reason());

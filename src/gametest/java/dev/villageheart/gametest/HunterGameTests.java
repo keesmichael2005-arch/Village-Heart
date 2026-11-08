@@ -427,7 +427,18 @@ public class HunterGameTests {
 			t1.start();
 			t2.start();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 450, "both hunters are out", () -> h.assertTrue(t1.away() && t2.away(), "both out: " + t1.away() + " " + t2.away()));
+		long[] w0 = new long[1];
+		seq = seq.thenExecute(() -> w0[0] = h.getTick());
+		seq = seq.thenWaitUntil(() -> {
+			if (h.getTick() - w0[0] == 460) {
+				System.out.println("[m17] twoHunters diagnostics at +460: out " + t1.descents.size() + "/" + t2.descents.size() + ", back "
+						+ t1.ascents.stream().map(a -> a.record().reason()).toList() + "/" + t2.ascents.stream().map(a -> a.record().reason()).toList()
+						+ "; at " + v[0].position() + " / " + v[1].position() + "; " + HunterJob.decisionOf(v[0].getUUID()) + " / " + HunterJob.decisionOf(v[1].getUUID())
+						+ "; " + status(h, v[0]) + " / " + status(h, v[1]) + "; away " + t1.away() + " " + t2.away());
+			}
+			h.assertTrue(t1.away() && t2.away(), "both out: " + t1.away() + " " + t2.away());
+		});
+		seq = seq.thenExecute(() -> h.assertTrue(h.getTick() - w0[0] <= 450, "both hunters are out took " + (h.getTick() - w0[0]) + " ticks, bound 450"));
 		seq = seq.thenExecute(() -> {
 			BlockPos a = v[0].blockPosition(), b = v[1].blockPosition(), marker = h.absolutePos(GROUND);
 			System.out.println("[m17] twoHuntersOneGround: held at " + a + " and " + b + ", marker " + marker);
@@ -447,6 +458,56 @@ public class HunterGameTests {
 			h.assertValueEqual(1, inChest(h, Items.ARROW), "only the bow hunter took an arrow");
 			h.assertValueEqual(5, chestSlot(h, 1).getDamageValue(), "the bow wore 5");
 			h.assertValueEqual(5, chestSlot(h, 0).getDamageValue(), "the sword wore 5");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * A hunter that is already out stands (hidden) where it arrived. In a 1-wide corridor on the way to the marker the next hunter walks
+	 * against it (a NoAI villager does not give way). It must not push on for hundreds of ticks: it counts as arrived when it touches an
+	 * away villager near the ground and goes out beside it (35 ticks; without that rule 133, and up to 2600 in the full suite under load,
+	 * where {@code twoHuntersOneGround} lost 4 x 600 ticks to retries).
+	 */
+	@GameTest(environment = "villageheart-gametest:hunt_blocked", structure = YARD, skyAccess = true, maxTicks = 1400)
+	public void hunterBlockedByHiddenHunterGoesOutBesideIt(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		Tracker tr = new Tracker(() -> v[1]);
+		h.onEachTick(() -> tr.sample(h));
+		BlockPos cellA = new BlockPos(15, 0, 14), startB = new BlockPos(15, 0, 10);
+		long[] t0 = new long[1];
+		GameTestSequence seq = scene(h, true).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			putInChest(h, 1, sword("stone"));
+			// a corridor one block wide on x = 15, z 11 .. 14, ending in the cell where the first hunter hides
+			for (int z = 11; z <= 14; z++) for (int y = 0; y <= 2; y++) {
+				h.setBlock(new BlockPos(14, y, z), net.minecraft.world.level.block.Blocks.STONE);
+				h.setBlock(new BlockPos(16, y, z), net.minecraft.world.level.block.Blocks.STONE);
+			}
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			var abs = h.absolutePos(cellA);
+			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+			var loc = BuildingTestSupport.loc(h, GROUND);
+			AwayTrips.set(v[0], AwayTrips.state(v[0]).withProgress(dev.villageheart.core.mine.AwayProgress.ZERO, java.util.Optional.of(loc)));
+			AwayTrips.hide(h.getLevel(), v[0], "hunter", loc, abs);
+			h.assertTrue(AwayTrips.isAway(v[0]), "the first hunter is out, in the corridor");
+		});
+		seq = seq.thenExecute(() -> {
+			v[1] = hireAt(h, spawnSpot2());
+			var abs = h.absolutePos(startB);
+			v[1].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+			tr.start();
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 80, "the second hunter goes out beside the first", () -> h.assertTrue(tr.away(),
+				"out: at " + v[1].position() + " " + HunterJob.decisionOf(v[1].getUUID()) + " " + status(h, v[1])));
+		seq.thenExecute(() -> {
+			System.out.println("[m17] hunterBlockedByHiddenHunterGoesOutBesideIt: out " + (h.getTick() - t0[0]) + " ticks after the start, at " + v[1].blockPosition());
+			h.assertTrue(!v[1].blockPosition().equals(v[0].blockPosition()), "a different cell than the first hunter");
+			h.assertTrue(AwayTrips.isAway(v[0]), "the first hunter is still out");
 			VillageTestSupport.done(h);
 			end(h);
 		});
