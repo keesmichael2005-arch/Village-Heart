@@ -19,6 +19,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			BuildClientTests.builderFlow(context);
 			return;
 		}
+		if ("mp".equals(System.getProperty("villageheart.l4.only"))) {
+			MultiplayerClientTests.ownerAndResident(context);
+			return;
+		}
 		if ("treasury".equals(System.getProperty("villageheart.l4.only"))) {
 			TreasuryClientTests.overviewStrike(context);
 			return;

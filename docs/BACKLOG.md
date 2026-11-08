@@ -101,7 +101,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Should breaking a registered marker be Steward-only (today Residents can, Visitors cannot)?
 - [ ] No self step-down: an Owner can demote anyone but must transfer to stop being Owner
 - [x] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
-  - Done in M12: both permissions and rows, `WageGameTests.onlyOwnerCanWithdraw`; the multiplayer deposit/withdraw step: see "From M12" below.
+  - Done in M12: both permissions and rows, `WageGameTests.onlyOwnerCanWithdraw`, and step 5 of `MultiplayerClientTests` (deposit all and withdraw 64 through the buttons on the dedicated server, inventory equality checked by `syncCheck`).
 - [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
 - [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
@@ -223,4 +223,3 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
-- [ ] A multiplayer deposit/withdraw step in `MultiplayerClientTests` (M24 backlog) is not built: `TreasuryClientTests` covers the UI path in singleplayer and `onlyOwnerCanWithdraw` the ranks at L2

@@ -585,3 +585,11 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 Revised after a fresh critique (25 findings; 22 taken, 2 partly, 1 refuted).
 Assumptions: built after M8, M9, M11 are merged on dev (names from their plans/branches, plan 3.1); steps 1-2 only need M7.
 Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: three unmerged dependencies' APIs.
+
+## 2026-11-08: M12 built (branch m12, builder)
+- Built on `origin/m11` + `dev` (M15/16/17/20/21/24) + `m12-plan`. Pure core: `DailyClock` (dinner delegates), `WageRules`, `PayRun`, `Payroll`, `TreasuryMath`, `WageAlerts`, `WorkGate`; `WorkerRecord.level` mirror; `WorldClaim.payroll` (lenient codec, reset on release).
+- Glue: `economy.WageSystem` (after needs), `VillageDawn` (fires on both branches), `Treasury` (deposit/settle/withdraw), `Wages`; right-click deposit in `VillageHeartBlock.useItemOn`; `TreasuryActionPayload`, `Deposit`/`Withdraw` actions, `BAD_AMOUNT`; `/villageheart treasury get|add|set`; severity-first alerts; Overview treasury bar and red wage line.
+- Tests: 12 `WageGameTests` (roadmap case, right-click matrix, screen actions, strike ends on deposit, one pay/day, frozen when unloaded, reload, hire charge exploit, levels, release, claim, M24 `onlyOwnerCanWithdraw`, M15 re-install level), many L1, L4 `TreasuryClientTests` (looked at `treasury_overview.png`, `treasury_villagers.png`: red wage line, red strike line, yellow short line, 3 buttons clear of the alerts, "On strike" with slashed emerald), multiplayer step 5.
+- L3 `starter 10` PASS by hand with the seeded treasury. Daily treasury: 30, 28, 26, 24, 22, 20, 18, 16, 14, 12 (2 hires charged on day 1; 9 runs; a dawn lands in the record of the day that ends at it, so day 1 has runs 0). The poor variant was not run (10 min): `StarterAssertionsTest.wageAssertionsOfTheStarterScenario` proves the assertions fail for an unfunded village.
+- Deviations: docs/plans/M12.md section 8 (no GatedWork wrapper, Permissions already min-rank, `toDawn(h, seq, out)` is sequence-style). Bug found by L4: `Treasury.refreshInventory`.
+- Next: M12 review. Blockers: none. ROADMAP not ticked.
