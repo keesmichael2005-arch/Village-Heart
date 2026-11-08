@@ -136,4 +136,27 @@ public final class Balance {
 	public static final int SEED_KEEP_MAX = 64;
 	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
 	public static final int SLOT_PRESSURE_FREE_SLOTS = 2;
+
+	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
+
+	/** Work units one haul costs; a stone pickaxe at level 1 earns 1.25 per tick, so a haul is 2000 ticks (2 in-game hours) underground. */
+	public static final double MINER_HAUL_UNITS = 2500;
+	/** An underground miner is stepped every this many ticks. */
+	public static final int MINER_STEP_TICKS = 20;
+	/** Durability a pickaxe loses per completed haul. */
+	public static final int MINER_WEAR_PER_HAUL = 10;
+	/** No new descent from this day time on (less than 600 work ticks are left). */
+	public static final int MINER_LAST_DESCENT = 10400;
+	/** After a shaft turned out unreachable the miner waits this long before it tries again. */
+	public static final int MINER_RETRY_TICKS = 600;
+	/** Underground steps in a row with an unreadable pickaxe chest (or an unknown depth with a haul due) before the miner comes up. */
+	public static final int MINER_UNKNOWN_LIMIT = 60;
+	/** A miner farther than this from the shaft marker walks to its stonecutter first (WalkTo plans at most 48 blocks). */
+	public static final int MINER_FAR_FROM_SHAFT = 40;
+	/** Arrived at the shaft entrance when this close; also when the pathfinder can get no nearer and the miner is within SHAFT_ENTRY_CLOSEST. */
+	public static final double SHAFT_ENTRY_REACH = 2.5;
+	public static final double SHAFT_ENTRY_CLOSEST = 5.0;
+	/** Depth bands of the haul tables by the shaft's deepest Y: HIGH from 40, MID from 0, DEEP below. */
+	public static final int BAND_HIGH_MIN_Y = 40;
+	public static final int BAND_MID_MIN_Y = 0;
 }
