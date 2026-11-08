@@ -105,4 +105,22 @@ public final class Balance {
 	public static final int MAX_PLAYER_NAME = 32;
 	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
 	public static final int GUARD_FALLBACK_RADIUS = 16;
+
+	// ---- builder and blueprints (M20) ----
+	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
+	public static final double BUILD_TICKS_PER_BLOCK = 20;
+	/** The builder acts on a cell within this distance (3D, feet to cell centre, no line of sight). */
+	public static final double BUILD_REACH = 7.0;
+	/** A fetch trip takes one stack's worth of materials ... */
+	public static final double BUILDER_FETCH_LOAD = 1.0;
+	/** ... or fills this many inventory slots. */
+	public static final int BUILDER_FETCH_SLOTS = 4;
+	/** The build system re-works the reservations this often. */
+	public static final int BUILD_REFRESH_TICKS = 100;
+	public static final int MAX_ACTIVE_BUILDS = 8;
+	/** Ticks a player waits between two blueprints taken from a Builder's Table. */
+	public static final int BLUEPRINT_TAKE_COOLDOWN = 10;
+	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
+	public static final int BUILD_IN_THE_WAY_TICKS = 100;
+	public static final int BUILD_UNREACHABLE_RETRY_TICKS = 600;
 }

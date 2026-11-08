@@ -26,7 +26,7 @@ public record TextLine(String key, String fallback, List<String> args) {
 
 	public TextLine(String key, String fallback) { this(key, fallback, List.of()); }
 
-	/** The fallback with each {@code %s} replaced by the next arg. */
+	/** The fallback with each {@code %s} replaced by the next arg and {@code %%} read as a percent sign. */
 	public String english() {
 		StringBuilder out = new StringBuilder();
 		int next = 0;
@@ -34,6 +34,9 @@ public record TextLine(String key, String fallback, List<String> args) {
 			char c = fallback.charAt(i);
 			if (c == '%' && i + 1 < fallback.length() && fallback.charAt(i + 1) == 's') {
 				out.append(next < args.size() ? args.get(next++) : "");
+				i++;
+			} else if (c == '%' && i + 1 < fallback.length() && fallback.charAt(i + 1) == '%') {
+				out.append('%');
 				i++;
 			} else {
 				out.append(c);

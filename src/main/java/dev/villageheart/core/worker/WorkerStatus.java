@@ -12,5 +12,9 @@ public enum WorkerStatus {
 	/** The job needs a tool and the camp holds none for this worker ("Needs axe"). */
 	NEEDS_TOOL,
 	/** The job found nothing to do ("No trees within 32 blocks"). */
-	NO_WORK
+	NO_WORK,
+	/** A builder waits for materials the build needs (M20): the exact words are on the build row ("Needs 12 more planks"). */
+	NEEDS_MATERIALS,
+	/** A builder cannot go on: a block that is not natural is in the way (M20). */
+	BLOCKED
 }

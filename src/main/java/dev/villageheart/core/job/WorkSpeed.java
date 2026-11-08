@@ -18,4 +18,10 @@ public final class WorkSpeed {
 		int idx = Math.max(0, Math.min(Balance.LEVEL_SPEED.length - 1, level - 1));
 		return toolFactor * Balance.LEVEL_SPEED[idx] * needs.speed();
 	}
+
+	/** A job that uses no tool (the builder's): level x needs only. */
+	public static double untooled(int level, Needs needs) {
+		int idx = Math.max(0, Math.min(Balance.LEVEL_SPEED.length - 1, level - 1));
+		return Balance.LEVEL_SPEED[idx] * needs.speed();
+	}
 }
