@@ -187,3 +187,4 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From M26 plan (orchestrator)
 - [ ] Village-logic tick timer double-counts nested sections (e.g. `BuildSystem.tick` inside `tickAll`) and misses work outside sections (`AwayTrips.processLoaded`, `LevelUpFeedback.flush`, event handlers). M26 step plans an outermost-only timer plus a JFR cross-check
+- [ ] (M17-xp) `farHunterWalksViaLodge` timed out at tick 2602 of 2600 under heavy machine load (another agent's GameTests running at the same time); M9 `sixOaksTwoDays` replant flaked again in the same window. Check the margin when the machine is quiet
