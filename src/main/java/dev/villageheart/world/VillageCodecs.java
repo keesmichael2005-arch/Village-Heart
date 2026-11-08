@@ -194,10 +194,32 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(byId.values());
 	}
 
+	/** A recorded lamp post or watchtower (M21). */
+	public static final Codec<dev.villageheart.core.defence.DefenceSite> DEFENCE_SITE = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("id").forGetter(dev.villageheart.core.defence.DefenceSite::id),
+			Codec.STRING.fieldOf("blueprint").forGetter(dev.villageheart.core.defence.DefenceSite::blueprintId),
+			HEART_LOCATION.fieldOf("ground").forGetter(dev.villageheart.core.defence.DefenceSite::ground),
+			ROTATION.optionalFieldOf("rotation", Rotation4.NONE).forGetter(dev.villageheart.core.defence.DefenceSite::rotation),
+			Codec.LONG.optionalFieldOf("built_at", 0L).forGetter(dev.villageheart.core.defence.DefenceSite::builtAt)
+	).apply(i, dev.villageheart.core.defence.DefenceSite::new));
+
+	/** The first site wins when two share an id, and at most {@link dev.villageheart.core.Balance#MAX_DEFENCE_SITES} are kept. */
+	private static java.util.List<dev.villageheart.core.defence.DefenceSite> dedupeDefences(java.util.List<dev.villageheart.core.defence.DefenceSite> in) {
+		java.util.Map<UUID, dev.villageheart.core.defence.DefenceSite> byId = new java.util.LinkedHashMap<>();
+		for (var d : in) byId.putIfAbsent(d.id(), d);
+		java.util.List<dev.villageheart.core.defence.DefenceSite> out = new java.util.ArrayList<>(byId.values());
+		if (out.size() > dev.villageheart.core.Balance.MAX_DEFENCE_SITES) {
+			LOG.warn("Village save: {} defence sites, keeping the first {}", out.size(), dev.villageheart.core.Balance.MAX_DEFENCE_SITES);
+			out = new java.util.ArrayList<>(out.subList(0, dev.villageheart.core.Balance.MAX_DEFENCE_SITES));
+		}
+		return java.util.List.copyOf(out);
+	}
+
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
-			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds) {}
+			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
+			java.util.List<dev.villageheart.core.defence.DefenceSite> defences) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -211,7 +233,8 @@ public final class VillageCodecs {
 			BUILDING.listOf().optionalFieldOf("buildings", java.util.List.of()).forGetter(Raw::buildings),
 			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers),
 			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
-			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds)
+			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds),
+			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
@@ -219,12 +242,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences())));
 
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
 	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {
