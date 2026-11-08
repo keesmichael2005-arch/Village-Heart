@@ -23,6 +23,8 @@ import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.world.VillageSystem;
 import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.worker.Workers;
+import dev.villageheart.core.job.WorkUnit;
+import dev.villageheart.worker.WorkXp;
 import dev.villageheart.worker.job.AwayHauls;
 import dev.villageheart.worker.job.AwayTrips;
 import dev.villageheart.worker.job.CampTools;
@@ -102,6 +104,7 @@ public final class HunterSystem implements VillageSystem {
 			if (bonus) WorkStats.add(HunterJob.JOB, "arrows", 1);
 			AwayHauls.give(v, HunterJob.JOB, yield);
 			WorkStats.add(HunterJob.JOB, "returns", 1);
+			WorkXp.award(v, WorkUnit.GAME_HUNTED, 1);
 		} else {
 			AwayTrips.set(v, after);
 			WorkStats.add(HunterJob.JOB, "aborted", 1);
