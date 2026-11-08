@@ -329,8 +329,10 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   - **Quality follows resources.** Every vanilla tier the village has: wooden (any planks), stone (cobblestone, blackstone or cobbled
     deepslate), copper, iron, diamond; armour of leather, copper, iron, diamond; vanilla recipe counts. The smith takes the **best tier
     the stockpile can afford at that moment** (raw ore it can smelt counts as ingots). A tool that still works is **never replaced** just
-    because better material appeared: the village climbs the tiers as tools wear out, and a worn tool is never replaced by a lower tier
-    while it still works. Diamonds only for lumberjacks, miners and guards, only once every other worker and guard slot has iron or better,
+    because better material appeared: the village climbs the tiers as tools wear out. A worn tool's replacement is made a whole craft before it breaks, at the best
+    tier affordable then, even a lower one; the worker keeps using the better worn tool until it breaks (tools are handed out best
+    first), so it is never downgraded while its tool works. Hoes and hunters' swords (the tier does not change their pace) are made of
+    stone when possible. Diamonds only for lumberjacks, miners and guards, only once every other worker and guard slot has iron or better,
     and only above a reserve *(tunable, 5)*. Gold (32 durability) and netherite (upgrade-only, smithing template) are not made; a
     player's gold or netherite tool is used. A village with only planks still gets wooden tools.
   - **Slow on purpose.** Recipe counts stay vanilla because the player can always hand-craft; the smith's limiter is **time**: at level 1
