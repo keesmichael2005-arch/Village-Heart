@@ -358,3 +358,4 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Evidence: 9 consecutive full `./gradlew --no-daemon runGameTest` runs on the final code, 158/158 each (an earlier series with the flake fix but before D12: 7 of 8 green, the failure being the M7 test above).
 - Screenshot looked at: `farmer_field.png` (farmer at the Farmhouse door, mature wheat field, banner on the wall).
 - Next: M10 review; ROADMAP is the orchestrator's. Doubt: the collect-timeout cause is inferred, not observed.
+- Verify note: one full verify run failed on M8's `fireUnloadedWorker` (population 2 instead of 1 at tick 5, a stray loaded villager counted; not farmer code, not reproduced in 9 L2 runs + 2 verify runs); the rerun was green (158/158, L4, perf).
