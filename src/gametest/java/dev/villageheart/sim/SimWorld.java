@@ -49,6 +49,17 @@ final class SimWorld {
 		}
 	}
 
+	/** True once every forced chunk around the village is entity-ticking: the chunks are promoted over the first seconds, and a site search before that is not deterministic. */
+	static boolean forcedChunksTicking(ServerLevel level, BlockPos around) {
+		ChunkPos c = new ChunkPos(around);
+		for (int dx = -LOAD_RADIUS_CHUNKS; dx <= LOAD_RADIUS_CHUNKS; dx++) {
+			for (int dz = -LOAD_RADIUS_CHUNKS; dz <= LOAD_RADIUS_CHUNKS; dz++) {
+				if (!level.isPositionEntityTicking(new ChunkPos(c.x + dx, c.z + dz).getMiddleBlockPosition(level.getSeaLevel()))) return false;
+			}
+		}
+		return true;
+	}
+
 	static Optional<BlockPos> findBell(ServerLevel level, BlockPos near) {
 		return level.getPoiManager().findClosest(t -> t.is(PoiTypes.MEETING), near, 96, PoiManager.Occupancy.ANY);
 	}

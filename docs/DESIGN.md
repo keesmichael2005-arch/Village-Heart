@@ -320,6 +320,23 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
   food values (bread 5, baked potato 5, cooked beef 8, carrot 3, apple 4, raw meat counts as its vanilla raw
   value). The best foods are eaten first, cooked before raw. Children need half.
   *Food days left* = stockpile nutrition ÷ (population × 10).
+  Rules as built (M11):
+  - **Abstract dinner.** At 11000 the village system takes every villager's meal straight out of the Storage chests (`Stockpiles.withdraw`),
+    wherever they stand; nobody walks. Eaters = every living, loaded villager in the claim sphere (workers, unemployed, nitwits, children);
+    unloaded ones keep their state (no catch-up). Food in a villager's own inventory is never eaten. Reserved items (M20) are never eaten.
+    A day jump over the whole window (`/time add`) skips that dinner; `/time set` back re-serves it (`last_dinner_day` is compared with `!=`).
+    Sleeping through a thunderstorm before 11000 also skips it. `last_dinner_day` is saved with the claim.
+  - **Need and order.** Adult 10, child (baby) 5. Best food first: prepared before raw (raw = beef, porkchop, chicken, mutton, rabbit, cod,
+    salmon, potato), then nutrition, saturation, item id. Never eaten (= item tag `villageheart:not_village_food`): rotten flesh, spider eye,
+    poisonous potato, pufferfish, suspicious stew, chorus fruit, golden apple, enchanted golden apple, golden carrot. Eaters: the hungriest
+    first, then workers in hiring order, adults before children, UUID. A villager eats until it has 10 (a second beef overshoots) or, when
+    the food left cannot cover its need, nothing at all. Stews leave their bowl in the Storage.
+  - **Hunger** is a per-villager attachment (`villageheart:diet`, saved, claim-scoped). A missed dinner adds a day, a meal resets it.
+    1 missed dinner: work speed x0.5; 2 or more: the worker stops working (status "Too hungry to work"; deposit trips still run).
+    Nobody ever dies of hunger. `WorkerData.needs` is a derived copy written only by the needs system.
+  - **Housing.** A worker is housed when its bed (HOME) is in a valid House (or its own building, M18); unhoused = x0.75. Every 100 ticks an
+    awake unhoused worker moves into the nearest free House bed, else the nearest awake non-worker's; workers never take each other's beds.
+  - *Food days left* uses the real daily need (adults x10 + children x5).
 - **Treasury**: emeralds deposited at the Heart (Resident+). Only the Owner can withdraw.
 - **Wages**: paid at **dawn**: **1 / 1 / 2 emeralds** per day for levels 1 / 2 / 3 *(tunable)*. If the treasury is short,
   workers are paid in hiring order, and the rest strike for the day.

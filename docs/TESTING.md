@@ -66,6 +66,17 @@ server tick while a claim exists) or inside `try (var t = VillageTicker.section(
 `VillageTicker.TIMER` adds the sections of one tick into one sample; layer 3 reports its mean/p95/max per day as `village_ms.*`.
 A separate tick listener, or behaviour code outside a section, escapes the budget measurement. GameTests T-L2-1 / T-L2-1b prove the hook measures real work.
 
+## Needs GameTests (M11)
+`NeedsGameTests`, `NeedsHousingGameTests`, `NeedsWorkGameTests`, `SimActionGameTests` (helpers in `NeedsTestSupport`). Rules:
+- **Hooks.** `VillageTestSupport.reset` calls `NeedsTestHooks.disable()` (default needs for every worker, no dinner), so the worker tests of M7-M10 keep their
+  pace. A `needs_<name>` test calls `NeedsTestHooks.enable()` after its scene. `existingWorkerTestsUnaffected` proves the switch.
+- **Dinner** is triggered by `NeedsTestSupport.nextDinner(h)`: today's dinner counts as served, the clock goes to the NEXT day's 10980. Never a fixed day time.
+  `storageScene` sweeps every villager within 100 blocks first (leftovers would eat the bread) and the test counts the census before the first dinner.
+- Speed tests start at a day's 1000 with today's dinner marked as served and assert that `last_dinner_day` is unchanged at the end.
+  Farmer gaps: 20 work units at x0.5 are 40 ticks, plus up to 2 for the planner (measured 40-42).
+- `forcedChunkGrowsWithoutPlayer` pins the day time to noon with time frozen: saplings only grow in daylight (without it the test flaked at night).
+- `SimActionGameTests` runs the scenario's own prefab/field/grove/hire actions in the yard through the `Host` interface (the simulation implements it too).
+
 ## Layer 3: simulations
 `scripts/simulate.sh <scenario> [days] [--assert "<expr>"]... [--reload-at <day>]` (`--list` shows the scenarios). It boots a real headless
 dedicated server (`./gradlew runSimulation`, a Loom run config over the `gametest` source set, run dir `build/run/sim`) on seed 1, finds the plains
@@ -87,6 +98,12 @@ Concurrency: every run kills only what it started (its process group, plus any p
 the day, run due actions, write, halt), restarts on the same world and finishes the run; `reloads` in the report is `[D]`.
 Env: `SIM_TIMEOUT_SECONDS`, `SIM_STALL_SECONDS` (report must change at least this often, default 600), `SIM_START_SECONDS` (default 180), `SIM_GRADLE_CMD`.
 `scripts/test-simulate.sh` (run by `verify.sh`) checks this exit-code contract against a stub server (`scripts/testdata/fake-sim.sh`).
+
+M11 actions (`StarterActions`, field shapes checked at parse time by `core.sim.ActionSpecs`): `site` (find, flatten and light a patch of untouched
+natural land near the Heart: `size`, `min_distance`, `max_distance`, optional `max_deviation` and `odd_percent` for rough plains), `prefab` (a room with its
+marker: `building`, `at`, `size`, `door`, `contents`, `chest_items`), `field`, `grove`, `hire` (nearest free adult, teleported to the door; with `replace: true`
+a replacement is hired whenever the job has nobody). Positions are relative to the site origin. `starter` carries the M12 hook (a `treasury add` command) in its
+description. Concurrent runs in one checkout need their own `SIM_REPORT_DIR` as well as `SIM_DIR`.
 
 Scenarios are `sim/scenarios/<name>.json` (`ScenarioFilesTest` parses every file in L1). Fields: `schema` 1, `name` (= file name), `description`,
 `default_days`, optional `seed`, `actions` (`action`, optional `day` (0 = setup, before the baseline) and `tick` 0..23999), `assertions`.

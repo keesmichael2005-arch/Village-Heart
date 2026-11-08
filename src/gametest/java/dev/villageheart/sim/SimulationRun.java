@@ -86,6 +86,7 @@ public final class SimulationRun implements Host {
 	private long dayWallStart;
 	private long dayStartTick;
 	private boolean finishing;
+	private long resumeLogAt = -1;
 
 	private SimulationRun() {}
 
@@ -223,6 +224,10 @@ public final class SimulationRun implements Host {
 			if (stateTicks >= BELL_MAX_TICKS) throw new IllegalStateException("no bell near village " + structure.toShortString());
 			return;
 		}
+		if (!SimWorld.forcedChunksTicking(level, structure)) {
+			if (stateTicks >= 4 * BELL_MAX_TICKS) throw new IllegalStateException("the forced chunks around " + structure.toShortString() + " never became entity-ticking");
+			return;
+		}
 		bell = found.get();
 		VillageHeart.LOG.info("[sim] bell at {}", bell.toShortString());
 		setup();
@@ -266,6 +271,7 @@ public final class SimulationRun implements Host {
 		}
 		player = SimPlayer.join(server, level, heart.below());
 		collector.setCentre(Vec3.atCenterOf(heart));
+		resumeLogAt = level.getGameTime() + 400; // the entities of the force-loaded chunks are there a moment later
 		StarterActions.resetStanding();
 		for (ScenarioAction a : scenario.actions()) {
 			if (a.type().equals("hire") && a.fields().get("replace") instanceof Boolean b && b) StarterActions.registerStanding(a);
@@ -289,6 +295,10 @@ public final class SimulationRun implements Host {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
 		if (now % 100 == 0) StarterActions.maintain(this);
+		if (resumeLogAt >= 0 && now >= resumeLogAt) {
+			resumeLogAt = -1;
+			logNeeds("resume");
+		}
 		// Fixed order (docs/plans/M2.md 3.4): record ended days, run due actions, write the report, then maybe finish.
 		boolean wrote = false;
 		for (OptionalInt d = clock.dayEnded(now); d.isPresent(); d = clock.dayEnded(now)) {
@@ -306,8 +316,24 @@ public final class SimulationRun implements Host {
 			finish(null, false);
 		} else if (stopNow) {
 			stoppedAfterDay = request.stopAfterDay();
+			logNeeds("halt");
 			finish(SimStatus.RUNNING, true);
 		}
+	}
+
+	/** Every census villager's diet and bed, and each worker's needs, one line each, sorted: the halt and the resume lists must match (M11 T-L3-2). */
+	private void logNeeds(String when) {
+		var village = VillageClaims.current(server);
+		if (village.isEmpty()) return;
+		List<String> lines = new ArrayList<>();
+		for (var v : dev.villageheart.world.VillageCensus.of(server, village.get())) {
+			String home = dev.villageheart.needs.Housing.home(v).map(g -> g.pos().toShortString()).orElse("-");
+			String needs = dev.villageheart.worker.WorkerAttachments.get(v).map(w -> w.needs().toString()).orElse("-");
+			lines.add(v.getUUID() + " hungry_days=" + dev.villageheart.food.DietAttachments.read(v, village.get().claimedAtGameTime()).hungryDays()
+					+ " home=" + home + " needs=" + needs);
+		}
+		java.util.Collections.sort(lines);
+		for (String l : lines) VillageHeart.LOG.info("[sim-needs] {} {}", when, l);
 	}
 
 	private void recordDay(int day, long now) {

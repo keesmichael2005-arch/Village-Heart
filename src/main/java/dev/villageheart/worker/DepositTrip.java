@@ -199,6 +199,8 @@ public final class DepositTrip extends Behavior<Villager> {
 		Workers.setTripRunning(villager, false);
 		walk.release(villager);
 		if (!delivered && load(villager) > 0 && (failed || gameTime - started >= TIMEOUT)) {
+			dev.villageheart.VillageHeart.LOG.info("[trip] deposit trip failed: worker at {} could not reach the Storage door at {} after {} ticks (failed={})",
+					villager.blockPosition().toShortString(), target == null ? "?" : target.toShortString(), gameTime - started, failed);
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;
 		}

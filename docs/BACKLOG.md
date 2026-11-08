@@ -87,7 +87,8 @@ when it's fixed. Source reviews: docs/reviews/.
   - Fixed (backlog-1): `oldMenuAfterReplaceIsStaleInTheSameTick`.
 - [x] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
   - Fixed (backlog-1): `actionFromOutOfReachRejectedInTheSameTick`.
-- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [x] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+  - Done in M11: `WorkerData.needs` is now real (fed from the diet, housed from the House beds), so the icons follow it. Non-worker villagers still show no icons.
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
 
 ## From M24

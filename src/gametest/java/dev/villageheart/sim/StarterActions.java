@@ -192,7 +192,7 @@ public final class StarterActions {
 		int[] at = ints(a, "at"), size = ints(a, "size");
 		int w = size[0], d = size[1];
 		Direction facing = door((String) a.fields().get("door"));
-		BlockPos o = new BlockPos(site.getX() + at[0], site.getY() + 1, site.getZ() + at[1]); // the floor planks row sits on the ground
+		BlockPos o = new BlockPos(site.getX() + at[0], site.getY(), site.getZ() + at[1]); // the floor planks replace the ground row: no step at the door
 		BlockState planks = Blocks.OAK_PLANKS.defaultBlockState();
 		for (int x = 0; x <= w + 1; x++) for (int y = 0; y <= 4; y++) for (int z = 0; z <= d + 1; z++) {
 			boolean edge = x == 0 || x == w + 1 || y == 0 || y == 4 || z == 0 || z == d + 1;
@@ -419,7 +419,7 @@ public final class StarterActions {
 				.thenComparingDouble(v -> v.distanceToSqr(b.marker().getX(), b.marker().getY(), b.marker().getZ())));
 		Villager v = candidates.get(0);
 		if (teleport) {
-			BlockPos front = b.marker().below(3);
+			BlockPos front = b.marker().below(2);
 			v.teleportTo(front.getX() + 0.5, front.getY(), front.getZ() + 0.5);
 		}
 		HireResult r = Workers.hire(level, v, job, Optional.of(VillageClaims.locate(b.level(), b.marker())));
