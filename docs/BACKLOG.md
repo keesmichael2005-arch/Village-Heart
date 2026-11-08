@@ -121,3 +121,9 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From l4flake2-r1
 - [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)
+
+## From M10-r1/r2
+- [ ] No test isolates a COLLECT interrupted without a trip (the `before != COLLECT` restart path)
+- [ ] clearStrayFarmland discards every item entity; javadoc and TESTING say crop items only
+- [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
+- [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
