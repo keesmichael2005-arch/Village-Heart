@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-08 20:20 NZ): NO cost cap. Use as much usage as po
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 | M15, M17(+xp), M21 merged | M11 VERIFY r3 (m11 @859f87a) | backlog-2 flake fixes | plans ready: M12 M13 M14 M18 M19 M22 M23 M25 M26 (wait on M11)"
+current: "run 2 | M15, M17(+xp), M21 merged | M11 VERIFY r3 (m11 @859f87a) | backlog-2 flake fixes | M12 BUILD (m12, speculative on origin/m11 base) | plans ready: M12 M13 M14 M18 M19 M22 M23 M25 M26 (wait on M11)"
 blocked: []
 open_questions_for_human:
   - "M26 (balance, runs last; not urgent) D-M26-1: may the `full` 30-day sim use one-shot standing orders (e.g. hire a miner when Village unlocks) and still count as no player input? Fallback: a variant that sets the tier at setup. D-M26-3: approve the test audit and tunable bounds file before the first baseline run (orchestrator will review if unanswered)"
