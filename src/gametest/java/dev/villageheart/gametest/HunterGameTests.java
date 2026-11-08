@@ -535,10 +535,11 @@ public class HunterGameTests {
 		java.util.Set<net.minecraft.world.level.ChunkPos> forced = new java.util.LinkedHashSet<>();
 		long[] t0 = new long[1];
 		// the far spot lies outside the structure: whether its chunk is entity-ticking depends on where the test was placed, so force it
-		// right away (a forced chunk takes up to ~70 ticks to tick entities; the scene needs about as long to build)
-		for (BlockPos corner : new BlockPos[] {h.absolutePos(new BlockPos(5, 0, -10)), h.absolutePos(new BlockPos(7, 0, -1))}) {
-			forced.add(new net.minecraft.world.level.ChunkPos(corner));
-		}
+		// right away (a forced chunk takes up to ~70 ticks to tick entities; the scene needs about as long to build). Every chunk the strip
+		// touches, not only those of its two corners: where a chunk border runs between x = 5 and 6 and another crosses the strip in z, the
+		// far spot's chunk is neither corner's and stayed at block-ticking level (the "not entity-ticking yet" flake, backlog-2)
+		for (int x = 5; x <= 7; x++) for (int z = -10; z <= -1; z++) forced.add(new net.minecraft.world.level.ChunkPos(h.absolutePos(new BlockPos(x, 0, z))));
+		h.assertTrue(forced.contains(new net.minecraft.world.level.ChunkPos(h.absolutePos(far))), "premise: the far spot's chunk is forced");
 		for (var c : forced) h.getLevel().setChunkForced(c.x, c.z, true);
 		GameTestSequence seq = scene(h, false, GROUND_FAR).thenExecute(() -> {
 			lightYard(h);
@@ -559,7 +560,8 @@ public class HunterGameTests {
 			t0[0] = h.getTick();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "premise: the far spot is entity-ticking (a forced chunk), else the hunter would not act there",
-				() -> h.assertTrue(h.getLevel().isPositionEntityTicking(v[0].blockPosition()), "the far spot is not entity-ticking yet"));
+				() -> h.assertTrue(h.getLevel().isPositionEntityTicking(v[0].blockPosition()), "the far spot is not entity-ticking yet (hunter at "
+						+ v[0].blockPosition() + ", chunk " + new net.minecraft.world.level.ChunkPos(v[0].blockPosition()) + ", forced " + forced + ")"));
 		seq = awaitAway(h, seq, tr, v, 700, "the hunter walks in and goes out");
 		seq.thenExecute(() -> {
 			System.out.println("[m17] farHunterWalksViaLodge: out " + (h.getTick() - t0[0]) + " ticks after the teleport, plan trace " + trace);

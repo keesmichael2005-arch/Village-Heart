@@ -181,6 +181,7 @@ public class LumberjackGameTests {
 		BlockPos[] base = new BlockPos[1];
 		Set<BlockPos>[] logs = new Set[1];
 		long[] stat = new long[3];
+		long[] cuttings0 = new long[1];
 		long[] t0 = new long[1];
 		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
 			base[0] = growOak(h, treeRel, 1L);
@@ -189,6 +190,7 @@ public class LumberjackGameTests {
 			stat[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "logs");
 			stat[1] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "trees");
 			stat[2] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted");
+			cuttings0[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings");
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
 			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING));
@@ -217,6 +219,7 @@ public class LumberjackGameTests {
 			int n = logs[0].size();
 			h.assertValueEqual((long) n, (long) carried(v[0], Items.OAK_LOG) + stored(h, "minecraft:oak_log"), "all the logs are carried or stored");
 			h.assertValueEqual(stat[2] + 1, dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted"), "work.lumberjack.saplings_planted");
+			h.assertValueEqual(cuttings0[0], dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings"), "a sapling on hand: the tree gives no cutting");
 			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().treeTasks().isEmpty(),
 					"the replant task is done and gone");
 			assertNoGiveUps(h);
@@ -374,6 +377,204 @@ public class LumberjackGameTests {
 		});
 	}
 
+	// ---- T-L2-16 (backlog-2) ----------------------------------------------------------------------
+
+	/**
+	 * The {@code fellResumesAfterInterrupt} flake: the fired first lumberjack, now a plain villager, idled on the grass right outside the
+	 * camp door while the second one left the camp for the next oak. The worker stood in the doorway, its jam rule only "stepped back" to
+	 * where it stood (the idler has the lower id and never moves for it), and after 201 ticks without a step it declared the open oak
+	 * unreachable for 6000 ticks ("no movement for 201 ticks, 21.9 blocks from ..."). Here a plain villager is held on that spot, as an
+	 * idler that stands longer than the stall limit, until a walker asks it to step aside ({@code WalkTo.setNudgeListenerForTest}); the
+	 * lumberjack, hired inside the camp, must get out and fell the oak with no give-up.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void idlerInTheDoorwayStepsAside(GameTestHelper h) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24);
+		BlockPos doorFront = new BlockPos(11, 0, 3);
+		Villager[] v = new Villager[2];
+		Set<BlockPos>[] logs = new Set[1];
+		boolean[] asked = {false};
+		long[] t0 = {-1}, askedAt = {-1};
+		h.onEachTick(() -> {
+			if (v[1] == null || asked[0] || !v[1].isAlive()) return;
+			// an idler: back on its spot every tick, standing still, until it is asked to move
+			BlockPos p = h.absolutePos(doorFront);
+			v[1].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+			v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			v[1].getNavigation().stop();
+			v[1].getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			logs[0] = logsOf(h, growOak(h, spot, 12L));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			v[1] = WorkerTestSupport.spawnVillager(h, doorFront);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(o -> {
+				if (o == v[1] && !asked[0]) {
+					asked[0] = true;
+					askedAt[0] = h.getTick();
+				}
+			});
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			t0[0] = h.getTick();
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "the first log falls; idler asked " + asked[0] + "; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])
+				+ "; give-ups " + dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).giveUps()));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] idlerInTheDoorwayStepsAside: the idler was asked to step aside " + (askedAt[0] - t0[0])
+					+ " ticks after the hire, the first log fell " + (h.getTick() - t0[0]) + " ticks after it");
+			h.assertTrue(asked[0], "the idler in the doorway was asked to step aside");
+			assertNoGiveUps(h);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * Review backlog-2 r1: the walker can stall on the first cell inside the camp, two cells from the idler on the door front (outside a
+	 * one-block box around it). A walker held on that cell, whose {@code WalkTo} heads for the oak through the door, must ask the idler
+	 * (on its next path nodes) to step aside.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_ahead", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerTwoCellsAheadIsAsked(GameTestHelper h) { twoCellsAhead(h, "idlerTwoCellsAheadIsAsked", false, false); }
+
+	/**
+	 * The same, after the walker's navigation gave up: its navigation is stopped every tick once it planned, so the idler can only be found
+	 * on the last path {@code WalkTo} planned, and only if the jam rule runs while the navigation is idle (review backlog-2 r2).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_nav_gave_up", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerAheadIsAskedAfterTheNavigationGaveUp(GameTestHelper h) { twoCellsAhead(h, "idlerAheadIsAskedAfterTheNavigationGaveUp", true, false); }
+
+	/**
+	 * The same with an idler that holds a walk target of its own while it stands still (its brain picked a stroll it does not walk): it is
+	 * still in the way and must be asked (the r1 race: skipping a villager with a WALK_TARGET missed it; review backlog-2 r2).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_own_target", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerWithItsOwnWalkTargetIsAsked(GameTestHelper h) { twoCellsAhead(h, "idlerWithItsOwnWalkTargetIsAsked", false, true); }
+
+	private static void twoCellsAhead(GameTestHelper h, String name, boolean walkerNavGivesUp, boolean idlerOwnTarget) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24), doorFront = new BlockPos(11, 0, 3), inside = new BlockPos(11, 1, 5);
+		Villager[] v = new Villager[2];
+		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
+		boolean[] asked = {false}, planned = {false};
+		long[] t0 = {-1}, askedAt = {-1};
+		int[] idleChecks = {0}, ownTargetTicks = {0};
+		var wt = net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET;
+		h.onEachTick(() -> {
+			if (v[0] == null) return;
+			BlockPos w = h.absolutePos(inside);
+			// held on the first cell inside (the pathfinder needs it on the ground: it plans only for a grounded mob)
+			if (v[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(w)) > 0.3) v[0].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			v[0].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			v[0].setOnGround(true);
+			if (!asked[0]) {
+				BlockPos p = h.absolutePos(doorFront);
+				v[1].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+				v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+				v[1].getNavigation().stop();
+				if (idlerOwnTarget) {
+					v[1].getBrain().setMemory(wt, new net.minecraft.world.entity.ai.memory.WalkTarget(h.absolutePos(new BlockPos(2, 0, 1)), 0.5F, 0));
+					ownTargetTicks[0]++;
+				} else {
+					v[1].getBrain().eraseMemory(wt);
+				}
+			}
+			long now = h.getLevel().getGameTime();
+			if (!walk.active()) walk.begin(h.absolutePos(new BlockPos(11, 0, 0)), 1.0, now);
+			if (walkerNavGivesUp && planned[0]) {
+				h.assertTrue(v[0].getNavigation().isDone(), "premise: the walker's navigation is idle when its walk ticks");
+				idleChecks[0]++;
+			}
+			if (walk.tick(v[0], now) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
+			if (walkerNavGivesUp && v[0].getNavigation().getPath() != null) {
+				planned[0] = true;
+				v[0].getNavigation().stop();
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			growOak(h, spot, 12L);
+			v[1] = WorkerTestSupport.spawnVillager(h, doorFront);
+			v[0] = WorkerTestSupport.spawnVillager(h, inside);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(o -> {
+				if (o == v[1] && !asked[0]) {
+					asked[0] = true;
+					askedAt[0] = h.getTick();
+				}
+			});
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the walker asks the idler two cells ahead to step aside", () ->
+				h.assertTrue(asked[0], "the idler on the door front was not asked"));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] " + name + ": asked " + (askedAt[0] - t0[0]) + " ticks after the walk began (walk ticks with an idle navigation "
+					+ idleChecks[0] + ", idler ticks holding its own walk target " + ownTargetTicks[0] + ")");
+			if (walkerNavGivesUp) h.assertTrue(idleChecks[0] >= 30, "premise: the walker's navigation was idle for a jam period (" + idleChecks[0] + ")");
+			if (idlerOwnTarget) h.assertTrue(ownTargetTicks[0] >= 30, "premise: the idler held its own walk target for a jam period (" + ownTargetTicks[0] + ")");
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * The step-aside rule never moves one of our workers (review backlog-2 r1): a lumberjack chopping an oak (navigation idle, standing
+	 * still) has a stalled walker one block from it, a plain villager held in place whose {@code WalkTo} heads through the chopper's cell.
+	 * The walker's jam rule must not hand the chopper a WALK_TARGET, and the oak is felled whole by the same lumberjack.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_chopper_not_nudged", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void chopperIsNotAskedToStepAside(GameTestHelper h) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24);
+		Villager[] v = new Villager[2];
+		Set<BlockPos>[] logs = new Set[1];
+		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
+		net.minecraft.world.phys.Vec3[] pin = new net.minecraft.world.phys.Vec3[1];
+		java.util.List<Villager> nudged = new java.util.ArrayList<>();
+		int[] jamTicks = {0};
+		h.onEachTick(() -> {
+			if (pin[0] == null || v[1] == null || !v[1].isAlive()) return;
+			v[1].teleportTo(pin[0].x, pin[0].y, pin[0].z);
+			v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			// through the chopper's cell to a spot beyond it
+			net.minecraft.world.phys.Vec3 dir = v[0].position().subtract(pin[0]).normalize();
+			BlockPos target = BlockPos.containing(v[0].position().add(dir.scale(6)));
+			if (!walk.active()) walk.begin(target, 1.0, h.getLevel().getGameTime());
+			if (walk.tick(v[1], h.getLevel().getGameTime()) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
+			jamTicks[0]++;
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			logs[0] = logsOf(h, growOak(h, spot, 12L));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(nudged::add);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "the lumberjack starts chopping"));
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(v[0].getNavigation().isDone(), "premise: the chopper's navigation is idle");
+			// the walker stands one block from the chopper, on the side away from the trunk
+			net.minecraft.world.phys.Vec3 trunk = net.minecraft.world.phys.Vec3.atBottomCenterOf(h.absolutePos(spot));
+			net.minecraft.world.phys.Vec3 away = v[0].position().subtract(trunk).multiply(1, 0, 1).normalize();
+			pin[0] = v[0].position().add(away);
+			BlockPos at = BlockPos.containing(pin[0]);
+			v[1] = WorkerTestSupport.spawnVillager(h, h.relativePos(at));
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "the chopper fells the whole oak; nudged " + nudged));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] chopperIsNotAskedToStepAside: oak felled with a stalled walker beside the chopper for " + jamTicks[0] + " ticks; nudged " + nudged.size());
+			h.assertTrue(jamTicks[0] >= 60, "premise: the walker stood stalled for at least two jam periods (" + jamTicks[0] + " ticks)");
+			h.assertTrue(!nudged.contains(v[0]), "the chopping lumberjack was asked to step aside: " + nudged);
+			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[0].getUUID()).isPresent(), "still the camp's lumberjack");
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:lumber_keep", structure = YARD, skyAccess = true, maxTicks = 2500)
@@ -488,6 +689,64 @@ public class LumberjackGameTests {
 			System.out.println("[m9] sixOaksTwoDays: " + sb + "tick now " + (h.getTick() - t0[0]));
 			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
 			assertNoGiveUpsAt(h, bases);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-15 (backlog-2) ----------------------------------------------------------------------
+
+	/**
+	 * Oak leaves draw their drops from the per-world loot sequence {@code minecraft:blocks/oak_leaves}, so which leaf gives a sapling
+	 * depends on how many oak leaves decayed earlier in the world (in a full GameTest run: in earlier tests, in a random order). Measured
+	 * over this world's sequence, a window of 250-300 leaf rolls (six small oaks) holds fewer than six saplings at 2-5% of the offsets:
+	 * the cause of the {@code sixOaksTwoDays} "not replanted within a day" flake. This test resets the sequence to salt 553 (independent
+	 * of the world seed), whose first 150 rolls give no sapling at all, fells two oaks (about 110 leaves) and requires every stump to be
+	 * replanted within 200 ticks of its last log all the same: from the tree's own sapling ({@link dev.villageheart.core.lumber.ReplantRules#cuttings}).
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_lean_leaves", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void stumpsReplantedWhenLeavesDropNoSapling(GameTestHelper h) {
+		begin(h);
+		BlockPos[] spots = {new BlockPos(3, 0, 21), new BlockPos(14, 0, 25)};
+		Set<BlockPos>[] logs = new Set[2];
+		long[] lastLogAt = new long[2], plantedAt = new long[2], stat = new long[2];
+		boolean[] droppedSapling = {false};
+		boolean[] on = {false};
+		Villager[] v = new Villager[1];
+		h.onEachTick(() -> {
+			if (!on[0]) return;
+			for (int i = 0; i < 2; i++) {
+				if (lastLogAt[i] == 0 && standing(h, logs[i]) == 0) lastLogAt[i] = h.getTick();
+				if (lastLogAt[i] != 0 && plantedAt[i] == 0 && h.getBlockState(spots[i]).is(Blocks.OAK_SAPLING)) plantedAt[i] = h.getTick();
+			}
+			if (!droppedSapling[0] && (plantedAt[0] == 0 || plantedAt[1] == 0)) {
+				var area = new net.minecraft.world.phys.AABB(h.absolutePos(new BlockPos(0, -2, 0)).getCenter(), h.absolutePos(new BlockPos(31, 16, 31)).getCenter()).inflate(8);
+				droppedSapling[0] = !h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area,
+						e -> e.getItem().is(net.minecraft.tags.ItemTags.SAPLINGS)).isEmpty();
+			}
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			h.getLevel().getRandomSequences().reset(net.minecraft.resources.Identifier.parse("minecraft:blocks/oak_leaves"), 0L, 553, false, true);
+			for (int i = 0; i < 2; i++) logs[i] = logsOf(h, growOak(h, spots[i], 11L + 3 * i));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			stat[0] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings");
+			stat[1] = dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted");
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			on[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> {
+			for (int i = 0; i < 2; i++) h.assertTrue(plantedAt[i] != 0, "oak " + i + " is replanted (last log at " + lastLogAt[i] + "); "
+					+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0]));
+		});
+		seq.thenExecute(() -> {
+			System.out.println("[b2] stumpsReplantedWhenLeavesDropNoSapling: replanted " + (plantedAt[0] - lastLogAt[0]) + " and "
+					+ (plantedAt[1] - lastLogAt[1]) + " ticks after the last log");
+			h.assertFalse(droppedSapling[0], "premise: the leaves dropped no sapling before both stumps were replanted");
+			for (int i = 0; i < 2; i++) h.assertTrue(plantedAt[i] - lastLogAt[i] <= 200, "oak " + i + " replanted " + (plantedAt[i] - lastLogAt[i]) + " ticks after its last log (bound 200)");
+			h.assertValueEqual(stat[0] + 2, dev.villageheart.worker.job.WorkStats.get("lumberjack", "cuttings"), "work.lumberjack.cuttings: one per stump");
+			h.assertValueEqual(stat[1] + 2, dev.villageheart.worker.job.WorkStats.get("lumberjack", "saplings_planted"), "work.lumberjack.saplings_planted");
+			assertNoGiveUps(h);
 			VillageTestSupport.done(h);
 			end(h);
 		});

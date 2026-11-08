@@ -209,6 +209,14 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
   day time 5000 (drops despawn after 6000 ticks); a fell in progress is saved with the village (`tree_tasks`) and any lumberjack of the camp
   finishes it. Drops (logs, saplings, sticks, apples) in the work area are collected. The base is replanted with the log's species (one sapling per
   base cell, four for 2x2 trunks) from the worker or the camp chest, after 6000 ticks with any one-cell sapling, and the spot expires after 3 days.
+  **A felled tree gives its lumberjack the saplings its own stump still lacks** (backlog-2): leaf drops are random (and oak leaves draw from
+  a per-world loot sequence), so six small oaks can give fewer than six saplings in a day; the worker counts its own and the camp chests'
+  saplings against the camp's open spots and gets the rest of this stump's cells (none with `block_drops` off). Saplings in Storage and
+  saplings lying on the ground are **not** counted, so the rule is "one guaranteed replant per felled stump" (also for a task tree the player
+  cut down while the task was open). Leaf saplings are an intended small surplus (kept up to the reserve, the rest handed in to Storage).
+  A walker blocked by a plain villager that just stands in its way (on its next path cells or within a block, e.g. an idler in front of a
+  door) asks it to step aside (a vanilla WALK_TARGET a few blocks away). Our own workers are never asked (two walkers settle it by the id
+  step-back rule; a worker standing at its work keeps working), nor trading, sleeping or NoAI villagers.
   A worker that cannot hand in its load (Storage full or unreachable) stops cutting. Saplings the open spots need, plus 4, are never handed in.
 
 ### 5.2 Farmer (Farmhouse, Composter)

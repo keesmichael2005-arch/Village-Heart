@@ -522,8 +522,40 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 ## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
 - `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
 - Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
+
+## 2026-11-08: backlog-2 (test hardening: GameTest flakes), branch backlog-2
+- **M9 `sixOaksTwoDays`** (not replanted within a day): oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`. Alone the test always gets the same 9 saplings (needs 6); in a full run the earlier tests shift the window, and 2-5% of this world's 250-300-roll windows hold fewer than 6 (min 3). Forced repro: sequence salt 553 + rule off gives the exact "oak 2 went at tick 400 ... on tick 50002". Game fix: a felled tree yields the saplings its own stump still lacks (`ReplantRules.cuttings`, `LumberJob.giveCuttings`). New L2 `stumpsReplantedWhenLeavesDropNoSapling`, L1 cuttings test, `fellsOneOakWhole` asserts no cutting with a sapling on hand.
+- **M9 `fellResumesAfterInterrupt`** (second oak, "no movement for 201 ticks, 21.9 blocks" in the camp doorway): the fired worker idled outside the door; the jam rule "stepped back" to the worker's own cell. Game fix: `WalkTo` asks an idle villager within a block to step aside. New L2 `idlerInTheDoorwayStepsAside` (red without the nudge with the natural signature).
+- **M17 `farHunterWalksViaLodge`** (not entity-ticking on tick 2602): not load. Only the strip's two corner chunks were forced; at 9 of 256 placements the far spot's chunk was neither (the failing run's origin is one). The test forces every chunk the strip touches and asserts it.
+- **M7 `workerOpensDoors`**: walk-time logging + trace added; no outlier in 9 full + 8 isolated runs (all 64 ticks), not root-caused, BACKLOG left open.
+- Runs: full L2 green in 4 of 4 on backlog-2 and 5 of 5 on origin/m11 merged with backlog-2 (the coordinator saw 2 of 5 red on origin/m11), under load 2-10.
+- Next: review. No blockers.
+
 ## 2026-11-08: M21 review round 1 (verifier): PASS
 - Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
 - Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
 - `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
 - Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
+
+## 2026-11-08: backlog-2 review round 2 (verifier): FAIL
+- `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
+- Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
+- Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.
