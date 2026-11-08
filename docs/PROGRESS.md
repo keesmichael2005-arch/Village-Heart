@@ -358,6 +358,33 @@ Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: b
 - Verify: 8 consecutive full runGameTest runs, 164/164 each. L4 screenshots viewed: builders_table, blueprint_footprint, blueprint_footprint_red, build_mid, heart_buildings_build, build_finished.
 - Next: M21 (defences reuse BuildPlan/SiteRules; add LINE mode). No blockers. M14 tiers not built: tests set the tier directly.
 
+## 2026-11-07: M10 planned (planner): Farmer
+Plan: `docs/plans/M10.md` (13 steps). The farmer reuses M9's job toolkit (`core.job`, `CampTools`, `WalkTo`, `ItemPickup`, `WorkStats`, `JobBehaviours.keep`,
+`DepositTrip.wanted`) and M7's DepositTrip; it adds no second version of any of them and no saved data.
+- Own `FarmerWork` behaviour instead of vanilla `HarvestFarmland`/`UseBonemeal`/`WorkAtComposter` (verified: they need the vanilla FARMER profession,
+  `SECONDARY_JOB_SITE`/`JOB_SITE`, `mob_griefing`, look only at 3×3 with random picks, make bread). Vanilla static helpers are reused (`isMaxAge`,
+  `Block.getDrops`, `BoneMealItem.growCrop`, composter level events).
+- Crops by block id (torchflower extends `CropBlock`): wheat/carrots/potatoes max age 7, beetroots 3. Harvest + replant is one atomic tick (the seed is
+  taken from the drops first). Area: within 24 blocks (xz circle) of the composter, ±8 y. Deterministic composting (21 seeds per bone meal, vanilla's mean).
+  Hoe = flat ×1.25, no hoe ×1.0 (§5.2 over §4's ×0.5; M9's `ToolRequirement` gets a BONUS mode).
+- Changes M7: DepositTrip kept every food item forever (carrots/potatoes/beetroots would never reach Storage); now food is kept only up to 12 points.
+- L2 determinism: each farmer test has its own environment with `random_tick_speed 0` (verified: batches run sequentially, teardown resets the rule).
+Revised after a fresh critique (22 findings; 2 blockers fixed: a night-time control and wrong compost arithmetic; 1 refuted against the sources).
+Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is on dev). Top risk: dependency on unbuilt M9 code.
+
+## 2026-11-08: M10 built (Farmer), branch m10
+- Farm core (`core.farm`: crops, `FieldIndex`, compost rule, `FarmerPlanner`, keep rules), BONUS tool mode, food keep rule in `DepositTrip` (food kept only up to 12 points), `FarmJob`/`FarmRuntime`/`FarmerWork` glue (own behaviour, 20-tick re-plan, server-wide index budget, claims, hoe lease, COLLECT, FETCH, compost, bone meal), `WalkTo.release` (PATH-memory fix). 14 L2 tests (`FarmerGameTests`), L4 `FarmerClientTests.farmerField`. Deviations: `docs/plans/M10.md` section 8 (D1-D12).
+- Collect-timeout bug (D10): a COLLECT interrupted by a deposit trip kept its old start time and the item was blacklisted for 6000 ticks on return. Fixed for both orders (planner YIELD first; trip behaviour first), with two L2 tests that go red when the fix is reverted. **The cause of the original `storageFullStopsHarvest` flake (1 loose wheat never collected) is still unconfirmed**: a traced run never COLLECTs before its trip in phase 2. It has not failed in about 30 runs since.
+- Second flake found by the series: `invalidBuildingKeepsWorker` (M7) expected status OK for a farmer with no farmland, now NO_WORK after a sweep (1 in 9); the test places one farmland block (D12).
+- Evidence: 9 consecutive full `./gradlew --no-daemon runGameTest` runs on the final code, 158/158 each (an earlier series with the flake fix but before D12: 7 of 8 green, the failure being the M7 test above).
+- Screenshot looked at: `farmer_field.png` (farmer at the Farmhouse door, mature wheat field, banner on the wall).
+- Next: M10 review; ROADMAP is the orchestrator's. Doubt: the collect-timeout cause is inferred, not observed.
+- Verify note: one full verify run failed on M8's `fireUnloadedWorker` (population 2 instead of 1 at tick 5, a stray loaded villager counted; not farmer code, not reproduced in 9 L2 runs + 2 verify runs); the rerun was green (158/158, L4, perf).
+
+### M10 review r1 fixes (builder)
+1. Stray farmland made an M7 test flaky (`hiredWorkerReachesJobBlock`: a hired farmer chased farmland 22 blocks away left by a farm test). `clearStrayFarmland` runs in both `begin`s; rule in TESTING; D12's field is removed at the test's end.
+2. D10 covered only the planner-yield order: now also the trip-first order (`FarmJob.tick` drops the collect target while a trip runs). New L2 tests `collectSurvivesTripThatStartsFirst` / `collectSurvivesTripThatPlannerYieldsTo`; both red with the fix reverted. `loose()` now counts the farmer's work area only. Original flake cause stays unconfirmed (see above).
+3. `farmer_field.png` re-framed from the Farmhouse side: the farmer stands between the replanted sprouts (front) and the ripe wheat (behind). Looked at.
 ## 2026-11-08: second L4 NetworkSynchronizer stall (disconnect leak), branch l4-flake-2
 - **Root cause (Fabric, fabric-client-gametest-api-v1 4.3.5):** `Minecraft.disconnect` resets `NetworkSynchronizer.CLIENTBOUND` once, right after the client closed its end of the in-memory channel. Netty closes the server's end later on its own event loop while the integrated server keeps ticking, so clientbound packets sent in that window are counted after the reset and fail to write: never uncounted. The first client tick after "Stopping server … All dimensions are saved" then waits 10 s and dies with `Network synchronizer in invalid state`.
 - **Evidence:** temporary probes (not committed). Natural failure under load (1 of 3 loaded runs before the fix), at the end of `heartTabs`: 41 packets counted after the reset (20 `set_entity_data`, 20 `set_entity_motion` from the 20 killed villagers, 1 `disconnect`), `inFlight=41` when `disconnect` returned, invalid state 10 s later.
@@ -382,3 +409,7 @@ Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: b
 - Round 1: clearing no longer breaks things of a player that rest on the site (rule 11b `Code.SUPPORT`, `SiteSupport`, per-step re-check in `BuildExecutor.cellState`). Round 2: carpets (default methods on the proxy), ascending rails, and the Farm Plot flood (clear and place in one action; water in a CHECK cell is wrong). Details in docs/plans/M20.md sections 8 and the review notes.
 - New tests: `SiteRulesTest.ruleOrder11b`, `attachedThingsRefuseTheSite`, `attachmentAfterConfirmBlocksTheBuilder`, `checkPassDoesNotFloodAFarmland`, `ownTorchDoesNotBlockTheCheckPass`; each mutation-checked.
 - Open: `workerOpensDoors` (M9) rare 300-tick stall, see BACKLOG. Lesson: the scratchpad is shared between agents, so keep helper scripts in an own subdirectory.
+## 2026-11-08: M10 verifier review r2: PASS (docs/reviews/M10-r2.md)
+- All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
+- Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
+- Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.

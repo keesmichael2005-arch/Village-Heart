@@ -45,7 +45,7 @@ public enum JobType {
 			case LUMBERJACK -> Optional.of(new ToolRequirement(ToolKind.AXE, true));
 			case MINER -> Optional.of(new ToolRequirement(ToolKind.PICKAXE, true));
 			case HUNTER -> Optional.of(new ToolRequirement(ToolKind.BOW_OR_SWORD, true));
-			case FARMER -> Optional.of(new ToolRequirement(ToolKind.HOE, false));
+			case FARMER -> Optional.of(new ToolRequirement(ToolKind.HOE, ToolRequirement.Mode.BONUS));
 			default -> Optional.empty();
 		};
 	}

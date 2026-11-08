@@ -13,7 +13,8 @@ public final class WorkSpeed {
 	 */
 	public static double multiplier(Optional<ToolTier> tool, ToolRequirement req, int level, Needs needs) {
 		double toolFactor;
-		if (tool.isPresent()) toolFactor = ToolRules.multiplier(tool.get());
+		if (req.mode() == ToolRequirement.Mode.BONUS) toolFactor = tool.isPresent() ? Balance.HOE_BONUS : 1.0; // flat, any tier
+		else if (tool.isPresent()) toolFactor = ToolRules.multiplier(tool.get());
 		else toolFactor = req.required() ? 0.0 : Balance.NO_TOOL_SPEED;
 		int idx = Math.max(0, Math.min(Balance.LEVEL_SPEED.length - 1, level - 1));
 		return toolFactor * Balance.LEVEL_SPEED[idx] * needs.speed();

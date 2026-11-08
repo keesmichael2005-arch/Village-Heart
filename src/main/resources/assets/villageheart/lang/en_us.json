@@ -177,6 +177,7 @@
 	"gui.villageheart.heart.activity.no_work.builder": "No blueprint to build",
 	"gui.villageheart.heart.activity.needs_materials": "Needs materials",
 	"gui.villageheart.heart.activity.blocked": "Build blocked",
+	"gui.villageheart.heart.activity.no_work.farmer": "No farmland within 24 blocks",
 	"gui.villageheart.heart.building.house": "House",
 	"gui.villageheart.heart.building.storage": "Storage",
 	"gui.villageheart.heart.building.farmhouse": "Farmhouse",

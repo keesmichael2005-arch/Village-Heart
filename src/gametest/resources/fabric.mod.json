@@ -6,7 +6,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": ["dev.villageheart.sim.SimulationBootstrap"],
-		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests", "dev.villageheart.gametest.RoomGameTests", "dev.villageheart.gametest.BuildingGameTests", "dev.villageheart.gametest.StockpileGameTests", "dev.villageheart.gametest.StockpileFacadeGameTests", "dev.villageheart.gametest.WorkerGameTests", "dev.villageheart.gametest.LumberjackGameTests", "dev.villageheart.gametest.HeartScreenGameTests", "dev.villageheart.gametest.HeartActionGameTests", "dev.villageheart.gametest.RankGameTests", "dev.villageheart.gametest.BuildGameTests"],
+		"fabric-gametest": ["dev.villageheart.gametest.VillageHeartGameTests", "dev.villageheart.gametest.MarkerGameTests", "dev.villageheart.gametest.RoomGameTests", "dev.villageheart.gametest.BuildingGameTests", "dev.villageheart.gametest.StockpileGameTests", "dev.villageheart.gametest.StockpileFacadeGameTests", "dev.villageheart.gametest.WorkerGameTests", "dev.villageheart.gametest.LumberjackGameTests", "dev.villageheart.gametest.FarmerGameTests", "dev.villageheart.gametest.HeartScreenGameTests", "dev.villageheart.gametest.HeartActionGameTests", "dev.villageheart.gametest.RankGameTests", "dev.villageheart.gametest.BuildGameTests"],
 		"fabric-client-gametest": ["dev.villageheart.gametest.VillageHeartClientTests"]
 	},
 	"mixins": ["villageheart-gametest.mixins.json"],

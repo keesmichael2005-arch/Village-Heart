@@ -6,6 +6,8 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.worker.build.BuilderKeep;
 import dev.villageheart.worker.build.BuilderWork;
+import dev.villageheart.worker.farm.FarmJob;
+import dev.villageheart.worker.farm.FarmerWork;
 import dev.villageheart.worker.lumber.LumberKeep;
 import dev.villageheart.worker.lumber.LumberjackWork;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
@@ -35,6 +37,13 @@ final class JobBehaviours {
 					Pair.of(3, new BuilderWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
+		if (jobOf(villager) == JobType.FARMER) {
+			// the farmer walks to its fields: no GoToJobBlock either
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new FarmerWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
 		return ImmutableList.of(
 				Pair.of(1, new DepositTrip()),
 				Pair.of(2, new GoToJobBlock()),
@@ -46,12 +55,13 @@ final class JobBehaviours {
 	}
 
 	/**
-	 * How many of {@code item} this worker never hands in to Storage (besides the food every villager keeps): what its job needs for its
+	 * How many of {@code item} this worker never hands in to Storage (besides the food every villager keeps, {@link dev.villageheart.core.job.FoodKeep}): what its job needs for its
 	 * own work. {@code 0} = everything is handed in.
 	 */
 	static int keep(Villager villager, Item item) {
 		if (jobOf(villager) == JobType.LUMBERJACK) return LumberKeep.keep(villager, item);
 		if (jobOf(villager) == JobType.BUILDER) return BuilderKeep.keep(villager, item);
+		if (jobOf(villager) == JobType.FARMER) return FarmJob.keep(villager, item);
 		return 0;
 	}
 

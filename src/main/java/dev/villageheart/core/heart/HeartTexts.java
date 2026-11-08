@@ -90,6 +90,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "builds.builder", "Builder: %s");
 		EN.put(PREFIX + "activity.needs_materials", "Needs materials");
 		EN.put(PREFIX + "activity.blocked", "Build blocked");
+		EN.put(PREFIX + "activity.no_work.farmer", "No farmland within 24 blocks");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

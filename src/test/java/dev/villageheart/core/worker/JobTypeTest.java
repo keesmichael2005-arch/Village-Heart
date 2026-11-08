@@ -73,6 +73,7 @@ class JobTypeTest {
 		var hoe = JobType.FARMER.tool().orElseThrow();
 		assertEquals(dev.villageheart.core.job.ToolKind.HOE, hoe.kind());
 		assertFalse(hoe.required());
+		assertEquals(dev.villageheart.core.job.ToolRequirement.Mode.BONUS, hoe.mode());
 		for (JobType j : new JobType[] {JobType.COOK, JobType.BUILDER, JobType.GUARD, JobType.MERCHANT, JobType.BLACKSMITH}) {
 			assertTrue(j.tool().isEmpty(), j.id());
 		}

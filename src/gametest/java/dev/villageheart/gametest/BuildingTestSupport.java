@@ -60,6 +60,7 @@ public final class BuildingTestSupport {
 		VillageTestSupport.reset(h);
 		BuildingSystem.resetRuntimeForTests();
 		sweepStrayMarkers(h);
+		FarmTestSupport.clearStrayFarmland(h, 40);
 		h.setBlock(BELL, Blocks.BELL);
 		return h.startSequence().thenIdle(3).thenExecute(() -> claim(h));
 	}

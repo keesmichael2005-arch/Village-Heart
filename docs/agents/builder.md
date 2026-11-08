@@ -15,3 +15,5 @@ re-run the full verify, push, and report back.
 - Run test loops in the FOREGROUND (sequential runs within the 10-minute command limit, with long timeouts).
   Never end your turn while a background command of yours is still running: that forces an early handback
   and loses the in-flight work. Push after every green step so a restart or handback loses nothing.
+
+- The scratchpad is SHARED between agents. Put any helper scripts or logs in your own subfolder named after your role and milestone (e.g. `scratchpad/m11-builder/`); never run or overwrite a script you did not write.

@@ -121,7 +121,7 @@ public final class LumberJob {
 		if (ws == null) return;
 		clearCrack(level, v, ws);
 		releaseTree(rt, v.getUUID(), ws);
-		ws.walk.clear();
+		ws.walk.release(v);
 		ws.needsPlan = true;
 		ws.replant = null;
 		ws.item = null;
@@ -230,7 +230,7 @@ public final class LumberJob {
 		BlockPos jb = pos(data.jobBlock());
 		if (now < ws.idleBackoffUntil || !data.jobBlock().dimension().equals(level.dimension().identifier().toString())) return;
 		if (WalkTo.distance(v, jb) <= Balance.JOB_BLOCK_REACH) {
-			ws.walk.clear();
+			ws.walk.release(v);
 			return;
 		}
 		if (!ws.walk.active() || !ws.walk.target().equals(jb)) ws.walk.begin(jb, Balance.JOB_BLOCK_REACH, now);

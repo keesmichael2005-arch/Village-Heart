@@ -91,8 +91,8 @@ from there instead of hard-coding them.
 - **L2**: every felled tree spot has a sapling within 1 day. A log wall 10 blocks away is untouched
 - **L2**: with no axe → no logs after 1 day, and the Villagers tab reason is "Needs axe"
 
-## M10: Farmer
-- [ ] §5.2: harvest mature crops, replant, compost seeds into bone meal, deposit
+## M10: Farmer ✅
+- [x] §5.2: harvest mature crops, replant, compost seeds into bone meal, deposit
 - **L2**: a farmer with a 9×9 field of mature wheat → ≥60 wheat in the stockpile within 1 day, and every farmland block replanted
 - **L2**: immature crops are not harvested. Farmland outside 24 blocks is untouched
 
