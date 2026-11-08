@@ -11,10 +11,12 @@ import dev.villageheart.worker.Workers;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.lwjgl.glfw.GLFW;
 
@@ -258,6 +260,18 @@ final class HeartScreenClientTests {
 				});
 				if (!closed) throw new AssertionError("the server still has the Heart menu open after Escape");
 				srv.runCommand("kill @e[type=minecraft:villager]");
+				// Quiesce before the world closes (docs/TESTING.md, NetworkSynchronizer): wait until the 20 deaths are over on both sides,
+				// so the server is not broadcasting a burst of entity packets while the connection closes.
+				boolean removed = false;
+				for (int i = 0; i < 100 && !removed; i++) {
+					context.waitTicks(1);
+					boolean serverNone = srv.computeOnServer(server -> server.overworld().getEntities(EntityType.VILLAGER, e -> true).isEmpty());
+					boolean clientNone = context.computeOnClient(mc -> StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false)
+							.noneMatch(e -> e.getType() == EntityType.VILLAGER));
+					removed = serverNone && clientNone;
+				}
+				if (!removed) throw new AssertionError("villagers were still present 100 ticks after the kill");
+				context.waitTicks(2);
 			} finally {
 				HeartScreen.recordLayout = false;
 			}

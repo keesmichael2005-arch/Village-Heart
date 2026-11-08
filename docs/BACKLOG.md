@@ -53,7 +53,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Known leniencies (documented): Hunting Ground inside a house reads valid after a restart until re-scan; out-of-claim plaques stay red after release; late-loaded markers are adopted only on right-click
 
 ## From l4flake-r1
-- [ ] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+- [x] Possible 2nd synchronizer stall (seen once, only under a forced 30 ms delay): the Render thread waits on CLIENTBOUND right after "Stopping server" with inFlightPackets > 0 (a counter leak at disconnect, not a lost wakeup). If the AssertionError returns with that signature, investigate it
+  - **Fixed (branch l4-flake-2).** It returned in full verifies (M20 builder: 2 of 3, at the end of `heartTabs`). Root cause, in Fabric: `Minecraft.disconnect` resets `CLIENTBOUND` once, right after the client closed its end of the in-memory channel, but the server's end closes later on its own Netty event loop while the integrated server keeps ticking; packets the server sends in that window are counted after the reset and can never be received, so the next client tick waits 10 s for them. Instrumented natural failure: 41 packets (20 `set_entity_data`, 20 `set_entity_motion` from the 20 killed villagers, 1 `disconnect`). Fixed by a gametest-only mixin (`DisconnectInFlightLeakFix`) that resets the count again once the integrated server has stopped, plus `heartTabs` waiting for the deaths to finish before it closes. No retry. See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 - [ ] The wakeup wrapper doesn't check the `invalid` flag between slices (cosmetic; up to 10 s later failure)
 
 ## From M6-r1/r2
@@ -117,3 +118,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] assertNoGiveUpsAt comment and PROGRESS give the wrong reason (a regrown tree stands on the same base)
 - [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
 - [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
+
+## From l4flake2-r1
+- [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)

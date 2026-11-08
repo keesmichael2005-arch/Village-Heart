@@ -12,7 +12,7 @@ GitHub Actions runs the same script on every push.
 
 Proven at setup: a deliberately broken GameTest fails the run (exit 1), so a green run means something.
 
-## Layer 4 and Fabric's NetworkSynchronizer (lost-wakeup fix)
+## Layer 4 and Fabric's NetworkSynchronizer (two stalls, two gametest mixins)
 Fabric's client-gametest framework (fabric-client-gametest-api-v1 4.3.5, the newest for 1.21.11) counts in-flight packets so that every
 tick ends with all packets handled. Its `NetworkSynchronizer.waitForPacketHandlers` checks "a packet is in flight and nothing is queued"
 without the lock, then parks on `await(10 s)` without checking again. If the last packet is handled in between, the signal is lost, the
@@ -25,6 +25,28 @@ Fabric's 10 s failure for a packet that really never arrives. It logs `LOST_WAKE
 that would drop the "packets handled by the end of the tick" guarantee the client tests rely on. Remove the mixin when moving to a Fabric
 version without `NetworkSynchronizer` (the mixin then no longer compiles; if the class stays but the `await` call changes, the
 `required` injector stops the client at start-up, so it cannot silently stop working).
+
+**Second stall: a leaked clientbound count when a singleplayer world closes.** Fabric counts a clientbound packet at the HEAD of the
+server-side `Connection.sendPacket` and uncounts it when the client's `channelRead0` returns. `TestSingleplayerContext.close()` closes
+the client's end of the in-memory channel (`ClientLevel.disconnect`), then `Minecraft.disconnect` calls `CLIENTBOUND.reset()` (at
+`dropAllTasks`), its only reset. But Netty closes the server's end of a `LocalChannel` later, on that channel's own event loop, and the
+integrated server keeps ticking meanwhile (the deferred disconnect runs in the client's tick phase, in parallel with the server's tick).
+Until that close runs the server still sees `isConnected()`, so every packet it sends in that window is counted after the reset and then
+fails to write to the closed client end: it is never uncounted. `disconnect` returns with `inFlightPackets > 0`, and the first client tick
+after "Stopping server … All dimensions are saved" waits for packets that cannot come, for 10 s, then fails the run with the same
+`AssertionError: Network synchronizer in invalid state` (stack: `postRunTasksHook` from `Minecraft.run`). CPU load delays the event loop and
+widens the window; a busy server tick fills it. Seen naturally at the end of M8's `heartTabs` (it killed 20 villagers just before closing:
+instrumentation counted 20 `set_entity_data` + 20 `set_entity_motion` + 1 `disconnect` sent after the reset, 41 in flight at the end of
+`disconnect`); under the forced delay below even idle worlds leak (a `set_time`). Fix: the gametest-only, client-only mixin
+`dev.villageheart.gametest.mixin.DisconnectInFlightLeakFix` re-applies Fabric's reset in `Minecraft.disconnect` after the client has waited
+for the integrated server to stop (`isShutdown()`), before the next tick. There the client's connection is closed (nothing can be received)
+and the server thread has finished (nothing can be sent), so any count left is a leak by construction. It changes nothing during gameplay
+(a packet that really never arrives still fails after 10 s) and does not cover a disconnect from a dedicated server (not seen; Fabric's 10 s
+would still report it). It logs `DISCONNECT_LEAK_FIX installed` once and `DISCONNECT_LEAK_CLEARED: n` per world close it repairs; `verify.sh`
+fails if the first is missing and reports the count. Client tests should also quiesce before closing a world: no mass entity change in the
+last ticks (wait until the effect has reached the client, as `heartTabs` now does after its kill), screens closed.
+Forced reproduction (temporary probe, not committed): blocking the server channel's event loop for 500 ms when the client closes makes every
+world close leak; without the fix the run dies at the first close, with it the run is green and logs `DISCONNECT_LEAK_CLEARED`.
 
 ## GameTests that touch the village claim (M1+)
 The claim is global (one per world) and vanilla runs GameTests of the same test environment at the same time, so
