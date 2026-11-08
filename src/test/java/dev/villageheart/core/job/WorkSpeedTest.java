@@ -25,24 +25,24 @@ class WorkSpeedTest {
 	@Test
 	void stoneAxeFellsALogInFortyTicks() {
 		double m = WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 1, Needs.DEFAULT);
-		assertEquals(1.25, m);
-		assertEquals(40, ticksFor(1, m));
+		assertEquals(2.0, m);
+		assertEquals(40, ticksFor(1, m)); // anchored on stone: 40 ticks per log as before the vanilla-speed table
 		assertEquals(40 * 7, ticksFor(7, m));
 	}
 
 	@Test
-	void woodIsFiftyAndIronHundredLogsTakeAbout3334() {
-		assertEquals(50, ticksFor(1, WorkSpeed.multiplier(Optional.of(ToolTier.WOOD), AXE, 1, Needs.DEFAULT)));
+	void woodIsEightyAndIronHundredLogsTakeAbout2667() {
+		assertEquals(80, ticksFor(1, WorkSpeed.multiplier(Optional.of(ToolTier.WOOD), AXE, 1, Needs.DEFAULT)));
 		int t = ticksFor(100, WorkSpeed.multiplier(Optional.of(ToolTier.IRON), AXE, 1, Needs.DEFAULT));
-		assertTrue(Math.abs(t - 3334) <= 1, "iron 100 logs: " + t);
+		assertTrue(Math.abs(t - 2667) <= 1, "iron 100 logs: " + t);
 	}
 
 	@Test
 	void levelsMultiply() {
-		assertEquals(1.5625, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 2, Needs.DEFAULT), 1e-12);
-		assertEquals(1.25 * 1.5, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 3, Needs.DEFAULT), 1e-12);
+		assertEquals(2.5, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 2, Needs.DEFAULT), 1e-12);
+		assertEquals(2.0 * 1.5, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 3, Needs.DEFAULT), 1e-12);
 		// a level beyond the table uses the best entry
-		assertEquals(1.25 * 1.5, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 9, Needs.DEFAULT), 1e-12);
+		assertEquals(2.0 * 1.5, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 9, Needs.DEFAULT), 1e-12);
 	}
 
 	@Test
@@ -74,13 +74,13 @@ class WorkSpeedTest {
 		// the other rows are unchanged
 		assertEquals(0.0, WorkSpeed.multiplier(Optional.empty(), AXE, 1, Needs.DEFAULT));
 		assertEquals(0.5, WorkSpeed.multiplier(Optional.empty(), HOE, 1, Needs.DEFAULT));
-		assertEquals(1.25, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 1, Needs.DEFAULT));
+		assertEquals(2.0, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 1, Needs.DEFAULT));
 	}
 
 	/** T-L1-1: speed = tool x level x needs, every cell of the table from literals (DESIGN section 4). */
 	@Test
 	void fullToolLevelNeedsTable() {
-		double[] tool = {1.0, 1.25, 1.375, 1.0, 1.5, 1.75, 2.0}; // wood stone copper gold iron diamond netherite
+		double[] tool = {1.0, 2.0, 2.5, 6.0, 3.0, 4.0, 4.5}; // wood stone copper gold iron diamond netherite (vanilla speed / 2)
 		double[] level = {1.0, 1.25, 1.5};
 		Needs[] needs = {Needs.DEFAULT, new Needs(false, 1, true, true), new Needs(true, 0, false, true), new Needs(false, 2, false, false)};
 		ToolTier[] tiers = ToolTier.values();
@@ -101,11 +101,11 @@ class WorkSpeedTest {
 	}
 
 	@Test
-	void ironLevelThreeFellsHundredLogsIn2223Ticks() {
+	void ironLevelThreeFellsHundredLogsIn1778Ticks() {
 		double m = WorkSpeed.multiplier(Optional.of(ToolTier.IRON), AXE, 3, Needs.DEFAULT);
-		assertEquals(2.25, m, 1e-12);
+		assertEquals(4.5, m, 1e-12);
 		int t = ticksFor(100, m);
-		assertTrue(Math.abs(t - 2223) <= 1, "iron level 3, 100 logs: " + t);
+		assertTrue(Math.abs(t - 1778) <= 1, "iron level 3, 100 logs: " + t);
 	}
 
 	private static int ticksFor(int units, double mult, double unitCost) {

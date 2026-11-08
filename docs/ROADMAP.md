@@ -129,7 +129,7 @@ from there instead of hard-coding them.
 ## M15: Job levels and tools ✅
 - [x] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
 - **L1**: speed = tool × level × needs. XP thresholds. The level cap holds at the Hamlet tier
-- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
+- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.3× the logs of a stone-axe one and ≥1.3× a wooden-axe one (the original criterion, restored by the human 2026-11-09 with the vanilla-speed tool table: iron 3.0 / stone 2.0 = 1.5; it had been relaxed to ≥1.1× by orchestrator decision D1, 2026-11-08, when iron/stone was only 1.2)
 - **L2**: the tool in the camp chest loses durability while it is used
 
 ## M16: Miner + Mineshaft ✅
@@ -156,6 +156,9 @@ from there instead of hard-coding them.
 - **L3**: scenario `defended` (starter + Barracks with 2 guards), 10 days: villager deaths from mobs ≤ 1
 
 ## M19: Blacksmith / Smithy
+- **Depends on M19a (Self-made basic tools), which must be merged into `dev` first** (hard dependency): M19 extends M19a's shared gear core
+  (`core.gear`: demand per camp, worn line, tier choice, order keys, saved crafts, cancel rules) and switches on its `SmithService` hand-off
+  instead of defining its own. Also built after M13 and M18. Plan: `docs/plans/M19.md` (r3).
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_SMITHED, n)` per ingot, item or repair.
 - [ ] §5.7: smelting, gear targets, repairs, golem build and repair. Vanilla golem spawning is disabled in the claim
 - **L1**: gear target planner (what to craft next given the stock and the number of guards)

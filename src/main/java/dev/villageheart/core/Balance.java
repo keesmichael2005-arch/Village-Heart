@@ -56,14 +56,24 @@ public final class Balance {
 	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
 
 	// ---- jobs (M9) ----
-	/** Work speed multiplier per tool tier, indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
-	public static final double[] TOOL_SPEED = {1.0, 1.25, 1.375, 1.0, 1.5, 1.75, 2.0};
+	/** Vanilla 1.21.11 mining speed per tool tier ({@code ToolMaterial}), indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
+	public static final double[] VANILLA_TOOL_SPEED = {2, 4, 5, 12, 6, 8, 9};
+	/** Vanilla speed is divided by this to get the work multiplier (wood 1.0, stone 2.0, ...): the ratios between tiers are vanilla's. */
+	public static final double TOOL_SPEED_DIVISOR = 2.0;
+	/** Work speed multiplier per tool tier = vanilla speed / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5. */
+	public static final double[] TOOL_SPEED = toolSpeeds();
+
+	private static double[] toolSpeeds() {
+		double[] m = new double[VANILLA_TOOL_SPEED.length];
+		for (int i = 0; i < m.length; i++) m[i] = VANILLA_TOOL_SPEED[i] / TOOL_SPEED_DIVISOR;
+		return m;
+	}
 	/** Work speed multiplier per worker level 1..3 (M15 raises levels). */
 	public static final double[] LEVEL_SPEED = {1.0, 1.25, 1.5};
 	/** Speed of a job whose tool is optional and missing. */
 	public static final double NO_TOOL_SPEED = 0.5;
-	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x1.25) fells a log in 40 ticks. */
-	public static final double BASE_TICKS_PER_LOG = 50;
+	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x2.0) fells a log in 40 ticks (anchored on stone; wood 80). */
+	public static final double BASE_TICKS_PER_LOG = 80;
 	/** A tree counts only with this many face contacts with natural (non-persistent) leaves. */
 	public static final int TREE_MIN_LEAF_CONTACTS = 3;
 	public static final int MAX_TREE_LOGS = 192;
@@ -177,8 +187,8 @@ public final class Balance {
 
 	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
 
-	/** Work units one haul costs; a stone pickaxe at level 1 earns 1.25 per tick, so a haul is 2000 ticks (2 in-game hours) underground. */
-	public static final double MINER_HAUL_UNITS = 2500;
+	/** Work units one haul costs; a stone pickaxe at level 1 earns 2.0 per tick, so a haul is 2000 ticks (anchored on stone; wood 4000) (2 in-game hours) underground. */
+	public static final double MINER_HAUL_UNITS = 4000;
 	/** An underground miner is stepped every this many ticks. */
 	public static final int MINER_STEP_TICKS = 20;
 	/** Durability a pickaxe loses per completed haul. */

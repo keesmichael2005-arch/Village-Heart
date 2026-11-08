@@ -38,6 +38,8 @@ public final class WalkTo {
 	private Vec3 settled;
 	/** The path this class handed to the navigation: when the navigation holds another one, vanilla replaced it. */
 	private Path mine;
+	/** The last long path planned here (kept when the navigation drops it: the jam rule reads where the walker was heading). */
+	private Path lastPath;
 	/** Jam breaker: where the villager was {@link #JAM_TICKS} ago. */
 	private Vec3 jamAnchor;
 	private long jamAt;
@@ -65,6 +67,7 @@ public final class WalkTo {
 		this.lastTickAt = Long.MIN_VALUE;
 		this.settled = null;
 		this.jamAnchor = null;
+		this.lastPath = null;
 	}
 
 	/** Keeps the stall statistics but points at a new spot (an item that rolled). */
@@ -73,6 +76,52 @@ public final class WalkTo {
 		target = newTarget;
 		settled = null;
 		nextPathAt = 0;
+	}
+
+	/** Called with each villager a walker asks to step aside (tests observe it; null in play). */
+	private static java.util.function.Consumer<Villager> nudgeSeam;
+
+	public static void setNudgeListenerForTest(java.util.function.Consumer<Villager> listener) { nudgeSeam = listener; }
+
+	/**
+	 * A plain villager that stands in this walker's way: on one of the next cells of its path (the node it is heading for, the one before
+	 * and the two after, each a 1 x 2 x 1 box) or within a block of it, standing still (navigation idle or no horizontal motion). It is
+	 * asked to step aside, because no other rule moves it and it can idle there longer than {@link Balance#WALK_STALL_TICKS} (an idler
+	 * on the grass in front of a door, two cells from a walker that stopped inside). Never one of our workers (two walkers settle it by
+	 * the id rule; a worker standing at its work keeps working), nor a trading, sleeping or NoAI villager.
+	 */
+	private static Villager idleBlocker(Villager v, Path path, boolean live) {
+		java.util.List<net.minecraft.world.phys.AABB> cells = new java.util.ArrayList<>();
+		// with a live path also the cell just passed and a block around the walker (it pushes against the idler); once the navigation
+		// gave up only the cells ahead on the last planned path count, so a villager that merely stands nearby is left alone
+		if (live) cells.add(v.getBoundingBox().inflate(1.0));
+		if (path != null && path.getNodeCount() > 0) {
+			int next = Math.min(path.getNextNodeIndex(), path.getNodeCount() - 1);
+			int i0 = live ? Math.max(0, next - 1) : next;
+			for (int i = i0; i < Math.min(path.getNodeCount(), i0 + 4); i++) {
+				BlockPos n = path.getNode(i).asBlockPos();
+				cells.add(new net.minecraft.world.phys.AABB(n.getX(), n.getY(), n.getZ(), n.getX() + 1, n.getY() + 2, n.getZ() + 1));
+			}
+		}
+		Villager best = null;
+		for (Villager o : v.level().getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(4.0), x -> x != v && x.isAlive())) {
+			if (dev.villageheart.worker.WorkerAttachments.isWorker(o) || o.isTrading() || o.isSleeping() || o.isNoAi()) continue;
+			if (!o.getNavigation().isDone() && o.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4) continue; // walking through
+			boolean inTheWay = false;
+			for (var c : cells) if (c.intersects(o.getBoundingBox())) inTheWay = true;
+			if (inTheWay && (best == null || o.distanceToSqr(v) < best.distanceToSqr(v))) best = o;
+		}
+		return best;
+	}
+
+	/** Asks {@code o} to step aside: a vanilla WALK_TARGET a few blocks away from {@code from} (vanilla's MoveToTargetSink walks it there). */
+	private static boolean stepAside(Villager o, Villager from) {
+		Vec3 away = net.minecraft.world.entity.ai.util.LandRandomPos.getPosAway(o, 4, 2, from.position());
+		if (away == null) away = net.minecraft.world.entity.ai.util.DefaultRandomPos.getPosAway(o, 4, 2, from.position());
+		if (away == null) return false;
+		o.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new net.minecraft.world.entity.ai.memory.WalkTarget(away, SPEED, 0));
+		if (nudgeSeam != null) nudgeSeam.accept(o);
+		return true;
 	}
 
 	/** True when another villager stands within a block and has the lower id: this one gives way. */
@@ -163,18 +212,31 @@ public final class WalkTo {
 		if (jamAnchor == null || v.position().distanceTo(jamAnchor) >= 0.6) {
 			jamAnchor = v.position();
 			jamAt = now;
-		} else if (now - jamAt >= JAM_TICKS && !nav.isDone()) {
-			// Stopped on the way (another villager in the doorway). The one with the higher id steps back along its own path and waits,
-			// so the other one gets through; the one with the lower id just goes on. Moving back counts as moving for the stall rule.
-			jamAnchor = null;
+		} else if (now - jamAt >= JAM_TICKS) {
+			// Stopped on the way (another villager in the doorway). A villager that just stands there is asked to step aside (otherwise an
+			// idle villager outside a door makes a worker give up a tree in the open: backlog-2). Of two walkers, the one with the higher id
+			// steps back along its own path and waits, so the other one gets through; the one with the lower id just goes on. Moving back
+			// counts as moving for the stall rule.
 			Path cur = nav.getPath();
-			if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+			// also once the navigation gave up next to a standing villager: then the last path planned here shows the way
+			Villager idle = idleBlocker(v, cur != null ? cur : lastPath, cur != null);
+			if (idle != null && stepAside(idle, v)) {
+				jamAnchor = null;
+				jamAt = now;
+				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: asks the idle villager {} at {} to step aside", v.getId(), now,
+						v.blockPosition(), idle.getId(), idle.blockPosition());
+			} else if (nav.isDone()) {
+				// nobody to ask and no live path: the jam clock keeps running, so the two-walker rule below acts as soon as a path is
+				// planned again (as before backlog-2: two miners or lumberjacks at one spot must not lose up to a jam period per attempt)
+			} else if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+				jamAnchor = null;
 				var back = cur.getNode(Math.max(0, cur.getNextNodeIndex() - 4)).asBlockPos();
 				nav.moveTo(back.getX() + 0.5, back.getY(), back.getZ() + 0.5, SPEED);
 				mine = nav.getPath();
 				nextPathAt = now + 30 + v.getRandom().nextInt(30);
 				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: steps back to {}", v.getId(), now, v.blockPosition(), back);
 			} else {
+				jamAnchor = null;
 				jamAt = now;
 			}
 		}
@@ -201,6 +263,7 @@ public final class WalkTo {
 			if (moving) {
 				v.getBrain().setMemory(MemoryModuleType.PATH, path);
 				mine = nav.getPath();
+				lastPath = mine;
 			}
 			if (TRACE) {
 				dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} path to {} from {}: {} nodes={} reached={} moving={} end={}", v.getId(), now, target,
