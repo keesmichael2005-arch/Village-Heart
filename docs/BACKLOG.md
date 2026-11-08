@@ -1,6 +1,8 @@
 # Backlog (non-blocking review notes)
 
 ## Priority (flaky infrastructure)
+- [ ] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+- [ ] **M9 `workerOpensDoors` slow outliers** (456 vs 400 once; 301 once): add walk-time logging and root-cause it
 - [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
   - **Fixed (branch l4-flake).** Root cause is in Fabric, not our tests: a lost-wakeup race in `NetworkSynchronizer.waitForPacketHandlers` (predicate tested outside the lock, then `await(10 s)` with no re-test). The server thread's first tick of a new world misses the signal for the client's login packet and sleeps 10 s, which the synchronizer reports as invalid. Fixed by a gametest-only mixin that re-tests before parking and parks in 20 ms slices (no retry). See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 
@@ -119,6 +121,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
 - [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
 
+## From M20-r1 (builder)
+- [ ] `workerOpensDoors` (M9) rarely fails with "reaching the job block through the closed door took 456 ticks, bound 400". Seen once in about 18 full Layer 2 runs on the M20 branch, never alone (6 of 6 pass) and never in the 17 other runs. Measured: it takes exactly 156 ticks every time otherwise, and the failure is 300 ticks later, which is three `GoToJobBlock` back-offs of 100 ticks (three consecutive failed paths out of the closed room). Not reproduced, so no root cause yet. Next step if it shows again: run the suite with `-Dvillageheart.lumber.trace=true` plus a log of `CANT_REACH_WALK_TARGET_SINCE` in `GoToJobBlock.start`.
+
+## From M20-r2 (verifier)
+- [ ] `SiteSupport` touched-cell exemption has no L2 test (a check-pass case with the build's own torch on a cell turned to dirt)
+- [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell fall into the box (not broken; untested)
+- [ ] `workerOpensDoors` took 301 ticks once in 16 measured runs (156 otherwise): slowdown is not only 100-tick back-offs
+
 ## From l4flake2-r1
 - [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)
 
@@ -136,3 +146,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Mod uninstalled while a miner is down leaves a hidden villager: `/data merge entity <uuid> {NoAI:0b,Invulnerable:0b,Silent:0b}` and `/effect clear` (Invisible is not saved, so it shows again by itself after a reload)
 - [x] Heart snapshot crashed on any registered outdoor site (`BuildingRequirements.of(MINESHAFT)` in `HeartFacts`)
   - Fixed in M16: `DetailKind.NONE` for non-room buildings; covered by `minerStopsWhenShaftInvalid`.
+
+## From M20-r1..r4
+- [ ] checkPassLeavesWaterloggedPlayerBlocks stocks exactly one house of materials, so on old code it fails via "needs planks" rather than at the chest check; add a spare stack
+- [ ] "Needs materials" fallback text has no test
+- [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
+- [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
+- [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared

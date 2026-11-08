@@ -1,0 +1,25 @@
+{
+	"replace": false,
+	"values": [
+		"#minecraft:dirt",
+		"minecraft:dirt_path",
+		"#minecraft:base_stone_overworld",
+		"#minecraft:sand",
+		"minecraft:gravel",
+		"minecraft:clay",
+		"minecraft:sandstone",
+		"#minecraft:snow",
+		"#minecraft:replaceable",
+		"#minecraft:flowers",
+		"#minecraft:saplings",
+		"#minecraft:leaves",
+		"#minecraft:coal_ores",
+		"#minecraft:iron_ores",
+		"#minecraft:copper_ores",
+		"minecraft:brown_mushroom",
+		"minecraft:red_mushroom",
+		"minecraft:sweet_berry_bush",
+		"minecraft:pumpkin",
+		"minecraft:melon"
+	]
+}

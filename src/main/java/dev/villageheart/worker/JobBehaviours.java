@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.worker.build.BuilderKeep;
+import dev.villageheart.worker.build.BuilderWork;
 import dev.villageheart.worker.farm.FarmJob;
 import dev.villageheart.worker.farm.FarmerWork;
 import dev.villageheart.worker.lumber.LumberKeep;
@@ -28,6 +30,13 @@ final class JobBehaviours {
 			return ImmutableList.of(
 					Pair.of(1, new DepositTrip()),
 					Pair.of(3, new LumberjackWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
+		if (jobOf(villager) == JobType.BUILDER) {
+			// the builder walks to its site and to Storage: no GoToJobBlock, as for the lumberjack
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new BuilderWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
 		if (jobOf(villager) == JobType.FARMER) {
@@ -60,6 +69,7 @@ final class JobBehaviours {
 	 */
 	static int keep(Villager villager, Item item) {
 		if (jobOf(villager) == JobType.LUMBERJACK) return LumberKeep.keep(villager, item);
+		if (jobOf(villager) == JobType.BUILDER) return BuilderKeep.keep(villager, item);
 		if (jobOf(villager) == JobType.FARMER) return FarmJob.keep(villager, item);
 		return 0;
 	}
