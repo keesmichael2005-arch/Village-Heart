@@ -398,3 +398,18 @@ and M10 (no plan yet); section 3.1 lists them. M11 is built only after M7, M9 an
 - Roadmap correction to make in the build: 4 villagers + 20 bread leaves 12 bread (8 eaten), not 8.
 Revised after a fresh critique (22 findings; 3 refuted: `@prev` exists, `--reload-at` halts at dawn, job/building ids are core enums). Key fixes: test hooks so older worker GameTests keep full pace, adults-before-children tiebreak, lenient needs decode, dinner clock reset after the harness sets dawn.
 Next: BUILD M11 after M10 (orchestrator: approve the 12-bread roadmap correction). Top risk: `starter` relies on the unbuilt M9/M10 workers surviving and producing in an unseeded village for 10 days.
+
+## M11 build (food, dinner and needs, `starter`) - builder
+Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metrics, harness actions, `starter`, docs). Deviations D1-D14: docs/plans/M11.md section 8.
+- **Dinner** at 11000, abstract (no walking), once per day index, `last_dinner_day` saved in the claim. Hunger is a per-villager attachment; 1 missed dinner x0.5, 2+ stops work
+  ("Too hungry to work"), nobody dies. Workers without a House bed work at x0.75 and are moved into a free House bed every 100 ticks. The Heart screen's need icons are real now.
+- **Tests**: L1 +food/needs/sim-harness classes; L2 20 new GameTests (`NeedsGameTests`, `NeedsHousingGameTests`, `NeedsWorkGameTests`, `SimActionGameTests`), 177 total, 9 clean full runs in a row
+  after the last fix. Measured: hungry lumberjack gaps 80/80/80/80 (x0.5), unhoused 53,53,54,53,53 (x0.75), hungry farmer 40-42 ticks per harvest.
+- **Layer 3 `starter` 10 days**: PASS (exit 0), wall 7m02s. 8 villagers all 10 days (no breeding), 8/8 fed at every dinner, 0 deaths, max hungry days 0, housed 2 of 8 villagers
+  (4 House beds). Logs in the stockpile: 37, 80, 116, 149, 187, 227, 278, 322, 347, 375 (first run). Nutrition in the chests rose from 740 to 2033 (the 9x9 carrot field feeds the village ~5x over).
+  **M13 baseline**: eaten nutrition per eaten item = 5.0 on day 1 (bread) and about 3.06 from day 3 (carrots, ~95 nutrition from ~31 items per dinner).
+- `--reload-at 2` with the red extra assertion: exit 1 (only the extra assertion fails), `reloads == [2]`, one dinner every day. The halt/resume needs lists (`[sim-needs]` lines) match for every
+  villager that is loaded at resume (3 of 8 are still unloaded 400 ticks after the resume; that is how the entities of a force-loaded area come back, not a loss).
+- Fixed on the way: the sim's forced chunks became entity-ticking at different speeds (site search was luck): `waitBell` now waits for them; the same race made `forcedChunkGrowsWithoutPlayer` flaky (now waits for ticking, and pins noon: saplings need daylight).
+- Doubt: in 1 of ~6 early 4-day runs the lumberjack's deposit trip reported STORAGE_UNREACHABLE from day 2 on (logs flat). It did not recur in 5 later runs (2x 10 days, 3x 4 days); a `[trip]` log line now names position and door if it does.
+- Next: M12 treasury (add `treasury add` to `starter`, see its description), M13 compares `food.eaten_nutrition / food.eaten_items`.

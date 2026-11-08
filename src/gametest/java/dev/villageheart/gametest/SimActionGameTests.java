@@ -200,7 +200,7 @@ public class SimActionGameTests {
 
 	// ---- T-L2-15 -------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:needs_random_ticks", structure = YARD, skyAccess = true, maxTicks = 1500)
+	@GameTest(environment = "villageheart-gametest:needs_random_ticks", structure = YARD, skyAccess = true, maxTicks = 2200)
 	public void forcedChunkGrowsWithoutPlayer(GameTestHelper h) {
 		ServerLevel level = h.getLevel();
 		BlockPos far = h.absolutePos(new BlockPos(0, 0, 100_000));
@@ -217,6 +217,10 @@ public class SimActionGameTests {
 			level.getChunk(cx, cz);
 			level.setChunkForced(cx, cz, true);
 			level.setChunkForced(sapling.getX() >> 4, sapling.getZ() >> 4, true);
+		}).thenWaitUntil(() -> {
+			// a forced chunk is promoted to entity-ticking a little later (the simulation harness waits for it too)
+			h.assertTrue(level.isPositionEntityTicking(farm) && level.isPositionEntityTicking(sapling), "the forced chunks are entity-ticking");
+		}).thenExecute(() -> {
 			for (int x = -1; x <= 8; x++) for (int z = -2; z <= 2; z++) {
 				for (int y = 0; y <= 6; y++) level.setBlock(farm.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
 				level.setBlock(farm.offset(x, -1, z), Blocks.DIRT.defaultBlockState(), 2);
