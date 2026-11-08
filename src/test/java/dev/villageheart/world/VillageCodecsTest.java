@@ -175,6 +175,21 @@ class VillageCodecsTest {
 		assertTrue(legacy.reservedJobBlocks().isEmpty());
 	}
 
+	@Test void lastDinnerDayRoundTripsAndDefaultsAbsent() {
+		WorldClaim w = new WorldClaim(java.util.Optional.of(full()));
+		assertTrue(w.lastDinnerDay().isEmpty());
+		assertFalse(enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject().has("last_dinner_day"));
+		w.setLastDinnerDay(37);
+		JsonObject o = enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject();
+		assertEquals(37, o.get("last_dinner_day").getAsLong());
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, o);
+		assertEquals(37, back.lastDinnerDay().getAsLong());
+		assertEquals(w, back);
+		assertTrue(dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).lastDinnerDay().isEmpty());
+		w.releaseAt(full().heart());
+		assertTrue(w.lastDinnerDay().isEmpty());
+	}
+
 	@Test void releasingTheClaimForgetsReservations() {
 		WorldClaim w = new WorldClaim(java.util.Optional.of(VillageState.founded(M1, OWNER, "a", 1)), Set.of(J1));
 		w.releaseAt(M1);

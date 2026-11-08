@@ -88,6 +88,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Day index of the last dinner, absent for a claim that has not seen one (M11). */
+	public java.util.OptionalLong lastDinnerDay() { return claim.lastDinnerDay(); }
+
+	public void setLastDinnerDay(long day) {
+		claim.setLastDinnerDay(day);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {

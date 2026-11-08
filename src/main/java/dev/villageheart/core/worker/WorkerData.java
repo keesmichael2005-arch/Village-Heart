@@ -19,5 +19,7 @@ public record WorkerData(String jobId, HeartLocation building, HeartLocation job
 		return new WorkerData(job.id(), building, jobBlock, 1, 0, Needs.DEFAULT);
 	}
 
+	public WorkerData withNeeds(Needs n) { return new WorkerData(jobId, building, jobBlock, level, xp, n); }
+
 	public JobType job() { return JobType.byId(jobId).orElseThrow(); }
 }

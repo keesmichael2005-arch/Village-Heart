@@ -9,6 +9,8 @@ import dev.villageheart.core.worker.WorkerData;
 
 /** Codecs for the worker attachment. DFU only, so they unit-test with JsonOps. Field names are part of the save format. */
 public final class WorkerCodecs {
+	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("villageheart");
+
 	private WorkerCodecs() {}
 
 	/** Unvalidated shapes, so out-of-range values become DataResult errors instead of exceptions. */
@@ -22,11 +24,13 @@ public final class WorkerCodecs {
 	).apply(i, RawNeeds::new));
 
 	public static final Codec<Needs> NEEDS = RAW_NEEDS.flatXmap(r -> {
-		try {
-			return DataResult.success(new Needs(r.fed(), r.hungryDays(), r.housed(), r.paid()));
-		} catch (IllegalArgumentException e) {
-			return DataResult.error(() -> "Invalid needs: " + e.getMessage());
+		if (r.hungryDays() < 0) return DataResult.error(() -> "Invalid needs: hungryDays must be >= 0: " + r.hungryDays());
+		// Lenient: a save whose fed flag contradicts hungry_days is repaired (hungry_days wins). An error here would make Fabric drop the
+		// whole worker attachment and silently fire the worker.
+		if (r.fed() != (r.hungryDays() == 0)) {
+			LOG.warn("Worker needs: fed={} contradicts hungry_days={}; trusting hungry_days", r.fed(), r.hungryDays());
 		}
+		return DataResult.success(Needs.of(r.hungryDays(), r.housed(), r.paid()));
 	}, n -> DataResult.success(new RawNeeds(n.fed(), n.hungryDays(), n.housed(), n.paid())));
 
 	private record Raw(String job, HeartLocation building, HeartLocation jobBlock, int level, int xp, Needs needs) {}
