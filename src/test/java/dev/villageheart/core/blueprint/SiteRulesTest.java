@@ -35,6 +35,13 @@ class SiteRulesTest {
 	private static final class World implements SiteRules.SiteView {
 		final Map<Pos, SiteCell> cells = new HashMap<>();
 		final Map<Pos, String> ids = new HashMap<>();
+		/** Cleared cell to what rests on it. */
+		final Map<Pos, SiteRules.Dependent> dependents = new HashMap<>();
+
+		@Override
+		public java.util.Optional<SiteRules.Dependent> dependent(Pos cleared, java.util.Set<Long> touched) {
+			return java.util.Optional.ofNullable(dependents.get(cleared)).filter(d -> !touched.contains(d.at().pack()));
+		}
 
 		@Override
 		public SiteCell cell(Pos p) { return cells.getOrDefault(p, SiteCell.AIR); }
@@ -198,6 +205,35 @@ class SiteRulesTest {
 		// a log wins over a block
 		planks.cells.put(pl.world(HOUSE, 1, 2, 3), SiteCell.LOG);
 		assertEquals(Code.TREE, code(facts(pl.ground(), planks, List.of(), List.of(), 0, stand)));
+	}
+
+	@Test
+	void ruleOrder11bABlockThatRestsOnAClearedCellRefuses() {
+		StandPoints.Standable stand = (x, z) -> OptionalInt.of(1);
+		Placement pl = new Placement(new Pos(10, 0, 30), Rotation4.NONE);
+		Pos dirt = pl.world(HOUSE, 3, 4, 3);
+		Pos torch = new Pos(dirt.x(), dirt.y() + 1, dirt.z()); // above the box
+		World w = new World();
+		w.cells.put(dirt, SiteCell.CLEARABLE);
+		w.dependents.put(dirt, new SiteRules.Dependent("minecraft:torch", torch));
+		SiteProblem p = SiteRules.check(facts(pl.ground(), w, List.of(), List.of(), 0, stand)).orElseThrow();
+		assertEquals(Code.SUPPORT, p.code());
+		assertEquals("torch at " + torch + " would fall: it rests on the site", p.english());
+		assertEquals(torch, p.at());
+		assertEquals("build.villageheart.site.support", p.key());
+		// the same dependent in a cell the build touches is the build's own business, not a refusal
+		w.dependents.put(dirt, new SiteRules.Dependent("minecraft:torch", pl.world(HOUSE, 3, 3, 3)));
+		assertNull(code(facts(pl.ground(), w, List.of(), List.of(), 0, stand)));
+		// an air cell (nothing to clear) never asks
+		World air = new World();
+		air.dependents.put(dirt, new SiteRules.Dependent("minecraft:torch", torch));
+		assertNull(code(facts(pl.ground(), air, List.of(), List.of(), 0, stand)));
+		// a block of a player in the way (BLOCKED) is reported before a dependent; a dependent before the stand points
+		w.dependents.put(dirt, new SiteRules.Dependent("minecraft:torch", torch));
+		w.cells.put(pl.world(HOUSE, 1, 1, 1), SiteCell.BLOCKED);
+		assertEquals(Code.BLOCKED, code(facts(pl.ground(), w, List.of(), List.of(), 0, stand)));
+		w.cells.remove(pl.world(HOUSE, 1, 1, 1));
+		assertEquals(Code.SUPPORT, code(facts(pl.ground(), w, List.of(), List.of(), 0, (x, z) -> OptionalInt.empty())));
 	}
 
 	@Test

@@ -10,6 +10,7 @@ import dev.villageheart.core.blueprint.SiteRules.SiteCell;
 import dev.villageheart.core.room.Pos;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
@@ -44,18 +45,24 @@ public final class BuildExecutor {
 	}
 
 	/** What the planner needs to know about the cell of a step. */
-	public static CellState cellState(ServerLevel level, Step step) {
+	public static CellState cellState(ServerLevel level, Step step, Set<Long> touched) {
 		BlockState st = read(level, step.pos());
 		if (st == null) return CellState.UNLOADED;
 		if (step.kind() == BuildPlan.Kind.CLEAR) {
 			if (st.isAir()) return CellState.ALREADY_RIGHT;
-			return LevelSiteView.classify(st) == SiteCell.CLEARABLE ? CellState.CLEARABLE : CellState.BLOCKED;
+			if (LevelSiteView.classify(st) != SiteCell.CLEARABLE) return CellState.BLOCKED;
+			return supports(level, step.pos(), touched) ? CellState.BLOCKED : CellState.CLEARABLE;
 		}
 		if (PaletteStates.holds(st, step.entry())) return CellState.ALREADY_RIGHT;
 		if (st.isAir()) return entityIn(level, step) ? CellState.ENTITY : CellState.FREE;
-		if (LevelSiteView.classify(st) == SiteCell.CLEARABLE) return CellState.CLEARABLE;
+		if (LevelSiteView.classify(st) == SiteCell.CLEARABLE) return supports(level, step.pos(), touched) ? CellState.BLOCKED : CellState.CLEARABLE;
 		// a check pass leaves a different block of a player alone
 		return step.kind() == BuildPlan.Kind.CHECK ? CellState.ALREADY_RIGHT : CellState.BLOCKED;
+	}
+
+	/** True when a block or hanging thing of a player outside the site rests on the cell: clearing it would break that (see {@link SiteSupport}). */
+	private static boolean supports(ServerLevel level, Pos p, Set<Long> touched) {
+		return SiteSupport.dependent(level, p, touched).isPresent();
 	}
 
 	private static boolean entityIn(ServerLevel level, Step step) {

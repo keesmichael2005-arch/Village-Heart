@@ -7,6 +7,7 @@ import dev.villageheart.build.BuildRuntime;
 import dev.villageheart.build.BuildSystem;
 import dev.villageheart.build.LevelSiteView;
 import dev.villageheart.build.PaletteStates;
+import dev.villageheart.build.SiteSupport;
 import dev.villageheart.build.SiteValidation;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.VillageState;
@@ -14,6 +15,7 @@ import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.blueprint.BuildPlan;
+import dev.villageheart.core.blueprint.SiteRules;
 import dev.villageheart.core.blueprint.BuildPlan.Step;
 import dev.villageheart.core.blueprint.BuildStatus;
 import dev.villageheart.core.blueprint.BuildTexts;
@@ -189,12 +191,13 @@ public final class BuilderJob {
 		ws.nextPlanAt = now + PLAN_INTERVAL;
 		job = reconcile(v, job, server);
 		// free steps (cells that already hold what is wanted) cost nothing
+		java.util.Set<Long> touched = BuildJobs.touched(server, job);
 		int cursor = job.cursor(), start = cursor;
 		Step step = null;
 		CellState cs = CellState.ALREADY_RIGHT;
 		while (cursor < steps.size() && cursor - start < SKIP_LIMIT) {
 			step = steps.get(cursor);
-			cs = BuildExecutor.cellState(level, step);
+			cs = BuildExecutor.cellState(level, step, touched);
 			if (cs != CellState.ALREADY_RIGHT) break;
 			cursor++;
 		}
@@ -274,6 +277,11 @@ public final class BuilderJob {
 				BlockState st = BuildExecutor.read(level, step.pos());
 				String id = st == null ? "block" : BuildTexts.blockName(BuiltInRegistries.BLOCK.getKey(st.getBlock()).toString());
 				args = List.of(id, cell);
+				// a natural cell that a block of a player rests on: name that block (it is the one in the way)
+				if (st != null && LevelSiteView.classify(st) == SiteRules.SiteCell.CLEARABLE) {
+					var dep = SiteSupport.dependent(level, step.pos(), BuildJobs.touched(level.getServer(), job));
+					if (dep.isPresent()) args = List.of(BuildTexts.blockName(dep.get().id()), dep.get().at().toString());
+				}
 				ws.nextPlanAt = now + Balance.BUILD_BLOCKED_RETRY_TICKS;
 			}
 			case IN_THE_WAY -> {
@@ -499,7 +507,7 @@ public final class BuilderJob {
 		int units = ws.clock.tick(WorkSpeed.untooled(data.level(), data.needs()));
 		if (units <= 0) return;
 		// look again right before acting: a player may have changed the cell
-		CellState cs = BuildExecutor.cellState(level, step);
+		CellState cs = BuildExecutor.cellState(level, step, BuildJobs.touched(server, job));
 		if (cs != CellState.FREE && cs != CellState.CLEARABLE) {
 			ws.needsPlan = true;
 			return;

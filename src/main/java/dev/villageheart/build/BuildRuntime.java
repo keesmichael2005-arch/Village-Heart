@@ -24,6 +24,8 @@ public final class BuildRuntime {
 	final int epoch;
 	/** Build id to its steps. */
 	public final Map<UUID, List<BuildPlan.Step>> plans = new HashMap<>();
+	/** Build id to the packed cells its plan touches (what a block outside the site may not depend on). */
+	public final Map<UUID, java.util.Set<Long>> touched = new HashMap<>();
 	/** Build id to the builder (villager uuid) working on it now. Released when the builder leaves WORK, unloads, is fired or dies. */
 	public final Map<UUID, UUID> claims = new HashMap<>();
 	/** Build id to what it is missing, worked out by the last refresh, in step order. */
@@ -64,6 +66,7 @@ public final class BuildRuntime {
 	public static void forgetBuild(MinecraftServer server, UUID id) {
 		BuildRuntime rt = get(server);
 		rt.plans.remove(id);
+		rt.touched.remove(id);
 		rt.claims.remove(id);
 		rt.missing.remove(id);
 		rt.reservedKeys.remove(id);

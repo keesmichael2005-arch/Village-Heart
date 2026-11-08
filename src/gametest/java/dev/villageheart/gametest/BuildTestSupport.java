@@ -242,6 +242,12 @@ public final class BuildTestSupport {
 		return r;
 	}
 
+	/** The absolute position of a test-relative one, as a core {@link Pos}. */
+	public static Pos abs(GameTestHelper h, BlockPos rel) {
+		BlockPos a = h.absolutePos(rel);
+		return new Pos(a.getX(), a.getY(), a.getZ());
+	}
+
 	/** Relative position of a blueprint cell. */
 	public static BlockPos cell(GameTestHelper h, Blueprint bp, Placement p, int lx, int ly, int lz) { return rel(h, p.world(bp, lx, ly, lz)); }
 

@@ -215,6 +215,7 @@
 	"build.villageheart.site.fluid": "Water or lava at %s",
 	"build.villageheart.site.tree": "Tree in the way at %s: fell it first",
 	"build.villageheart.site.blocked": "%s in the way at %s",
+	"build.villageheart.site.support": "%s at %s would fall: it rests on the site",
 	"build.villageheart.site.no_stand": "No place to stand near %s",
 	"build.villageheart.site.unchecked": "The %s at %s has not been checked yet; try again",
 	"item.villageheart.blueprint": "Blueprint",

@@ -85,6 +85,7 @@ public final class BuildSystem implements VillageSystem {
 		BuildRuntime rt = BuildRuntime.get(server);
 		releaseClaims(server, village, rt);
 		rt.plans.keySet().removeIf(id -> village.build(id).isEmpty());
+		rt.touched.keySet().removeIf(id -> village.build(id).isEmpty());
 		rt.missing.keySet().removeIf(id -> village.build(id).isEmpty());
 		rt.reservedKeys.keySet().removeIf(id -> village.build(id).isEmpty());
 		rt.pause.keySet().removeIf(id -> village.build(id).isEmpty());
@@ -164,7 +165,7 @@ public final class BuildSystem implements VillageSystem {
 			if (s.kind() == BuildPlan.Kind.PLACE) {
 				out.add(s.materialId());
 			} else if (s.kind() == BuildPlan.Kind.CHECK && job.cursor() >= firstCheck && level != null) {
-				CellState cs = BuildExecutor.cellState(level, s);
+				CellState cs = BuildExecutor.cellState(level, s, BuildJobs.touched(server, job));
 				if (cs == CellState.FREE || cs == CellState.CLEARABLE || cs == CellState.ENTITY) out.add(s.materialId());
 			}
 		}

@@ -840,6 +840,103 @@ public class BuildGameTests {
 				});
 	}
 
+	// ---- review of M20 round 1: clearing must not break what a player attached to the site -------------------
+
+	/**
+	 * Natural dirt in touched cells with things of a player resting on them from outside the site (the verifier's probe: a wall torch on the west
+	 * face, a standing torch above the roof layer, a ladder on the east face, an item frame on a face): the site is refused, naming the thing and
+	 * its cell, and nothing is touched. Without them the same site is fine.
+	 */
+	@GameTest(environment = "villageheart-gametest:build_attached_refusal", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void attachedThingsRefuseTheSite(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement p = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.NONE);
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			var level = h.getLevel();
+			var server = level.getServer();
+			BlockPos westDirt = BuildTestSupport.cell(h, bp, p, 0, 1, 3), roofDirt = BuildTestSupport.cell(h, bp, p, 3, 4, 3);
+			BlockPos eastDirt = BuildTestSupport.cell(h, bp, p, 6, 2, 3), frameDirt = BuildTestSupport.cell(h, bp, p, 6, 3, 5);
+			for (BlockPos d : new BlockPos[] {westDirt, roofDirt, eastDirt, frameDirt}) {
+				h.assertTrue(SiteRules.touched(bp, p).contains(BuildTestSupport.abs(h, d)), "a touched cell: " + d);
+				h.setBlock(d, Blocks.DIRT);
+			}
+			var village = VillageClaims.current(server).orElseThrow();
+			h.assertTrue(SiteValidation.check(level, village, bp, p, Rank.OWNER) == null, "dirt alone is fine");
+			// each thing alone: refused with its name and cell, and still there afterwards
+			BlockPos wallTorch = westDirt.west(), standing = roofDirt.above(), ladder = eastDirt.east(), frameAt = frameDirt.east();
+			h.setBlock(wallTorch, Blocks.WALL_TORCH.defaultBlockState().setValue(net.minecraft.world.level.block.WallTorchBlock.FACING, Direction.WEST));
+			assertRefused(h, bp, p, "wall_torch", wallTorch);
+			h.setBlock(wallTorch, Blocks.AIR);
+			h.setBlock(standing, Blocks.TORCH);
+			assertRefused(h, bp, p, "torch", standing);
+			h.setBlock(standing, Blocks.AIR);
+			h.setBlock(ladder, Blocks.LADDER.defaultBlockState().setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.EAST));
+			assertRefused(h, bp, p, "ladder", ladder);
+			h.setBlock(ladder, Blocks.AIR);
+			var frame = new net.minecraft.world.entity.decoration.ItemFrame(level, h.absolutePos(frameAt), Direction.EAST);
+			level.addFreshEntity(frame);
+			var problem = SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER);
+			h.assertTrue(problem != null && problem.code() == SiteRules.Code.SUPPORT && problem.english().startsWith("item_frame at ("),
+					"an item frame on a touched face refuses the site: " + (problem == null ? "ok" : problem.english()));
+			h.assertTrue(!frame.isRemoved(), "and the frame is still there");
+			frame.discard();
+			h.assertTrue(SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER) == null, "fine again with all of them gone");
+			// the ladder against a cell that is not cleared (a stone wall of the player's outside the box) does not refuse
+			BlockPos far = BuildTestSupport.cell(h, bp, p, -3, 0, 3);
+			h.setBlock(far, Blocks.STONE);
+			h.setBlock(far.above(), Blocks.TORCH);
+			h.assertTrue(SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER) == null, "a torch on a stone far from the site is no problem");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static void assertRefused(GameTestHelper h, Blueprint bp, Placement p, String name, BlockPos at) {
+		var level = h.getLevel();
+		var problem = SiteValidation.check(level, VillageClaims.current(level.getServer()).orElseThrow(), bp, p, Rank.OWNER);
+		Pos abs = BuildTestSupport.abs(h, at);
+		h.assertTrue(problem != null && problem.code() == SiteRules.Code.SUPPORT, name + " at " + at + " refuses the site: " + (problem == null ? "ok" : problem.english()));
+		h.assertTrue(problem.english().equals(name + " at " + abs + " would fall: it rests on the site"), "the refusal names it: " + problem.english());
+		h.assertTrue(!h.getBlockState(at).isAir(), name + " is still there");
+	}
+
+	/**
+	 * A thing attached AFTER the site was confirmed: the builder reaches the cleared cell it rests on, stops with "torch in the way at ..." and
+	 * breaks nothing; when the torch is taken away it goes on.
+	 */
+	@GameTest(environment = "villageheart-gametest:build_attached_midbuild", structure = YARD, skyAccess = true, maxTicks = 20000)
+	public void attachmentAfterConfirmBlocksTheBuilder(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		BlockPos dirt = BuildTestSupport.cell(h, bp, pl, 3, 4, 3);
+		BlockPos torch = dirt.above();
+		Pos torchAbs = BuildTestSupport.abs(h, torch);
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			h.setBlock(dirt, Blocks.DIRT);
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			// attached after the confirm, in the same tick: the site check passed, the builder has not acted yet
+			h.setBlock(torch, Blocks.TORCH);
+		}).thenWaitUntil(() -> {
+			var views = BuildSystem.views(h.getLevel().getServer());
+			h.assertTrue(!views.isEmpty(), "the build is listed");
+			var view = views.get(0);
+			h.assertTrue(view.status() == dev.villageheart.core.blueprint.BuildStatus.BLOCKED && view.line().english().equals("torch in the way at " + torchAbs),
+					"the build stops at the torch: " + view.status() + " " + view.line().english());
+		}).thenIdle(300).thenExecute(() -> {
+			h.assertTrue(h.getBlockState(torch).is(Blocks.TORCH), "the torch was never broken");
+			h.assertTrue(h.getBlockState(dirt).is(Blocks.DIRT), "and neither was the dirt it stands on");
+			h.assertTrue(BuildTestSupport.cursor(h) >= 0, "the build is still there");
+			h.setBlock(torch, Blocks.AIR);
+		}).thenWaitUntil(() -> h.assertTrue(h.getBlockState(dirt).isAir() && BuildTestSupport.cursor(h) > 246,
+				"the builder goes on and clears the dirt: cursor " + BuildTestSupport.cursor(h))).thenExecute(() -> {
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-12 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:build_check_pass", structure = YARD, skyAccess = true, maxTicks = 600)

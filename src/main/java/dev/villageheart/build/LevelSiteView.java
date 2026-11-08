@@ -72,6 +72,11 @@ public final class LevelSiteView implements SiteRules.SiteView {
 	}
 
 	@Override
+	public java.util.Optional<SiteRules.Dependent> dependent(Pos cleared, java.util.Set<Long> touched) {
+		return SiteSupport.dependent(level, cleared, touched);
+	}
+
+	@Override
 	public String blockId(Pos p) {
 		BlockState s = state(p);
 		return s == null ? "minecraft:air" : BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString();

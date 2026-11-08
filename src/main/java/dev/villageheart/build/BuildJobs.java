@@ -49,6 +49,18 @@ public final class BuildJobs {
 		return BuildRuntime.get(server).plans.computeIfAbsent(job.id(), id -> BuildPlan.of(blueprint(job), job.placement()));
 	}
 
+	/** The packed cells the plan of a build touches (cached like the steps). */
+	public static java.util.Set<Long> touched(MinecraftServer server, BuildJob job) {
+		return BuildRuntime.get(server).touched.computeIfAbsent(job.id(), id -> {
+			java.util.Set<Long> out = new java.util.HashSet<>();
+			for (Step s : steps(server, job)) {
+				out.add(s.pos().pack());
+				for (BuildPlan.Part part : s.parts()) out.add(part.pos().pack());
+			}
+			return out;
+		});
+	}
+
 	public static List<BuildJob> list(MinecraftServer server) {
 		return VillageClaims.current(server).map(VillageState::builds).orElse(List.of());
 	}
@@ -102,6 +114,7 @@ public final class BuildJobs {
 		Blueprint bp = blueprint(job);
 		Placement pl = job.placement();
 		List<Step> steps = steps(server, job);
+		java.util.Set<Long> touched = touched(server, job);
 		ServerLevel level = Workers.levelOf(server, job.ground());
 		if (level == null) return new Advanced(0, false, "level not loaded");
 		int cursor = job.cursor();
@@ -109,7 +122,7 @@ public final class BuildJobs {
 		String stop = "";
 		while (done < n && cursor < steps.size()) {
 			Step s = steps.get(cursor);
-			CellState cs = BuildExecutor.cellState(level, s);
+			CellState cs = BuildExecutor.cellState(level, s, touched);
 			if (cs == CellState.UNLOADED) { stop = "not loaded at " + s.pos(); break; }
 			if (cs == CellState.BLOCKED) { stop = "blocked at " + s.pos(); break; }
 			if (cs == CellState.ENTITY) { stop = "entity in the way at " + s.pos(); break; }

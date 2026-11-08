@@ -91,6 +91,7 @@ public final class BlueprintUse {
 		}
 		BuildJobs.start(level, bp, site.ground(), rotation, player.getUUID());
 		stack.shrink(1);
+		stack.remove(ModComponents.BLUEPRINT_SITE); // a stack that survives (creative) must not keep drawing the confirmed site
 		var line = BuildTexts.blueprintName(bp);
 		player.sendSystemMessage(Component.translatable("build.villageheart.msg.site_set", Component.translatableWithFallback(line.key(), line.fallback()),
 				"(" + site.ground().getX() + ", " + site.ground().getY() + ", " + site.ground().getZ() + ")"));

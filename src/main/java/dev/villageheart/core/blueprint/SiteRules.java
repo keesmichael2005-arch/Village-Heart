@@ -29,7 +29,16 @@ public final class SiteRules {
 
 		/** The block id of a BLOCKED cell ({@code minecraft:oak_planks}); only asked for BLOCKED cells. */
 		String blockId(Pos p);
+
+		/**
+		 * A block or hanging thing outside {@code touched} that is not natural and would lose its support when the cell is cleared (a torch on
+		 * it, a ladder on its face, a door standing on it, an item frame on it). Only asked for CLEARABLE cells.
+		 */
+		default Optional<Dependent> dependent(Pos cleared, Set<Long> touched) { return Optional.empty(); }
 	}
+
+	/** What depends on a cell: its block id ({@code minecraft:torch}) or entity type id, and where it is. */
+	public record Dependent(String id, Pos at) {}
 
 	/** A registered building's area that no site may touch: its marker, the marker's support and the room (interior and shell). */
 	public record Protected(String typeName, Pos marker, Set<Long> cells) {
@@ -43,7 +52,7 @@ public final class SiteRules {
 	public record SiteFacts(Blueprint bp, Placement p, HeartLocation heart, String dimension, Tier tier, Rank rank, int minY, int maxY,
 			SiteView view, List<Protected> protectedAreas, List<Box> otherBuilds, int activeBuilds, StandPoints.Standable stand) {}
 
-	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, NO_STAND, UNCHECKED }
+	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, SUPPORT, NO_STAND, UNCHECKED }
 
 	/** The first rule that failed. The args are not cut (a TextLine cuts them for the wire); {@link #english()} is the chat text. */
 	public record SiteProblem(Code code, String fallback, List<String> args, @Nullable Pos at) {
@@ -154,6 +163,18 @@ public final class SiteRules {
 			if (f.view().cell(c) == SiteCell.BLOCKED) {
 				String id = f.view().blockId(c);
 				return Optional.of(problem(Code.BLOCKED, "%s in the way at %s", c, id.substring(id.indexOf(':') + 1), c.toString()));
+			}
+		}
+		// 11b a block of a player that stands on or hangs from a cell the build will clear: it would pop when the cell goes
+		Set<Long> touchedSet = new java.util.HashSet<>();
+		for (Pos c : cells) touchedSet.add(c.pack());
+		for (Pos c : cells) {
+			if (f.view().cell(c) != SiteCell.CLEARABLE) continue;
+			Optional<Dependent> d = f.view().dependent(c, touchedSet);
+			if (d.isPresent()) {
+				String id = d.get().id();
+				return Optional.of(problem(Code.SUPPORT, "%s at %s would fall: it rests on the site", d.get().at(), id.substring(id.indexOf(':') + 1),
+						d.get().at().toString()));
 			}
 		}
 		// 12 a place to stand within reach of every touched cell
