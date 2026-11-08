@@ -88,12 +88,18 @@ final class BuildingValidator {
 
 	private static Verdict siteVerdict(ServerLevel level, VillageState village, BuildingRuntime rt, BuildingRecord record,
 			BuildingType type, Pos here, @Nullable Reason claimArea) {
+		if (type == BuildingType.HUNTING_GROUND) dev.villageheart.worker.hunt.HunterRuntime.dropWeights(record.marker()); // biomes may have changed (M17)
 		SiteSurveys.Survey survey = SiteSurveys.survey(level, type, here, homeRooms(village, rt));
 		if (survey.notLoaded() != null) {
 			return Verdict.deferred(Reason.notLoaded(new RoomProblem(RoomProblem.Kind.NOT_LOADED, survey.notLoaded()).message()));
 		}
+		if (survey.depth() != null) rt.shaftDeepest.put(record.marker(), survey.depth());
 		BuildingType parent = type.parent().orElseThrow();
-		int range = type == BuildingType.MINESHAFT ? Balance.MINESHAFT_LINK_RANGE : Integer.MAX_VALUE;
+		int range = switch (type) {
+			case MINESHAFT -> Balance.MINESHAFT_LINK_RANGE;
+			case HUNTING_GROUND -> Balance.HUNTING_GROUND_LINK_RANGE;
+			default -> Integer.MAX_VALUE;
+		};
 		List<Links.Candidate> candidates = new ArrayList<>();
 		for (BuildingRecord b : village.buildings()) {
 			if (b.typeId().equals(parent.id())) candidates.add(new Links.Candidate(new Pos(b.marker().x(), b.marker().y(), b.marker().z()), b.marker().dimension()));

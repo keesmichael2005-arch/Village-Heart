@@ -87,6 +87,31 @@ public final class Stockpile<K> {
 		return Optional.ofNullable(best);
 	}
 
+	/** The nearest site (by anchor) with at least one item that matches; reservations are not looked at (M20: where a builder fetches). */
+	public Optional<StorageSite<K>> nearestHolding(Pos from, Predicate<? super K> match) {
+		StorageSite<K> best = null;
+		long bestD = Long.MAX_VALUE;
+		for (StorageSite<K> s : sites) {
+			long d = dist2(from, s.anchor());
+			if (d < bestD && holds(s, match)) {
+				best = s;
+				bestD = d;
+			}
+		}
+		return Optional.ofNullable(best);
+	}
+
+	private static <K> boolean holds(StorageSite<K> s, Predicate<? super K> match) {
+		for (ContainerRef<K> c : s.containers()) {
+			Inventory<K> inv = c.inventory();
+			for (int i = 0, n = inv.size(); i < n; i++) {
+				K k = inv.key(i);
+				if (k != null && inv.count(i) > 0 && match.test(k)) return true;
+			}
+		}
+		return false;
+	}
+
 	// ---- deposit ---------------------------------------------------------------------------------
 
 	/** Stores up to {@code n}, nearest site first, spilling into the next. Returns how many were stored. */

@@ -4,7 +4,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.villageheart.build.BuildersTableScreens;
 import dev.villageheart.core.building.JobBlockType;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -37,6 +44,14 @@ public class JobBlock extends HorizontalDirectionalBlock {
 
 	@Override
 	protected MapCodec<? extends HorizontalDirectionalBlock> codec() { return CODEC; }
+
+	/** The Builder's Table opens its screen (M20); the other job blocks do nothing on use. */
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+		if (type != JobBlockType.BUILDERS_TABLE) return super.useWithoutItem(state, level, pos, player, hit);
+		if (level instanceof ServerLevel server && player instanceof ServerPlayer sp) BuildersTableScreens.open(sp, server, pos);
+		return InteractionResult.SUCCESS;
+	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {

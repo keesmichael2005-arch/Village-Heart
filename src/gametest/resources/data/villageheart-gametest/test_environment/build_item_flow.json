@@ -1,0 +1,1 @@
+{"type": "minecraft:all_of", "definitions": [{"type": "minecraft:game_rules", "rules": {"minecraft:spawn_mobs": false, "minecraft:advance_weather": false, "minecraft:random_tick_speed": 3}}, {"type": "minecraft:weather", "weather": "clear"}]}

@@ -10,6 +10,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import dev.villageheart.core.blueprint.BuildJob;
+import dev.villageheart.core.defence.DefenceSite;
 
 /**
  * Immutable snapshot of the one claimed village.
@@ -20,12 +22,26 @@ import java.util.UUID;
  */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
 
-	/** Without tree tasks (the shape before M9). */
+	/** Without defence sites (the shape before M21). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, List.of());
+	}
+
+	/** Without tree tasks and builds (the shape before M9). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
 			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers) {
-		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, List.of());
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, List.of(), List.of(), List.of());
+	}
+
+	/** Without builds (the shape before M20). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, List.of(), List.of());
 	}
 
 	public VillageState {
@@ -38,12 +54,25 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(buildings, "buildings");
 		Objects.requireNonNull(workers, "workers");
 		Objects.requireNonNull(treeTasks, "treeTasks");
+		Objects.requireNonNull(builds, "builds");
+		Objects.requireNonNull(defences, "defences");
 		if (treasury < 0) throw new IllegalArgumentException("treasury must be >= 0: " + treasury);
 		ranks = Map.copyOf(ranks);
 		known = sortedKnown(known);
 		buildings = sortedBuildings(buildings);
 		workers = List.copyOf(workers);
 		treeTasks = List.copyOf(treeTasks);
+		builds = List.copyOf(builds);
+		defences = List.copyOf(defences);
+		Set<UUID> seenDefences = new HashSet<>();
+		for (DefenceSite d : defences) {
+			if (!seenDefences.add(d.id())) throw new IllegalArgumentException("two defence sites share the id " + d.id());
+		}
+		if (defences.size() > Balance.MAX_DEFENCE_SITES) throw new IllegalArgumentException("too many defence sites: " + defences.size());
+		Set<UUID> seenBuilds = new HashSet<>();
+		for (BuildJob b : builds) {
+			if (!seenBuilds.add(b.id())) throw new IllegalArgumentException("two builds share the id " + b.id());
+		}
 		Set<HeartLocation> seenCells = new HashSet<>();
 		for (TreeTask t : treeTasks) {
 			for (HeartLocation c : t.base()) {
@@ -99,14 +128,14 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	public static VillageState founded(HeartLocation heart, UUID owner, String ownerName, long gameTime) {
-		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), List.of(), 0, Tier.HAMLET, List.of(), List.of(), List.of());
+		return new VillageState(heart, owner, ownerName, gameTime, Map.of(), List.of(), 0, Tier.HAMLET, List.of(), List.of(), List.of(), List.of());
 	}
 
 	// One place that rebuilds the record: later milestones add a component here and nowhere else.
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks);
+				newBuildings, newWorkers, treeTasks, builds, defences);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -279,7 +308,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -287,7 +316,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -297,6 +326,68 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	public List<TreeTask> treeTasksAt(HeartLocation building) {
 		return treeTasks.stream().filter(t -> t.building().equals(building)).toList();
+	}
+
+	// ---- builds (M20) ----
+
+	public Optional<BuildJob> build(UUID id) {
+		for (BuildJob b : builds) if (b.id().equals(id)) return Optional.of(b);
+		return Optional.empty();
+	}
+
+	/** Append a build (list order is the order they were started), or replace the one with the same id in place. */
+	public VillageState withBuild(BuildJob b) {
+		Objects.requireNonNull(b, "build");
+		List<BuildJob> next = new ArrayList<>(builds);
+		boolean replaced = false;
+		for (int i = 0; i < next.size(); i++) {
+			if (next.get(i).id().equals(b.id())) {
+				next.set(i, b);
+				replaced = true;
+			}
+		}
+		if (!replaced) next.add(b);
+		return withBuilds(next);
+	}
+
+	/** Remove the build; a no-op when there is none. */
+	public VillageState withoutBuild(UUID id) {
+		if (build(id).isEmpty()) return this;
+		List<BuildJob> next = new ArrayList<>(builds);
+		next.removeIf(b -> b.id().equals(id));
+		return withBuilds(next);
+	}
+
+	private VillageState withBuilds(List<BuildJob> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences);
+	}
+
+	// ---- defence sites (M21) ----
+
+	public Optional<DefenceSite> defence(UUID id) {
+		for (DefenceSite d : defences) if (d.id().equals(id)) return Optional.of(d);
+		return Optional.empty();
+	}
+
+	/** Append a lamp post or watchtower that was finished. At {@link Balance#MAX_DEFENCE_SITES}, or for a known id, the state is returned unchanged. */
+	public VillageState withDefence(DefenceSite d) {
+		Objects.requireNonNull(d, "defence");
+		if (defences.size() >= Balance.MAX_DEFENCE_SITES || defence(d.id()).isPresent()) return this;
+		List<DefenceSite> next = new ArrayList<>(defences);
+		next.add(d);
+		return withDefences(next);
+	}
+
+	/** Remove the site; a no-op when there is none. */
+	public VillageState withoutDefence(UUID id) {
+		if (defence(id).isEmpty()) return this;
+		List<DefenceSite> next = new ArrayList<>(defences);
+		next.removeIf(d -> d.id().equals(id));
+		return withDefences(next);
+	}
+
+	private VillageState withDefences(List<DefenceSite> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

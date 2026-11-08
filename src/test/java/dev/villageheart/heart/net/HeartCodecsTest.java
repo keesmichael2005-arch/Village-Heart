@@ -62,7 +62,9 @@ class HeartCodecsTest {
 				new VillagerRow(id(1), "Ada", "farmer", "villageheart:farmer", 2, 150, 300, NeedsFlags.of(true, false, true),
 						ActivityKind.WORKING, true, false, true, true),
 				new VillagerRow(id(2), "Bram", "", "minecraft:none", 0, 0, 0, NeedsFlags.UNKNOWN, ActivityKind.AWAY, false, true,
-						false, false));
+						false, false),
+				new VillagerRow(id(3), "Cy", "lumberjack", "villageheart:lumberjack", 1, 150, 100, NeedsFlags.of(true, true, true),
+						ActivityKind.WORKING, false, false, false, true, true));
 		List<BuildingRow> b = List.of(new BuildingRow("house", -5, 64, 1_000_000, RowStatus.INVALID,
 				List.of(new TextLine("a", "b"), new TextLine("c", "d")), 3, DetailKind.HOMES, 2, 0));
 		Stock s = new Stock(List.of(new StockLine("minecraft:bread", 1L << 40, 5), new StockLine("minecraft:oak_log", 64, 0)), 4,
@@ -143,7 +145,7 @@ class HeartCodecsTest {
 		for (int i = 0; i < HeartLimits.MAX_VILLAGERS; i++) {
 			v.add(new VillagerRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), s(HeartLimits.MAX_ID), s(HeartLimits.MAX_ID),
 					Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, NeedsFlags.of(true, true, true), ActivityKind.OTHER,
-					true, true, true, true));
+					true, true, true, true, true));
 		}
 		List<JobChoice> jobs = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_JOB_CHOICES; i++) jobs.add(new JobChoice(s(HeartLimits.MAX_ID), Integer.MIN_VALUE, true));
@@ -160,7 +162,16 @@ class HeartCodecsTest {
 				Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, StorageAlert.FULL);
 		List<MemberRow> members = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_MEMBERS; i++) members.add(new MemberRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), Rank.RESIDENT, true));
-		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE);
+		TextLine bt = new TextLine("build.villageheart." + s(HeartLimits.MAX_KEY - 19), s(HeartLimits.MAX_TEXT),
+				List.of(s(HeartLimits.MAX_BUILD_ARG), s(HeartLimits.MAX_BUILD_ARG)));
+		assertEquals(HeartLimits.MAX_BUILD_ARG, bt.args().get(0).length(), "the build texts keep their long args");
+		List<dev.villageheart.core.heart.BuildRow> builds = new ArrayList<>();
+		for (int i = 0; i < HeartLimits.MAX_BUILDS; i++) {
+			builds.add(new dev.villageheart.core.heart.BuildRow(s(HeartLimits.MAX_ID), Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
+					dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, Integer.MIN_VALUE, Integer.MIN_VALUE, bt,
+					java.util.Collections.nCopies(HeartLimits.MAX_BUILD_MISSING, bt), s(HeartLimits.MAX_NAME)));
+		}
+		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE, builds);
 	}
 
 	@Test void worstCaseSize() {
@@ -169,6 +180,21 @@ class HeartCodecsTest {
 		System.out.println("heart snapshot worst case: " + size + " bytes (" + size / 1024 + " KiB)");
 		assertTrue(size < 512 * 1024, "worst case " + size + " bytes must stay under half the 1 MiB vanilla S2C cap");
 		assertEquals(s, roundTrip(HeartCodecs.SNAPSHOT, s), "and it still decodes");
+	}
+
+	@Test void buildRowsRoundTripAndAreBounded() {
+		TextLine status = new TextLine("build.villageheart.needs", "Needs %s more %s", List.of("12", "planks"));
+		dev.villageheart.core.heart.BuildRow row = new dev.villageheart.core.heart.BuildRow("small_house", 10, 64, -3,
+				dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, 86, 172, status, List.of(status), "Ada");
+		assertEquals(row, roundTrip(HeartCodecs.BUILD_ROW, row));
+		Overview o = new Overview("", Tier.TOWN, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, -1, 0, -1, List.of(), 0);
+		List<dev.villageheart.core.heart.BuildRow> many = new ArrayList<>();
+		for (int i = 0; i <= HeartLimits.MAX_BUILDS; i++) many.add(row);
+		HeartSnapshot tooMany = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0, many);
+		assertThrows(RuntimeException.class, () -> encodedSize(tooMany));
+		HeartSnapshot ok = new HeartSnapshot(Rank.OWNER, o, List.of(), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0, List.of(row));
+		assertEquals(ok, roundTrip(HeartCodecs.SNAPSHOT, ok));
+		assertEquals(List.of(row), roundTrip(HeartCodecs.SNAPSHOT, ok).builds());
 	}
 
 	// ---- limits -------------------------------------------------------------------------------------------------------

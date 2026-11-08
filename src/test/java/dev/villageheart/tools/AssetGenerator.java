@@ -142,6 +142,12 @@ public final class AssetGenerator {
 				"parent", "minecraft:item/generated", "textures", map("layer0", NS + ":item/blank_marker"))));
 		out.put(A + "textures/item/blank_marker.png", png(JobBlockArt.blankMarker()));
 
+		// ---- blueprint item (M20) ----
+		out.put(A + "items/blueprint.json", json(itemDef(NS + ":item/blueprint")));
+		out.put(A + "models/item/blueprint.json", json(map(
+				"parent", "minecraft:item/generated", "textures", map("layer0", NS + ":item/blueprint"))));
+		out.put(A + "textures/item/blueprint.png", png(BlueprintArt.render()));
+
 		// ---- job blocks ----
 		for (JobBlockType t : JobBlockType.values()) {
 			Map<String, Object> variants = new LinkedHashMap<>();
@@ -243,14 +249,14 @@ public final class AssetGenerator {
 				boolean owned = rel.startsWith(PROFESSION_DIR) || rel.startsWith(A + "textures/block/marker/") || rel.startsWith(A + "models/block/marker/")
 						|| rel.equals("data/minecraft/tags/block/mineable/axe.json")
 						|| rel.equals(A + "models/block/marker_plaque.json");
-				boolean named = base.endsWith("_marker") || base.equals("blank_marker") || jobs.contains(base);
+				boolean named = base.endsWith("_marker") || base.equals("blank_marker") || base.equals("blueprint") || jobs.contains(base);
 				if (!owned && named && (rel.startsWith(A + "blockstates/") || rel.startsWith(A + "items/")
 						|| rel.startsWith(A + "models/item/") || rel.startsWith(A + "models/block/")
 						|| rel.startsWith(D + "recipe/") || rel.startsWith(D + "loot_table/blocks/")
 						|| rel.startsWith(D + "advancement/recipes/misc/"))) owned = true;
 				if (!owned && rel.startsWith(A + "textures/")) {
 					for (String j : jobs) if (base.equals(j) || base.startsWith(j + "_")) owned = true;
-					if (rel.equals(A + "textures/item/blank_marker.png")) owned = true;
+					if (rel.equals(A + "textures/item/blank_marker.png") || rel.equals(A + "textures/item/blueprint.png")) owned = true;
 				}
 				if (owned) res.add(rel);
 			}

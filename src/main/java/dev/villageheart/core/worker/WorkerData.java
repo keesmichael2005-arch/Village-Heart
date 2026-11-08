@@ -19,5 +19,8 @@ public record WorkerData(String jobId, HeartLocation building, HeartLocation job
 		return new WorkerData(job.id(), building, jobBlock, 1, 0, Needs.DEFAULT);
 	}
 
+	/** The same worker with a new level and XP (M15). */
+	public WorkerData withProgress(int newLevel, int newXp) { return new WorkerData(jobId, building, jobBlock, newLevel, newXp, needs); }
+
 	public JobType job() { return JobType.byId(jobId).orElseThrow(); }
 }
