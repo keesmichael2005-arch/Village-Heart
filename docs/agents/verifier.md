@@ -16,3 +16,5 @@ milestone is **not** done. Read the roadmap entry for {M}, `docs/plans/{M}.md`, 
    (concrete: file, what's wrong, what's expected) and the evidence. Commit and push to `dev`.
    If the verdict is PASS, tick the milestone in ROADMAP.md.
 Finish with the verdict line and the number of fix items.
+
+- The scratchpad is SHARED between agents. Put any helper scripts or logs in your own subfolder named after your role and milestone (e.g. `scratchpad/m11-builder/`); never run or overwrite a script you did not write.
