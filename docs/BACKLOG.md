@@ -1,6 +1,7 @@
 # Backlog (non-blocking review notes)
 
 ## Priority (flaky infrastructure)
+- [ ] **M16 stray-item flake clue (M15-r1):** in `minerHaulsFortyCobblestone`, the stray item was a STONE PICKAXE at age 0 at tick 11007 (just after the WORK window ends at 11000). Likely a tool returned or dropped at day end (CampTools lease release / dropPending?) instead of going back into the Mine chest. Root-cause it
 - [ ] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
 - [ ] **M9 `workerOpensDoors` slow outliers** (456 vs 400 once; 301 once): add walk-time logging and root-cause it
 - [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
@@ -77,7 +78,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] processPending "skip blocks the current village holds" branch has no test
 - [ ] Tiny window: a pending release runs up to 20 ticks after the chunk loads; a break/re-place plus a vanilla claim in that window would free the new ticket
 - [ ] Crash between the POI save and the saved-data save can leave a stale ticket (documented in TESTING.md)
-- [ ] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic)
+- [x] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic) (fixed in M15)
 - [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
@@ -146,9 +147,49 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
 - [ ] The site ramp (`StarterActions.ramp`, `core/sim/RampProfile`) is 9 blocks wide plus up to 12 more while it still differs from the land by more than 1: a `max_deviation` above 8 leaves a larger step at the ring (the cone is floor +- k)
 - [ ] `LeafEscape` is not a general unstick: it only frees a worker whose four sides at feet and head height are all blocked and at least one is natural leaves (M11 r2)
+
+## From M16 (builder notes)
+- [ ] A hidden miner's hitbox still catches the crosshair at the bottom of the shaft (placing or breaking rails there while a miner is down); fix with a `Villager.isPickable` mixin if players complain (the hold spot is the deepest cell, so the entrance and the marker stay free)
+- [ ] The wooden pickaxe mines iron and lapis (vanilla's "wood cannot mine iron" is not modelled; it uses the stone table, only slower); redstone/lapis counts (4) are planner choices
+- [ ] "Walk to the stonecutter first when more than 40 blocks from the shaft" (planner row 7) is tested at L1 only; the 32-wide yard cannot host a Storage 35 blocks from a shaft
+- [ ] Lightning at an open vertical shaft can turn the hidden miner into a witch (vanilla, `Villager.thunderHit`); the conversion handler restores the witch's flags and M7 fires the record, the miner is lost
+- [ ] Mod uninstalled while a miner is down leaves a hidden villager: `/data merge entity <uuid> {NoAI:0b,Invulnerable:0b,Silent:0b}` and `/effect clear` (Invisible is not saved, so it shows again by itself after a reload)
+- [x] Heart snapshot crashed on any registered outdoor site (`BuildingRequirements.of(MINESHAFT)` in `HeartFacts`)
+  - Fixed in M16: `DetailKind.NONE` for non-room buildings; covered by `minerStopsWhenShaftInvalid`.
+
 ## From M20-r1..r4
 - [ ] checkPassLeavesWaterloggedPlayerBlocks stocks exactly one house of materials, so on old code it fails via "needs planks" rather than at the chest check; add a spare stack
 - [ ] "Needs materials" fallback text has no test
 - [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
 - [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
 - [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared
+
+## From M16-r1
+- [ ] A miner stuck hidden (no free cell to come up) has job status SITE_UNREACHABLE, but the Heart row shows "Away (mining)" (`HeartFacts` checks `isAway` first), not "Can't reach the Mineshaft"
+- [ ] No committed test releases the Heart while a hidden miner is unloaded (the verifier's probe passed)
+- [ ] `PriorFlags.invisible` records a potion's Invisible flag; if the effect ends underground the miner comes up invisible until the next effect change or reload (cosmetic)
+- [ ] A hidden miner that dies (`/kill`, void) loses its pending haul (release drops it, death does not)
+- [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic
+
+## From M15-r1
+- [ ] "needs a Town" never fires for a worker that reached level 2 through a tier-up with 300 XP banked (XP clamps at 300, so no threshold is crossed again; the gold bar shows it)
+- [ ] `LevelUpFeedback.onCapped` lines beyond the 3-per-tick budget are dropped, not counted in the "and N more" summary
+- [ ] `ironAxeOutFellsStoneSideBySide` clears its upper platforms only on success; a failed run leaves glass, dark oaks and villagers above its slot
+- [ ] T-L2-11 starts the cure by reflection (`ZombieVillager.startConverting`); the public path (Weakness + golden apple via `mobInteract`) would survive a rename
+- [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
+
+- [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open
+## From M17 (builder notes)
+- [ ] **Before v1:** a hidden hunter in the open keeps an invisible hitbox that can catch a player's crosshair (placing or breaking blocks next to the ground marker while a hunter is out); fix with a `Villager.isPickable` mixin (client side, guessing from the synced flags). Raised from the miner note: the hunter hides where players walk, the miner at the bottom of a pit
+- [ ] `DepositTrip` walks with `WalkTo` (range 48) and the Storage may be anywhere in the claim: a hunter that comes back 46 blocks out from a far Storage reports "Storage unreachable" and waits; give `DepositTrip` a walk-via-the-job-block step for all away jobs
+- [ ] Infinity bows are not modelled (an arrow is taken anyway); the crossbow counts as a bow; spears, the mace and the trident are not hunter weapons
+- [ ] The biome weights are read at the marker and 8 points 12 blocks away; a sample in an unloaded chunk is skipped and a partial result is not cached (the yield of a trip after a restart can differ from the one before it if a sample chunk is unloaded)
+- [ ] "Hunting Ground inside a house reads valid after a restart until re-scan" (M5): a hunter can go out to such a ground in the first re-check cycle after a restart (one trip at most); still open
+- [ ] `farHunterWalksViaLodge` forces two chunks outside the structure and unforces them at its end; a failed run leaves them forced (harmless, they are 10 blocks from the yard)
+- [ ] A hunter that arrives with a weapon that is unreadable for a moment (chest scan missing) does not go out and walks back to its table; the next plan decides again (not tested)
+
+## From M17-r1 (orchestrator, at merge)
+- [ ] Hunter awards no XP: M17 was built before M15 merged. Wire `WorkXp.award(v, GAME_HUNTED, 1)` per completed trip, with a GameTest (sent to the M17 builder)
+- [ ] Hidden away villagers stay solid for every walker; consider making away villagers non-colliding (would replace the narrow touch rule)
+- [ ] `MineTestSupport.clearHigh` spills chest contents into the world; emptying chests first would explain and close the M16 stray-pickaxe clue
+- [ ] `touchesAwayVillager` also matches away miners (harmless today)

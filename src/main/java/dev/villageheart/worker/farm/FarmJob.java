@@ -17,10 +17,12 @@ import dev.villageheart.core.farm.PlantChoice;
 import dev.villageheart.core.job.ToolRequirement;
 import dev.villageheart.core.job.WorkClock;
 import dev.villageheart.core.job.WorkSpeed;
+import dev.villageheart.core.job.WorkUnit;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.core.worker.WorkerStatus;
+import dev.villageheart.worker.WorkXp;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.worker.DepositTrip;
 import dev.villageheart.worker.WorkerAttachments;
@@ -557,6 +559,7 @@ public final class FarmJob {
 		}
 		if (held != null) CampTools.use(level, held.lease(), 1);
 		WorkStats.add(JOB, "harvested", 1);
+		WorkXp.award(v, WorkUnit.CROP_HARVESTED, 1);
 		WorkStats.add(JOB, kind.productId().substring("minecraft:".length()), gainedProduct);
 		WorkStats.add(JOB, "seeds", gainedSeeds);
 		if (replanted) WorkStats.add(JOB, "replanted", 1);

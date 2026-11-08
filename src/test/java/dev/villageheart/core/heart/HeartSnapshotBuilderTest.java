@@ -184,6 +184,34 @@ class HeartSnapshotBuilderTest {
 		assertEquals("", u.jobId());
 	}
 
+	private static VillagerFact leveled(int n, int level, int xp) {
+		return new VillagerFact(id(n), "W" + n, n, "farmer", "villageheart:farmer", level, xp, NeedsFlags.of(true, true, true),
+				ActivityKind.WORKING, false, false, false, true);
+	}
+
+	private static VillageFacts atTier(Tier tier, List<VillagerFact> v) {
+		VillageFacts f = facts(v, List.of(), stock(StorageAlert.OK, 0), 2, 0, List.of());
+		return new VillageFacts(f.ownerName(), tier, f.treasury(), f.adults(), f.babies(), f.beds(), f.workerSlots(), f.villagers(),
+				f.jobs(), f.buildings(), f.stock(), f.extraAlerts(), f.members());
+	}
+
+	@Test void levelCappedFlag() {
+		List<VillagerFact> v = List.of(leveled(1, 1, 150), leveled(2, 1, 50), leveled(3, 3, 300), leveled(4, 2, 300), unemployed(5, "U"));
+		HeartSnapshot hamlet = HeartSnapshotBuilder.build(atTier(Tier.HAMLET, v), Rank.OWNER);
+		java.util.Map<String, Boolean> capped = new java.util.HashMap<>();
+		for (VillagerRow r : hamlet.villagers()) capped.put(r.name(), r.levelCapped());
+		assertTrue(capped.get("W1"), "(1,150) at Hamlet: the next level waits for a Village");
+		assertFalse(capped.get("W2"), "(1,50): not enough XP");
+		assertFalse(capped.get("W3"), "level 3 is the top");
+		assertTrue(capped.get("W4"), "(2,300) at Hamlet (a level written above the cap): level 3 is waiting for a Town");
+		assertFalse(capped.get("U"), "not a worker");
+		HeartSnapshot village = HeartSnapshotBuilder.build(atTier(Tier.VILLAGE, v), Rank.OWNER);
+		capped.clear();
+		for (VillagerRow r : village.villagers()) capped.put(r.name(), r.levelCapped());
+		assertFalse(capped.get("W1"), "at Village (1,150) is about to become level 2, not capped");
+		assertTrue(capped.get("W4"), "(2,300) at Village waits for a Town");
+	}
+
 	@Test void caps() {
 		List<VillagerFact> v = new ArrayList<>();
 		for (int i = 0; i < 150; i++) v.add(unemployed(i, "N" + i));

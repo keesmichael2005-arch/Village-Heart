@@ -77,6 +77,37 @@ class WorkSpeedTest {
 		assertEquals(1.25, WorkSpeed.multiplier(Optional.of(ToolTier.STONE), AXE, 1, Needs.DEFAULT));
 	}
 
+	/** T-L1-1: speed = tool x level x needs, every cell of the table from literals (DESIGN section 4). */
+	@Test
+	void fullToolLevelNeedsTable() {
+		double[] tool = {1.0, 1.25, 1.375, 1.0, 1.5, 1.75, 2.0}; // wood stone copper gold iron diamond netherite
+		double[] level = {1.0, 1.25, 1.5};
+		Needs[] needs = {Needs.DEFAULT, new Needs(false, 1, true, true), new Needs(true, 0, false, true), new Needs(false, 2, false, false)};
+		ToolTier[] tiers = ToolTier.values();
+		assertEquals(tool.length, tiers.length);
+		for (int t = 0; t < tiers.length; t++) {
+			for (int l = 1; l <= 3; l++) {
+				for (Needs n : needs) {
+					double expect = tool[t] * level[l - 1] * n.speed();
+					assertEquals(expect, WorkSpeed.multiplier(Optional.of(tiers[t]), AXE, l, n), 1e-12, tiers[t] + " L" + l + " " + n);
+				}
+			}
+		}
+		for (int l = 0; l <= 4; l++) {
+			assertEquals(0.0, WorkSpeed.multiplier(Optional.empty(), AXE, l, Needs.DEFAULT), "required tool missing, level " + l);
+			int clamped = Math.max(1, Math.min(3, l));
+			assertEquals(0.5 * level[clamped - 1], WorkSpeed.multiplier(Optional.empty(), HOE, l, Needs.DEFAULT), 1e-12);
+		}
+	}
+
+	@Test
+	void ironLevelThreeFellsHundredLogsIn2223Ticks() {
+		double m = WorkSpeed.multiplier(Optional.of(ToolTier.IRON), AXE, 3, Needs.DEFAULT);
+		assertEquals(2.25, m, 1e-12);
+		int t = ticksFor(100, m);
+		assertTrue(Math.abs(t - 2223) <= 1, "iron level 3, 100 logs: " + t);
+	}
+
 	private static int ticksFor(int units, double mult, double unitCost) {
 		WorkClock c = new WorkClock(unitCost);
 		int done = 0, t = 0;

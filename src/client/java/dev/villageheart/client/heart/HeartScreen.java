@@ -78,6 +78,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int GREY = 0xFFAAAAAA;
 	static final int DARK_GREY = 0xFF808080;
 	static final int GREEN = 0xFF55FF55;
+	/** The XP bar of a worker whose next level waits for a bigger village (M15). */
+	static final int LEVEL_CAPPED_GOLD = 0xFFE0B040;
 	static final int RED = 0xFFFF5555;
 	static final int YELLOW = 0xFFFFD45A;
 	static final int GOLD = 0xFFFFAA00;
@@ -765,7 +767,15 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (v.isWorker()) {
 			int bx = x + 152, by = y + 8;
 			g.fill(bx, by, bx + 40, by + 5, 0xFF404040);
-			if (v.xpForNext() > 0) {
+			if (v.levelCapped()) {
+				// the XP for the next level is banked, the village tier holds the level back (M15): a full gold bar
+				g.fill(bx, by, bx + 40, by + 5, LEVEL_CAPPED_GOLD);
+				if (mx >= bx && mx < bx + 40 && my >= by - 2 && my < by + 7) {
+					String need = dev.villageheart.core.job.Leveling.tierForNext(new dev.villageheart.core.job.Progress(Math.min(3, v.level()), v.xp()))
+							.map(dev.villageheart.core.Tier::displayName).orElse("");
+					g.setTooltipForNextFrame(font, t("villagers.level_capped", need, v.level() + 1), mx, my);
+				}
+			} else if (v.xpForNext() > 0) {
 				int fill = Math.max(0, Math.min(40, 40 * v.xp() / v.xpForNext()));
 				if (fill > 0) g.fill(bx, by, bx + fill, by + 5, 0xFF55CC55);
 			} else {
@@ -880,6 +890,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case WORKER_SLOTS -> t("detail.slots", b.workersHere(), b.detailCount());
 			case HOMES -> t("detail.homes", b.detailCount());
 			case CONTAINERS -> t("detail.containers", b.detailCount());
+			case NONE -> Component.empty();
 		};
 		textRight(g, detail, x + w - 4, y + 2, 70, WHITE, AREA_BODY, grp);
 		if (!b.reasons().isEmpty()) {

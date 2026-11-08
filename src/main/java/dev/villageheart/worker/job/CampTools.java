@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.ToIntFunction;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -59,7 +61,13 @@ public final class CampTools {
 	}
 
 	/** The tool the allocation gives this worker: {@link Missing#UNKNOWN} when the camp's chests cannot be read (no scan, unloaded). */
-	public static Result lease(MinecraftServer server, Villager villager, ToolKind kind) {
+	public static Result lease(MinecraftServer server, Villager villager, ToolKind kind) { return lease(server, villager, kind, null); }
+
+	/**
+	 * The same with the job's own ranking of the tools in the chest (higher is given out first, ties by container and slot order): the
+	 * hunter ranks any bow or crossbow before any sword (M17). {@code null} = by tier.
+	 */
+	public static Result lease(MinecraftServer server, Villager villager, ToolKind kind, @Nullable ToIntFunction<ItemStack> rank) {
 		Optional<WorkerData> data = WorkerAttachments.get(villager);
 		Optional<VillageState> village = VillageClaims.current(server);
 		if (data.isEmpty() || village.isEmpty()) return Missing.UNKNOWN;
@@ -78,7 +86,8 @@ public final class CampTools {
 			if (w.building().equals(data.get().building()) && w.jobId().equals(data.get().jobId())) workers.add(w.villager());
 		}
 		if (!workers.contains(villager.getUUID())) workers.add(villager.getUUID());
-		Map<UUID, Ref> assigned = ToolAllocation.assign(tools, workers);
+		Map<UUID, Ref> assigned = rank == null ? ToolAllocation.assign(tools, workers)
+				: ToolAllocation.assign(tools, workers, t -> rank.applyAsInt(chests.get().get(t.ref().container()).container().getItem(t.ref().slot())));
 		Ref mine = assigned.get(villager.getUUID());
 		if (mine == null) return Missing.NONE;
 		Container c = chests.get().get(mine.container()).container();

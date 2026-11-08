@@ -10,6 +10,10 @@ import dev.villageheart.worker.farm.FarmJob;
 import dev.villageheart.worker.farm.FarmerWork;
 import dev.villageheart.worker.lumber.LumberKeep;
 import dev.villageheart.worker.lumber.LumberjackWork;
+import dev.villageheart.worker.hunt.HuntGear;
+import dev.villageheart.worker.hunt.HunterWork;
+import dev.villageheart.worker.mine.MinerKeep;
+import dev.villageheart.worker.mine.MinerWork;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -44,6 +48,20 @@ final class JobBehaviours {
 					Pair.of(3, new FarmerWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
+		if (jobOf(villager) == JobType.MINER) {
+			// the miner walks to its Mineshaft: no GoToJobBlock either
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new MinerWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
+		if (jobOf(villager) == JobType.HUNTER) {
+			// the hunter walks to its Hunting Ground: no GoToJobBlock either
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new HunterWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
 		return ImmutableList.of(
 				Pair.of(1, new DepositTrip()),
 				Pair.of(2, new GoToJobBlock()),
@@ -63,6 +81,17 @@ final class JobBehaviours {
 		if (jobOf(villager) == JobType.BUILDER) return BuilderKeep.keep(villager, item);
 		if (jobOf(villager) == JobType.FARMER) return FarmJob.keep(villager, item);
 		return 0;
+	}
+
+	/**
+	 * True when this worker's job wants a deposit trip now, whatever the load (M16: the miner hands in its haul as soon as it is back
+	 * on the surface, however small). The trip still needs something to hand in.
+	 */
+	static boolean depositNow(Villager villager) {
+		JobType job = jobOf(villager);
+		if (job == JobType.MINER) return MinerKeep.carriesNonFood(villager);
+		// the hunter's rule is by item id, not by the food component: raw meat has one, and it is handed in (M17)
+		return job == JobType.HUNTER && HuntGear.carriesYield(villager);
 	}
 
 	/** The behaviours of the go_home activity that come before walking to the bed (M9+: deposit trips). */
