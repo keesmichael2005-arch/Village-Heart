@@ -115,6 +115,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   Start with `BuildingTestSupport.begin(h)` (reset, fresh runtime, **sweep stray markers**, bell, claim after 3 ticks) and end with `VillageTestSupport.done(h)`.
 - **Stray markers.** Test structures sit only a few dozen blocks apart, inside each other's claim radius, so markers left by other tests would be adopted by this test's claim and change the
   number of registered buildings (and the round-robin timing). `begin` removes every marker in the loaded chunks within 160 blocks before the test builds anything; tests that claim by hand call `sweepStrayMarkers`.
+  **Rule:** a test that calls `sweepStrayMarkers` (directly or through `begin`) must declare its own environment: same-environment tests run at the same time and would sweep each other's markers. `BuildingTestSupport.assertOwnEnvironment` enforces it at run time (fails on the default environment, or when a second test sweeps in an environment another test already swept in).
 - **Measured waits.** `awaitWithin(h, seq, bound, what, check)` re-runs `check` every tick and then asserts it took at most `bound` ticks. `bound(n, hops) = n*20 + hops + 4`: a change that fires no hook is
   seen within `n x 20` ticks (`n` registered buildings), one more tick per dependent hop (site to parent), plus slack. The roadmap's "within 2 s" test (Storage green / red) uses 40 with `n = 1`. State `n` in the test.
 - **Chat.** `recordingPlayer` is a `ServerPlayer` subclass that collects `sendSystemMessage`; read keys and fallbacks through `TranslatableContents` (`translatable`, `lineBody`).
@@ -122,6 +123,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Far markers** (outside the claim, unloaded): 100 000 blocks along +z of the Heart; load with `level.getChunk` and keep with `setChunkForced`, clean up in the last step. Never load chunks from the code under test.
 - **Running one GameTest:** `JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Dfabric-api.gametest.filter=villageheart-gametest:<class_snake>_<method_snake>" ./gradlew --no-daemon runGameTest`
   (exact id, e.g. `building_game_tests_shared_room_both_red`; a regex or prefix selects nothing and the run "passes" with 0 tests).
+  **Zero-test guard:** `scripts/verify.sh` runs `scripts/check-gametest-log.sh` on `reports/gametest.log` and fails when the log says "All 0 required tests passed" (or has no result line). For a raw gradle run, check the log yourself for that line; self-tested by `scripts/test-check-gametest-log.sh`.
 - L4 `MarkerClientTests.validationReport` (`marker_validation.png`): claims by `VillageClaims.claim` (a `/setblock` Heart never runs `setPlacedBy`), builds two rooms with commands, waits until the
   server says green and red, aims at the red plaque (asserts `mc.hitResult` is on it, so it cannot click air), presses the right mouse button and shoots the chat.
   The player must be within the block reach (about 5), so FOV is 100 to get both plaques into the frame.
@@ -136,7 +138,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   A comparator's `FACING` points at its input, so a comparator reading the chest to its west faces WEST.
 - **Facade GameTests** (`StockpileFacadeGameTests`): follow the Building GameTests rules (own environment `stockpile_<name>`, `yard`, `skyAccess`, `begin`/`done`, `awaitWithin`).
 - **Rule: stockpile code never calls `level.getBlockEntity`** (it loads the chunk synchronously on the server thread); it uses `StorageContainers.at` (`getChunkNow` + `LevelChunk.getBlockEntity`).
-- **Budget** (docs/plans/M6.md 3.4): one snapshot (= one `StockpileSystem` refresh) of 32 full containers under 1 ms (asserted at 3 ms in `snapshotCostReal` because it shares a machine with other work), a deposit/withdraw under 0.3 ms.
+- **Budget** (docs/plans/M6.md 3.4): one snapshot (= one `StockpileSystem` refresh) of 32 full containers under 1 ms (`snapshotCostReal` only prints the measured time; the wall-clock limits are asserted in `StockpilePerfTest` via perfTest, and the call-count regression guard is `StockpileCostTest`), a deposit/withdraw under 0.3 ms.
 
 
 ## Worker GameTests (M7+)

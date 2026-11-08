@@ -486,6 +486,9 @@ public class MarkerGameTests {
 			h.assertTrue(markerAt(h, marker) != null, "marker stands on the wall against the piston head");
 			h.setBlock(redstone, Blocks.AIR);
 			h.succeedWhen(() -> {
+				// the wall was moved by the piston, not removed some other way: it now stands where the extended head was
+				h.assertTrue(h.getBlockState(new BlockPos(3, 1, 4)).is(Blocks.STONE), "the sticky piston pulled the wall block to z=4");
+				h.assertTrue(!h.getBlockState(WALL).is(Blocks.STONE), "the wall position is vacated");
 				h.assertTrue(h.getBlockState(marker).isAir(), "marker position is air");
 				h.assertItemEntityCountIs(item, marker, 1.5, 1);
 			});

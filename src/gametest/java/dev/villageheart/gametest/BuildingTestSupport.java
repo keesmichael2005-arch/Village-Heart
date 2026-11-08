@@ -71,6 +71,7 @@ public final class BuildingTestSupport {
 	 * can be hit; only call it with no claim active.
 	 */
 	public static void sweepStrayMarkers(GameTestHelper h) {
+		assertOwnEnvironment(h);
 		ServerLevel level = h.getLevel();
 		BlockPos centre = h.absolutePos(BlockPos.ZERO);
 		for (int cx = (centre.getX() - 160) >> 4; cx <= (centre.getX() + 160) >> 4; cx++) {
@@ -87,6 +88,38 @@ public final class BuildingTestSupport {
 						}
 					}
 				}
+			}
+		}
+	}
+
+	/** environment key -> the one test that has swept in it (see {@link #assertOwnEnvironment}). */
+	private static final java.util.Map<String, String> SWEEPERS = new java.util.HashMap<>();
+
+	/**
+	 * Runtime guard for the TESTING.md rule: a test that calls {@code sweepStrayMarkers} runs in its own environment. Same-environment
+	 * tests run at the same time and would sweep each other's markers. Fails if the environment is the default one or if a different
+	 * test already swept in the same environment during this run.
+	 */
+	static void assertOwnEnvironment(GameTestHelper h) {
+		String env;
+		String test;
+		try {
+			var f = GameTestHelper.class.getDeclaredField("testInfo");
+			f.setAccessible(true);
+			var info = (net.minecraft.gametest.framework.GameTestInfo) f.get(h);
+			env = info.getTest().batch().unwrapKey().map(k -> k.identifier().toString()).orElse("<unregistered>");
+			test = info.getTestHolder().key().identifier().toString();
+		} catch (ReflectiveOperationException e) {
+			throw h.assertionException("cannot read the test's environment to check the sweepStrayMarkers rule: " + e);
+		}
+		if (env.equals("minecraft:default") || env.equals("<unregistered>")) {
+			throw h.assertionException("sweepStrayMarkers needs the test to declare its own environment, got " + env + " (docs/TESTING.md)");
+		}
+		synchronized (SWEEPERS) {
+			String other = SWEEPERS.putIfAbsent(env, test);
+			if (other != null && !other.equals(test)) {
+				throw h.assertionException("sweepStrayMarkers: environment " + env + " is shared by " + other + " and " + test
+						+ "; each sweeping test needs its own environment (docs/TESTING.md)");
 			}
 		}
 	}
@@ -209,6 +242,15 @@ public final class BuildingTestSupport {
 
 		@Override
 		public void sendSystemMessage(Component message) { messages.add(message); }
+
+		/** Action-bar messages ({@code displayClientMessage(msg, true)}), for example claim refusals. */
+		public final List<Component> overlays = new ArrayList<>();
+
+		@Override
+		public void displayClientMessage(Component message, boolean overlay) {
+			if (overlay) overlays.add(message);
+			else messages.add(message);
+		}
 	}
 
 	public static RecordingPlayer recordingPlayer(GameTestHelper h, String name) {
