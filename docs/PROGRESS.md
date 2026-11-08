@@ -518,3 +518,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
 - Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
 - Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M21 review round 1 (verifier): PASS
+- Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
+- Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
+- `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
+- Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.

@@ -175,8 +175,8 @@ from there instead of hard-coding them.
   format has `kind` (BUILDING/DEFENCE), `mode` (`PlacementMode.FOOTPRINT`; M21 adds `LINE` and its two-click flow in `BlueprintUse`) and `BlueprintParams.length`
   (`Blueprints.resolve(id, params)` is where a generated Wall Segment goes); `BuildPlan`, `SiteRules`, `BuildExecutor` and the builder need no change for new blueprints.
 
-## M21: Defence blueprints
-- [ ] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
+## M21: Defence blueprints ✅
+- [x] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
 - **L1**: wall line generation for axis-aligned start/end. Lengths over 32 are rejected
 - **L2**: a 20-long wall segment is built complete. A gate opens. A lamp post stops hostile spawns in its light radius over 1 night
 - **L4**: screenshot of a walled section with a gate, lamp posts and a watchtower
