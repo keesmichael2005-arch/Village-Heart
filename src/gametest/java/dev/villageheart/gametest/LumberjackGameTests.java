@@ -433,6 +433,114 @@ public class LumberjackGameTests {
 		});
 	}
 
+	/**
+	 * Review backlog-2 r1: the walker can stall on the first cell inside the camp, two cells from the idler on the door front (outside a
+	 * one-block box around it). A walker held on that cell, whose {@code WalkTo} heads for the oak through the door, must ask the idler
+	 * (on its next path nodes) to step aside.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_door_idler_ahead", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void idlerTwoCellsAheadIsAsked(GameTestHelper h) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24), doorFront = new BlockPos(11, 0, 3), inside = new BlockPos(11, 1, 5);
+		Villager[] v = new Villager[2];
+		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
+		boolean[] asked = {false};
+		long[] t0 = {-1}, askedAt = {-1};
+		h.onEachTick(() -> {
+			if (v[0] == null) return;
+			BlockPos w = h.absolutePos(inside);
+			// held on the first cell inside (the pathfinder needs it on the ground: it plans only for a grounded mob)
+			if (v[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(w)) > 0.3) v[0].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			v[0].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			v[0].setOnGround(true);
+			if (!asked[0]) {
+				BlockPos p = h.absolutePos(doorFront);
+				v[1].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+				v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+				v[1].getNavigation().stop();
+				v[1].getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+			}
+			long now = h.getLevel().getGameTime();
+			if (!walk.active()) walk.begin(h.absolutePos(new BlockPos(11, 0, 0)), 1.0, now);
+			if (walk.tick(v[0], now) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			growOak(h, spot, 12L);
+			v[1] = WorkerTestSupport.spawnVillager(h, doorFront);
+			v[0] = WorkerTestSupport.spawnVillager(h, inside);
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(o -> {
+				if (o == v[1] && !asked[0]) {
+					asked[0] = true;
+					askedAt[0] = h.getTick();
+				}
+			});
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the walker asks the idler two cells ahead to step aside", () ->
+				h.assertTrue(asked[0], "the idler on the door front was not asked"));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] idlerTwoCellsAheadIsAsked: asked " + (askedAt[0] - t0[0]) + " ticks after the walk began");
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * The step-aside rule never moves one of our workers (review backlog-2 r1): a lumberjack chopping an oak (navigation idle, standing
+	 * still) has a stalled walker one block from it, a plain villager held in place whose {@code WalkTo} heads through the chopper's cell.
+	 * The walker's jam rule must not hand the chopper a WALK_TARGET, and the oak is felled whole by the same lumberjack.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_chopper_not_nudged", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void chopperIsNotAskedToStepAside(GameTestHelper h) {
+		begin(h);
+		BlockPos spot = new BlockPos(3, 0, 24);
+		Villager[] v = new Villager[2];
+		Set<BlockPos>[] logs = new Set[1];
+		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
+		net.minecraft.world.phys.Vec3[] pin = new net.minecraft.world.phys.Vec3[1];
+		java.util.List<Villager> nudged = new java.util.ArrayList<>();
+		int[] jamTicks = {0};
+		h.onEachTick(() -> {
+			if (pin[0] == null || v[1] == null || !v[1].isAlive()) return;
+			v[1].teleportTo(pin[0].x, pin[0].y, pin[0].z);
+			v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			// through the chopper's cell to a spot beyond it
+			net.minecraft.world.phys.Vec3 dir = v[0].position().subtract(pin[0]).normalize();
+			BlockPos target = BlockPos.containing(v[0].position().add(dir.scale(6)));
+			if (!walk.active()) walk.begin(target, 1.0, h.getLevel().getGameTime());
+			if (walk.tick(v[1], h.getLevel().getGameTime()) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
+			jamTicks[0]++;
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			logs[0] = logsOf(h, growOak(h, spot, 12L));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(nudged::add);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "the lumberjack starts chopping"));
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(v[0].getNavigation().isDone(), "premise: the chopper's navigation is idle");
+			// the walker stands one block from the chopper, on the side away from the trunk
+			net.minecraft.world.phys.Vec3 trunk = net.minecraft.world.phys.Vec3.atBottomCenterOf(h.absolutePos(spot));
+			net.minecraft.world.phys.Vec3 away = v[0].position().subtract(trunk).multiply(1, 0, 1).normalize();
+			pin[0] = v[0].position().add(away);
+			BlockPos at = BlockPos.containing(pin[0]);
+			v[1] = WorkerTestSupport.spawnVillager(h, h.relativePos(at));
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "the chopper fells the whole oak; nudged " + nudged));
+		seq.thenExecute(() -> {
+			System.out.println("[b2] chopperIsNotAskedToStepAside: oak felled with a stalled walker beside the chopper for " + jamTicks[0] + " ticks; nudged " + nudged.size());
+			h.assertTrue(jamTicks[0] >= 60, "premise: the walker stood stalled for at least two jam periods (" + jamTicks[0] + " ticks)");
+			h.assertTrue(!nudged.contains(v[0]), "the chopping lumberjack was asked to step aside: " + nudged);
+			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[0].getUUID()).isPresent(), "still the camp's lumberjack");
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:lumber_keep", structure = YARD, skyAccess = true, maxTicks = 2500)
