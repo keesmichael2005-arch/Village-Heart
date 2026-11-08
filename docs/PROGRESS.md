@@ -505,3 +505,12 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
 - Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
 - Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M26 plan written (docs/plans/M26.md)
+Planner. Balance pass plus the 30-day L3 scenario `full`. It relies on the plans of M11-M25 (section 3.1 lists A1-A12). It is built last, after every feature milestone is merged.
+- Scenario owners: `bare` M2, `starter` M11, `defended` M18, `raid` M25, `full` M26 (plus M13's `starter_cook`). M26 also prepares the release-gate pieces for `full`: `full_soak`, `check-sim-log.sh`, the reload trend compare, and `full_crowd` (20 villagers).
+- **Village-logic time.** The gate is a nesting-safe `TickTimer` (today a nested section, for example `BuildSystem.tick` inside `tickAll`, is counted twice), with the escapes wrapped (`AwayTrips.processLoaded`, `LevelUpFeedback.flush`, event handlers). The cross-check is JFR sampling of the server thread (mod frames, Mixin handler names included) with a 2x + 0.05 ms coverage gate and a probe-burn red-is-red run.
+- **`full`.** 64x40 site, 14 building types, 12 villagers, a stone-age starter kit and 32 emeralds. 4 Hamlet hires on day 1, then one-shot "standing orders" at Village and Town. That those count as "no player input" needs an orchestrator decision (D-M26-1). New assertion function `zerorun` over `food.days_left_after_dinner`, plus non-failing `targets`, `extends` and `when`.
+- **Tuning.** 15-day probes against a same-window control, B0 and F as 3 x 30-day runs made alone. The freeze tag `m26-freeze`, `tunable-bounds.json`, `tuning.lock` and `check-tuning-diff.sh` stop tuning from touching tests, gates or the harness. Caps: 6 rounds, 3 bug fixes, 10 h of L3 machine time (the estimate is about 8.2 h).
+- Revised after a fresh critique (25 findings, 6 blockers, all taken).
+- Next: BUILD M26 after M11-M25 are on dev. Top risk: 30 unseeded days that chain about ten milestones' jobs, where a feature bug looks like a balance problem.
