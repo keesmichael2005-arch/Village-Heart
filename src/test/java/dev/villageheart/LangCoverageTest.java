@@ -112,6 +112,7 @@ class LangCoverageTest {
 		}
 		assertEquals("Needs axe", lang.get("gui.villageheart.heart.activity.needs_tool.axe"));
 		assertEquals("No trees within 32 blocks", lang.get("gui.villageheart.heart.activity.no_work.lumberjack"));
+		assertEquals("No farmland within 24 blocks", lang.get("gui.villageheart.heart.activity.no_work.farmer"));
 		assertTrue(lang.keySet().stream().noneMatch(k -> k.startsWith("status.villageheart.")), "M9's separate status keys are gone");
 	}
 }
