@@ -63,6 +63,8 @@ public final class Workers {
 		HireDecision.Hired hired = (HireDecision.Hired) decision;
 		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock());
 		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock());
+		// a hungry villager stays hungry when hired, and an unhoused one starts unhoused (M11)
+		data = data.withNeeds(dev.villageheart.needs.NeedsSystem.needsFor(server, v, villager, data, record));
 		install(level, villager, data);
 		VillageClaims.data(server).update(s -> s.withWorker(record));
 		return new HireResult.Hired(record);

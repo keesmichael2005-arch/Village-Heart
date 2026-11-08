@@ -12,5 +12,7 @@ public enum WorkerStatus {
 	/** The job needs a tool and the camp holds none for this worker ("Needs axe"). */
 	NEEDS_TOOL,
 	/** The job found nothing to do ("No trees within 32 blocks"). */
-	NO_WORK
+	NO_WORK,
+	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
+	TOO_HUNGRY
 }

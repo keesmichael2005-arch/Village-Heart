@@ -21,6 +21,7 @@ public final class WorkerStatusText {
 			case STORAGE_UNREACHABLE -> ActivityKind.STORAGE_UNREACHABLE;
 			case NEEDS_TOOL -> ActivityKind.NEEDS_TOOL;
 			case NO_WORK -> ActivityKind.NO_WORK;
+			case TOO_HUNGRY -> ActivityKind.TOO_HUNGRY;
 		};
 	}
 
