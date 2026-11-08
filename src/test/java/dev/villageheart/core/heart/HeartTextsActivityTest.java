@@ -33,7 +33,10 @@ class HeartTextsActivityTest {
 	void newKindsAreAppendedSoOldCodecIndicesHold() {
 		ActivityKind[] v = ActivityKind.values();
 		assertEquals(ActivityKind.NO_WORK, v[13]);
-		assertEquals(ActivityKind.AWAY_WORKING, v[14]);
-		assertEquals(ActivityKind.SITE_UNREACHABLE, v[15]);
+		// M20 (merged to dev first) appended NEEDS_MATERIALS and BLOCKED; M16's kinds come after them
+		assertEquals(ActivityKind.NEEDS_MATERIALS, v[14]);
+		assertEquals(ActivityKind.BLOCKED, v[15]);
+		assertEquals(ActivityKind.AWAY_WORKING, v[16]);
+		assertEquals(ActivityKind.SITE_UNREACHABLE, v[17]);
 	}
 }
