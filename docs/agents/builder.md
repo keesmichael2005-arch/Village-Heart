@@ -12,3 +12,6 @@ re-run the full verify, push, and report back.
 - End with a full `scripts/verify.sh` run. Look at every screenshot in `reports/screenshots/`.
 - Append a PROGRESS.md entry. Finish with: steps done, final verify result, anything you doubt.
 - You may start **at most 2 helper subagents** (e.g. tests in parallel, API research). They must not start their own.
+- Run test loops in the FOREGROUND (sequential runs within the 10-minute command limit, with long timeouts).
+  Never end your turn while a background command of yours is still running: that forces an early handback
+  and loses the in-flight work. Push after every green step so a restart or handback loses nothing.
