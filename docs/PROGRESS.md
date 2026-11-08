@@ -468,3 +468,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Existing assertions changed (reasons in the plan's section 8, item 5): `SiteRulesTest` text for the 40-block range, `HeartTextsActivityTest` generic-fallback examples, `minerHaulsFortyCobblestone` item box.
 - Docs: DESIGN 5.4 "Rules as built (M17)", TESTING "Hunter GameTests (M17)", BACKLOG "From M17".
 - Next: M17 review. ROADMAP not ticked (verifier does that). No blockers. The disk on this machine filled once during the L2 repeat loop (each full run leaves 740 MB in `build/run/gameTest/world`).
+
+## 2026-11-08: M17 review round 1 (verifier): PASS
+- Every criterion mutation-checked: L1 table ranges (leather max 3) and bow bonus (`pieces = base`) red; L2 no bow bonus, trips never delivered, no weapon wear, no arrow use, touch rule off: each red. All restored.
+- Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
+- Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
+- Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
