@@ -313,7 +313,9 @@ public final class FarmJob {
 			case BONEMEAL -> target(rt, v, ws, boneAt, now);
 			case COLLECT -> {
 				rt.release(v.getUUID(), ws);
-				if (!collect.getUUID().equals(ws.item)) {
+				// the timeout runs from when this walk began: coming back from another action (a deposit trip can take far
+				// longer than ITEM_TIMEOUT) must not count the time spent away, or the item is blacklisted on the spot
+				if (before != Action.COLLECT || !collect.getUUID().equals(ws.item)) {
 					ws.item = collect.getUUID();
 					ws.itemSince = now;
 				}
