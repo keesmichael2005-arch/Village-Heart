@@ -479,4 +479,112 @@ public class DefenceGameTests {
 			VillageTestSupport.done(h);
 		});
 	}
+
+	// ---- T-L2-5 (roadmap) ------------------------------------------------------------------------
+
+	private static final int LAMP_X = 16, LAMP_Z = 16;
+
+	private static int hd(int x, int z) { return Math.abs(x - LAMP_X) + Math.abs(z - LAMP_Z); }
+
+	/** Feet cells of the yard floor, split by distance from the post: the lit diamond, its boundary ring, the far control. */
+	private record Cells(List<BlockPos> lit, List<BlockPos> ring, List<BlockPos> control, List<BlockPos> all) {}
+
+	private static Cells lampCells() {
+		List<BlockPos> lit = new ArrayList<>(), ring = new ArrayList<>(), control = new ArrayList<>(), all = new ArrayList<>();
+		for (int x = 0; x < 32; x++) for (int z = 0; z < 32; z++) {
+			if (x == LAMP_X && z == LAMP_Z) continue;
+			if (x >= 25 && z <= 10) continue; // the small Storage and its margin
+			if (Math.abs(x - 3) + Math.abs(z - 1) <= 11) continue; // the Heart (light 10) and its margin
+			BlockPos p = new BlockPos(x, 0, z);
+			int d = hd(x, z);
+			all.add(p);
+			if (d <= 12) lit.add(p);
+			else if (d == 13) ring.add(p);
+			else if (d >= 16) control.add(p);
+		}
+		return new Cells(lit, ring, control, all);
+	}
+
+	private static final EntityType<?>[] MOBS = {EntityType.ZOMBIE, EntityType.SKELETON, EntityType.CREEPER, EntityType.SPIDER};
+
+	/** How many (type, cell) pairs vanilla's own spawn predicate accepts now. */
+	private static int spawnable(GameTestHelper h, List<BlockPos> cells, net.minecraft.util.RandomSource rng) {
+		int n = 0;
+		var level = h.getLevel();
+		for (BlockPos rel : cells) {
+			BlockPos p = h.absolutePos(rel);
+			for (EntityType<?> t : MOBS) {
+				if (net.minecraft.world.entity.SpawnPlacements.isSpawnPositionOk(t, level, p)
+						&& net.minecraft.world.entity.SpawnPlacements.checkSpawnRules(t, level, net.minecraft.world.entity.EntitySpawnReason.NATURAL, p, rng)) n++;
+			}
+		}
+		return n;
+	}
+
+	private static int blockLight(GameTestHelper h, BlockPos rel) {
+		return h.getLevel().getBrightness(net.minecraft.world.level.LightLayer.BLOCK, h.absolutePos(rel));
+	}
+
+	/**
+	 * A lantern on a post keeps natural monster spawns out of every cell with block light: vanilla's {@code Monster.isDarkEnoughToSpawn} refuses
+	 * a feet cell with block light above 0. The light map is the formula, so the lit set is a diamond of radius 12; and over a whole night
+	 * (every 100 ticks of the clock from dusk to dawn) the exact predicate the natural spawner calls accepts no cell of that set but does
+	 * accept cells just outside it and far away (the control: the test could see a spawn). Time is set per sample instead of waited for.
+	 */
+	@GameTest(environment = "villageheart-gametest:defence_lamp", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void lampPostStopsSpawnsOverOneNight(GameTestHelper h) {
+		Cells cells = lampCells();
+		var rng = net.minecraft.util.RandomSource.create(21);
+		int[] before = new int[1];
+		int[] idx = {0};
+		int[] lit = {0}, ring = {0}, control = {0}, controlPlateau = {0};
+		long t0 = 12500, step = 100;
+		int samples = 111;
+		BlockPos lantern = rel(LAMP_X, 2, LAMP_Z);
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			BuildTestSupport.stock(h, DefenceTestSupport.lampMaterials(1));
+			h.getLevel().setDayTime(18000);
+		}).thenIdle(3).thenExecute(() -> {
+			var level = h.getLevel();
+			h.assertTrue(level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL, "the difficulty allows monsters: " + level.getDifficulty());
+			System.out.println("[m21] sky darken at 18000: " + level.getSkyDarken() + ", lit set " + cells.lit().size() + ", ring " + cells.ring().size()
+					+ ", control " + cells.control().size());
+			h.assertTrue(level.getSkyDarken() >= 8, "it is dark at 18000: " + level.getSkyDarken());
+			// the counterfactual: without the lamp these very cells can spawn
+			for (int i = 0; i < 20; i++) before[0] += spawnable(h, cells.lit(), rng);
+			System.out.println("[m21] spawnable lit cells before the lamp (20 samples): " + before[0]);
+			h.assertTrue(before[0] > 0, "the lit set can spawn without the lamp");
+			BuildTestSupport.startBuild(h, Blueprints.LAMP_POST, rel(LAMP_X, -1, LAMP_Z), Rotation4.NONE);
+			DefenceTestSupport.advanceAll(h);
+		}).thenWaitUntil(() -> {
+			h.assertTrue(blockLight(h, lantern) == 15, "the lantern shines: " + blockLight(h, lantern));
+			h.assertTrue(blockLight(h, rel(LAMP_X + 12, 0, LAMP_Z)) == 1 && blockLight(h, rel(LAMP_X - 12, 0, LAMP_Z)) == 1, "the light reached the edge of the diamond");
+		}).thenExecute(() -> {
+			// (a) the light map is the formula: 15 minus the steps from the lantern
+			for (BlockPos p : cells.all()) {
+				int expected = Math.max(0, 15 - Math.abs(p.getX() - LAMP_X) - Math.abs(p.getY() - 2) - Math.abs(p.getZ() - LAMP_Z));
+				h.assertTrue(blockLight(h, p) == expected, "block light at " + p + " is " + blockLight(h, p) + ", expected " + expected);
+			}
+			h.assertTrue(h.getBlockState(lantern).is(Blocks.LANTERN) && !h.getBlockState(lantern).getValue(LanternBlock.HANGING), "a standing lantern");
+		}).thenWaitUntil(() -> {
+			if (idx[0] > 0) {
+				long t = t0 + (idx[0] - 1) * step;
+				lit[0] += spawnable(h, cells.lit(), rng);
+				ring[0] += spawnable(h, cells.ring(), rng);
+				int c = spawnable(h, cells.control(), rng);
+				control[0] += c;
+				if (t >= 13670 && t <= 22330) controlPlateau[0] += c;
+			}
+			if (idx[0] < samples) h.getLevel().setDayTime(t0 + idx[0] * step);
+			idx[0]++;
+			h.assertTrue(idx[0] > samples, "sampling the night: " + idx[0] + " of " + samples);
+		}).thenExecute(() -> {
+			System.out.println("[m21] over one night: lit " + lit[0] + ", ring " + ring[0] + ", control " + control[0] + " (plateau " + controlPlateau[0] + ")");
+			h.assertTrue(lit[0] == 0, "no mob can spawn in the lit set: " + lit[0]);
+			h.assertTrue(ring[0] > 0, "mobs can spawn just outside the radius (it is exactly 12): " + ring[0]);
+			h.assertTrue(control[0] > 0 && controlPlateau[0] > 0, "the control sees spawns at night: " + control[0] + " / " + controlPlateau[0]);
+			h.getLevel().setDayTime(1000);
+			VillageTestSupport.done(h);
+		});
+	}
 }
