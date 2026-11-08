@@ -297,12 +297,16 @@ public final class LumberTestSupport {
 	}
 
 	/** Saves {@code v} to NBT, discards it and loads a copy ("the chunk unloaded and loaded again"). */
-	public static Villager reloadEntity(ServerLevel level, Villager v) {
+	public static Villager reloadEntity(ServerLevel level, Villager v) { return reloadEntity(level, v, () -> { }); }
+
+	/** Same, running {@code whileUnloaded} between the discard and the load (M16: fire a worker by id while its entity is not in the world). */
+	public static Villager reloadEntity(ServerLevel level, Villager v, Runnable whileUnloaded) {
 		net.minecraft.world.level.storage.TagValueOutput out = net.minecraft.world.level.storage.TagValueOutput
 				.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess());
 		v.saveWithoutId(out);
 		net.minecraft.nbt.CompoundTag tag = out.buildResult();
 		v.discard();
+		whileUnloaded.run();
 		net.minecraft.world.entity.Entity e = EntityType.create(EntityType.VILLAGER, net.minecraft.world.level.storage.TagValueInput
 				.create(net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag), level,
 				net.minecraft.world.entity.EntitySpawnReason.LOAD).orElseThrow();

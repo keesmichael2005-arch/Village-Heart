@@ -24,14 +24,16 @@ final class SiteSurveys {
 	private SiteSurveys() {}
 
 	/** @param notLoaded the survey reached an unloaded area (no verdict this time) */
-	record Survey(SiteFacts facts, @Nullable Pos notLoaded) {}
+	record Survey(SiteFacts facts, @Nullable Pos notLoaded, @Nullable ShaftScanner.ShaftDepth depth) {
+		Survey(SiteFacts facts, @Nullable Pos notLoaded) { this(facts, notLoaded, null); }
+	}
 
 	static Survey survey(ServerLevel level, BuildingType type, Pos here, List<RoomScan> homeRooms) {
 		LevelBlockView view = new LevelBlockView(level);
 		switch (type) {
 			case MINESHAFT -> {
 				ShaftSurvey s = ShaftScanner.scan(view, here);
-				return new Survey(new SiteFacts(s.depth(), s.rails(), s.lights(), 0, 0, 0, false), s.notLoaded());
+				return new Survey(new SiteFacts(s.depth(), s.rails(), s.lights(), 0, 0, 0, false), s.notLoaded(), s.shaftDepth());
 			}
 			case HUNTING_GROUND -> {
 				AreaCount c = AreaCounter.count(view, here, Balance.HUNTING_GROUND_RADIUS, BuildingRequirements.NATURAL);

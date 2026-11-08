@@ -92,6 +92,7 @@ final class BuildingValidator {
 		if (survey.notLoaded() != null) {
 			return Verdict.deferred(Reason.notLoaded(new RoomProblem(RoomProblem.Kind.NOT_LOADED, survey.notLoaded()).message()));
 		}
+		if (survey.depth() != null) rt.shaftDeepest.put(record.marker(), survey.depth());
 		BuildingType parent = type.parent().orElseThrow();
 		int range = type == BuildingType.MINESHAFT ? Balance.MINESHAFT_LINK_RANGE : Integer.MAX_VALUE;
 		List<Links.Candidate> candidates = new ArrayList<>();

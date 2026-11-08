@@ -58,6 +58,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "detail.slots", "Slots %s/%s");
 		EN.put(PREFIX + "detail.homes", "Homes %s");
 		EN.put(PREFIX + "detail.containers", "Containers %s");
+		EN.put(PREFIX + "detail.none", "");
 		EN.put(PREFIX + "reasons.more", "(+%s more)");
 		EN.put(PREFIX + "reasons.none", "No problems found.");
 		EN.put(PREFIX + "stock.none", "Nothing stored.");
@@ -92,6 +93,11 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_materials", "Needs materials");
 		EN.put(PREFIX + "activity.blocked", "Build blocked");
 		EN.put(PREFIX + "activity.no_work.farmer", "No farmland within 24 blocks");
+		EN.put(PREFIX + "activity.no_work.miner", "No valid Mineshaft");
+		EN.put(PREFIX + "activity.away_working", "Away (working)");
+		EN.put(PREFIX + "activity.away_working.miner", "Away (mining)");
+		EN.put(PREFIX + "activity.site_unreachable", "Can't reach its site");
+		EN.put(PREFIX + "activity.site_unreachable.miner", "Can't reach the Mineshaft");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");
@@ -142,9 +148,9 @@ public final class HeartTexts {
 			String specific = "activity.needs_tool." + tool;
 			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.needs_tool");
 		}
-		if (activity == ActivityKind.NO_WORK) {
-			String specific = "activity.no_work." + jobId;
-			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.no_work");
+		if (activity == ActivityKind.NO_WORK || activity == ActivityKind.AWAY_WORKING || activity == ActivityKind.SITE_UNREACHABLE) {
+			String specific = "activity." + name + "." + jobId;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity." + name);
 		}
 		return key("activity." + name);
 	}

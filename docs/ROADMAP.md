@@ -132,9 +132,9 @@ from there instead of hard-coding them.
 - **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
 - **L2**: the tool in the camp chest loses durability while it is used
 
-## M16: Miner + Mineshaft
+## M16: Miner + Mineshaft ✅
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_MINED, n)` (one per item in a haul) where the haul is counted.
-- [ ] §5.3: walk to the shaft, vanish while inside, haul every 2 hours, depth-band tables. Cosmetic minecart is optional and can be deferred
+- [x] §5.3: walk to the shaft, vanish while inside, haul every 2 hours, depth-band tables. Cosmetic minecart is optional and can be deferred
 - **L1**: haul tables by depth band and pickaxe tier (seeded RNG: fixed counts and entries with chance ≥30% within 5% of expected over 10k rolls; every entry incl. rare ones within 5% over 400k rolls; clarified by the orchestrator 2026-11-08, a 2% entry over 10k rolls is seed-dependent). Diamonds only with an iron pickaxe or better and Y < 0
 - **L2**: a miner with a stone pickaxe and a valid shaft → ≥40 cobblestone within 1 day. With the shaft invalidated (rails removed) → stops, with the reason
 

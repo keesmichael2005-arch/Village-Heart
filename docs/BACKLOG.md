@@ -138,9 +138,25 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
 
+## From M16 (builder notes)
+- [ ] A hidden miner's hitbox still catches the crosshair at the bottom of the shaft (placing or breaking rails there while a miner is down); fix with a `Villager.isPickable` mixin if players complain (the hold spot is the deepest cell, so the entrance and the marker stay free)
+- [ ] The wooden pickaxe mines iron and lapis (vanilla's "wood cannot mine iron" is not modelled; it uses the stone table, only slower); redstone/lapis counts (4) are planner choices
+- [ ] "Walk to the stonecutter first when more than 40 blocks from the shaft" (planner row 7) is tested at L1 only; the 32-wide yard cannot host a Storage 35 blocks from a shaft
+- [ ] Lightning at an open vertical shaft can turn the hidden miner into a witch (vanilla, `Villager.thunderHit`); the conversion handler restores the witch's flags and M7 fires the record, the miner is lost
+- [ ] Mod uninstalled while a miner is down leaves a hidden villager: `/data merge entity <uuid> {NoAI:0b,Invulnerable:0b,Silent:0b}` and `/effect clear` (Invisible is not saved, so it shows again by itself after a reload)
+- [x] Heart snapshot crashed on any registered outdoor site (`BuildingRequirements.of(MINESHAFT)` in `HeartFacts`)
+  - Fixed in M16: `DetailKind.NONE` for non-room buildings; covered by `minerStopsWhenShaftInvalid`.
+
 ## From M20-r1..r4
 - [ ] checkPassLeavesWaterloggedPlayerBlocks stocks exactly one house of materials, so on old code it fails via "needs planks" rather than at the chest check; add a spare stack
 - [ ] "Needs materials" fallback text has no test
 - [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
 - [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
 - [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared
+
+## From M16-r1
+- [ ] A miner stuck hidden (no free cell to come up) has job status SITE_UNREACHABLE, but the Heart row shows "Away (mining)" (`HeartFacts` checks `isAway` first), not "Can't reach the Mineshaft"
+- [ ] No committed test releases the Heart while a hidden miner is unloaded (the verifier's probe passed)
+- [ ] `PriorFlags.invisible` records a potion's Invisible flag; if the effect ends underground the miner comes up invisible until the next effect change or reload (cosmetic)
+- [ ] A hidden miner that dies (`/kill`, void) loses its pending haul (release drops it, death does not)
+- [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic

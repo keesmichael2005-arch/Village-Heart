@@ -413,6 +413,22 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+## 2026-11-07: M16 plan (Miner + Mineshaft), branch m16-plan
+- Plan: docs/plans/M16.md, 12 steps. Reuses M9's toolkit (`CampTools` PICKAXE lease in the Mine chest, `WalkTo`, `WorkSpeed`, `WorkerStatuses`, `WorkStats`, `DepositTrip` + a `depositNow` hook).
+- "Disappears inside": the villager stays a loaded entity, moved to the shaft's deepest cell and set Invisible + Invulnerable + Silent + NoAI (NoAI freezes the vanilla brain; invulnerable mobs are never targeted); prior flags saved in a new persistent `AwayTrips.AWAY` attachment (separate from `WorkerData`) and restored on surfacing; trade/attack callbacks FAIL; load repair, conversion fix, `restoreVanilla` hook. Heart screen: new `ActivityKind.AWAY_WORKING` "Away (mining)".
+- Haul: 2500 units, stone L1 = 2000 underground ticks, stepped every 20 ticks by `MinerSystem`, progress saved per shaft and kept overnight; 10 durability per haul; tables by `DepthBand` (Y≥40 / 0≤Y<40 / Y<0) with diamonds only for iron+ below 0; `HaulRng` = SplitMix64 of (world seed, UUID, per-worker haul index), so L2 can predict every haul.
+- Shaft depth: `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth` (M5 threw `deepestY` away). Shaft invalid mid-trip → comes up, progress reset, Mine then WORKPLACE_INVALID with M5's reasons.
+- Finding: GameTests run at y ≈ -59, so a shaft in the normal yard is in the Y<0 band (cobbled deepslate). The roadmap's "≥40 cobblestone" test builds its scene high up (relative y computed from the test origin).
+- L1 note: 10k rolls cannot hold 5% for the 2%/10% entries; the plan runs the literal 10k check for fixed and ≥30% entries and a 400k check for all (orchestrator may adjust the ROADMAP wording).
+- Critique: remote critic session, 34 findings, 29 taken, 3 refuted, 2 accepted with reasons. Builds after M9 is on dev. Top risk: hiding a live villager with NoAI (anything else touching those flags or assuming the brain ticks).
+## 2026-11-08: M16 (Miner + Mineshaft), branch m16 (builder)
+- **Done (12 steps):** core `core.mine` (DepthBand, HaulTable, HaulRng, AwayProgress, AwayCheck, MinerPlanner, ShaftChoice, AwayState; 47 L1 tests incl. the roadmap statistics: 10k rolls within 5% for fixed and >=30% entries, 400k rolls for every entry, diamonds only DEEP + iron+); status words (`SITE_UNREACHABLE`, `AWAY_WORKING`, "Away (mining)"); `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth`; `AwayTrips` (hide/surface with prior flags, load repair, interaction blocks, conversion fix); `MinerJob`/`MinerWork`/`MinerSystem`/`MinerHauls`; `JobBehaviours.depositNow` (+ `DepositTrip.wanted`); 14 L2 tests (`MinerGameTests`) and 1 L4 shot (`villagers_tab_away_mining.png`, looked at: row "Mina / Miner L1 / Away (mining)" readable, not cut).
+- **Measured:** stone pickaxe, high scene: 4 hauls and 64 cobblestone by day time 12000 (hauls delivered at ticks 2164, 4504, 6844, 9184, cycle 2340); 1981 to 2000 underground ticks per haul; iron 1669, stone 1989 in the two-miner test; first descent 183 to 250 ticks after hiring.
+- **Bugs found and fixed on the way (details in plans/M16.md section 8):** `Invisible` is not saved with a villager (a reloaded hidden miner came back visible: re-applied at ENTITY_LOAD); the Heart screen snapshot threw for any registered outdoor site (`DetailKind.NONE`).
+- **Test infrastructure:** low scene (tower + staircase, DEEP band) and high scene (stone platform in the air, HIGH band), see TESTING "Miner GameTests". Mutation-checked: no flag restore on conversion (red), no pickaxe wear (red), `depositNow` off (red).
+- **Flake seen once:** in the first full verify `minerHaulsFortyCobblestone` failed its "no item entity lying around" check (1 item). 10 full L2 runs since were green; the message now names the item (stack, position, age) so the next occurrence identifies it. Not understood; nothing in the miner code drops items except the `dropPending` fallback (logs a warning).
+- **Next:** M17 reuses `AwayTrips`/`AwayState`/`DetailKind.NONE`. Doubts: the hidden miner's hitbox (BACKLOG), the one unexplained stray item.
+
 
 ## 2026-11-08: M20 verifier review r3: FAIL (docs/reviews/M20-r3.md)
 - All round-2 items are fixed. Carpets, moss carpets and ascending rails and powered rails in all 4 directions are refused, as are the door, lantern, wall sign and painting probes, and nothing is broken. The flood test goes red only with both mechanisms off. The planner rule is pinned at L2: a livelock when it is reverted. Short materials pause with "Needs N more dirt" in the main pass and in the check pass, with no gap left.
@@ -427,6 +443,13 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
 - Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
 - Next: M21 (Defence blueprints).
+
+## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
+- Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
+- Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
+- Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
+- Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
+- Next: M17 (Hunter) reuses AwayTrips.
 
 ## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
 - Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
