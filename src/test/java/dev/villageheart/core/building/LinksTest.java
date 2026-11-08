@@ -28,6 +28,13 @@ class LinksTest {
 		assertNull(Links.nearest(SITE, OW, List.of(), 48));
 	}
 
+	@Test void huntingGroundRangeIs40AndMineshaftRangeStays48() {
+		assertEquals(new Pos(40, 64, 0), Links.nearest(SITE, OW, List.of(c(40, 64, 0)), dev.villageheart.core.Balance.HUNTING_GROUND_LINK_RANGE));
+		assertNull(Links.nearest(SITE, OW, List.of(c(41, 64, 0)), dev.villageheart.core.Balance.HUNTING_GROUND_LINK_RANGE));
+		assertEquals(48, dev.villageheart.core.Balance.MINESHAFT_LINK_RANGE);
+		assertEquals(40, dev.villageheart.core.Balance.HUNTING_GROUND_LINK_RANGE);
+	}
+
 	@Test void otherDimensionIgnored() {
 		assertNull(Links.nearest(SITE, OW, List.of(new Candidate(new Pos(1, 64, 0), "minecraft:the_nether")), Integer.MAX_VALUE));
 	}

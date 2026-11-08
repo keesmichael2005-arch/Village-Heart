@@ -94,7 +94,11 @@ final class BuildingValidator {
 		}
 		if (survey.depth() != null) rt.shaftDeepest.put(record.marker(), survey.depth());
 		BuildingType parent = type.parent().orElseThrow();
-		int range = type == BuildingType.MINESHAFT ? Balance.MINESHAFT_LINK_RANGE : Integer.MAX_VALUE;
+		int range = switch (type) {
+			case MINESHAFT -> Balance.MINESHAFT_LINK_RANGE;
+			case HUNTING_GROUND -> Balance.HUNTING_GROUND_LINK_RANGE;
+			default -> Integer.MAX_VALUE;
+		};
 		List<Links.Candidate> candidates = new ArrayList<>();
 		for (BuildingRecord b : village.buildings()) {
 			if (b.typeId().equals(parent.id())) candidates.add(new Links.Candidate(new Pos(b.marker().x(), b.marker().y(), b.marker().z()), b.marker().dimension()));
