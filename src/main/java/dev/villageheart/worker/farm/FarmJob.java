@@ -126,7 +126,7 @@ public final class FarmJob {
 	/** Tests: every field cell counts as claimed by someone else (ripe crops the farmer may not touch). */
 	public static void setAllCellsTakenForTest(boolean on) { allCellsTaken = on; }
 
-	private static final long STALL_TICKS_DEFAULT = 6000;
+	private static final long STALL_TICKS_DEFAULT = 12000;
 	private static long stallTicks = STALL_TICKS_DEFAULT;
 
 	/** Tests shorten the watchdog; a value below 1 restores the default. */
