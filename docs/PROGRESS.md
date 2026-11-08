@@ -421,3 +421,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Next: the builder fixes items 1 and 2, then round 4.
 
 - M20 review round 3: waterlogged player blocks are left alone by the check pass and protected by the support check (`LiquidBlock` instead of "holds a fluid"); instant builder takes the material before it clears; "Needs materials" fallback; planner L1 case. See docs/plans/M20.md.
+
+## 2026-11-08: M20 verifier review r4: PASS (docs/reviews/M20-r4.md)
+- Both round-3 items are fixed (`LiquidBlock` only, in `BuildExecutor.cellState` and `SiteSupport.dependent`). The two new GameTests and the new L1 planner case each go red on the old code. M20 is ticked in ROADMAP.
+- Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
+- Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
+- Next: M21 (Defence blueprints).

@@ -157,9 +157,9 @@ from there instead of hard-coding them.
 - **L2**: a golem at 40% health → it walks to the Smithy and is above 90% after repair, with ingots consumed
 - **L2**: no vanilla golem spawns in the claim over 2 days with 10 gossiping villagers (vanilla would)
 
-## M20: Builder and blueprints (buildings)
+## M20: Builder and blueprints (buildings) ✅
 - Note (M24): gate starting a blueprint with the existing `Permission.START_BLUEPRINT` (Steward and up).
-- [ ] Blueprint data format in core. Builder's Table GUI, Blueprint item placement with particles and rotation, material reservation,
+- [x] Blueprint data format in core. Builder's Table GUI, Blueprint item placement with particles and rotation, material reservation,
       clearing natural blocks, layer-by-layer build. Small House, Storage Shed and Farm Plot
 - **L1**: blueprint parse, rotation (4 rotations), material list. A site overlap with a player room is refused
 - **L2**: Small House materials in Storage + builder → a **valid green House** within 2 days, with materials deducted exactly
