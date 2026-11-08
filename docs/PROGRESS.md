@@ -344,3 +344,9 @@ Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `tr
 - **Forced repro** (probe blocks the server channel's event loop 500 ms at each world close): without the mixin 2/2 red at the first close (leaked `set_time`); with it 2/2 green, 6 leaks cleared per run (up to 61 packets in `heartTabs`).
 - **Under load** (4 to 6 of my busy loops, load 8 to 19, other agents' Minecraft too): 10/10 consecutive green L4 runs, 0 invalid states, 0 leaks needed clearing (the quiesce removed the burst); 3 lost-wakeup rescues by the first mixin.
 - **Next:** a disconnect from a dedicated server (`MultiplayerClientTests`) is not covered by the mixin; not seen, and Fabric's 10 s would still report it.
+
+## 2026-11-08: l4-flake-2 verifier review r1: PASS (docs/reviews/l4flake2-r1.md)
+- Root cause confirmed in the Fabric 4.3.5, Minecraft 1.21.11 and Netty 4.2.7 `LocalChannel` sources. The reset point (after `isShutdown()`, i.e. the server thread is dead, and the client channel already closed) is safe and only clears counts that can never arrive. The mixin is not in the shipped jar.
+- Forced repro (my own probe, removed afterwards): red without the mixin (invalid state 10 s after the first close), green with it (7 of 10 closes cleared). The verify.sh gate fails when the mixin is not installed.
+- Under load (load 12 to 16): 6 of 6 L4 runs green, plus the full verify.sh green. One natural leak (1 packet) was cleared after `WorkerClientTests` killed 10 villagers.
+- Notes: `WorkerClientTests:122` and `LumberClientTests:109,174` kill villagers without quiescing (covered by the mixin; hygiene).
