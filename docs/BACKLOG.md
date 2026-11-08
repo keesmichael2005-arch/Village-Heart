@@ -130,3 +130,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] clearStrayFarmland discards every item entity; javadoc and TESTING say crop items only
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
+
+## From M11-r1
+- [ ] T-L2-10(d) deferred: no L2 test for a villager 81 blocks (or at the box corner 84.9) from the Heart not eating; the census is `world.VillageCensus` over `ClaimGeometry` (L1-tested)
+- [ ] T-L2-2 (`noFoodAllHungryNoDeaths`) only jumps dinner to dinner and never crosses dawn; M12's dawn wages need the plan's version (each round also crosses 23980)
+- [ ] `sum(deaths.cause.minecraft:starve) == 0` in `starter` can never fail (villagers take no hunger damage); the L2 full-health check is the real guard
+- [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
+- [ ] The site ramp (`StarterActions.ramp`) is 9 blocks wide: a `max_deviation` above 8 would leave a cliff again
