@@ -76,6 +76,7 @@ public final class Workers {
 		boolean attached = WorkerAttachments.isWorker(villager);
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager.getUUID());
+		dev.villageheart.worker.farm.FarmJob.forget(server, villager.getUUID());
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
 	}
@@ -116,6 +117,9 @@ public final class Workers {
 		if (status == null) TRIP_STATUS.remove(villager); else TRIP_STATUS.put(villager, status);
 	}
 
+	/** The result of the worker's last deposit trip (STORAGE_FULL, STORAGE_UNREACHABLE) or null. */
+	public static WorkerStatus tripStatus(UUID villager) { return TRIP_STATUS.get(villager); }
+
 	public static WorkerStatus status(MinecraftServer server, WorkerRecord record) {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
@@ -139,6 +143,7 @@ public final class Workers {
 		VillageClaims.data(server).update(s -> s.withoutWorker(villager));
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager);
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager);
+		dev.villageheart.worker.farm.FarmJob.forget(server, villager);
 		return true;
 	}
 

@@ -163,6 +163,7 @@ building behaves exactly as in vanilla.
 - **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
   wood ×1.0, stone ×1.25, iron ×1.5, diamond ×1.75 *(tunable)*. Tools lose durability as they are used.
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
+  The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
   ×1.0 / ×1.25 / ×1.5. Tier caps: Hamlet caps at level 1, Village at 2, Town at 3.
 - **Needs** (status icons on the Heart screen, not a mood number):
@@ -204,6 +205,22 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
 Works farmland within 24 blocks of the Farmhouse. It harvests **mature** wheat, carrots, potatoes and
 beetroots and replants from the yield. It composts surplus seeds into bone meal and uses the bone meal on
 young crops. It **does not make new fields** in v1: the player or a Builder's Farm Plot does that. No tool is needed (a hoe gives ×1.25).
+
+  Rules as built (M10): the work area is every farmland cell whose crop cell (the block above) lies within 24 blocks (horizontal, Euclidean,
+  inclusive) of the Farmhouse **composter** and within 8 blocks of it in height (the composter anchor and the height limit are additions to the
+  text above; a neighbour's field inside the area is worked too). Exactly four crops, matched by block id: wheat, carrots, potatoes (ripe at age
+  7) and beetroots (ripe at 3); torchflowers, pitcher plants, stems, berries and nether wart are never touched. One unit of work is one atomic
+  change of one cell: **harvest and replant happen in the same tick** (the seed comes out of the drops, so a full inventory cannot cost the
+  replant; the rest of the yield goes to the inventory, what does not fit is dropped and collected later). Units cost 20 ticks (harvest, bone
+  meal), 10 (plant, compost) at speed 1.0. Empty farmland is planted with the crop most common around it (ties: wheat, carrots, potatoes,
+  beetroots) from the worker's seeds or the Farmhouse chest; it never tills. **Composting is deterministic**: the first seed raises the
+  composter to level 1, every further seed adds 3 tenths of a level, so 21 seeds make one bone meal (the mean of vanilla's random composter); the
+  farmer takes the bone meal at READY. Seeds above 16 per kind (wheat and beetroot seeds only) are surplus; a farmer composts a batch of 8, or
+  anything left when there is nothing else to do. Bone meal goes to young crops, non-beetroot first, lowest age first, nearest the composter.
+  The farmer keeps one stack of each seed, 16 carrots and 16 potatoes for replanting, and all its bone meal; the rest of the harvest goes to
+  Storage. A farmer with a full Storage stops harvesting (planting, bone meal and composting go on). A **hoe** in the Farmhouse chest gives a flat
+  ×1.25 (any tier, 1 durability per harvest, wears out in the chest); without one the farmer works at ×1.0 and nothing is reported. Every
+  worker keeps up to 12 food points of bread, potatoes, carrots and beetroots (vanilla's breeding threshold, bread first) and hands in the rest.
 
 ### 5.3 Miner (Mine + Mineshaft, Stonecutter, *requires pickaxe*)
 It walks from the Mine to the Mineshaft and disappears inside. It reappears every **2 in-game hours**
