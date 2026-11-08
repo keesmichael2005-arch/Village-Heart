@@ -336,3 +336,17 @@ Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `tr
 - `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
 - marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
 - Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
+
+## 2026-11-07: M10 planned (planner): Farmer
+Plan: `docs/plans/M10.md` (13 steps). The farmer reuses M9's job toolkit (`core.job`, `CampTools`, `WalkTo`, `ItemPickup`, `WorkStats`, `JobBehaviours.keep`,
+`DepositTrip.wanted`) and M7's DepositTrip; it adds no second version of any of them and no saved data.
+- Own `FarmerWork` behaviour instead of vanilla `HarvestFarmland`/`UseBonemeal`/`WorkAtComposter` (verified: they need the vanilla FARMER profession,
+  `SECONDARY_JOB_SITE`/`JOB_SITE`, `mob_griefing`, look only at 3×3 with random picks, make bread). Vanilla static helpers are reused (`isMaxAge`,
+  `Block.getDrops`, `BoneMealItem.growCrop`, composter level events).
+- Crops by block id (torchflower extends `CropBlock`): wheat/carrots/potatoes max age 7, beetroots 3. Harvest + replant is one atomic tick (the seed is
+  taken from the drops first). Area: within 24 blocks (xz circle) of the composter, ±8 y. Deterministic composting (21 seeds per bone meal, vanilla's mean).
+  Hoe = flat ×1.25, no hoe ×1.0 (§5.2 over §4's ×0.5; M9's `ToolRequirement` gets a BONUS mode).
+- Changes M7: DepositTrip kept every food item forever (carrots/potatoes/beetroots would never reach Storage); now food is kept only up to 12 points.
+- L2 determinism: each farmer test has its own environment with `random_tick_speed 0` (verified: batches run sequentially, teardown resets the rule).
+Revised after a fresh critique (22 findings; 2 blockers fixed: a night-time control and wrong compost arithmetic; 1 refuted against the sources).
+Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is on dev). Top risk: dependency on unbuilt M9 code.
