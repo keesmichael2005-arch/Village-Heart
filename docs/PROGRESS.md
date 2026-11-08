@@ -542,3 +542,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
 - The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
 - WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
