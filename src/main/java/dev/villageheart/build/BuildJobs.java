@@ -127,13 +127,17 @@ public final class BuildJobs {
 			if (cs == CellState.BLOCKED) { stop = "blocked at " + s.pos(); break; }
 			if (cs == CellState.ENTITY) { stop = "entity in the way at " + s.pos(); break; }
 			if (cs == CellState.ALREADY_RIGHT) { cursor++; done++; continue; }
+			Material m = s.kind() == BuildPlan.Kind.CLEAR ? null : s.entry().material();
+			// like the builder: the material is taken first, so a missing one stops before the natural block is cleared (no hole)
+			ItemStack item = ItemStack.EMPTY;
+			if (m != null) {
+				item = withdraw(level, m, id);
+				if (item.isEmpty()) { stop = "needs " + m.name(); break; }
+			}
 			if (cs == CellState.CLEARABLE) {
 				for (ItemStack drop : BuildExecutor.clear(level, s.pos(), null)) store(level, s.pos(), drop);
 			}
 			if (s.kind() == BuildPlan.Kind.CLEAR) { cursor++; done++; continue; }
-			Material m = s.entry().material();
-			ItemStack item = withdraw(level, m, id);
-			if (item.isEmpty()) { stop = "needs " + m.name(); break; }
 			BuildExecutor.place(level, bp, pl, s, item.getItem(), null);
 			if (m.returns() != null) {
 				BuiltInRegistries.ITEM.getOptional(Identifier.parse(m.returns())).ifPresent(r -> store(level, s.pos(), new ItemStack(r)));

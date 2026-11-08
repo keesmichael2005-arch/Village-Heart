@@ -46,6 +46,20 @@ class BuilderPlannerTest {
 	}
 
 	@Test
+	void aNaturalBlockUnderAPlaceStepIsOnlyClearedWithTheMaterialInHand() {
+		// clear and place are one action, so without the material the builder fetches it (or waits), and never clears first
+		for (Kind kind : new Kind[] {Kind.PLACE, Kind.CHECK}) {
+			assertEquals(Type.FETCH, next(new Facts(true, false, kind, CellState.CLEARABLE, false, true, false, false, true, false)).type(), kind.name());
+			assertEquals(Type.YIELD, next(new Facts(true, false, kind, CellState.CLEARABLE, false, true, true, false, true, false)).type(), kind.name());
+			assertEquals(new Action(Type.WAIT, WaitReason.NEEDS_MATERIALS),
+					next(new Facts(true, false, kind, CellState.CLEARABLE, false, false, false, false, true, false)), kind.name());
+			assertEquals(Type.CLEAR, next(new Facts(true, false, kind, CellState.CLEARABLE, true, true, false, false, true, false)).type(), kind.name());
+		}
+		// a CLEAR step needs no material
+		assertEquals(Type.CLEAR, next(new Facts(true, false, Kind.CLEAR, CellState.CLEARABLE, false, false, false, false, true, false)).type());
+	}
+
+	@Test
 	void freeCellsCostNothing() {
 		assertEquals(Type.SKIP, next(new Facts(true, false, Kind.CLEAR, CellState.ALREADY_RIGHT, false, false, false, false, false, false)).type());
 		assertEquals(Type.SKIP, next(new Facts(true, false, Kind.CHECK, CellState.ALREADY_RIGHT, false, false, false, false, false, false)).type());

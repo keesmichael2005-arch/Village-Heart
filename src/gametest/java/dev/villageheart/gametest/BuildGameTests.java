@@ -1121,6 +1121,66 @@ public class BuildGameTests {
 		}).thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
+	/**
+	 * Review of M20 round 3: the check pass leaves a waterlogged block of a player alone (only a fluid BLOCK in a wrong cell is repaired): a
+	 * waterlogged chest with five diamonds and a waterlogged stair stand in wall cells of the House when the check pass runs.
+	 */
+	@GameTest(environment = "villageheart-gametest:build_waterlogged_check", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void checkPassLeavesWaterloggedPlayerBlocks(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.NONE);
+		BlockPos chest = BuildTestSupport.cell(h, bp, pl, 0, 2, 3), stairs = BuildTestSupport.cell(h, bp, pl, 0, 2, 2);
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
+			UUID id = BuildTestSupport.onlyBuild(h);
+			var server = h.getLevel().getServer();
+			var a = BuildJobs.advance(server, id, firstCheck(h));
+			h.assertTrue(!a.finished(), "every main step is done: " + a);
+			h.setBlock(chest, Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.WATERLOGGED, true));
+			h.assertTrue(h.getLevel().getBlockEntity(h.absolutePos(chest)) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity, "a chest block entity");
+			((net.minecraft.world.level.block.entity.ChestBlockEntity) h.getLevel().getBlockEntity(h.absolutePos(chest))).setItem(0, new ItemStack(Items.DIAMOND, 5));
+			h.setBlock(stairs, Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.StairBlock.WATERLOGGED, true));
+			var b = BuildJobs.advance(server, id, Integer.MAX_VALUE);
+			h.assertTrue(b.finished(), "the build finished: " + b);
+			h.assertTrue(h.getBlockState(chest).is(Blocks.CHEST) && h.getBlockState(chest).getValue(net.minecraft.world.level.block.ChestBlock.WATERLOGGED), "the waterlogged chest is untouched: " + h.getBlockState(chest));
+			var be = h.getLevel().getBlockEntity(h.absolutePos(chest));
+			h.assertTrue(be instanceof net.minecraft.world.level.block.entity.ChestBlockEntity c && c.getItem(0).is(Items.DIAMOND) && c.getItem(0).getCount() == 5, "with its five diamonds");
+			h.assertTrue(h.getBlockState(stairs).is(Blocks.OAK_STAIRS) && h.getBlockState(stairs).getValue(net.minecraft.world.level.block.StairBlock.WATERLOGGED), "the waterlogged stair is untouched: " + h.getBlockState(stairs));
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** A waterlogged sign attached after the confirm (a waterlogged block is not a fluid block): the builder stops at it and breaks nothing. */
+	@GameTest(environment = "villageheart-gametest:build_waterlogged_sign", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void waterloggedAttachmentAfterConfirmBlocksTheBuilder(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		BlockPos dirt = BuildTestSupport.cell(h, bp, pl, 3, 4, 3);
+		BlockPos sign = dirt.above();
+		Pos signAbs = BuildTestSupport.abs(h, sign);
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			h.setBlock(dirt, Blocks.DIRT);
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			h.setBlock(sign, Blocks.OAK_SIGN.defaultBlockState().setValue(net.minecraft.world.level.block.StandingSignBlock.WATERLOGGED, true));
+		}).thenWaitUntil(() -> {
+			var views = BuildSystem.views(h.getLevel().getServer());
+			h.assertTrue(!views.isEmpty(), "the build is listed");
+			var view = views.get(0);
+			h.assertTrue(view.status() == dev.villageheart.core.blueprint.BuildStatus.BLOCKED && view.line().english().equals("oak_sign in the way at " + signAbs),
+					"the build stops at the sign: " + view.status() + " " + view.line().english());
+		}).thenIdle(300).thenExecute(() -> {
+			h.assertTrue(h.getBlockState(sign).is(Blocks.OAK_SIGN), "the sign was never broken");
+			h.assertTrue(h.getBlockState(dirt).is(Blocks.DIRT), "and neither was the dirt under it");
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-14 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:build_entity", structure = YARD, skyAccess = true, maxTicks = 20000)

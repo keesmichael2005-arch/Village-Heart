@@ -204,6 +204,7 @@
 	"build.villageheart.blueprint.small_house": "Small House",
 	"build.villageheart.blueprint.storage_shed": "Storage Shed",
 	"build.villageheart.blueprint.farm_plot": "Farm Plot",
+	"build.villageheart.needs_unknown": "Needs materials",
 	"build.villageheart.site.rank": "Only a Steward or the Owner can start a blueprint",
 	"build.villageheart.site.tier": "Requires Village tier",
 	"build.villageheart.site.dimension": "Not in this village's dimension",

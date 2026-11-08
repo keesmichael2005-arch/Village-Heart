@@ -15,6 +15,7 @@ import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.material.FluidState;
@@ -40,7 +41,7 @@ public final class SiteSupport {
 			BlockPos np = hole.relative(d);
 			if (touched.contains(Pos.pack(np.getX(), np.getY(), np.getZ()))) continue;
 			BlockState ns = BuildExecutor.read(level, new Pos(np.getX(), np.getY(), np.getZ()));
-			if (ns == null || ns.isAir() || !ns.getFluidState().isEmpty() || LevelSiteView.clearable(ns)) continue;
+			if (ns == null || ns.isAir() || ns.getBlock() instanceof LiquidBlock || LevelSiteView.clearable(ns)) continue;
 			boolean survives;
 			try {
 				survives = ns.canSurvive(ghost, np);

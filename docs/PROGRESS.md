@@ -420,3 +420,4 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - M10 merged cleanly (all conflicts kept both sides). Full L2: 10 of 11 green. The one red was M9's `fellResumesAfterInterrupt` (known signature). verify.sh green.
 - Next: the builder fixes items 1 and 2, then round 4.
 
+- M20 review round 3: waterlogged player blocks are left alone by the check pass and protected by the support check (`LiquidBlock` instead of "holds a fluid"); instant builder takes the material before it clears; "Needs materials" fallback; planner L1 case. See docs/plans/M20.md.

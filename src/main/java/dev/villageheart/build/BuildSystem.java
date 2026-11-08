@@ -236,7 +236,9 @@ public final class BuildSystem implements VillageSystem {
 		TextLine line;
 		if (pause != null && now - pause.at() <= PAUSE_FRESH_TICKS && builder != null) {
 			status = pause.status();
-			line = status == BuildStatus.NEEDS_MATERIALS && !missing.isEmpty() ? missing.get(0) : BuildTexts.status(status, pause.args());
+			line = status == BuildStatus.NEEDS_MATERIALS && !missing.isEmpty() ? missing.get(0)
+					: status == BuildStatus.NEEDS_MATERIALS && pause.args().size() < 2 ? new TextLine("build.villageheart.needs_unknown", "Needs materials")
+					: BuildTexts.status(status, pause.args());
 		} else if (builder == null) {
 			status = BuildStatus.WAITING_FOR_BUILDER;
 			line = BuildTexts.status(status, List.of());
