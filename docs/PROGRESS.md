@@ -655,3 +655,14 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
 - ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
 - Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.
+## 2026-11-07: M13 plan written (docs/plans/M13.md)
+12-step plan for the Cook / Kitchen, revised after a fresh critique (24 findings: 22 taken, 2 refuted against dev code). Decisions: a mod-side
+timed conversion (125 ticks per output, M9 `WorkClock`) at the cook's own smoker instead of the vanilla smoker block entity (the smoker only
+takes smoking recipes, its pace is fixed, its slots are open to players); visuals by setting `LIT` (vanilla `animateTick` adds smoke and sound,
+`serverTick` leaves an external `LIT` alone, verified in bytecode) plus a clean-up sweep through an accessor mixin. Every recipe needs fuel;
+fuel = heat (coal/charcoal 1600, logs 300, 200 per item) in a saved per-smoker bank. Inputs and fuel are reserved under the cook's UUID and
+fetched from the Storage that holds them; outputs are kept until the batch ends, then deposited; no new work after 10500 so food is in Storage
+before dinner. L3: `starter_cook` = `starter` + a wheat field + a cook + 32 coal, compared with a committed `sim/baselines/starter.json`
+through a new `@base` assertion ref (staleness guarded by a canonical scenario hash).
+Next: BUILD M13 after M9, M10 and M11 are merged (steps 1-3 are pure core and can start once M9 step 1 and M11 step 1 are on dev).
+Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Blockers: none.
