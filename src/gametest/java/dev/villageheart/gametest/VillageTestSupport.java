@@ -56,6 +56,7 @@ public final class VillageTestSupport {
 		dev.villageheart.food.FoodStats.reset();
 		dev.villageheart.needs.Housing.reset();
 		dev.villageheart.worker.LevelUpFeedback.resetForTests();
+		dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
 		dev.villageheart.worker.WorkXp.clear();
 		dev.villageheart.worker.job.AwayTrips.clearForTests();
 		dev.villageheart.worker.mine.MinerJob.clearForTests();

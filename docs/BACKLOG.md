@@ -2,8 +2,14 @@
 
 ## Priority (flaky infrastructure)
 - [ ] **M16 stray-item flake clue (M15-r1):** in `minerHaulsFortyCobblestone`, the stray item was a STONE PICKAXE at age 0 at tick 11007 (just after the WORK window ends at 11000). Likely a tool returned or dropped at day end (CampTools lease release / dropPending?) instead of going back into the Mine chest. Root-cause it
-- [ ] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+- [x] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+  - **Fixed (backlog-2).** A gameplay gap: the fired first lumberjack (a plain villager now) idled in front of the camp door; the second one stood in the doorway, its jam rule "stepped back" to its own cell (the idler has the lower id) and after 201 ticks gave the open oak up for 6000 ticks. `WalkTo` now asks an idle villager within a block to step aside (a vanilla WALK_TARGET away from it). Deterministic test `idlerInTheDoorwayStepsAside` (red without the nudge, with the natural signature).
 - [ ] **M9 `workerOpensDoors` slow outliers** (456 vs 400 once; 301 once): add walk-time logging and root-cause it
+  - backlog-2: walk-time logging added (`[m7] workerOpensDoors: at the job block after N ticks; trace [...]`, every 20 ticks: position, door, activity, WALK_TARGET/PATH/CANT_REACH, mobs within 8; also in the failure text). Not root-caused: 0 outliers in 9 full L2 runs (5 on origin/m11 + backlog-2) and 8 isolated runs, all 64 ticks from the start of the walk. Leave open until a slow run's trace shows the cause.
+- [x] **M9 `sixOaksTwoDays` "oak N ... not replanted within a day"** (several full verify runs; ~2 of 5 on origin/m11)
+  - **Fixed (backlog-2).** Oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`: alone the test always sees the same window (9 saplings, needs 6), in a full run earlier tests shift it, and 2-5% of this world's 250-300-roll windows hold fewer than 6 saplings. Game change: a felled tree gives its lumberjack the saplings its own stump still lacks (`ReplantRules.cuttings`). Test `stumpsReplantedWhenLeavesDropNoSapling` (sequence reset to a salt with no leaf sapling).
+- [x] **M17 `farHunterWalksViaLodge` "the far spot is not entity-ticking yet on tick 2602"** (M21-r1)
+  - **Fixed (backlog-2).** Not load: the test forced only the chunks of the strip's two corners; at 9 of 256 placements (mod 16) the far spot's chunk is neither and stays block-ticking. It now forces every chunk the strip touches and asserts the far spot's chunk is one of them.
 - [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
   - **Fixed (branch l4-flake).** Root cause is in Fabric, not our tests: a lost-wakeup race in `NetworkSynchronizer.waitForPacketHandlers` (predicate tested outside the lock, then `await(10 s)` with no re-test). The server thread's first tick of a new world misses the signal for the client's login packet and sleeps 10 s, which the synchronizer reports as invalid. Fixed by a gametest-only mixin that re-tests before parking and parks in 20 ms slices (no retry). See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 
@@ -225,3 +231,20 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
 - [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
 - [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
+## From M12-r2
+- [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
+- [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
+
+## From backlog-2-r2
+- [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
+- [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
+
+## From backlog-2-r3
+- [ ] `WalkTo.lastPath` is not cleared on `retarget()` or arrival: a walker whose navigation is idle reads the cells ahead of a stale path until it plans again (a stray nudge of a plain villager at most)
+
+## From tool-speed-r1
+- [ ] `ToolAllocation` ranks tools by enum order: gold ranks below iron although gold is now the fastest (but 32 durability) — decide the ranking rule
+- [ ] A miner underground during the mod update keeps progress on the old 2500-unit scale (one longer haul; harmless)
+- [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
+- [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
+- [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×

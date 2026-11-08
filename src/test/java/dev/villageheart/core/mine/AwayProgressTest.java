@@ -19,16 +19,16 @@ class AwayProgressTest {
 
 	@Test
 	void stoneAtLevelOneIsTwoThousandTicks() {
-		double[] r = firstHaul(1.25);
+		double[] r = firstHaul(2.0); // stone pickaxe, x2.0 (vanilla 4 / 2)
 		assertEquals(100, r[0]);
 		assertEquals(0.0, r[1], 1e-9);
 	}
 
 	@Test
 	void woodTakesLongerAndIronIsFasterWithTheRemainderCarried() {
-		assertEquals(125, firstHaul(1.0)[0]);
-		double[] iron = firstHaul(1.5);
-		assertEquals(84, iron[0]); // 1680 ticks
+		assertEquals(200, firstHaul(1.0)[0]); // wood: 4000 ticks (stone 2000)
+		double[] iron = firstHaul(3.0);
+		assertEquals(67, iron[0]); // 1340 ticks: 4000 / 60 per step = 66.7
 		assertEquals(20.0, iron[1], 1e-9);
 	}
 
@@ -36,12 +36,12 @@ class AwayProgressTest {
 	void remaindersAreNeverLostOverManyHauls() {
 		AwayProgress p = AwayProgress.ZERO;
 		int hauls = 0;
-		for (int i = 0; i < 25_000; i++) { // 500 000 ticks at 1.5 = 750 000 units = 300 hauls
-			AwayProgress.Step s = p.add(20, 1.5);
+		for (int i = 0; i < 25_000; i++) { // 500 000 ticks at 3.0 = 1 500 000 units = 375 hauls
+			AwayProgress.Step s = p.add(20, 3.0);
 			hauls += s.hauls();
 			p = s.next();
 		}
-		assertEquals(300, hauls);
+		assertEquals(375, hauls);
 		assertEquals(0.0, p.units(), 1e-6);
 	}
 
@@ -104,10 +104,10 @@ class AwayProgressTest {
 
 	@Test
 	void theTwoArgumentMethodsStillUseTheMinersNumbers() {
-		AwayProgress.Step s = new AwayProgress(2490).add(20, 1.0);
+		AwayProgress.Step s = new AwayProgress(3990).add(20, 1.0);
 		assertEquals(1, s.hauls());
 		assertEquals(10.0, s.next().units(), 1e-9);
-		assertEquals(0, new AwayProgress(2400).add(20, 1.0).hauls());
+		assertEquals(0, new AwayProgress(3900).add(20, 1.0).hauls());
 	}
 
 	@Test

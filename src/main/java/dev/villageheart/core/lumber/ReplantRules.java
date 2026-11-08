@@ -26,6 +26,18 @@ public final class ReplantRules {
 		return now - since >= (long) Balance.REPLANT_EXPIRY_DAYS * Balance.DAY_TICKS;
 	}
 
+	/**
+	 * Saplings a felled tree yields to its lumberjack besides its leaf drops: as many as its own stump still lacks, given what the open
+	 * replant spots of that sapling at the camp need (this tree's spots included) and what the worker and the camp chests hold. Leaf
+	 * drops are random (oak leaves 5%, from a per-world loot sequence): six small oaks give fewer than six saplings in a work day in
+	 * about 2-5% of windows of that sequence, which would leave a stump bare for days. With this a felled stump is never short of its
+	 * sapling, and the leaf drops are the surplus (kept up to the reserve, the rest handed in).
+	 */
+	public static int cuttings(int stumpCells, int neededByOpenSpots, int available) {
+		if (stumpCells < 1) throw new IllegalArgumentException("a tree has at least one base cell");
+		return Math.max(0, Math.min(stumpCells, neededByOpenSpots - Math.max(0, available)));
+	}
+
 	/** How many of an item the worker keeps (and does not deposit): what open spots need plus the reserve, at most what it has. */
 	public static int keepCount(int have, int neededByOpenSpots) {
 		return Math.min(have, Math.max(0, neededByOpenSpots) + Balance.SAPLING_RESERVE);

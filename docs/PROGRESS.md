@@ -569,6 +569,15 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 ## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
 - `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
 - Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
+
+## 2026-11-08: backlog-2 (test hardening: GameTest flakes), branch backlog-2
+- **M9 `sixOaksTwoDays`** (not replanted within a day): oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`. Alone the test always gets the same 9 saplings (needs 6); in a full run the earlier tests shift the window, and 2-5% of this world's 250-300-roll windows hold fewer than 6 (min 3). Forced repro: sequence salt 553 + rule off gives the exact "oak 2 went at tick 400 ... on tick 50002". Game fix: a felled tree yields the saplings its own stump still lacks (`ReplantRules.cuttings`, `LumberJob.giveCuttings`). New L2 `stumpsReplantedWhenLeavesDropNoSapling`, L1 cuttings test, `fellsOneOakWhole` asserts no cutting with a sapling on hand.
+- **M9 `fellResumesAfterInterrupt`** (second oak, "no movement for 201 ticks, 21.9 blocks" in the camp doorway): the fired worker idled outside the door; the jam rule "stepped back" to the worker's own cell. Game fix: `WalkTo` asks an idle villager within a block to step aside. New L2 `idlerInTheDoorwayStepsAside` (red without the nudge with the natural signature).
+- **M17 `farHunterWalksViaLodge`** (not entity-ticking on tick 2602): not load. Only the strip's two corner chunks were forced; at 9 of 256 placements the far spot's chunk was neither (the failing run's origin is one). The test forces every chunk the strip touches and asserts it.
+- **M7 `workerOpensDoors`**: walk-time logging + trace added; no outlier in 9 full + 8 isolated runs (all 64 ticks), not root-caused, BACKLOG left open.
+- Runs: full L2 green in 4 of 4 on backlog-2 and 5 of 5 on origin/m11 merged with backlog-2 (the coordinator saw 2 of 5 red on origin/m11), under load 2-10.
+- Next: review. No blockers.
+
 ## 2026-11-08: M21 review round 1 (verifier): PASS
 - Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
 - Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
@@ -618,3 +627,31 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 ## 2026-11-08: M11 round-4 fixes (builder, finisher)
 - Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
 - Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
+
+## 2026-11-08: backlog-2 review round 2 (verifier): FAIL
+- `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
+- Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
+- Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.
+## 2026-11-09: tool-speed (builder)
+- Human decision: tool work speed follows vanilla mining speeds. `Balance.TOOL_SPEED` is now derived from `VANILLA_TOOL_SPEED` {wood 2, stone 4, copper 5, gold 12, iron 6, diamond 8, netherite 9} / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5 (gold was 1.0, a deliberate change).
+- Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
+- ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
+- Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.

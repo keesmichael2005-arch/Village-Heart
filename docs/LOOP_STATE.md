@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 | M15, M17(+xp), M21 merged | M11 r3 FAIL -> same builder fixing | M12 VERIFY r1 (m12 @69321c9, on m11 base) | backlog-2 r1 FAIL (step-aside nudge misses 2-block jams, nudges busy workers) -> same builder fixing | M19a plan ready (m19a-plan 40a71e0) | M19 plan r2 ready (c69a1ca) | QUEUED: tool-speed after backlog-2 merges, then M19a build (needs M19 plan r3 note: shared core.gear) | plans ready: M12 M13 M14 M18 M19 M22 M23 M25 M26 (wait on M11)"
+current: "run 2 | M15, M17(+xp), M21 merged | M11 VERIFY r5 (m11 @8496f82: sim area 13x13, not_ticking metric, nets removed; 6/6 starter passes) | M12 PASS r2 (m12 @bf62640) — HOLD: merge after M11 passes (contains m11 @27e087d; re-merge newer m11 first) | backlog-2 + tool-speed MERGED | M19a BUILD (m19a) | M13 BUILD (m13, on m12+m11 base) | M19 plan r3 ready (a193e67; hard dep M19a; no critique run for r3 — verifier to scrutinise) | plans ready: M12 M13 M14 M18 M19 M22 M23 M25 M26 (wait on M11)"
 blocked: []
 decisions_by_human:
   - "2026-11-09: v1.0 gate '2 players' = M24's 1 real client + 1 server-side FakePlayer test. ACCEPTED"
