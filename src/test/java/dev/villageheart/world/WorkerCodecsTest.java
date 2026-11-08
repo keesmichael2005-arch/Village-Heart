@@ -46,6 +46,21 @@ class WorkerCodecsTest {
 	}
 
 	@Test
+	void levelAndXpAboveTheTableAreClamped() {
+		String base = "\"building\":" + LOC + ",\"job_block\":" + LOC;
+		WorkerData a = parse("{\"job\":\"farmer\"," + base + ",\"level\":7,\"xp\":10000}").getOrThrow();
+		assertEquals(3, a.level());
+		assertEquals(300, a.xp());
+		WorkerData b = parse("{\"job\":\"farmer\"," + base + ",\"level\":2,\"xp\":150}").getOrThrow();
+		assertEquals(2, b.level());
+		assertEquals(150, b.xp());
+		assertEquals(b, WorkerCodecs.WORKER_DATA.parse(JsonOps.INSTANCE, enc(b)).getOrThrow());
+		WorkerData c = parse("{\"job\":\"farmer\"," + base + "}").getOrThrow();
+		assertEquals(1, c.level());
+		assertEquals(0, c.xp());
+	}
+
+	@Test
 	void badValuesAreErrorsNotExceptions() {
 		String base = "\"building\":" + LOC + ",\"job_block\":" + LOC;
 		assertTrue(parse("{\"job\":\"farmer\"," + base + ",\"level\":0}").result().isEmpty());

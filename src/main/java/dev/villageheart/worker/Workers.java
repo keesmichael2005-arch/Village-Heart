@@ -4,6 +4,7 @@ import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
+import dev.villageheart.core.job.XpChange;
 import dev.villageheart.core.worker.HireDecision;
 import dev.villageheart.core.worker.HireRefusal;
 import dev.villageheart.core.worker.JobSlots;
@@ -11,8 +12,16 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.world.VillageClaims;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.UUID;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -37,10 +46,19 @@ public final class Workers {
 	}
 
 	/** The loaded level named by a stored location, or null. Never loads anything. */
-	public static net.minecraft.server.level.ServerLevel levelOf(net.minecraft.server.MinecraftServer server, dev.villageheart.core.HeartLocation loc) {
-		return server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
-				net.minecraft.resources.Identifier.parse(loc.dimension())));
+	public static ServerLevel levelOf(MinecraftServer server, HeartLocation loc) {
+		return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(loc.dimension())));
 	}
+
+	/**
+	 * Adds XP to a worker (M15): the level follows the XP within the village tier's cap (XP beyond the cap is banked), the vanilla level
+	 * badge follows the level, and {@link WorkerLevels} listeners hear a level-up or a capped notice. Empty for a non-worker or with no
+	 * village; {@code amount} 0 changes nothing. Server thread only. Jobs call {@link WorkXp#award} instead.
+	 */
+	public static Optional<XpChange> addXp(Villager villager, int amount) { return WorkXp.addXp(villager, amount); }
+
+	/** Sets the level of a worker (XP unchanged) and its badge; no listeners. For tests and admin writes: levels are earned through {@link #addXp}. */
+	public static void setLevel(MinecraftServer server, Villager villager, int level) { WorkXp.setLevel(villager, level); }
 
 	/**
 	 * Hires {@code entity} (a command can name anything) for {@code job}. Refusals in order: no village, not a villager (or dead),
@@ -75,6 +93,7 @@ public final class Workers {
 		if (registered) VillageClaims.data(server).update(s -> s.withoutWorker(villager.getUUID()));
 		boolean attached = WorkerAttachments.isWorker(villager);
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
+		WorkXp.forget(villager.getUUID());
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager.getUUID());
 		dev.villageheart.build.BuildJobs.onWorkerRemoved(server, villager.getUUID(), villager);
 		dev.villageheart.worker.farm.FarmJob.forget(server, villager.getUUID());
@@ -102,7 +121,7 @@ public final class Workers {
 		}
 	}
 
-	private static final java.util.Set<Villager> TRIPS = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+	private static final Set<Villager> TRIPS = Collections.newSetFromMap(new WeakHashMap<>());
 
 	/** True while a deposit trip runs for this worker: nothing else may take its walk target, and no second trip may start. */
 	public static boolean tripRunning(Villager v) { return TRIPS.contains(v); }
@@ -111,7 +130,7 @@ public final class Workers {
 		if (running) TRIPS.add(v); else TRIPS.remove(v);
 	}
 
-	private static final java.util.Map<UUID, WorkerStatus> TRIP_STATUS = new java.util.HashMap<>();
+	private static final Map<UUID, WorkerStatus> TRIP_STATUS = new HashMap<>();
 
 	/** Transient result of the worker's last deposit trip (null clears it). Not saved. */
 	static void setTripStatus(UUID villager, WorkerStatus status) {
@@ -143,6 +162,7 @@ public final class Workers {
 		if (VillageClaims.current(server).flatMap(v -> v.worker(villager)).isEmpty()) return false;
 		VillageClaims.data(server).update(s -> s.withoutWorker(villager));
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager);
+		WorkXp.forget(villager);
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager);
 		dev.villageheart.build.BuildJobs.onWorkerRemoved(server, villager, null);
 		dev.villageheart.worker.farm.FarmJob.forget(server, villager);
@@ -162,7 +182,7 @@ public final class Workers {
 		if (villager.isTrading()) villager.setTradingPlayer(null);
 		villager.setAttached(WorkerAttachments.WORKER, data);
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
-		villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.holder(data.job())).withLevel(1));
+		villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.holder(data.job())).withLevel(Math.max(1, data.level())));
 		villager.setVillagerXp(0);
 		villager.refreshBrain(level);
 	}
