@@ -315,3 +315,16 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
   Finding: a fake player on an `EmbeddedChannel` breaks Fabric's `NetworkSynchronizer` (packets never "handled"); its connection must drop packets.
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
+
+### M9 review r1 fixes (builder)
+Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `treeTasks` as its last component next to M24's `known`; codec and fabric.mod.json merged).
+1. **False "cannot reach the tree" (roots found, three of them, none was the bound):**
+   - `WalkTo`'s give-up clocks ran while the worker stood at the tree chopping (a 40-log tree takes 1600 ticks): the first step away (a deposit trip, a push) read as an 800-tick walk. They now restart whenever the worker is at its spot, and after any gap in ticking.
+   - Vanilla replaces the navigation's path when a block on it changes (a door opens), recomputing with the villager's 16-block range; the new path led to the far corner of the yard (a 28-block detour and back, 300-600 ticks). `WalkTo` notices a path that is not its own and plans the long one again at once (the trace shows it about 3 times per walk through a door).
+   - The yard of a test is not cleared when the structure is placed (it is one air block): the glass box of `radiusAndUnreachable` and the rooms of other tests stayed and walled off trees of the next test that used the same place. `sweepStrayTrees` now empties the yard first.
+   - The planner started no new tree while a drop was waiting; with the leaves of the day's trees dropping, `oddShapesFelledWhole` never got to its 40-log dark oak before the cutoff. Trees now come before drops while a new fell is allowed (L1 `rows5to8_replantBeforeAFellBeforeCollect`).
+   - New guard: every "cannot reach" verdict is recorded (`LumberRuntime.giveUps`) and the open-yard tests fail on one (`assertNoGiveUps`; `sixOaksTwoDays` only for the six original trees, a regrown canopy can wall off its own trunk).
+   - Evidence: 12 consecutive full `./gradlew --no-daemon runGameTest` runs on the merged code, all 139 tests passed. Before the last fix 1 in 4 to 1 in 12 runs still failed (pace/fell bounds, six oaks), each with a traced cause above.
+2. **"Needs axe" on the Villagers tab:** `ActivityKind` has `NEEDS_TOOL` and `NO_WORK`; `HeartFacts` maps them; `HeartScreen` renders `HeartTexts.activityKey(activity, jobId)` ("Needs axe", "No trees within 32 blocks", red for a missing tool). One set of words: M9's `status.villageheart.*` keys are gone, `WorkerStatusText` now returns the `gui.villageheart.heart.activity.*` keys. The job column of the row is wider (the name column narrower): "Lumberjack L1" was cut off. L2: `noAxeNoLogs` asserts the snapshot row ("Needs axe"). L4: `villagers_tab_needs_axe` (looked at).
+3. Also: `DepositTrip.start` erases a left-over walk target; the felling shot shows the stump with its sapling.
+
