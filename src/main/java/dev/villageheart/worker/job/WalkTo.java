@@ -217,21 +217,26 @@ public final class WalkTo {
 			// idle villager outside a door makes a worker give up a tree in the open: backlog-2). Of two walkers, the one with the higher id
 			// steps back along its own path and waits, so the other one gets through; the one with the lower id just goes on. Moving back
 			// counts as moving for the stall rule.
-			jamAnchor = null;
 			Path cur = nav.getPath();
 			// also once the navigation gave up next to a standing villager: then the last path planned here shows the way
 			Villager idle = idleBlocker(v, cur != null ? cur : lastPath, cur != null);
 			if (idle != null && stepAside(idle, v)) {
+				jamAnchor = null;
 				jamAt = now;
 				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: asks the idle villager {} at {} to step aside", v.getId(), now,
 						v.blockPosition(), idle.getId(), idle.blockPosition());
-			} else if (!nav.isDone() && cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+			} else if (nav.isDone()) {
+				// nobody to ask and no live path: the jam clock keeps running, so the two-walker rule below acts as soon as a path is
+				// planned again (as before backlog-2: two miners or lumberjacks at one spot must not lose up to a jam period per attempt)
+			} else if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
+				jamAnchor = null;
 				var back = cur.getNode(Math.max(0, cur.getNextNodeIndex() - 4)).asBlockPos();
 				nav.moveTo(back.getX() + 0.5, back.getY(), back.getZ() + 0.5, SPEED);
 				mine = nav.getPath();
 				nextPathAt = now + 30 + v.getRandom().nextInt(30);
 				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: steps back to {}", v.getId(), now, v.blockPosition(), back);
 			} else {
+				jamAnchor = null;
 				jamAt = now;
 			}
 		}
