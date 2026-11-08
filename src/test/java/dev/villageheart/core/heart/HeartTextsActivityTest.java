@@ -16,16 +16,24 @@ class HeartTextsActivityTest {
 
 	@Test
 	void otherJobsFallBackToTheGenericWords() {
-		assertEquals(HeartTexts.key("activity.away_working"), HeartTexts.activityKey(ActivityKind.AWAY_WORKING, "hunter"));
-		assertEquals("Away (working)", text(ActivityKind.AWAY_WORKING, "hunter"));
-		assertEquals("Can't reach its site", text(ActivityKind.SITE_UNREACHABLE, "hunter"));
+		assertEquals(HeartTexts.key("activity.away_working"), HeartTexts.activityKey(ActivityKind.AWAY_WORKING, "unlisted_job"));
+		assertEquals("Away (working)", text(ActivityKind.AWAY_WORKING, "unlisted_job"));
+		assertEquals("Can't reach its site", text(ActivityKind.SITE_UNREACHABLE, "unlisted_job"));
+	}
+
+	@Test
+	void theHunterHasItsOwnWords() {
+		assertEquals("Away (hunting)", text(ActivityKind.AWAY_WORKING, "hunter"));
+		assertEquals("Can't reach the Hunting Ground", text(ActivityKind.SITE_UNREACHABLE, "hunter"));
+		assertEquals("No valid Hunting Ground", text(ActivityKind.NO_WORK, "hunter"));
+		assertEquals("Needs bow or sword", text(ActivityKind.NEEDS_TOOL, "hunter"));
 	}
 
 	@Test
 	void siteUnreachableAndNoWorkForTheMiner() {
 		assertEquals("Can't reach the Mineshaft", text(ActivityKind.SITE_UNREACHABLE, "miner"));
 		assertEquals("No valid Mineshaft", text(ActivityKind.NO_WORK, "miner"));
-		assertEquals("Nothing to do", text(ActivityKind.NO_WORK, "hunter"));
+		assertEquals("Nothing to do", text(ActivityKind.NO_WORK, "unlisted_job"));
 		assertEquals("Needs pickaxe", text(ActivityKind.NEEDS_TOOL, "miner"));
 	}
 

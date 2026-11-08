@@ -68,5 +68,6 @@ final class BuildingRuntime {
 		verdicts.remove(loc);
 		shaftDeepest.remove(loc);
 		sharedWith.remove(loc);
+		dev.villageheart.worker.hunt.HunterRuntime.dropWeights(loc);
 	}
 }

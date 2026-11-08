@@ -226,7 +226,8 @@ public final class AwayTrips {
 				v.spawnAtLocation(level, stack);
 			}
 		}
-		set(v, AwayState.NONE.withRolls(st.rolls()).withLastReason(st.lastReason()));
+		// the daily trip counter is kept too (M17): a hunter fired and re-hired the same day does not get its trips back
+		set(v, AwayState.NONE.withRolls(st.rolls()).withLastReason(st.lastReason()).withDone(st.doneDay(), st.doneToday()));
 		return true;
 	}
 

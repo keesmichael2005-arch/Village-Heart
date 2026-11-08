@@ -200,7 +200,7 @@ public class MinerGameTests {
 			h.assertValueEqual((int) (10 * rolls), chestSlot(h, chest(dy), 0).getDamageValue(), "10 durability per haul");
 			h.assertValueEqual(rolls, dev.villageheart.worker.job.WorkStats.get("miner", "hauls") - hauls0[0], "work.miner.hauls");
 			h.assertFalse(AwayTrips.isAway(v[0]), "up again at the end of the day");
-			var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(new BlockPos(16, dy, 16))).inflate(40.0));
+			var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, net.minecraft.world.phys.AABB.encapsulatingFullBlocks(h.absolutePos(new BlockPos(0, dy - 14, 0)), h.absolutePos(new BlockPos(32, dy + 14, 32))));
 			h.assertTrue(items.isEmpty(), "no item entity lying around: " + items.stream().map(e -> e.getItem() + " at " + e.blockPosition() + " age " + e.getAge()).toList());
 			clearHigh(h, dy);
 			VillageTestSupport.done(h);

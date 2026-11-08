@@ -88,6 +88,7 @@ final class BuildingValidator {
 
 	private static Verdict siteVerdict(ServerLevel level, VillageState village, BuildingRuntime rt, BuildingRecord record,
 			BuildingType type, Pos here, @Nullable Reason claimArea) {
+		if (type == BuildingType.HUNTING_GROUND) dev.villageheart.worker.hunt.HunterRuntime.dropWeights(record.marker()); // biomes may have changed (M17)
 		SiteSurveys.Survey survey = SiteSurveys.survey(level, type, here, homeRooms(village, rt));
 		if (survey.notLoaded() != null) {
 			return Verdict.deferred(Reason.notLoaded(new RoomProblem(RoomProblem.Kind.NOT_LOADED, survey.notLoaded()).message()));
