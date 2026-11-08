@@ -152,4 +152,3 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Falling non-natural blocks (anvil, concrete powder) above a cleared cell are untested
 - [ ] BuildSystem.refresh returns early with no builds, so it never releases orphaned reservations (defensive)
 - [ ] Known gap (documented): player-placed dirt/stone/pumpkins/melons outside rooms look natural and can be cleared
-- [ ] `FarmJob` idle walk back to the job block has no legs like `LumberJob.idle` (`core/worker/ReturnLeg`): an idle farmer that drifts past the path range (48 blocks) cannot return (M11 r2)

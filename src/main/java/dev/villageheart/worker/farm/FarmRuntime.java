@@ -144,6 +144,8 @@ public final class FarmRuntime {
 		FarmerPlanner.Decision decision;
 		FarmerPlanner.Action action = FarmerPlanner.Action.IDLE_AT_FARMHOUSE;
 		long idleBackoffUntil;
+		/** The point an idle worker is walking to: its job block, or the end of a leg of the way back when it is far from it. */
+		BlockPos idleGoal;
 		final WalkTo walk = new WalkTo();
 		WorkClock clock = new WorkClock(1);
 		@Nullable Pos clockKey;

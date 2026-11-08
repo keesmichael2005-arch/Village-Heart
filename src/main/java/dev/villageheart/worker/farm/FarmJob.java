@@ -409,7 +409,21 @@ public final class FarmJob {
 			ws.walk.release(v);
 			return;
 		}
-		if (!ws.walk.active() || !ws.walk.target().equals(jb)) ws.walk.begin(jb, Balance.JOB_BLOCK_REACH, now);
+		BlockPos goal = jb;
+		if (ws.idleGoal != null && ws.walk.active() && ws.walk.target().equals(ws.idleGoal) && WalkTo.distance(v, ws.idleGoal) > 3.5) {
+			goal = ws.idleGoal; // finish the leg
+		} else {
+			double[] leg = dev.villageheart.core.worker.ReturnLeg.next(v.getX(), v.getZ(), jb.getX() + 0.5, jb.getZ() + 0.5);
+			if (leg[0] != jb.getX() + 0.5 || leg[1] != jb.getZ() + 0.5) {
+				BlockPos column = BlockPos.containing(leg[0], v.getY(), leg[1]);
+				if (level.hasChunkAt(column)) {
+					goal = new BlockPos(column.getX(), level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+							column.getX(), column.getZ()), column.getZ());
+				}
+			}
+		}
+		ws.idleGoal = goal;
+		if (!ws.walk.active() || !ws.walk.target().equals(goal)) ws.walk.begin(goal, goal.equals(jb) ? Balance.JOB_BLOCK_REACH : 3.0, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();
 			ws.idleBackoffUntil = now + 100;

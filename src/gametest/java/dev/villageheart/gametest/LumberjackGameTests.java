@@ -1046,4 +1046,34 @@ public class LumberjackGameTests {
 			end(h);
 		});
 	}
+
+	/**
+	 * Review of M11 round 2: a trunk that grows into the cell a worker stands in (a sapling it stood in) leaves it inside a block, and every walk
+	 * fails. The worker system moves any worker out of a block.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_unstick", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void workerInsideAGrownTrunkIsMovedOut(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		BlockPos[] inside = new BlockPos[1];
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = seq.thenIdle(40).thenExecute(() -> {
+			inside[0] = v[0].blockPosition();
+			// a solid 5x5x3 block of logs around and over the worker: vanilla can push it out of a single cell, not out of this
+			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = 0; dy <= 2; dy++) {
+				h.getLevel().setBlock(inside[0].offset(dx, dy, dz), Blocks.OAK_LOG.defaultBlockState(), 3);
+			}
+			h.assertTrue(!h.getLevel().noBlockCollision(v[0], v[0].getBoundingBox()), "the worker is inside the trunk");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().noBlockCollision(v[0], v[0].getBoundingBox()),
+				"the worker was moved out of the trunk, now at " + v[0].blockPosition() + " (was " + inside[0] + ")"));
+		seq.thenExecute(() -> {
+			h.assertTrue(v[0].isAlive() && v[0].blockPosition().distSqr(inside[0]) <= 3 * 3 * 3 + 9, "alive and moved only a few blocks: " + v[0].blockPosition() + " alive=" + v[0].isAlive() + " hp=" + v[0].getHealth());
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }
