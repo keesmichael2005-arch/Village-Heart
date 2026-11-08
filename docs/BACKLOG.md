@@ -213,3 +213,14 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From M12-r2
 - [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
 - [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
+
+## From backlog-2-r2
+- [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
+- [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
+
+## From tool-speed-r1
+- [ ] `ToolAllocation` ranks tools by enum order: gold ranks below iron although gold is now the fastest (but 32 durability) — decide the ranking rule
+- [ ] A miner underground during the mod update keeps progress on the old 2500-unit scale (one longer haul; harmless)
+- [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
+- [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
+- [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
