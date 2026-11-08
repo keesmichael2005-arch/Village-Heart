@@ -203,3 +203,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
 - [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+
+## From M12-r2
+- [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
+- [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
