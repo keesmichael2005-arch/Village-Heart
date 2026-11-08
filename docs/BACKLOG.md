@@ -184,3 +184,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Hidden away villagers stay solid for every walker; consider making away villagers non-colliding (would replace the narrow touch rule)
 - [ ] `MineTestSupport.clearHigh` spills chest contents into the world; emptying chests first would explain and close the M16 stray-pickaxe clue
 - [ ] `touchesAwayVillager` also matches away miners (harmless today)
+
+## From M26 plan (orchestrator)
+- [ ] Village-logic tick timer double-counts nested sections (e.g. `BuildSystem.tick` inside `tickAll`) and misses work outside sections (`AwayTrips.processLoaded`, `LevelUpFeedback.flush`, event handlers). M26 step plans an outermost-only timer plus a JFR cross-check
