@@ -509,3 +509,11 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 ## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
 - `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
 - Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
+
+## 2026-11-08: backlog-2 (test hardening: GameTest flakes), branch backlog-2
+- **M9 `sixOaksTwoDays`** (not replanted within a day): oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`. Alone the test always gets the same 9 saplings (needs 6); in a full run the earlier tests shift the window, and 2-5% of this world's 250-300-roll windows hold fewer than 6 (min 3). Forced repro: sequence salt 553 + rule off gives the exact "oak 2 went at tick 400 ... on tick 50002". Game fix: a felled tree yields the saplings its own stump still lacks (`ReplantRules.cuttings`, `LumberJob.giveCuttings`). New L2 `stumpsReplantedWhenLeavesDropNoSapling`, L1 cuttings test, `fellsOneOakWhole` asserts no cutting with a sapling on hand.
+- **M9 `fellResumesAfterInterrupt`** (second oak, "no movement for 201 ticks, 21.9 blocks" in the camp doorway): the fired worker idled outside the door; the jam rule "stepped back" to the worker's own cell. Game fix: `WalkTo` asks an idle villager within a block to step aside. New L2 `idlerInTheDoorwayStepsAside` (red without the nudge with the natural signature).
+- **M17 `farHunterWalksViaLodge`** (not entity-ticking on tick 2602): not load. Only the strip's two corner chunks were forced; at 9 of 256 placements the far spot's chunk was neither (the failing run's origin is one). The test forces every chunk the strip touches and asserts it.
+- **M7 `workerOpensDoors`**: walk-time logging + trace added; no outlier in 9 full + 8 isolated runs (all 64 ticks), not root-caused, BACKLOG left open.
+- Runs: full L2 green in 4 of 4 on backlog-2 and 5 of 5 on origin/m11 merged with backlog-2 (the coordinator saw 2 of 5 red on origin/m11), under load 2-10.
+- Next: review. No blockers.
