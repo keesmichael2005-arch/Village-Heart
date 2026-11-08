@@ -144,7 +144,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] T-L2-2 (`noFoodAllHungryNoDeaths`) only jumps dinner to dinner and never crosses dawn; M12's dawn wages need the plan's version (each round also crosses 23980)
 - [ ] `sum(deaths.cause.minecraft:starve) == 0` in `starter` can never fail (villagers take no hunger damage); the L2 full-health check is the real guard
 - [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
-- [ ] The site ramp (`StarterActions.ramp`) is 9 blocks wide: a `max_deviation` above 8 would leave a cliff again
+- [ ] The site ramp (`StarterActions.ramp`, `core/sim/RampProfile`) is 9 blocks wide plus up to 12 more while it still differs from the land by more than 1: a `max_deviation` above 8 leaves a larger step at the ring (the cone is floor +- k)
+- [ ] `LeafEscape` is not a general unstick: it only frees a worker whose four sides at feet and head height are all blocked and at least one is natural leaves (M11 r2)
 ## From M20-r1..r4
 - [ ] checkPassLeavesWaterloggedPlayerBlocks stocks exactly one house of materials, so on old code it fails via "needs planks" rather than at the chest check; add a spare stack
 - [ ] "Needs materials" fallback text has no test

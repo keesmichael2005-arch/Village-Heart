@@ -9,6 +9,7 @@ import dev.villageheart.core.Balance;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.JobBlockType;
+import dev.villageheart.core.sim.RampProfile;
 import dev.villageheart.core.sim.ScenarioAction;
 import dev.villageheart.core.sim.SiteFinder;
 import dev.villageheart.core.worker.JobType;
@@ -179,25 +180,45 @@ public final class StarterActions {
 	private static final int RAMP = 9;
 
 	/**
-	 * Blends the flattened patch into the land around it: a column k blocks outside it ends at most k blocks above or below the patch floor, so no
-	 * edge drops more than one block per step and a villager that walks off the patch can always walk back (a cliff trapped the starter workers).
+	 * Blends the flattened patch into the land around it with {@link RampProfile}: every column is within 1 block of each of its four neighbours
+	 * (the ring is a slope of one block per step, so a villager that walks off the patch can always walk back; a cliff trapped the starter
+	 * workers), a column k blocks outside the patch is within k of the patch floor, and the slope is extended past the ring (up to 12 more columns)
+	 * until it meets the land. The ground of a column is found through the canopy: leaves, logs, air pockets under them and plants are skipped
+	 * down to the first solid block, so no grass is placed in mid-air.
 	 */
-	private static void ramp(ServerLevel level, BlockPos origin, int w, int d) {
+	public static void ramp(ServerLevel level, BlockPos origin, int w, int d) {
 		BlockState grass = Blocks.GRASS_BLOCK.defaultBlockState(), dirt = Blocks.DIRT.defaultBlockState(), air = Blocks.AIR.defaultBlockState();
-		for (int x = origin.getX() - RAMP; x < origin.getX() + w + RAMP; x++) for (int z = origin.getZ() - RAMP; z < origin.getZ() + d + RAMP; z++) {
-			int k = Math.max(Math.max(origin.getX() - x, x - (origin.getX() + w - 1)), Math.max(origin.getZ() - z, z - (origin.getZ() + d - 1)));
-			if (k < 1 || level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) continue;
-			int e = level.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z) - 1;
-			for (int i = 0; i < 40 && (level.getBlockState(new BlockPos(x, e, z)).is(BlockTags.LEAVES) || level.getBlockState(new BlockPos(x, e, z)).is(BlockTags.LOGS)); i++) e--;
-			int target = Math.max(origin.getY() - k, Math.min(origin.getY() + k, e));
-			if (target == e && !level.getBlockState(new BlockPos(x, e, z)).isAir()) continue;
-			for (int y = Math.min(e, target) + 1; y < target; y++) set(level, new BlockPos(x, y, z), dirt);
-			if (target != e || level.getBlockState(new BlockPos(x, target + 1, z)).is(BlockTags.LEAVES)) set(level, new BlockPos(x, target, z), grass);
-			for (int y = target + 1; y <= Math.max(e, target) + 2; y++) {
+		int ox = origin.getX(), oz = origin.getZ();
+		java.util.Map<Long, Integer> ground = new HashMap<>();
+		RampProfile.Ground natural = (x, z) -> ground.computeIfAbsent(((long) x << 32) ^ (z & 0xffffffffL), key -> groundY(level, ox + x, oz + z));
+		RampProfile.Ramp ramp = RampProfile.solve(natural, w, d, origin.getY(), RAMP);
+		int m = ramp.margin();
+		for (int i = 0; i < ramp.h().length; i++) for (int j = 0; j < ramp.h()[i].length; j++) {
+			int x = ox + i - m, z = oz + j - m, t = ramp.h()[i][j];
+			boolean patch = x >= ox && x < ox + w && z >= oz && z < oz + d;
+			if (patch || t == RampProfile.UNKNOWN) continue;
+			int g = natural.height(i - m, j - m);
+			if (g == t) continue;
+			int top = Math.max(level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z), Math.max(g, t)) + 1;
+			for (int y = Math.min(g, t) + 1; y < t; y++) set(level, new BlockPos(x, y, z), dirt);
+			set(level, new BlockPos(x, t, z), grass);
+			for (int y = t + 1; y <= top; y++) {
 				BlockPos p = new BlockPos(x, y, z);
 				if (!level.getBlockState(p).isAir()) set(level, p, air);
 			}
 		}
+	}
+
+	/** The real ground of a column: the first solid block that is not leaves or a log, seen from the top (through canopy air pockets); UNKNOWN when not loaded. */
+	private static int groundY(ServerLevel level, int x, int z) {
+		if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return RampProfile.UNKNOWN;
+		int y = level.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z) - 1;
+		for (int i = 0; i < 100 && y > level.getMinY(); i++, y--) {
+			BlockPos p = new BlockPos(x, y, z);
+			BlockState s = level.getBlockState(p);
+			if (!s.isAir() && !s.is(BlockTags.LEAVES) && !s.is(BlockTags.LOGS) && s.blocksMotion()) break;
+		}
+		return y;
 	}
 
 	// ---- prefab --------------------------------------------------------------------------------

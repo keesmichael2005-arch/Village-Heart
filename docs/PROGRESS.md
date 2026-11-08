@@ -465,3 +465,8 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - New real-game bug: `LeafEscape` breaks persistent (player-placed) leaves on every failed trip or tree give-up; a probe hedge lost 14 blocks in one give-up. The ramp's 1-block-per-step claim is false, and canopy air pockets leave floating grass (harness).
 - Merged origin/dev (M20): enum conflicts resolved with M20 values first, TOO_HUNGRY appended. L2 205/205 in 6 of 6 foreground runs plus verify.sh; no M9 flakes. verify.sh green.
 - Next: the builder fixes items 1 and 2, then round 3.
+
+## 2026-11-08: M11 round-2 fixes (builder, finisher)
+- `LeafEscape` (real-game bug): never breaks persistent leaves, acts only when the worker is enclosed (4 sides at feet and head blocked, one natural leaf), respects `mobGriefing` (D15). `lumberjackBoxedInByLeavesGetsOut` now uses natural leaves (and lost its always-true filler); three new L2 tests: player hedge and natural hedge survive a give-up, persistent cube is kept. Mutation-checked (persistent check, enclosed check, no-break, old behaviour): each is caught by the test meant for it.
+- Harness ramp: `core/sim/RampProfile` (pure, L1 `RampProfileTest`) gives a 1-block-per-step slope that meets the land; `StarterActions.ramp` reads the ground through canopies (no floating grass). L2 `siteRampHasOneBlockSteps` (red without the slope and without the canopy skip).
+- Next: round 3 review.

@@ -245,4 +245,76 @@ public class SimActionGameTests {
 			h.succeed();
 		});
 	}
+
+	// ---- review of M11 round 2: the site ramp ---------------------------------------------------
+
+	/** The ground of a column as a walker sees it: from the top down, through air, leaves and logs, to the first solid block. */
+	private static int groundOf(ServerLevel level, int x, int z, int top, int bottom) {
+		for (int y = top; y >= bottom; y--) {
+			BlockState s = level.getBlockState(new BlockPos(x, y, z));
+			if (!s.isAir() && !s.is(BlockTags.LEAVES) && !s.is(BlockTags.LOGS) && s.blocksMotion()) return y;
+		}
+		return bottom;
+	}
+
+	/**
+	 * Hilly, forested land (steps of up to 6 between neighbours, a cliff, trees, and canopies with air pockets and no trunk under them) around a
+	 * flat patch: after {@code ramp} every two columns that share an edge differ by at most 1 up to the ring's minimum width, no grass is left in
+	 * mid-air, and the patch is untouched.
+	 */
+	@GameTest(environment = "villageheart-gametest:sim_ramp", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void siteRampHasOneBlockSteps(GameTestHelper h) {
+		ServerLevel level = h.getLevel();
+		BlockPos far = h.absolutePos(new BlockPos(0, 0, 200_000));
+		int w = 12, d = 8, floor = h.absolutePos(BlockPos.ZERO).getY() + 3;
+		BlockPos origin = new BlockPos((far.getX() >> 4 << 4) + 8, floor, (far.getZ() >> 4 << 4) + 8);
+		int reach = 9 + 12 + 1; // the ring, the extension to meet the land (up to 12 more) and one more
+		int x0 = origin.getX() - reach, x1 = origin.getX() + w + reach, z0 = origin.getZ() - reach, z1 = origin.getZ() + d + reach;
+		int bottom = floor - 20, top = floor + 24;
+		h.startSequence().thenExecute(() -> {
+			for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) level.setChunkForced(cx, cz, true);
+			BlockState air = Blocks.AIR.defaultBlockState();
+			for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++) {
+				boolean patch = x >= origin.getX() && x < origin.getX() + w && z >= origin.getZ() && z < origin.getZ() + d;
+				int rough = Math.floorMod(x * 7 + z * 13 + x * z, 7) - 3 + (x < origin.getX() - 4 ? -4 : 0); // a cliff on the west side
+				int g = patch ? floor : floor + rough;
+				for (int y = bottom; y <= top; y++) {
+					level.setBlock(new BlockPos(x, y, z), y < g ? Blocks.DIRT.defaultBlockState() : y == g ? Blocks.GRASS_BLOCK.defaultBlockState() : air, 2);
+				}
+			}
+			// trees on the ring: a trunk with a canopy, and canopies hanging in the air with no trunk (what a cut tree leaves)
+			for (int t = 0; t < 14; t++) {
+				int tx = origin.getX() - 11 + (t * 5) % (w + 22), tz = origin.getZ() - 10 + (t * 7) % (d + 20);
+				if (tx >= origin.getX() - 1 && tx <= origin.getX() + w && tz >= origin.getZ() - 1 && tz <= origin.getZ() + d) continue;
+				int gy = groundOf(level, tx, tz, top, bottom);
+				boolean trunk = t % 2 == 0;
+				for (int dy = 1; dy <= 6; dy++) {
+					if (trunk && dy <= 5) level.setBlock(new BlockPos(tx, gy + dy, tz), Blocks.OAK_LOG.defaultBlockState(), 2);
+					if (dy >= 4) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+						BlockPos q = new BlockPos(tx + dx, gy + dy, tz + dz);
+						if (Math.abs(dx) + Math.abs(dz) < 4 && level.getBlockState(q).isAir()) {
+							level.setBlock(q, Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true), 2);
+						}
+					}
+				}
+			}
+			StarterActions.ramp(level, origin, w, d);
+			int minRing = 9 + 3, worst = 0, floating = 0;
+			String where = "";
+			for (int x = origin.getX() - minRing; x < origin.getX() + w + minRing; x++) for (int z = origin.getZ() - minRing; z < origin.getZ() + d + minRing; z++) {
+				int g = groundOf(level, x, z, top, bottom);
+				if (level.getBlockState(new BlockPos(x, g, z)).is(Blocks.GRASS_BLOCK) && level.getBlockState(new BlockPos(x, g - 1, z)).isAir()) floating++;
+				for (int[] n : new int[][] {{1, 0}, {0, 1}}) {
+					int step = Math.abs(g - groundOf(level, x + n[0], z + n[1], top, bottom));
+					if (step > worst) { worst = step; where = (x - origin.getX()) + "," + (z - origin.getZ()); }
+				}
+				boolean patch = x >= origin.getX() && x < origin.getX() + w && z >= origin.getZ() && z < origin.getZ() + d;
+				if (patch) h.assertTrue(g == floor, "the patch is untouched at " + x + "," + z + " (" + g + " instead of " + floor + ")");
+			}
+			for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) level.setChunkForced(cx, cz, false);
+			h.assertTrue(worst <= 1, "the largest step between neighbouring columns is " + worst + ", at patch offset " + where);
+			h.assertValueEqual(0, floating, "grass blocks with air below them");
+			h.succeed();
+		});
+	}
 }

@@ -937,20 +937,111 @@ public class LumberjackGameTests {
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
 			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
-			// a hollow 3x3x3 cube of leaves around the spot, as left by a canopy the worker cut into
+			// a hollow 3x3x3 cube of NATURAL leaves around the spot, as left by a canopy the worker cut into. A log on top of the cube keeps them from
+			// decaying during the test (persistent leaves would be a player build, which the worker must not break)
+			h.setBlock(spot.offset(0, 3, 0), Blocks.OAK_LOG);
 			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 0; dy <= 2; dy++) {
 				boolean centre = dx == 0 && dz == 0 && dy <= 1;
 				h.setBlock(spot.offset(dx, dy, dz), centre ? Blocks.AIR.defaultBlockState()
-						: Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+						: Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, false).setValue(LeavesBlock.DISTANCE, 1));
 			}
 			BlockPos abs = h.absolutePos(spot);
 			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 2400, "the trapped lumberjack delivering its logs", () ->
-				h.assertTrue(net.minecraft.core.registries.BuiltInRegistries.ITEM.size() > 0
-						&& dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG) >= 64,
+				h.assertTrue(dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG) >= 64,
 						"logs in Storage: " + dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG)));
 		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * Review of M11 round 2: a tree inside a player's hedge (persistent leaves) is unreachable and is given up. The worker is not enclosed and the
+	 * hedge is not natural, so not one of its blocks may break.
+	 */
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void lumberjackLeavesPlayerHedgeAloneOnGiveUp(GameTestHelper h) {
+		hedgeSurvivesGiveUp(h, true);
+	}
+
+	/** The same with natural leaves (kept from decaying by a roof of logs): a worker that is not boxed in breaks nothing, whatever the leaves are. */
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void lumberjackLeavesNaturalHedgeAloneWhenNotBoxedIn(GameTestHelper h) {
+		hedgeSurvivesGiveUp(h, false);
+	}
+
+	private void hedgeSurvivesGiveUp(GameTestHelper h, boolean persistent) {
+		begin(h);
+		BlockPos aSpot = new BlockPos(9, 0, 20);
+		java.util.List<BlockPos> hedge = new java.util.ArrayList<>();
+		Villager[] v = new Villager[1];
+		long[] givenUpAt = new long[1];
+		boolean[] started = new boolean[1];
+		h.onEachTick(() -> {
+			if (!started[0] || givenUpAt[0] != 0) return;
+			var rt = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer());
+			if (!rt.blacklist(dev.villageheart.world.VillageClaims.locate(h.getLevel(), h.absolutePos(campMarker()))).isEmpty()) givenUpAt[0] = h.getTick();
+		});
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			lightYard(h); // before the hedge: its torches stand on the ring's cells
+			for (int x = aSpot.getX() - 9; x <= aSpot.getX() + 9; x++) for (int z = aSpot.getZ() - 9; z <= aSpot.getZ() + 9; z++) {
+				boolean edge = Math.abs(x - aSpot.getX()) == 9 || Math.abs(z - aSpot.getZ()) == 9;
+				if (!edge || (z < 11 && x >= 7 && x <= 15)) continue;
+				for (int y = 0; y <= 2; y++) {
+					BlockPos q = new BlockPos(x, y, z);
+					h.setBlock(q, Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, persistent).setValue(LeavesBlock.DISTANCE, 1));
+					hedge.add(q);
+					if (!persistent && y == 2) h.setBlock(q.above(), Blocks.OAK_LOG); // natural leaves decay without a log within 6 blocks
+				}
+			}
+			growOak(h, aSpot, 61L);
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			started[0] = true;
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(givenUpAt[0] != 0, "the hedged tree is given up"));
+		seq = seq.thenIdle(20);
+		seq.thenExecute(() -> {
+			int gone = 0;
+			StringBuilder which = new StringBuilder();
+			for (BlockPos q : hedge) if (!h.getBlockState(q).is(Blocks.OAK_LEAVES)) { gone++; which.append(" ").append(q.toShortString()).append("=").append(h.getBlockState(q).getBlock()); }
+			h.assertValueEqual(0, gone, "player hedge blocks broken (of " + hedge.size() + "):" + which);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A worker walled in by a PLAYER's leaves (persistent) is not freed by breaking them: that is somebody's build, and its trip just fails. */
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void lumberjackKeepsPersistentLeavesItIsBoxedInBy(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		BlockPos spot = new BlockPos(24, 0, 24);
+		java.util.List<BlockPos> cube = new java.util.ArrayList<>();
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 0; dy <= 2; dy++) {
+				if (dx == 0 && dz == 0 && dy <= 1) { h.setBlock(spot.offset(dx, dy, dz), Blocks.AIR.defaultBlockState()); continue; }
+				BlockPos q = spot.offset(dx, dy, dz);
+				h.setBlock(q, Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+				cube.add(q);
+			}
+			BlockPos abs = h.absolutePos(spot);
+			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		});
+		// the trip fails after its timeout; wait past it, then count what is left of the cube
+		seq = seq.thenIdle(1200);
+		seq.thenExecute(() -> {
+			int gone = 0;
+			for (BlockPos q : cube) if (!h.getBlockState(q).is(Blocks.OAK_LEAVES)) gone++;
+			h.assertValueEqual(0, gone, "persistent leaves broken (of " + cube.size() + ")");
+			h.assertTrue(dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG) < 64, "the worker did not deliver (it is walled in)");
 			VillageTestSupport.done(h);
 			end(h);
 		});
