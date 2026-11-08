@@ -427,3 +427,16 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
 - Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
 - Next: M21 (Defence blueprints).
+
+## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
+- Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
+  `core.job.Leveling` applies M14's `TierRules.levelFor` (banked XP up to 300, level = max(stored, levelFor), never lowered); level changes
+  written to attachment and `WorkerRecord.level` at once via M12's `Workers.setLevel`; a 20-tick pass turns banked XP into levels after a tier-up.
+- Feedback: HAPPY_VILLAGER particles, VILLAGER_CELEBRATE sound, chat to online Resident+ members (max 3 lines + summary), a one-off "needs a Village"
+  notice, the vanilla belt badge (VillagerData level 1/2/3), a gold "capped" XP bar on the Villagers tab. Listener seam for M18 perks.
+- Tools: nothing to redo (M9 has tiers, multipliers, sharing, wear per log); M15 extends the speed table test, audits `CampTools.use` per job, and
+  re-proves wear in the side-by-side test.
+- **Blocked on decision D1:** the roadmap's "iron ≥1.3× stone" is impossible with DESIGN's multipliers (iron/stone = 1.5/1.25 = 1.2 is the
+  ceiling, walking only lowers it). Recommended: "≥1.1× stone and ≥1.3× wood" in one three-way test (stacked identical yards at +30/+60 on glass platforms).
+- Critique: a separate critic session, 19 findings (1 blocker = D1 confirmed, 9 major, 9 minor), all taken (plan section 7).
+- Top risk: D1, then the stacked-platform layout of the side-by-side test (fallback: three sequential days, recorded as a deviation).
