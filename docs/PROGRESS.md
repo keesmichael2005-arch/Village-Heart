@@ -553,3 +553,9 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
 - Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
 - Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.

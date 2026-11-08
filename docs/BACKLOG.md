@@ -218,6 +218,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
 - [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
 
+## From backlog-2-r3
+- [ ] `WalkTo.lastPath` is not cleared on `retarget()` or arrival: a walker whose navigation is idle reads the cells ahead of a stale path until it plans again (a stray nudge of a plain villager at most)
+
 ## From tool-speed-r1
 - [ ] `ToolAllocation` ranks tools by enum order: gold ranks below iron although gold is now the fastest (but 32 durability) — decide the ranking rule
 - [ ] A miner underground during the mod update keeps progress on the old 2500-unit scale (one longer haul; harmless)
