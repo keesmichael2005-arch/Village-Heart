@@ -413,3 +413,10 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+
+## 2026-11-08: M20 verifier review r3: FAIL (docs/reviews/M20-r3.md)
+- All round-2 items are fixed. Carpets, moss carpets and ascending rails and powered rails in all 4 directions are refused, as are the door, lantern, wall sign and painting probes, and nothing is broken. The flood test goes red only with both mechanisms off. The planner rule is pinned at L2: a livelock when it is reverted. Short materials pause with "Needs N more dirt" in the main pass and in the check pass, with no gap left.
+- New regression: the check pass's "fluid in a CHECK cell is wrong" rule matches any fluid state, so it overwrites a player's waterlogged stair or chest. The support check's fluid skip (from round 1) misses a waterlogged sign attached after the confirm, and the real builder breaks it. Both are fixed by testing for `LiquidBlock` (tried, then removed).
+- M10 merged cleanly (all conflicts kept both sides). Full L2: 10 of 11 green. The one red was M9's `fellResumesAfterInterrupt` (known signature). verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 4.
+
