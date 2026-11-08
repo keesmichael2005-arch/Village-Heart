@@ -162,6 +162,11 @@ building behaves exactly as in vanilla.
   the same way.
 - **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
   wood ×1.0, stone ×1.25, iron ×1.5, diamond ×1.75 *(tunable)*. Tools lose durability as they are used.
+  **Decision (owner, 2026-11-08): tool speed follows vanilla.** The multiplier is the vanilla `ToolMaterial` mining speed / 2: wood 1.0
+  (speed 2), stone 2.0 (4), copper 2.5 (5), iron 3.0 (6), diamond 4.0 (8), netherite 4.5 (9), gold 6.0 (12), with the base work units of
+  tier-paced jobs rescaled so a **stone** tool's pace stays as before (a wooden tool is then half as fast as stone, iron 1.5×, diamond 2×).
+  Built by the separate "tool-speed" follow-up; until it lands `Balance.TOOL_SPEED` has the M9 values above.
+  Where tools come from: the player, and from Town tier the Blacksmith, which makes them on demand (§5.7).
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
   The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
@@ -316,6 +321,25 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Smelts** raw iron, copper and gold from the stockpile into ingots (it uses fuel).
 - **Makes gear** from stockpile ingots and leather: iron tools, iron armour and leather armour. It keeps
   a *(tunable)* target, such as "2 spare iron axes, 1 set of armour per guard", and works towards it.
+  **Superseded by the owner's decisions of 2026-11-08 and 2026-11-09** (plan `docs/plans/M19.md` 3.2 #2, #4):
+  - **Demand only.** The smith makes a tool only for a hired worker whose job needs one (lumberjack axe, miner pickaxe, hunter sword,
+    farmer hoe) and that has no usable tool in its job chest, or whose tool is about to break (below 10 % or two work units left); and
+    a sword or armour piece only for a guard that lacks one. No spare stock, nothing for unhired jobs, at most one order per worker. The
+    finished tool is carried to the worker's job chest (guard gear to Storage); a usable tool already in Storage is delivered instead.
+  - **Quality follows resources.** Every vanilla tier the village has: wooden (any planks), stone (cobblestone, blackstone or cobbled
+    deepslate), copper, iron, diamond; armour of leather, copper, iron, diamond; vanilla recipe counts. The smith takes the **best tier
+    the stockpile can afford at that moment** (raw ore it can smelt counts as ingots). A tool that still works is **never replaced** just
+    because better material appeared: the village climbs the tiers as tools wear out, and a worn tool is never replaced by a lower tier
+    while it still works. Diamonds only for lumberjacks, miners and guards, only once every other worker and guard slot has iron or better,
+    and only above a reserve *(tunable, 5)*. Gold (32 durability) and netherite (upgrade-only, smithing template) are not made; a
+    player's gold or netherite tool is used. A village with only planks still gets wooden tools.
+  - **Slow on purpose.** Recipe counts stay vanilla because the player can always hand-craft; the smith's limiter is **time**: at level 1
+    a wooden tool takes 600 ticks, stone 1200, copper 1800, iron 2400 (a quarter of its work day), diamond 4800 (half); armour pieces the
+    same per tier (leather 600) *(tunable)*, scaled by level and needs. Crafts pause overnight and continue.
+  - **The player's tools are always welcome** (balance rationale): anything the player puts in a job chest is used and satisfies the
+    demand, and cancels a pending order (its materials go back to Storage). The smith is the village's automation, not its only source;
+    a player who wants iron tools *now* crafts them, a player who does not gets them slowly as the old ones wear out.
+  - The Smithy is Town tier, so before Town every tool comes from the player.
 - **Repairs** tools and armour returned to the Smithy chest with ingots.
 - **Builds iron golems**: 36 iron ingots + 1 carved pumpkin, 1 in-game day of work. The cap is 1 golem per 5
   villagers. Vanilla villager golem spawning is **disabled inside the claim**, so golems come from the Smithy.

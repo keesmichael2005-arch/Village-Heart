@@ -162,6 +162,15 @@ from there instead of hard-coding them.
 - **L2**: 36 iron ingots + a carved pumpkin + a blacksmith → a new iron golem within 1 day, and the stockpile minus 36 ingots
 - **L2**: a golem at 40% health → it walks to the Smithy and is above 90% after repair, with ingots consumed
 - **L2**: no vanilla golem spawns in the claim over 2 days with 10 gossiping villagers (vanilla would)
+- [ ] (owner 2026-11-08/09) The smith makes the workers' tools and guards' gear **on demand only** (a hired worker or guard without a usable
+      item, or with one about to break), of every vanilla tier the village has (wooden, stone, copper, iron, diamond), from the best tier
+      the stockpile can afford at that moment; vanilla recipe counts, slow crafts (wooden 600 … iron 2400, diamond 4800 ticks at level 1,
+      *tunable*); no spare stock and no upgrade of a working tool; the player's own tools satisfy the demand
+- **L1**: no order without a demand; no upgrade of a working tool; a worn-out tool is replaced by the best affordable tier (never a lower
+  one while it still works); a player-supplied tool cancels a pending order; only planks → wooden tools; diamonds only under the reserve rule
+- **L2**: a miner with no pickaxe → the smith makes a stone pickaxe from planks/sticks/cobblestone and puts it in the Mine chest in about
+  the stone craft time
+- **L2**: a miner with a working stone pickaxe and plenty of iron → nothing is crafted over a work day
 
 ## M20: Builder and blueprints (buildings) ✅
 - Note (M24): gate starting a blueprint with the existing `Permission.START_BLUEPRINT` (Steward and up).
