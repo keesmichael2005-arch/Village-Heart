@@ -25,6 +25,8 @@ public final class ActionSpecs {
 				int min = integer(f, "min_distance", 0, 0, 200), max = integer(f, "max_distance", 72, 1, 200);
 				if (min > max) throw new IllegalArgumentException("min_distance must be <= max_distance");
 				if (size[0] < 1) throw new IllegalArgumentException("size");
+				integer(f, "max_deviation", 3, 1, 8);
+				integer(f, "odd_percent", 0, 0, 10);
 			}
 			case "prefab" -> {
 				string(f, "building", BuildingType.class);

@@ -210,6 +210,10 @@ public class SimActionGameTests {
 		BlockPos sapling = farm.east(6);
 		GameTestSequence seq = h.startSequence();
 		seq.thenExecute(() -> {
+			h.assertValueEqual(300, (int) level.getGameRules().get(net.minecraft.world.level.gamerules.GameRules.RANDOM_TICK_SPEED), "random_tick_speed (the needs_random_ticks environment)");
+			// noon, and time frozen: saplings only grow in daylight
+			level.setDayTime(6000);
+			level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, false, level.getServer());
 			level.getChunk(cx, cz);
 			level.setChunkForced(cx, cz, true);
 			level.setChunkForced(sapling.getX() >> 4, sapling.getZ() >> 4, true);
@@ -233,6 +237,7 @@ public class SimActionGameTests {
 		}).thenExecute(() -> {
 			level.setChunkForced(cx, cz, false);
 			level.setChunkForced(sapling.getX() >> 4, sapling.getZ() >> 4, false);
+			level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, true, level.getServer());
 			h.succeed();
 		});
 	}

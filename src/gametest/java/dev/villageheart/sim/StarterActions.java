@@ -90,10 +90,16 @@ public final class StarterActions {
 	private static SiteFinder.Column column(ServerLevel level, int x, int z) {
 		if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return null;
 		int top = level.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z) - 1;
+		// a tree standing on natural ground does not disqualify it: the flatten removes it (leaves and logs are looked through)
+		boolean tree = false;
+		for (int i = 0; i < 40 && (level.getBlockState(new BlockPos(x, top, z)).is(BlockTags.LEAVES) || level.getBlockState(new BlockPos(x, top, z)).is(BlockTags.LOGS)); i++) {
+			top--;
+			tree = true;
+		}
 		BlockPos p = new BlockPos(x, top, z);
 		BlockState ground = level.getBlockState(p);
 		BlockState above = level.getBlockState(p.above());
-		boolean plantOrAir = above.isAir() || (above.getFluidState().isEmpty() && (above.is(BlockTags.REPLACEABLE) || above.is(BlockTags.FLOWERS)));
+		boolean plantOrAir = tree || above.isAir() || (above.getFluidState().isEmpty() && (above.is(BlockTags.REPLACEABLE) || above.is(BlockTags.FLOWERS)));
 		boolean natural = NATURAL_GROUND.contains(ground.getBlock()) && ground.getFluidState().isEmpty() && plantOrAir;
 		return new SiteFinder.Column(top, natural, level.isPositionEntityTicking(p.above()));
 	}
@@ -114,7 +120,8 @@ public final class StarterActions {
 		};
 		long t0 = System.nanoTime();
 		SiteFinder.Site found = SiteFinder.find(terrain, heart.getX(), heart.getZ(), w, d, num(a, "min_distance", 0), num(a, "max_distance", 72),
-				Balance.CLAIM_RADIUS - 8, 3).orElseThrow(() -> new IllegalStateException("no flat site " + w + "x" + d + " near the Heart"));
+				Balance.CLAIM_RADIUS - 8, num(a, "max_deviation", 3), num(a, "odd_percent", 0)).orElseThrow(() -> new IllegalStateException("no flat site " + w + "x" + d + " near the Heart: "
+				+ describeTerrain(terrain, heart, num(a, "max_distance", 72))));
 		BlockPos origin = new BlockPos(found.x(), found.floorY(), found.z());
 		VillageHeart.LOG.info("[sim] site {}x{} at {} (flatten cost {}, {} ms search)", w, d, origin.toShortString(), found.cost(), (System.nanoTime() - t0) / 1_000_000);
 
@@ -143,6 +150,28 @@ public final class StarterActions {
 			set(level, new BlockPos(x, origin.getY() + 1, z), Blocks.TORCH.defaultBlockState());
 		}
 		ctx.setSite(origin);
+	}
+
+	/** Why nothing fit: counts of the columns around the Heart, and the height spread. */
+	private static String describeTerrain(SiteFinder.Terrain t, BlockPos heart, int radius) {
+		int total = 0, unloaded = 0, natural = 0, ticking = 0, lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+		for (int x = heart.getX() - radius; x <= heart.getX() + radius; x++) for (int z = heart.getZ() - radius; z <= heart.getZ() + radius; z++) {
+			total++;
+			SiteFinder.Column c = t.column(x, z);
+			if (c == null) { unloaded++; continue; }
+			if (c.natural()) { natural++; lo = Math.min(lo, c.y()); hi = Math.max(hi, c.y()); }
+			if (c.entityTicking()) ticking++;
+		}
+		StringBuilder map = new StringBuilder("\n");
+		for (int z = heart.getZ() - radius; z <= heart.getZ() + radius; z += 4) {
+			for (int x = heart.getX() - radius; x <= heart.getX() + radius; x += 2) {
+				SiteFinder.Column c = t.column(x, z);
+				map.append(c == null ? '?' : !c.natural() ? '#' : !c.entityTicking() ? 'x' : (char) ('a' + Math.floorMod(c.y() - 60, 26)));
+			}
+			map.append('\n');
+		}
+		VillageHeart.LOG.info("[sim] terrain around the Heart (a=y60, b=61, ...; # not natural; x not ticking){}", map);
+		return total + " columns: " + unloaded + " unloaded, " + natural + " natural (heights " + lo + ".." + hi + "), " + ticking + " entity-ticking";
 	}
 
 	// ---- prefab --------------------------------------------------------------------------------

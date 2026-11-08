@@ -32,6 +32,12 @@ public final class SiteFinder {
 	 * @param maxDev   largest allowed distance of a column from the median
 	 */
 	public static Optional<Site> find(Terrain t, int hx, int hz, int w, int d, int minDist, int maxDist, int inClaim, int maxDev) {
+		return find(t, hx, hz, w, d, minDist, maxDist, inClaim, maxDev, 0);
+	}
+
+	/** @param oddPercent percent of the columns that may be unnatural (a path, a flower bed, a post); each costs 10 more than a flat column */
+	public static Optional<Site> find(Terrain t, int hx, int hz, int w, int d, int minDist, int maxDist, int inClaim, int maxDev, int oddPercent) {
+		int maxOdd = w * d * oddPercent / 100;
 		Site best = null;
 		double bestDist = 0;
 		int from = -maxDist - Math.max(w, d);
@@ -43,12 +49,13 @@ public final class SiteFinder {
 				int z0 = Math.floorDiv(hz + dz, LATTICE) * LATTICE;
 				if (!distanceOk(x0, z0, w, d, hx, hz, minDist, maxDist, inClaim)) continue;
 				if (!corners(t, x0, z0, w, d)) continue;
-				int n = 0, lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+				int n = 0, lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE, odd = 0;
 				boolean ok = true;
 				for (int x = x0; x < x0 + w && ok; x++) {
 					for (int z = z0; z < z0 + d; z++) {
 						Column c = t.column(x, z);
-						if (c == null || !c.natural()) { ok = false; break; }
+						if (c == null) { ok = false; break; }
+						if (!c.natural() && ++odd > maxOdd) { ok = false; break; }
 						ys[n++] = c.y();
 						if (c.y() < lo) lo = c.y();
 						if (c.y() > hi) hi = c.y();
@@ -59,7 +66,7 @@ public final class SiteFinder {
 				int[] sorted = Arrays.copyOf(ys, n);
 				Arrays.sort(sorted);
 				int median = sorted[n / 2];
-				int cost = 0;
+				int cost = odd * 10;
 				for (int y : sorted) {
 					int dev = Math.abs(y - median);
 					if (dev > maxDev) { ok = false; break; }

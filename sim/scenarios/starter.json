@@ -5,7 +5,7 @@
   "default_days": 10,
   "actions": [
     { "action": "claim" },
-    { "action": "site", "size": [44, 32], "min_distance": 24, "max_distance": 72 },
+    { "action": "site", "size": [44, 32], "min_distance": 24, "max_distance": 72, "max_deviation": 5, "odd_percent": 4 },
     { "action": "prefab", "building": "house",       "at": [2, 2],   "size": [5, 4], "door": "south", "contents": ["bed", "bed", "light"] },
     { "action": "prefab", "building": "house",       "at": [10, 2],  "size": [5, 4], "door": "south", "contents": ["bed", "bed", "light"] },
     { "action": "prefab", "building": "storage",     "at": [18, 2],  "size": [4, 3], "door": "south", "contents": ["chest", "chest", "light"],
