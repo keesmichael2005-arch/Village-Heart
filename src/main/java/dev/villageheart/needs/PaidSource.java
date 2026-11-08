@@ -1,16 +1,14 @@
 package dev.villageheart.needs;
 
 import dev.villageheart.core.WorkerRecord;
-import java.util.function.Predicate;
+import dev.villageheart.world.VillageClaims;
+import net.minecraft.server.MinecraftServer;
 
-/** Whether a worker is paid. Stubbed true until M12 (the treasury) swaps the source. */
+/** Whether a worker is paid (M12): everyone who is not on today's unpaid list. With wages off (tests) the list stays empty. */
 public final class PaidSource {
-	public static final Predicate<WorkerRecord> ALWAYS = r -> true;
-	private static volatile Predicate<WorkerRecord> current = ALWAYS;
-
 	private PaidSource() {}
 
-	public static Predicate<WorkerRecord> current() { return current; }
-
-	public static void set(Predicate<WorkerRecord> source) { current = source == null ? ALWAYS : source; }
+	public static boolean paid(MinecraftServer server, WorkerRecord rec) {
+		return !dev.villageheart.economy.Wages.onStrike(server, rec.villager());
+	}
 }

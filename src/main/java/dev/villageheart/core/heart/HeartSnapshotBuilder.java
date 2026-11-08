@@ -112,7 +112,10 @@ public final class HeartSnapshotBuilder {
 					: new TextLine(ALERT + "workplace_invalid", "%s workers have no valid workplace",
 							List.of(Integer.toString(invalidWorkplaces)))));
 		}
+		alerts.addAll(dev.villageheart.core.economy.WageAlerts.of(f.treasury(), f.wageBill(), f.strikers()));
 		alerts.addAll(f.extraAlerts());
+		// severity first (M12): the cap of MAX_ALERTS must cut a warning, never a strike or an invalid workplace; stable within each severity
+		alerts.sort(Comparator.comparingInt((AlertLine a) -> a.severity() == Severity.DANGER ? 0 : 1));
 		int more = Math.max(0, alerts.size() - HeartLimits.MAX_ALERTS);
 		List<AlertLine> shown = alerts.subList(0, alerts.size() - more);
 
@@ -120,7 +123,7 @@ public final class HeartSnapshotBuilder {
 		Optional<Tier> next = f.tier().ordinal() + 1 < tiers.length ? Optional.of(tiers[f.tier().ordinal() + 1]) : Optional.empty();
 		return new Overview(HeartLimits.cut(f.ownerName(), HeartLimits.MAX_NAME), f.tier(), next, List.of(),
 				f.adults() + f.babies(), f.adults(), f.babies(), f.beds(), workers, f.workerSlots(),
-				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), -1, shown, more);
+				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), f.wageBill(), shown, more);
 	}
 
 	private static int nutritionEach(StockItemFact i) { return i.villageFood() ? Math.max(0, i.foodNutrition()) : 0; }

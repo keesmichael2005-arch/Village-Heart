@@ -249,6 +249,27 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		return copy(owner, ownerName, ranks, known, Math.addExact(treasury, emeralds), tier, buildings, workers);
 	}
 
+	/** Takes {@code emeralds} out of the treasury; throws when {@code emeralds} is negative or more than the treasury holds. */
+	public VillageState withdrawTreasury(int emeralds) {
+		if (emeralds < 0 || emeralds > treasury) throw new IllegalArgumentException("withdraw must be in 0.." + treasury + ": " + emeralds);
+		return copy(owner, ownerName, ranks, known, treasury - emeralds, tier, buildings, workers);
+	}
+
+	/** The treasury set to a value (an admin write or a wage run). */
+	public VillageState withTreasury(int emeralds) {
+		if (emeralds < 0) throw new IllegalArgumentException("treasury must be >= 0: " + emeralds);
+		return copy(owner, ownerName, ranks, known, emeralds, tier, buildings, workers);
+	}
+
+	/** The mirror level of one worker, keeping hiring order; a no-op when there is no such worker or the level is the same. */
+	public VillageState withWorkerLevel(UUID villager, int level) {
+		Optional<WorkerRecord> rec = worker(villager);
+		if (rec.isEmpty() || rec.get().level() == level) return this;
+		List<WorkerRecord> next = new ArrayList<>(workers);
+		next.replaceAll(w -> w.villager().equals(villager) ? w.withLevel(level) : w);
+		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, next);
+	}
+
 	public VillageState withTier(Tier t) {
 		Objects.requireNonNull(t, "tier");
 		return copy(owner, ownerName, ranks, known, treasury, t, buildings, workers);

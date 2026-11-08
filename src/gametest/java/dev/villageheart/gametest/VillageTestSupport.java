@@ -58,6 +58,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.job.AwayTrips.clearForTests();
 		dev.villageheart.worker.mine.MinerJob.clearForTests();
 		dev.villageheart.worker.hunt.HunterRuntime.resetForTests();
+		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
+		dev.villageheart.economy.WageStats.setTestListener(null);
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();
 		h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);

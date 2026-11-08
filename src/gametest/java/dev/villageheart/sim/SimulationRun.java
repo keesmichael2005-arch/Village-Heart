@@ -241,7 +241,10 @@ public final class SimulationRun implements Host {
 		schedule.markSetupDone();
 		level.setDayTime(0);
 		// dinner of day index 0 must fire whatever the dinner system did during setup (M11 plan 3.2 #3)
-		if (VillageClaims.current(server).isPresent()) dev.villageheart.food.Dinner.resetClock(server);
+		if (VillageClaims.current(server).isPresent()) {
+			dev.villageheart.food.Dinner.resetClock(server);
+			dev.villageheart.economy.Wages.resetClock(server); // sim day 1 has no wage run: the first is at the start of sim day 2
+		}
 		g0 = level.getGameTime();
 		clock = new SimClock(g0, request.days());
 		baseline = collector.collect(server, 0, g0, TickStats.EMPTY, 0, 0);

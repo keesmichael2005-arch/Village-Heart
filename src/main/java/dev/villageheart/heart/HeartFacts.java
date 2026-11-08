@@ -120,17 +120,20 @@ public final class HeartFacts {
 			if (v == null) v = Workers.findLoaded(server, rec.villager()).orElse(null);
 			WorkerStatus status = Workers.status(server, rec);
 			if (v == null) {
-				villagers.add(new VillagerFact(rec.villager(), "", index++, rec.jobId(), "", 0, 0, NeedsFlags.UNKNOWN,
-						ActivityKind.AWAY, status == WorkerStatus.WORKPLACE_INVALID, false, false, false));
+				// a striker is on strike wherever it stands; its paid flag comes from the payroll, so it is right while it is unloaded
+				boolean striker = status == WorkerStatus.ON_STRIKE;
+				villagers.add(new VillagerFact(rec.villager(), "", index++, rec.jobId(), "", rec.level(), 0, striker ? NeedsFlags.of(true, true, false) : NeedsFlags.UNKNOWN,
+						striker ? ActivityKind.ON_STRIKE : ActivityKind.AWAY, status == WorkerStatus.WORKPLACE_INVALID, false, false, false));
 				if (!loaded.containsKey(rec.villager())) adults++;
 				continue;
 			}
 			Optional<WorkerData> data = WorkerAttachments.get(v);
 			int level = data.map(WorkerData::level).orElse(1);
 			int xp = data.map(WorkerData::xp).orElse(0);
-			NeedsFlags needs = data.map(d -> NeedsFlags.of(d.needs().fed(), d.needs().housed(), d.needs().paid()))
+			boolean striker = status == WorkerStatus.ON_STRIKE;
+			NeedsFlags needs = data.map(d -> NeedsFlags.of(d.needs().fed(), d.needs().housed(), d.needs().paid() && !striker))
 					.orElse(NeedsFlags.UNKNOWN);
-			ActivityKind activity = dev.villageheart.worker.job.AwayTrips.isAway(v) ? ActivityKind.AWAY_WORKING : switch (status) {
+			ActivityKind activity = striker ? ActivityKind.ON_STRIKE : dev.villageheart.worker.job.AwayTrips.isAway(v) ? ActivityKind.AWAY_WORKING : switch (status) {
 				case STORAGE_FULL -> ActivityKind.STORAGE_FULL;
 				case STORAGE_UNREACHABLE -> ActivityKind.STORAGE_UNREACHABLE;
 				case NEEDS_TOOL -> ActivityKind.NEEDS_TOOL;
@@ -139,6 +142,7 @@ public final class HeartFacts {
 				case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;
 				case BLOCKED -> ActivityKind.BLOCKED;
 				case TOO_HUNGRY -> ActivityKind.TOO_HUNGRY;
+				case ON_STRIKE -> ActivityKind.ON_STRIKE;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
@@ -192,8 +196,12 @@ public final class HeartFacts {
 					job.tier().ordinal() > state.tier().ordinal()));
 		}
 
+		java.util.List<Integer> levels = new ArrayList<>();
+		for (WorkerRecord rec : state.workers()) levels.add(rec.level());
+		int strikers = VillageClaims.data(server).payroll().map(p -> p.strikers(workerIds)).orElse(0);
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
-				villagers, jobs, buildings, stock(server), List.of(), members(server, state), builds(server)));
+				villagers, jobs, buildings, stock(server), List.of(), members(server, state), builds(server),
+				dev.villageheart.core.economy.WageRules.bill(levels), strikers));
 	}
 
 	/** The builds in progress, oldest first (M20). */

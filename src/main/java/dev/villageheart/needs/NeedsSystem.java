@@ -51,10 +51,11 @@ public final class NeedsSystem implements VillageSystem {
 
 	/** The needs a worker has right now. */
 	public static Needs needsFor(MinecraftServer server, VillageState village, Villager v, WorkerData data, WorkerRecord rec) {
-		if (NeedsOverride.forceDefaultNeeds) return Needs.DEFAULT;
+		boolean paid = PaidSource.paid(server, rec);
+		if (NeedsOverride.forceDefaultNeeds) return Needs.of(0, true, paid);
 		Diet diet = DietAttachments.read(v, village.claimedAtGameTime());
 		boolean housed = Housing.housed(server, v, Optional.of(data.building()));
-		return Needs.of(diet.hungryDays(), housed, PaidSource.current().test(rec));
+		return Needs.of(diet.hungryDays(), housed, paid);
 	}
 
 	/** Writes the derived needs of every loaded worker (only when they changed). */

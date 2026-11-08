@@ -206,4 +206,63 @@ class VillageCodecsTest {
 		assertEquals(Set.of("schema", "pending_ticket_releases"), enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject().keySet());
 		assertTrue(dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).pendingTicketReleases().isEmpty());
 	}
+
+	// ---- M12: payroll and worker levels ----------------------------------------------------------------------
+
+	@Test void workerLevelRoundTripsAndAnOldWorkerReadsLevelOne() {
+		VillageState v = VillageState.founded(M1, OWNER, "a", 1).withWorker(new WorkerRecord(W1, "farmer", M1, J1, 3))
+				.withWorker(new WorkerRecord(W2, "farmer", M1, J2));
+		VillageState back = dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v));
+		assertEquals(v, back);
+		assertEquals(List.of(3, 1), back.workers().stream().map(WorkerRecord::level).toList());
+		JsonObject w = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject().getAsJsonArray("workers").get(0).getAsJsonObject();
+		assertEquals(Set.of("villager", "job", "building", "job_block", "level"), w.keySet());
+		String old = "{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + ",\"job_block\":" + LOCJ + "}";
+		VillageState legacy = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"workers\":[" + old + "]}"));
+		assertEquals(1, legacy.workers().get(0).level());
+		String bad = "{\"villager\":\"" + W1 + "\",\"job\":\"farmer\",\"building\":" + LOCJ + ",\"job_block\":" + LOCJ + ",\"level\":0}";
+		assertEquals(1, dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"workers\":[" + bad + "]}")).workers().get(0).level(), "a bad level reads as 1");
+	}
+
+	@Test void payrollRoundTripsWithPinnedKeys() {
+		dev.villageheart.core.economy.Payroll p = new dev.villageheart.core.economy.Payroll(12, Set.of(W1),
+				List.of(new dev.villageheart.core.economy.Payee(W2, 2)));
+		WorldClaim w = new WorldClaim(java.util.Optional.of(full()), Set.of(), Set.of(), java.util.OptionalLong.empty(), java.util.Optional.of(p));
+		JsonObject o = enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject();
+		JsonObject pj = o.getAsJsonObject("payroll");
+		assertEquals(Set.of("last_wage_day", "paid_today", "unpaid"), pj.keySet());
+		assertEquals(12, pj.get("last_wage_day").getAsLong());
+		assertEquals(Set.of("villager", "wage"), pj.getAsJsonArray("unpaid").get(0).getAsJsonObject().keySet());
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, o);
+		assertEquals(w, back);
+		assertEquals(p, back.payroll().orElseThrow());
+	}
+
+	@Test void aPreM12SaveHasNoPayroll() {
+		assertTrue(dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).payroll().isEmpty());
+		assertFalse(enc(VillageCodecs.WORLD_CLAIM, new WorldClaim(java.util.Optional.of(full()))).getAsJsonObject().has("payroll"));
+	}
+
+	@Test void oneBadUuidInUnpaidDropsThatEntryOnlyAndTheVillageSurvives() {
+		String claim = "{\"schema\":1,\"village\":{" + BASE + "},\"payroll\":{\"last_wage_day\":3,\"paid_today\":[\"" + W1 + "\",\"nope\"],"
+				+ "\"unpaid\":[{\"villager\":\"" + W2 + "\",\"wage\":1},{\"villager\":\"not-a-uuid\",\"wage\":1},{\"villager\":\"" + W3 + "\"}]}}";
+		WorldClaim w = dec(VillageCodecs.WORLD_CLAIM, json(claim));
+		assertTrue(w.village().isPresent());
+		dev.villageheart.core.economy.Payroll p = w.payroll().orElseThrow();
+		assertEquals(3, p.lastWageDay());
+		assertEquals(Set.of(W1), p.paidToday());
+		assertEquals(List.of(new dev.villageheart.core.economy.Payee(W2, 1)), p.unpaid());
+	}
+
+	@Test void aBrokenPayrollReadsAsAbsentAndNeverLosesTheClaim() {
+		String claim = "{\"schema\":1,\"village\":{" + BASE + "},\"payroll\":{\"last_wage_day\":\"x\"}}";
+		WorldClaim w = dec(VillageCodecs.WORLD_CLAIM, json(claim));
+		assertTrue(w.village().isPresent());
+		assertTrue(w.payroll().isEmpty());
+		String both = "{\"schema\":1,\"village\":{" + BASE + "},\"payroll\":{\"last_wage_day\":3,\"paid_today\":[\"" + W1 + "\"],"
+				+ "\"unpaid\":[{\"villager\":\"" + W1 + "\",\"wage\":1}]}}";
+		dev.villageheart.core.economy.Payroll p = dec(VillageCodecs.WORLD_CLAIM, json(both)).payroll().orElseThrow();
+		assertTrue(p.unpaid().isEmpty(), "a villager both paid and unpaid counts as paid");
+		assertEquals(Set.of(W1), p.paidToday());
+	}
 }
