@@ -8,6 +8,8 @@ import dev.villageheart.core.heart.VillageFacts.JobFact;
 import dev.villageheart.core.heart.VillageFacts.StockFacts;
 import dev.villageheart.core.heart.VillageFacts.StockItemFact;
 import dev.villageheart.core.heart.VillageFacts.VillagerFact;
+import dev.villageheart.core.job.Leveling;
+import dev.villageheart.core.job.Progress;
 import dev.villageheart.core.stock.StorageAlert;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,7 +32,7 @@ public final class HeartSnapshotBuilder {
 		List<BuildRow> builds = List.of();
 		List<JobChoice> choices = List.of();
 		if (details) {
-			List<VillagerRow> all = villagerRows(f.villagers());
+			List<VillagerRow> all = villagerRows(f.villagers(), f.tier());
 			villagers = all.subList(0, Math.min(all.size(), HeartLimits.MAX_VILLAGERS));
 			moreVillagers = all.size() - villagers.size();
 			List<BuildingRow> allB = buildingRows(f.buildings());
@@ -130,7 +132,7 @@ public final class HeartSnapshotBuilder {
 		return HeartLimits.cut(n, HeartLimits.MAX_NAME);
 	}
 
-	private static List<VillagerRow> villagerRows(List<VillagerFact> facts) {
+	private static List<VillagerRow> villagerRows(List<VillagerFact> facts, Tier tier) {
 		List<VillagerFact> sorted = new ArrayList<>(facts);
 		Comparator<VillagerFact> order = Comparator
 				.comparingInt((VillagerFact v) -> v.worker() ? 0 : v.nitwit() ? 2 : 1)
@@ -145,7 +147,8 @@ public final class HeartSnapshotBuilder {
 			rows.add(new VillagerRow(v.id(), nameOf(v), worker ? HeartLimits.cut(v.jobId(), HeartLimits.MAX_ID) : "",
 					HeartLimits.cut(v.vanillaProfession(), HeartLimits.MAX_ID), level, worker ? v.xp() : 0,
 					worker ? JobLevels.xpForNext(level) : 0, worker ? v.needs() : NeedsFlags.UNKNOWN, v.activity(),
-					v.workplaceInvalid(), v.nitwit(), v.hasTraded(), v.loaded()));
+					v.workplaceInvalid(), v.nitwit(), v.hasTraded(), v.loaded(),
+					worker && Leveling.capped(new Progress(Math.min(3, level), v.xp()), tier)));
 		}
 		return rows;
 	}

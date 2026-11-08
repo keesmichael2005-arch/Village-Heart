@@ -154,7 +154,7 @@ public final class HeartCodecs {
 	public static final StreamCodec<ByteBuf, VillagerRow> VILLAGER_ROW = codec(
 			buf -> new VillagerRow(UUIDUtil.STREAM_CODEC.decode(buf), NAME.decode(buf), ID.decode(buf), ID.decode(buf),
 					INT.decode(buf), INT.decode(buf), INT.decode(buf), NEEDS.decode(buf), ACTIVITY.decode(buf), BOOL.decode(buf),
-					BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf)),
+					BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf)),
 			(buf, v) -> {
 				UUIDUtil.STREAM_CODEC.encode(buf, v.id());
 				NAME.encode(buf, v.name());
@@ -169,6 +169,7 @@ public final class HeartCodecs {
 				BOOL.encode(buf, v.nitwit());
 				BOOL.encode(buf, v.hasTraded());
 				BOOL.encode(buf, v.loaded());
+				BOOL.encode(buf, v.levelCapped());
 			});
 
 	private static final StreamCodec<ByteBuf, JobChoice> JOB_CHOICE = codec(

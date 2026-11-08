@@ -55,6 +55,7 @@ public final class WorkerSystem implements VillageSystem {
 				JobSiteReservations.processPending(server);
 			}
 		});
+		LevelUpFeedback.register();
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> WorkXp.clear());
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());

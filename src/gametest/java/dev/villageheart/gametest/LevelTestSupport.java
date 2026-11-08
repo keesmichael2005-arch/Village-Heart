@@ -26,4 +26,21 @@ public final class LevelTestSupport {
 	}
 
 	public static void tier(net.minecraft.gametest.framework.GameTestHelper h, Tier t) { BuildingTestSupport.setTier(h, t); }
+
+	/** A recording player made the village's Owner (the claim helper's owner does not record chat); the old owner becomes a Steward. */
+	public static BuildingTestSupport.RecordingPlayer ownerRecorder(net.minecraft.gametest.framework.GameTestHelper h) {
+		var boss = RankTestSupport.chatty(h, "boss", dev.villageheart.core.Rank.RESIDENT);
+		long now = h.getLevel().getGameTime();
+		dev.villageheart.world.VillageClaims.data(h.getLevel().getServer()).update(v -> v.transferOwnership(boss.getUUID(), now));
+		return boss;
+	}
+
+	/** The translatable key of a chat line, or "" for a literal. */
+	public static String keyOf(net.minecraft.network.chat.Component c) {
+		return c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents t ? t.getKey() : "";
+	}
+
+	public static long count(BuildingTestSupport.RecordingPlayer p, String key) {
+		return p.messages.stream().filter(m -> keyOf(m).equals(key)).count();
+	}
 }

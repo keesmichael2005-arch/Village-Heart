@@ -365,6 +365,110 @@ public class LevelGameTests {
 		});
 	}
 
+	// ---- T-L2-8 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:levels_feedback_audience", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void levelUpFeedbackReachesMembersOnly(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		var owner = new BuildingTestSupport.RecordingPlayer[1];
+		var resident = new BuildingTestSupport.RecordingPlayer[1];
+		var visitor = new BuildingTestSupport.RecordingPlayer[1];
+		java.util.List<dev.villageheart.worker.LevelUpFeedback.FeedbackEvent> seen = new java.util.ArrayList<>();
+		String up = "message.villageheart.worker_level_up";
+		String capped = "message.villageheart.worker_level_capped";
+		GameTestSequence seq = scene(h, false, false).thenExecute(() -> {
+			LevelTestSupport.tier(h, Tier.VILLAGE);
+			owner[0] = LevelTestSupport.ownerRecorder(h);
+			resident[0] = RankTestSupport.chatty(h, "res", dev.villageheart.core.Rank.RESIDENT);
+			visitor[0] = RankTestSupport.chatty(h, "vis", dev.villageheart.core.Rank.VISITOR);
+			dev.villageheart.worker.LevelUpFeedback.setSinkForTest(seen::add);
+			v[0] = hire(h, spawnSpot());
+			put(v[0], 1, 99);
+			Workers.addXp(v[0], 1);
+		}).thenIdle(2);
+		seq = seq.thenExecute(() -> {
+			for (var p : java.util.List.of(owner[0], resident[0])) {
+				h.assertValueEqual(1L, LevelTestSupport.count(p, up), p.getGameProfile().name() + " got the level-up line");
+				var line = p.messages.stream().filter(m -> LevelTestSupport.keyOf(m).equals(up)).findFirst().orElseThrow();
+				var args = ((net.minecraft.network.chat.contents.TranslatableContents) line.getContents()).getArgs();
+				h.assertValueEqual(dev.villageheart.core.heart.VillagerNames.of(v[0].getUUID()), args[0], "the worker's name");
+				h.assertValueEqual("Lumberjack", ((net.minecraft.network.chat.Component) args[1]).getString(), "the job");
+				h.assertValueEqual(2, args[2], "the new level");
+			}
+			h.assertValueEqual(0L, LevelTestSupport.count(visitor[0], up), "a Visitor is not told");
+			h.assertValueEqual(1, seen.size(), "the seam saw one event");
+			h.assertValueEqual(dev.villageheart.worker.LevelUpFeedback.Kind.LEVEL_UP, seen.get(0).kind(), "a level-up");
+			h.assertValueEqual(1, seen.get(0).from(), "from 1");
+			h.assertValueEqual(2, seen.get(0).to(), "to 2");
+			// the village shrinks back to a Hamlet cap for the capped notice (the tier never goes down in the game; this is a test setup)
+			LevelTestSupport.tier(h, Tier.HAMLET);
+			put(v[0], 1, 99);
+			seen.clear();
+			Workers.addXp(v[0], 1);
+		}).thenIdle(2);
+		seq = seq.thenExecute(() -> {
+			for (var p : java.util.List.of(owner[0], resident[0])) {
+				h.assertValueEqual(1L, LevelTestSupport.count(p, capped), p.getGameProfile().name() + " got the capped notice");
+				var line = p.messages.stream().filter(m -> LevelTestSupport.keyOf(m).equals(capped)).findFirst().orElseThrow();
+				var args = ((net.minecraft.network.chat.contents.TranslatableContents) line.getContents()).getArgs();
+				h.assertValueEqual(2, args[1], "the level it is waiting for");
+				h.assertValueEqual("Village", args[2], "the tier it needs");
+			}
+			h.assertValueEqual(0L, LevelTestSupport.count(visitor[0], capped), "a Visitor is not told");
+			h.assertValueEqual(1, seen.size(), "one capped event");
+			h.assertValueEqual(dev.villageheart.worker.LevelUpFeedback.Kind.CAPPED, seen.get(0).kind(), "capped");
+			Workers.addXp(v[0], 1);
+		}).thenIdle(2);
+		seq.thenExecute(() -> {
+			h.assertValueEqual(1L, LevelTestSupport.count(owner[0], capped), "a second +1 sends nothing");
+			h.assertValueEqual(1, seen.size(), "and the seam saw nothing new");
+			dev.villageheart.worker.LevelUpFeedback.setSinkForTest(null);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- T-L2-9 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:levels_tier_up_flood", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void tierUpFloodIsSummarised(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[5];
+		var owner = new BuildingTestSupport.RecordingPlayer[1];
+		String up = "message.villageheart.worker_level_up";
+		String more = "message.villageheart.workers_level_up_more";
+		GameTestSequence seq = scene(h, true, false).thenExecute(() -> {
+			// five Chopping Blocks in the camp: 2 on the north wall already (x 0 and 4), the door cell at x 2 stays free
+			for (int[] c : new int[][] {{1, 0, 0}, {3, 0, 0}, {0, 0, 3}}) h.setBlock(BuildingTestSupport.inside(CAMP, c[0], c[1], c[2]), dev.villageheart.block.JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.CHOPPING_BLOCK));
+		}).thenIdle(BuildingTestSupport.bound(3, 8));
+		seq = seq.thenExecute(() -> {
+			owner[0] = LevelTestSupport.ownerRecorder(h);
+			for (int i = 0; i < 5; i++) {
+				v[i] = hire(h, spawnSpot());
+				put(v[i], 1, 300);
+			}
+			// make the five level-ups land in the same pass: wait for a tick just before a multiple of 20, then raise the tier
+		});
+		seq = seq.thenIdle(45);
+		seq = seq.thenExecute(() -> {
+			for (Villager w : v) h.assertValueEqual(1, data(w).level(), "capped at Hamlet");
+			h.assertValueEqual(0L, LevelTestSupport.count(owner[0], up), "no line yet");
+			LevelTestSupport.tier(h, Tier.VILLAGE);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 21, "the five level-ups after the tier-up", () -> {
+			for (Villager w : v) h.assertValueEqual(2, data(w).level(), "level 2");
+		});
+		seq.thenExecute(() -> {
+			h.assertValueEqual(3L, LevelTestSupport.count(owner[0], up), "three level-up lines");
+			h.assertValueEqual(1L, LevelTestSupport.count(owner[0], more), "and one summary line");
+			var line = owner[0].messages.stream().filter(m -> LevelTestSupport.keyOf(m).equals(more)).findFirst().orElseThrow();
+			h.assertValueEqual(2, ((net.minecraft.network.chat.contents.TranslatableContents) line.getContents()).getArgs()[0], "'and 2 more'");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	/** The villager the cure produced: any live villager around the camp (the converted one was discarded). */
 	private static Villager cured(GameTestHelper h) {
 		var box = new net.minecraft.world.phys.AABB(h.absolutePos(spawnSpot())).inflate(10);
