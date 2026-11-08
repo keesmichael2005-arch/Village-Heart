@@ -42,7 +42,7 @@ public final class DefenceBlueprints {
 	private static final String LAMP_POST_TEXT = header(LAMP_POST_ID, "Lamp Post", "VILLAGE", null, "1 3 1", "0 0") + """
 			palette
 			f minecraft:oak_fence <- #minecraft:wooden_fences "fence"
-			L minecraft:lantern[hanging=false] <- minecraft:lantern "lantern" pass=attached cell=open
+			L minecraft:lantern[hanging=false] <- minecraft:lantern "lantern" pass=attached +#light
 			layer 0
 			f
 			layer 1
@@ -59,7 +59,7 @@ public final class DefenceBlueprints {
 			C minecraft:cobblestone <- minecraft:cobblestone "cobblestone" "cobblestone"
 			P minecraft:oak_planks <- #minecraft:planks "planks" "planks"
 			f minecraft:oak_fence <- #minecraft:wooden_fences "fence"
-			H minecraft:ladder[facing=north] <- minecraft:ladder "ladder" pass=attached cell=open
+			H minecraft:ladder[facing=north] <- minecraft:ladder "ladder" pass=attached
 			layer 0
 			.....
 			.C_C.
