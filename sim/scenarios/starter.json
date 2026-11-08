@@ -32,6 +32,7 @@
     "sum(wages.runs) >= 8 from day 1",
     "treasury <= treasury@prev - 2 from day 3",
     "min(work.farmer.harvested) > 0 from day 3",
+    "sum(work.workers.not_ticking) == 0 from day 1",
     "village_ms.mean < 1 on every day"
   ]
 }

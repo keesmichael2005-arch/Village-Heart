@@ -1139,37 +1139,4 @@ public class LumberjackGameTests {
 			end(h);
 		});
 	}
-
-	/**
-	 * Review of M11 round 3 (a starter lumberjack ended 45 blocks from its camp, up a slope, and never worked again): a worker that stays further
-	 * than a path reaches from its job block is put back next to it.
-	 */
-	@GameTest(environment = "villageheart-gametest:lumber_lost", structure = YARD, skyAccess = true, maxTicks = 1500)
-	public void lostWorkerIsPutBackNextToItsJobBlock(GameTestHelper h) {
-		begin(h);
-		Villager[] v = new Villager[1];
-		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
-			dev.villageheart.worker.WorkerSystem.setLostTicksForTest(300);
-			dev.villageheart.worker.WorkerSystem.setFarBlocksForTest(15);
-			h.getLevel().setDayTime(1000);
-			v[0] = hire(h, spawnSpot());
-			var jb = v[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).jobBlock();
-			// 22 blocks east of the job block, in the open ground of the test world
-			int x = jb.x() + 22;
-			int y = h.getLevel().getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, jb.z());
-			v[0].setNoAi(true); // stays where it is put: only the rescue may move it
-			v[0].teleportTo(x + 0.5, y, jb.z() + 0.5);
-		});
-		seq = seq.thenWaitUntil(() -> {
-			var jb = v[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).jobBlock();
-			h.assertTrue(Math.hypot(v[0].getX() - jb.x(), v[0].getZ() - jb.z()) < 8, "the lost worker is back near its job block, now at " + v[0].position());
-		});
-		seq.thenExecute(() -> {
-			dev.villageheart.worker.WorkerSystem.setLostTicksForTest(-1);
-			dev.villageheart.worker.WorkerSystem.setFarBlocksForTest(-1);
-			v[0].setNoAi(false);
-			VillageTestSupport.done(h);
-			end(h);
-		});
-	}
 }

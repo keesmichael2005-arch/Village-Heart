@@ -147,7 +147,6 @@ public final class FarmRuntime {
 		/** Game time of the last harvest or planting (-1: none yet); the stall watchdog's clock. */
 		long lastProgress = -1;
 		long lastWatch;
-		net.minecraft.world.phys.Vec3 stallPos;
 		long stallLoggedAt = Long.MIN_VALUE / 2;
 		/** What the last plan saw of the field, for the stall report: cells, mature cells, mature cells in entity-ticking chunks, cells skipped as claimed/blacklisted. */
 		int seenCells, seenMature, seenMatureTicking, seenUnavailable;

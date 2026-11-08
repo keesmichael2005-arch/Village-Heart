@@ -28,7 +28,8 @@ final class SimWorld {
 	/** Fixed so a resumed run is the same owner and gets its player data back. */
 	static final UUID OWNER_UUID = UUID.nameUUIDFromBytes("villageheart-sim-owner".getBytes(StandardCharsets.UTF_8));
 	static final String OWNER_NAME = "SimOwner";
-	static final int LOAD_RADIUS_CHUNKS = 4;
+	/** +-6 chunks (13x13): the claim reaches 80 blocks from the Heart and workers stroll beyond their workplaces; a villager in a loaded chunk that does not tick is frozen for good. */
+	static final int LOAD_RADIUS_CHUNKS = 6;
 
 	/** Nearest plains village start within 100 chunks of spawn (the position is a chunk's block, not structure bounds). */
 	static Optional<BlockPos> locate(ServerLevel level) {
