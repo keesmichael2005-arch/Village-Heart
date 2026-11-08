@@ -176,6 +176,16 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
 
 - [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open
+
+## From M21
+- [ ] **BLOCKING for M18 (guards): register the defence patrol points.** M18 step 6 must add `dev.villageheart.defence.Defences::patrolPoints` (a `List<BlockPos>` for the claimed village: finished Lamp Posts and Watchtowers, one walkable cell each) as a source of its `PatrolPoints.of(server)`. M21 could not do it (M18 not merged); until then guards do not patrol at defences. M21's T-L2-7 asserts the M21 side only
+- [ ] Villagers cannot open fence gates (vanilla `InteractWithDoor` handles doors only): a wall ring with only gates cuts workers off; a later milestone could add gate opening to villager pathing
+- [ ] Two builders working on two touching defence builds at once are untested (T-L2-9 runs three touching walls with the instant builder only)
+- [ ] Walls are level at the start's height (no terrain following); a hilly village needs several segments. A `heights` list in `BlueprintParams` would allow a sloped wall
+- [ ] The lamp test is time-warped (the day time is set per sample), not a real night of 11 000 ticks; the live spawner is not exercised (needs a player; random)
+- [ ] The Watchtower platform centre cell (above the ladder hole) is ANY, not cleared: a natural block there (leaf) would stay in the rail
+
+
 ## From M17 (builder notes)
 - [ ] **Before v1:** a hidden hunter in the open keeps an invisible hitbox that can catch a player's crosshair (placing or breaking blocks next to the ground marker while a hunter is out); fix with a `Villager.isPickable` mixin (client side, guessing from the synced flags). Raised from the miner note: the hunter hides where players walk, the miner at the bottom of a pit
 - [ ] `DepositTrip` walks with `WalkTo` (range 48) and the Storage may be anywhere in the claim: a hunter that comes back 46 blocks out from a far Storage reports "Storage unreachable" and waits; give `DepositTrip` a walk-via-the-job-block step for all away jobs
@@ -194,3 +204,8 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From M26 plan (orchestrator)
 - [ ] Village-logic tick timer double-counts nested sections (e.g. `BuildSystem.tick` inside `tickAll`) and misses work outside sections (`AwayTrips.processLoaded`, `LevelUpFeedback.flush`, event handlers). M26 step plans an outermost-only timer plus a JFR cross-check
 - [ ] (M17-xp) `farHunterWalksViaLodge` timed out at tick 2602 of 2600 under heavy machine load (another agent's GameTests running at the same time); M9 `sixOaksTwoDays` replant flaked again in the same window. Check the margin when the machine is quiet
+
+## From M21-r1
+- [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
+- [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
+- [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)

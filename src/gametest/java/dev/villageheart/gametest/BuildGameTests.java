@@ -745,7 +745,7 @@ public class BuildGameTests {
 			// everybody in the claim may open the table and read it
 			for (var p : List.of(visitor, resident, steward)) {
 				var m = openTable(h, p);
-				h.assertTrue(m.snapshot().blueprints().size() == 3, p.getName().getString() + " sees the 3 blueprints");
+				h.assertTrue(m.snapshot().blueprints().size() == Blueprints.all().size(), p.getName().getString() + " sees every blueprint");
 				h.assertTrue(m.snapshot().viewerRank() == VillageClaims.current(h.getLevel().getServer()).orElseThrow().rankOf(p.getUUID()), "with the viewer's rank");
 				h.assertTrue(m.snapshot().blueprints().get(0).materials().size() == 6, "and the material list");
 				h.assertTrue(!m.snapshot().blueprints().get(0).locked(), "unlocked at Village tier");

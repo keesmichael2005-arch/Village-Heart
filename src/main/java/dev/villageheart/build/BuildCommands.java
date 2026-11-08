@@ -4,7 +4,13 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.Rank;
+import dev.villageheart.core.blueprint.BlueprintParams;
+import dev.villageheart.core.blueprint.PlacementMode;
+import dev.villageheart.core.blueprint.Placement;
+import dev.villageheart.core.blueprint.WallLines;
+import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.Blueprints;
@@ -49,6 +55,11 @@ public final class BuildCommands {
 												.suggests((ctx, b) -> SharedSuggestionProvider.suggest(
 														Arrays.stream(Rotation4.values()).map(r -> r.name().toLowerCase(Locale.ROOT)), b))
 												.executes(ctx -> start(ctx, rotation(StringArgumentType.getString(ctx, "rotation"))))))))
+						.then(Commands.literal("line").then(Commands.argument("blueprint", StringArgumentType.word())
+								.suggests((ctx, b) -> SharedSuggestionProvider.suggest(
+										Blueprints.all().stream().filter(bp -> bp.mode() == PlacementMode.LINE).map(Blueprint::id), b))
+								.then(Commands.argument("from", BlockPosArgument.blockPos())
+										.then(Commands.argument("to", BlockPosArgument.blockPos()).executes(BuildCommands::line)))))
 						.then(Commands.literal("advance").then(Commands.argument("id", UuidArgument.uuid())
 								.then(Commands.literal("all").executes(ctx -> advance(ctx, Integer.MAX_VALUE)))
 								.then(Commands.argument("steps", IntegerArgumentType.integer(1)).executes(ctx -> advance(ctx, IntegerArgumentType.getInteger(ctx, "steps"))))))
@@ -73,6 +84,10 @@ public final class BuildCommands {
 			source.sendFailure(Component.literal("No village"));
 			return 0;
 		}
+		if (bp.get().mode() == PlacementMode.LINE) {
+			source.sendFailure(Component.literal(bp.get().name() + " is a line blueprint: use /villageheart build line"));
+			return 0;
+		}
 		BlockPos pos = BlockPosArgument.getBlockPos(ctx, "pos");
 		var level = source.getLevel();
 		SiteProblem problem = SiteValidation.check(level, village.get(), bp.get(),
@@ -83,6 +98,38 @@ public final class BuildCommands {
 		}
 		BuildJob job = BuildJobs.start(level, bp.get(), pos, rotation, village.get().owner());
 		source.sendSuccess(() -> Component.literal("Build " + job.id() + " started: " + bp.get().name()), true);
+		return 1;
+	}
+
+	/** {@code build line <blueprint> <from> <to>}: the two clicks of a wall or gate, as the Owner. */
+	private static int line(CommandContext<CommandSourceStack> ctx) {
+		CommandSourceStack source = ctx.getSource();
+		Optional<Blueprint> unit = Blueprints.byId(StringArgumentType.getString(ctx, "blueprint"));
+		if (unit.isEmpty() || unit.get().mode() != PlacementMode.LINE) {
+			source.sendFailure(Component.literal("Not a line blueprint"));
+			return 0;
+		}
+		Optional<VillageState> village = VillageClaims.current(source.getServer());
+		if (village.isEmpty()) {
+			source.sendFailure(Component.literal("No village"));
+			return 0;
+		}
+		BlockPos from = BlockPosArgument.getBlockPos(ctx, "from"), to = BlockPosArgument.getBlockPos(ctx, "to");
+		WallLines.Result r = WallLines.of(new Pos(from.getX(), from.getY(), from.getZ()), new Pos(to.getX(), to.getY(), to.getZ()),
+				Blueprints.minLength(unit.get()), Balance.MAX_WALL_LENGTH);
+		if (!r.ok()) {
+			source.sendFailure(Component.literal(r.problem().english()));
+			return 0;
+		}
+		Blueprint bp = Blueprints.resolve(unit.get().id(), new BlueprintParams(r.line().length())).orElseThrow();
+		var level = source.getLevel();
+		SiteProblem problem = SiteValidation.check(level, village.get(), bp, new Placement(r.line().ground(), r.line().rotation()), Rank.OWNER);
+		if (problem != null) {
+			source.sendFailure(Component.literal(problem.english()));
+			return 0;
+		}
+		BuildJob job = BuildJobs.start(level, bp, from, r.line().rotation(), new BlueprintParams(r.line().length()), village.get().owner());
+		source.sendSuccess(() -> Component.literal("Build " + job.id() + " started: " + bp.name() + " of " + r.line().length()), true);
 		return 1;
 	}
 

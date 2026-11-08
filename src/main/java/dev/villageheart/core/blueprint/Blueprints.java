@@ -1,5 +1,6 @@
 package dev.villageheart.core.blueprint;
 
+import dev.villageheart.core.Balance;
 import java.util.List;
 import java.util.Optional;
 
@@ -165,7 +166,13 @@ public final class Blueprints {
 	public static final Blueprint STORAGE_SHED = BlueprintParser.parse(STORAGE_SHED_TEXT);
 	public static final Blueprint FARM_PLOT = BlueprintParser.parse(FARM_PLOT_TEXT);
 
-	private static final List<Blueprint> ALL = List.of(SMALL_HOUSE, STORAGE_SHED, FARM_PLOT);
+	public static final Blueprint WALL_SEGMENT = DefenceBlueprints.wall(1);
+	public static final Blueprint GATE = DefenceBlueprints.gate(Balance.GATE_MIN_LENGTH);
+	public static final Blueprint LAMP_POST = DefenceBlueprints.LAMP_POST;
+	public static final Blueprint WATCHTOWER = DefenceBlueprints.WATCHTOWER;
+
+	/** For a LINE blueprint the entry is the shortest instance: used for names, tier and the table, never for a site. */
+	private static final List<Blueprint> ALL = List.of(SMALL_HOUSE, STORAGE_SHED, FARM_PLOT, WALL_SEGMENT, GATE, LAMP_POST, WATCHTOWER);
 
 	/** In menu order. */
 	public static List<Blueprint> all() { return ALL; }
@@ -176,10 +183,17 @@ public final class Blueprints {
 	}
 
 	/**
-	 * The blueprint for an id and its parameters. M20's blueprints are fixed (length 0); M21's wall segment will generate a
-	 * {@link Blueprint} from {@code params.length()} here.
+	 * The blueprint for an id and its parameters. FOOTPRINT blueprints are fixed (the params are ignored); a LINE blueprint is generated
+	 * for {@code params.length()} and is empty when the length is out of range (a saved build with such a length is dropped by the codec).
 	 */
 	public static Optional<Blueprint> resolve(String id, BlueprintParams params) {
-		return byId(id);
+		Optional<Blueprint> base = byId(id);
+		if (base.isEmpty() || base.get().mode() != PlacementMode.LINE) return base;
+		return DefenceBlueprints.line(id, params.length());
+	}
+
+	/** The shortest line of a LINE blueprint, 0 for any other. */
+	public static int minLength(Blueprint bp) {
+		return bp.mode() == PlacementMode.LINE ? DefenceBlueprints.minLength(bp.id()) : 0;
 	}
 }

@@ -35,6 +35,12 @@ public final class SiteRules {
 		 * it, a ladder on its face, a door standing on it, an item frame on it). Only asked for CLEARABLE cells.
 		 */
 		default Optional<Dependent> dependent(Pos cleared, Set<Long> touched) { return Optional.empty(); }
+
+		/** M21 rule 11c: whether the block at {@code p} can carry a defence (not air, not a fluid; the glue also refuses short grass and snow). */
+		default boolean solid(Pos p) {
+			SiteCell c = cell(p);
+			return c != SiteCell.AIR && c != SiteCell.FLUID;
+		}
 	}
 
 	/** What depends on a cell: its block id ({@code minecraft:torch}) or entity type id, and where it is. */
@@ -47,12 +53,26 @@ public final class SiteRules {
 		}
 	}
 
-	public record Box(Pos min, Pos max) {}
+	/** The area of a pending build. {@code defence}: its blueprint is a DEFENCE one (M21 rule 8 lets two of those touch). */
+	public record Box(Pos min, Pos max, boolean defence) {
+		public Box(Pos min, Pos max) { this(min, max, false); }
+	}
 
 	public record SiteFacts(Blueprint bp, Placement p, HeartLocation heart, String dimension, Tier tier, Rank rank, int minY, int maxY,
 			SiteView view, List<Protected> protectedAreas, List<Box> otherBuilds, int activeBuilds, StandPoints.Standable stand) {}
 
-	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, SUPPORT, NO_STAND, UNCHECKED }
+	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, SUPPORT, NO_STAND, UNCHECKED,
+		/** M21, appended so the ordinals above stay: rule 11c, and the line problems of {@link WallLines}. */
+		FOOTING, NOT_STRAIGHT, TOO_LONG, TOO_SHORT }
+
+	private static final java.util.EnumSet<Code> OVERRIDABLE_BY_UNCHECKED = java.util.EnumSet.of(Code.OVERLAP, Code.BUILD_OVERLAP, Code.FLUID,
+			Code.TREE, Code.BLOCKED, Code.SUPPORT, Code.NO_STAND, Code.FOOTING);
+
+	/**
+	 * Problems that a room near the site without a scan yet replaces by "try again": every rule from 7 on (the room might be what is in the way).
+	 * An explicit set, so it does not rest on the enum order.
+	 */
+	public static boolean overridableByUnchecked(Code c) { return OVERRIDABLE_BY_UNCHECKED.contains(c); }
 
 	/** The first rule that failed. The args are not cut (a TextLine cuts them for the wire); {@link #english()} is the chat text. */
 	public record SiteProblem(Code code, String fallback, List<String> args, @Nullable Pos at) {
@@ -95,7 +115,7 @@ public final class SiteRules {
 	}
 
 	/** The area of a box: corners as {@link Box}. */
-	public static Box box(Blueprint bp, Placement p) { return new Box(p.min(bp), p.max(bp)); }
+	public static Box box(Blueprint bp, Placement p) { return new Box(p.min(bp), p.max(bp), bp.kind() == Blueprint.Kind.DEFENCE); }
 
 	public static Optional<SiteProblem> check(SiteFacts f) {
 		Blueprint bp = f.bp();
@@ -142,7 +162,15 @@ public final class SiteRules {
 			}
 		}
 		// 8 other builds, each grown by one so the stand rings never touch
+		boolean defence = bp.kind() == Blueprint.Kind.DEFENCE;
 		for (Box o : f.otherBuilds()) {
+			if (defence && o.defence()) {
+				// M21: two defences may touch (walls end to end, a lamp beside a wall), never overlap
+				boolean overlap = min.x() <= o.max().x() && max.x() >= o.min().x() && min.z() <= o.max().z() && max.z() >= o.min().z()
+						&& min.y() <= o.max().y() && max.y() >= o.min().y();
+				if (overlap) return Optional.of(problem(Code.BUILD_OVERLAP, "Overlaps the build at %s", null, o.min().toString()));
+				continue;
+			}
 			boolean hit = min.x() - 1 <= o.max().x() + 1 && max.x() + 1 >= o.min().x() - 1 && min.z() - 1 <= o.max().z() + 1
 					&& max.z() + 1 >= o.min().z() - 1 && min.y() - 1 <= o.max().y() + 1 && max.y() + 1 >= o.min().y() - 1;
 			if (hit) return Optional.of(problem(Code.BUILD_OVERLAP, "Overlaps the build at %s", null, o.min().toString()));
@@ -175,6 +203,16 @@ public final class SiteRules {
 				String id = d.get().id();
 				return Optional.of(problem(Code.SUPPORT, "%s at %s would fall: it rests on the site", d.get().at(), id.substring(id.indexOf(':') + 1),
 						d.get().at().toString()));
+			}
+		}
+		// 11c M21: a defence stands on solid ground, or a gap under a wall lets mobs through and a lamp or tower hangs in the air
+		if (defence) {
+			for (int z = 0; z < bp.depth(); z++) for (int x = 0; x < bp.width(); x++) {
+				if (!bp.entry(x, 0, z).isBlock()) continue;
+				Pos c = p.world(bp, x, 0, z);
+				if (!f.view().solid(c.below())) {
+					return Optional.of(problem(Code.FOOTING, "No ground under %s: defences need level ground", c, c.toString()));
+				}
 			}
 		}
 		// 12 a place to stand within reach of every touched cell
