@@ -115,4 +115,14 @@ class LangCoverageTest {
 		assertEquals("No farmland within 24 blocks", lang.get("gui.villageheart.heart.activity.no_work.farmer"));
 		assertTrue(lang.keySet().stream().noneMatch(k -> k.startsWith("status.villageheart.")), "M9's separate status keys are gone");
 	}
+
+	/** The level-up chat lines (M15): the keys LevelUpFeedback sends exist with the English the plan promises. */
+	@Test
+	void levelUpMessages() throws Exception {
+		Map<String, Object> lang = lang();
+		assertEquals("%s the %s reached level %s", lang.get("message.villageheart.worker_level_up"));
+		assertEquals("...and %s more workers levelled up", lang.get("message.villageheart.workers_level_up_more"));
+		assertEquals("%s has the experience for level %s. It needs a %s.", lang.get("message.villageheart.worker_level_capped"));
+		assertTrue(lang.containsKey("gui.villageheart.heart.villagers.level_capped"), "the Heart screen's capped-bar note");
+	}
 }

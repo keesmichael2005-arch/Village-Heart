@@ -56,13 +56,16 @@ public final class BuildingTestSupport {
 	// ---- claim -----------------------------------------------------------------------------------
 
 	/** Reset, then (after the bell's POI exists) claim a village with a survival owner. The owner is in {@link #owner}. */
-	public static GameTestSequence begin(GameTestHelper h) {
+	public static GameTestSequence begin(GameTestHelper h) { return begin(h, 0); }
+
+	/** Same, with the bell and the Heart {@code dy} blocks higher (M16's high scene: a platform in the air, where the Mineshaft is in the HIGH band). */
+	public static GameTestSequence begin(GameTestHelper h, int dy) {
 		VillageTestSupport.reset(h);
 		BuildingSystem.resetRuntimeForTests();
 		sweepStrayMarkers(h);
 		FarmTestSupport.clearStrayFarmland(h, 40);
-		h.setBlock(BELL, Blocks.BELL);
-		return h.startSequence().thenIdle(3).thenExecute(() -> claim(h));
+		h.setBlock(BELL.above(dy), Blocks.BELL);
+		return h.startSequence().thenIdle(3).thenExecute(() -> claim(h, dy));
 	}
 
 	/**
@@ -130,9 +133,11 @@ public final class BuildingTestSupport {
 	public static ServerPlayer owner() { return owner; }
 
 	/** Place the Heart next to the bell (the bell must be placed 3 ticks earlier). */
-	public static void claim(GameTestHelper h) {
+	public static void claim(GameTestHelper h) { claim(h, 0); }
+
+	public static void claim(GameTestHelper h, int dy) {
 		owner = VillageTestSupport.player(h, "owner", GameType.SURVIVAL);
-		VillageTestSupport.place(h, owner, new BlockPos(3, 0, 1));
+		VillageTestSupport.place(h, owner, new BlockPos(3, dy, 1));
 		h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isPresent(), "the Heart claimed the village");
 	}
 

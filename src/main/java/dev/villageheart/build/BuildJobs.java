@@ -1,9 +1,12 @@
 package dev.villageheart.build;
 
 import dev.villageheart.VillageHeart;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.defence.DefenceSite;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.blueprint.Blueprint;
+import dev.villageheart.core.blueprint.BlueprintParams;
 import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.blueprint.BuildPlan;
@@ -71,8 +74,13 @@ public final class BuildJobs {
 
 	/** Starts a build at the ground block. The caller has checked the site (SiteRules). */
 	public static BuildJob start(ServerLevel level, Blueprint bp, BlockPos ground, Rotation4 rotation, UUID startedBy) {
+		return start(level, bp, ground, rotation, BlueprintParams.NONE, startedBy);
+	}
+
+	/** {@code bp} is the resolved blueprint of {@code params} (a wall of its length), as {@link #blueprint} would give. */
+	public static BuildJob start(ServerLevel level, Blueprint bp, BlockPos ground, Rotation4 rotation, BlueprintParams params, UUID startedBy) {
 		HeartLocation loc = VillageClaims.locate(level, ground);
-		BuildJob job = BuildJob.start(UUID.randomUUID(), bp.id(), loc, rotation, level.getGameTime(), startedBy);
+		BuildJob job = BuildJob.start(UUID.randomUUID(), bp.id(), params, loc, rotation, level.getGameTime(), startedBy);
 		VillageClaims.data(level.getServer()).update(v -> v.withBuild(job));
 		VillageHeart.LOG.info("Build {} started: {} at {} ({})", job.id(), bp.id(), ground.toShortString(), rotation);
 		BuildSystem.refresh(level.getServer()); // its materials are reserved at once
@@ -91,7 +99,17 @@ public final class BuildJobs {
 
 	/** A build is done: record and reservations go. Whatever the builder still carries is spoil from now on. */
 	public static void finish(MinecraftServer server, BuildJob job) {
-		VillageClaims.data(server).update(v -> v.withoutBuild(job.id()));
+		boolean recorded = dev.villageheart.core.defence.Defences.recorded(job.blueprintId());
+		long now = server.overworld().getGameTime();
+		VillageClaims.data(server).update(v -> {
+			VillageState next = v.withoutBuild(job.id());
+			if (!recorded) return next;
+			VillageState withSite = next.withDefence(new DefenceSite(job.id(), job.blueprintId(), job.ground(), job.rotation(), now));
+			if (withSite == next && next.defence(job.id()).isEmpty()) {
+				VillageHeart.LOG.info("Defence site cap ({}) reached: {} at {} is not a patrol point", Balance.MAX_DEFENCE_SITES, job.blueprintId(), job.ground());
+			}
+			return withSite;
+		});
 		Stockpiles.reservations(server).release(job.id());
 		BuildRuntime.forgetBuild(server, job.id());
 		VillageHeart.LOG.info("Build {} finished: {}", job.id(), job.blueprintId());

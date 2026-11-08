@@ -77,6 +77,12 @@ public final class LevelSiteView implements SiteRules.SiteView {
 	}
 
 	@Override
+	public boolean solid(Pos p) {
+		BlockState s = state(p);
+		return s == null || SiteValidation.solid(s);
+	}
+
+	@Override
 	public String blockId(Pos p) {
 		BlockState s = state(p);
 		return s == null ? "minecraft:air" : BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString();

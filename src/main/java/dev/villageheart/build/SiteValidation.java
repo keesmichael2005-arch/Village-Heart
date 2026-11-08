@@ -9,7 +9,6 @@ import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.blueprint.Placement;
 import dev.villageheart.core.blueprint.SiteRules;
 import dev.villageheart.core.blueprint.SiteRules.Box;
-import dev.villageheart.core.blueprint.SiteRules.Code;
 import dev.villageheart.core.blueprint.SiteRules.Protected;
 import dev.villageheart.core.blueprint.SiteRules.SiteFacts;
 import dev.villageheart.core.blueprint.SiteRules.SiteProblem;
@@ -67,17 +66,34 @@ public final class SiteValidation {
 			}
 			prot.add(new Protected(b.type().displayName(), marker, cells));
 		}
-		List<Box> others = new ArrayList<>();
-		for (BuildJob j : village.builds()) {
-			if (!j.ground().dimension().equals(level.dimension().identifier().toString())) continue;
-			Blueprint obp = BuildJobs.blueprint(j);
-			others.add(SiteRules.box(obp, j.placement()));
-		}
+		List<Box> others = pendingBoxes(level, village, null);
 		SiteFacts f = new SiteFacts(bp, pl, village.heart(), level.dimension().identifier().toString(), village.tier(), rank,
-				level.getMinY(), level.getMaxY(), view, prot, others, village.builds().size(), standable(view, pl.ground().y()));
+				level.getMinY(), level.getMaxY(), view, prot, others, village.builds().size(),
+				StandPoints.avoiding(standable(view, pl.ground().y()), others));
 		Optional<SiteProblem> p = SiteRules.check(f);
-		if (unchecked != null && (p.isEmpty() || p.get().code().ordinal() >= Code.OVERLAP.ordinal())) return unchecked;
+		if (unchecked != null && (p.isEmpty() || SiteRules.overridableByUnchecked(p.get().code()))) return unchecked;
 		return p.orElse(null);
+	}
+
+	/**
+	 * The boxes of the pending builds in this dimension (except {@code except}), each with the kind of its blueprint. Built from
+	 * {@link BuildJobs#blueprint} so a wall counts with its real length.
+	 */
+	public static List<Box> pendingBoxes(ServerLevel level, VillageState village, java.util.UUID except) {
+		List<Box> out = new ArrayList<>();
+		for (BuildJob j : village.builds()) {
+			if (j.id().equals(except)) continue;
+			if (!j.ground().dimension().equals(level.dimension().identifier().toString())) continue;
+			out.add(SiteRules.box(BuildJobs.blueprint(j), j.placement()));
+		}
+		return out;
+	}
+
+	/** The stand points of a pending build: standable columns, minus those inside another pending build's box (3.2 #6). */
+	public static StandPoints.Standable standableFor(ServerLevel level, BuildJob job) {
+		StandPoints.Standable base = standable(new LevelSiteView(level), job.ground().y());
+		Optional<VillageState> village = VillageClaims.current(level.getServer());
+		return village.isEmpty() ? base : StandPoints.avoiding(base, pendingBoxes(level, village.get(), job.id()));
 	}
 
 	private static boolean near(Pos marker, Pos min, Pos max) {
@@ -102,11 +118,11 @@ public final class SiteValidation {
 		};
 	}
 
-	private static boolean solid(BlockState s) {
+	public static boolean solid(BlockState s) {
 		return s.getFluidState().isEmpty() && !s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
 	}
 
-	private static boolean free(BlockState s) {
+	public static boolean free(BlockState s) {
 		return s.getFluidState().isEmpty() && s.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
 	}
 }

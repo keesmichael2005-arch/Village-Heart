@@ -62,7 +62,9 @@ class HeartCodecsTest {
 				new VillagerRow(id(1), "Ada", "farmer", "villageheart:farmer", 2, 150, 300, NeedsFlags.of(true, false, true),
 						ActivityKind.WORKING, true, false, true, true),
 				new VillagerRow(id(2), "Bram", "", "minecraft:none", 0, 0, 0, NeedsFlags.UNKNOWN, ActivityKind.AWAY, false, true,
-						false, false));
+						false, false),
+				new VillagerRow(id(3), "Cy", "lumberjack", "villageheart:lumberjack", 1, 150, 100, NeedsFlags.of(true, true, true),
+						ActivityKind.WORKING, false, false, false, true, true));
 		List<BuildingRow> b = List.of(new BuildingRow("house", -5, 64, 1_000_000, RowStatus.INVALID,
 				List.of(new TextLine("a", "b"), new TextLine("c", "d")), 3, DetailKind.HOMES, 2, 0));
 		Stock s = new Stock(List.of(new StockLine("minecraft:bread", 1L << 40, 5), new StockLine("minecraft:oak_log", 64, 0)), 4,
@@ -143,7 +145,7 @@ class HeartCodecsTest {
 		for (int i = 0; i < HeartLimits.MAX_VILLAGERS; i++) {
 			v.add(new VillagerRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), s(HeartLimits.MAX_ID), s(HeartLimits.MAX_ID),
 					Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, NeedsFlags.of(true, true, true), ActivityKind.OTHER,
-					true, true, true, true));
+					true, true, true, true, true));
 		}
 		List<JobChoice> jobs = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_JOB_CHOICES; i++) jobs.add(new JobChoice(s(HeartLimits.MAX_ID), Integer.MIN_VALUE, true));

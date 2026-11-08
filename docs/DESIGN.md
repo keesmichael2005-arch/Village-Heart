@@ -166,6 +166,16 @@ building behaves exactly as in vanilla.
   The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
   ×1.0 / ×1.25 / ×1.5. Tier caps: Hamlet caps at level 1, Village at 2, Town at 3.
+
+  Rules as built (M15): XP is cumulative and **banked up to 300** even when the tier holds the level back; a worker with 300 XP at Hamlet
+  stays level 1 and becomes level 2 within a second of the Village tier-up and level 3 at Town. Levels are **never lowered** (a level
+  written above the cap, which only tests and admin tools do, is kept and used). XP per unit *(tunable)*: log felled 1, crop harvested 1,
+  cooked item 1, mined item 1, hunting trip 5, kill 5, sparring unit 1, smithed item 2, block placed 0.2, trade 2 (fractions carry per worker;
+  walking, replanting and deposit trips earn nothing). **Firing a worker drops its level and XP**; a rehire starts at level 1 with 0 XP;
+  unloaded workers earn nothing. A level-up shows happy-villager particles and the celebrate sound, tells every online Resident or above
+  in chat (at most 3 lines per tick, then one "and N more" line), and moves the vanilla level badge on the villager's belt (stone, iron, gold).
+  The first time a worker has the XP for a level its tier forbids, the same members hear "needs a Village / a Town"; the Villagers tab shows
+  that worker's XP bar full and gold, with a tooltip.
 - **Needs** (status icons on the Heart screen, not a mood number):
   - **Fed**: ate ≥10 nutrition at the last dinner. Hungry 1 day → work at ×0.5. Hungry 2+ days → stops
     working. **Never dies of hunger.**
@@ -236,10 +246,55 @@ the rails (cosmetic, post-M-mining polish). The haul comes from a table chosen b
 
 There is no real tunnelling in v1 (post-v1 idea).
 
+  Rules as built (M16): **"disappears inside"** means the villager stays a loaded entity: at the shaft entrance it is moved to the shaft's
+  deepest cell (up the column if that cell is under a fluid or a full block; never the marker cell) and made Invisible, Invulnerable, Silent
+  and NoAI (NoAI freezes the vanilla brain, invulnerable mobs are never targeted). The flags it had are saved in its own persistent
+  attachment and given back when it comes up at the spot it went down from (or, if that is blocked, the nearest free standable cell within
+  2 blocks of the marker; with none it stays hidden and reports "Can't reach the Mineshaft"). `Invisible` is not saved by vanilla, so it is set
+  again when the entity loads. Players cannot trade with or hit a hidden miner; it is re-pinned to its cell every step (pistons). Firing,
+  releasing the village, a conversion or an unreadable trip all bring it up (a villager is never left hidden). **2 in-game hours** means
+  *underground work time*: a haul costs 2500 work units and a stone pickaxe at level 1 earns 1.25 per tick (2000 ticks; wood 2500, iron
+  1667, diamond 1429, netherite 1250), counted in 20-tick steps; the walk to the shaft and the deposit trip are on top, so a real cycle is
+  about 2340 ticks. Progress is kept per shaft (reset when the miner uses another one) and overnight: it comes up at 11000 without a haul,
+  and no new descent starts after 10400. The pickaxe stays in the Mine chest (M9) and loses 10 durability per haul. The band comes from the
+  shaft's deepest Y at its last complete survey (unknown after a restart until the shaft is re-checked: the miner then waits). Diamonds need an iron
+  pickaxe or better and Y < 0; every chance entry draws one number from a generator seeded by (world seed, villager UUID, the miner's haul
+  counter), so a reload never re-rolls a haul. 4 redstone or lapis per hit, 1 gold, 1 diamond (DESIGN gave no counts). A wooden pickaxe uses the stone table,
+  slower. What does not fit into the inventory stays pending and is delivered later (never dropped); the miner hands in everything but food
+  as soon as it is up. A shaft that stops being valid (rails removed) brings the miner up at once with its progress reset; the Mine
+  then turns invalid ("Needs a linked Mineshaft") and its miners report "Workplace invalid" until it is fixed. Statuses: "Needs pickaxe",
+  "No valid Mineshaft", "Can't reach the Mineshaft", and "Away (mining)" on the Heart screen while it is down.
+
 ### 5.4 Hunter (Hunting Lodge + Hunting Ground, Fletching Table, *requires bow or sword*)
 It walks to the Hunting Ground, is gone for **3 in-game hours** per trip, and returns with
 2–4 raw meat (beef, pork, mutton or chicken, weighted by nearby biome), 1–2 leather, 1–2 feathers and 0–1 rabbit hide.
 With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus. There are 2 trips per day at level 1.
+
+  Rules as built (M17): the hunter "goes away" with the miner's machinery (DESIGN 5.3): it stays a loaded entity, hidden (Invisible,
+  Invulnerable, Silent, NoAI) and re-pinned, but where it *stands* when it arrives near the Hunting Ground marker (within 3 blocks of it;
+  there is no hole to hide in), on a free standable cell if another hunter already holds that one. **3 in-game hours** is *time away*: a
+  trip costs 3000 work units at 1.0 per tick at level 1 (2400 ticks at level 2, 2000 at level 3), counted in 20-tick steps; the walk and
+  the deposit trip are on top. The pace does not depend on the weapon's tier (a bow and a diamond sword give the same trips); the tier
+  only decides which weapon is taken. **Weapons** are `#minecraft:swords` (wood, stone, copper, gold, iron, diamond, netherite), bow and
+  crossbow (spears, mace and trident are not hunter weapons). Any bow or crossbow is taken before any sword, then by tier and chest
+  order; the weapon stays in the Lodge chest and loses 5 durability per completed trip. **Arrows** are taken at the return, not at the
+  start: a bow or crossbow takes 1 arrow (plain first, then any other item of the arrows tag) from the Lodge chest and brings 1 more meat;
+  without an arrow it still hunts, with no bonus (Infinity is not modelled). **Trips per day**: 2 at level 1, 3 at levels 2 and 3 (a
+  count saved with the hunter for the day, reset on any other day); a trip only starts if it can end 300 ticks before the work day ends
+  at 11000 (at level 1 the last start is at day time 7700), and the fit is checked again when it arrives. At day end it comes back without
+  a yield and keeps its progress. The yield of a trip is drawn from a generator seeded by (world seed, villager UUID, trip counter), in a
+  pinned order: base meat 2-4, leather 1-2, feathers 1-2, rabbit hide 0-1 (50 percent), then the kind of each piece of meat; the bow's
+  extra piece is one more draw of the same stream, so with and without a bow the same trip is the same plus one meat. **Biome weighting**
+  reads the vanilla creature spawn weights of the biomes at the marker and eight points 12 blocks around it (cow and mooshroom beef, pig
+  porkchop, sheep mutton, chicken; where none of them spawns the vanilla farm-animal weights 8/10/12/10): a plains ground gives 8/10/12/10.
+  Leather, feathers and hide do not depend on the biome. **Which ground**: the nearest VALID Hunting Ground linked to the Lodge. **A rule
+  change from M5**: a Hunting Ground links only to a Hunting Lodge **within 40 blocks** (it was: anywhere in the village); one farther out
+  is invalid ("No Hunting Lodge within 40 blocks"). A hunter more than 40 blocks from the marker first walks to its fletching table. The
+  yield goes into the villager's inventory and the hunter hands in every hunted item at once (raw meat is not a kept food). A hunter that
+  stands in a hidden hunter's way counts as arrived when it touches it near the ground. Statuses: "Needs bow or sword", "No valid Hunting
+  Ground", "Can't reach the Hunting Ground", and "Away (hunting)" on the Heart screen while it is out. If the ground's chunk is not
+  entity-ticking the hunter is not stepped (everything freezes, DESIGN 6). Known gap: a hunter hidden in the open has an invisible hitbox that can catch a player's
+  crosshair (BACKLOG, before v1).
 
 ### 5.5 Cook (Kitchen, Smoker)
 It takes raw food from the stockpile, processes it at the Kitchen's smoker and crafting table, and stores the result:
@@ -297,6 +352,15 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - A natural cell is only cleared when nothing of a player rests on it: the site check (rule 11b, `SiteSupport`) refuses a site where a block outside the touched cells would lose its support (a torch, ladder, door, sign, rail or lantern on or against a cell the build clears, found by asking `canSurvive` with the cell as air) or a hanging entity (item frame, painting) is attached to one, naming the thing and its cell ("torch at (x, y, z) would fall: it rests on the site"). The builder asks the same before every clear step; a thing attached after the confirm stops the build with "torch in the way at (x, y, z)" and nothing is broken. Natural neighbours that pop or fall with the cell (flowers, sand) are not protected.
 - The builder reserves the whole build's materials (keyed by the build id, oldest build first, one wood type when possible, transient like all reservations), fetches about a stack at a time, clears (top layer first, drops to Storage), places layer by layer from the bottom in perimeter order, then torches, then water, then a check pass that puts back anything a player removed, and the marker last, so the room is complete when it is first checked. It works only from the ring of columns around the site, never from inside it. 1 action per second at level 1.
 - A pause names the first material in step order that is short ("Needs 12 more planks"); it resumes by itself within a refresh (100 ticks) plus the walk after the planks arrive. Cancelling keeps the placed blocks and loses the blueprint; firing a builder hands the materials it carries back to Storage; a dead builder's carried materials are lost (vanilla villagers drop nothing), the shortfall is reserved again.
+
+**Rules as built (M21)** (`docs/plans/M21.md`):
+- **Two-click lines.** Wall Segment and Gate are LINE blueprints (`mode LINE`). With one in hand: click 1 sets the start (a short grass or snow click means the block below), click 2 sets the end, straight along x or z and at most 32 blocks including both ends (a gate at least 5): a diagonal is "A wall must run straight along x or z (n off the line)", a long one "Too long: 33 blocks (max 32)", a short gate "Too short: 4 blocks (min 5)", and the start is kept so the next click is another end. A good line is checked with the same twelve rules as any site and shown green or red as dust along its outline. A click on the shown line confirms, any other click is a new end (to shorten a line, sneak-click to clear the start and begin again). `/villageheart build line <wall_segment|gate> <from> <to>` is the same for operators.
+- **Level, no terrain following.** The whole line is level at the start's ground height (the ok text says "level at y 65"). Higher ground inside the box is natural and is cleared; a block of a player there refuses as usual. Lower ground is the new rule 11c FOOTING ("No ground under (x, y, z): defences need level ground"): every ground cell under a defence must be solid (a dirt path or farmland counts, short grass and snow layer do not). A sloped wall is several segments.
+- **Defences may touch** each other (wall end to end, a corner, a lamp beside a wall) but never overlap; a House still keeps a block of room from a pending defence. A builder never stands in a column that belongs to another pending build.
+- **Wall:** 3 high cobblestone, 3 per block (a 20-long wall is 60). **Gate:** the same wall with a centred 3-wide opening: closed fence gates at the bottom, one block of air above, a cobblestone lintel on top, so a player passes (2 high) when a gate is opened and a closed gate cannot be jumped. A gate costs 3 per block minus 6 cobblestone and 3 fence gates. Villagers cannot open fence gates (vanilla): a ring of wall with only gates cuts workers off; leave one gate open or a gap.
+- **Lamp Post:** 2 fences and a lantern (it stands on the post). Vanilla refuses a natural monster spawn in a cell with block light above 0 (the overworld's limit), the lantern's 15 falls by one per block along x + z and up: on level ground every cell within 12 steps (a diamond, not a circle) is safe. Not stopped: pillager patrols, slimes, phantoms, drowned, spawners, raids, mobs walking in. Walls and houses shade the light.
+- **Watchtower** (Town): a 3x3 cobblestone shaft 5 high with a ladder inside, an entrance 2 high on the front, a 5x5 plank platform with the ladder's hole and a fence rail round it: 38 cobblestone, 24 planks, 16 fences, 6 ladders. The centre cell above the ladder hole is left as it is (out of the builder's reach from the ring).
+- **Patrol points.** A finished Lamp Post or Watchtower is saved with the village (`VillageState.defences`, at most 64, in finish order). Its patrol point is the first walkable cell next to it (lamp: in front of the post; tower: in front of the entrance), found again at every query. The record goes when its lantern or one of its two ladders is gone (checked every 200 ticks in loaded chunks). `dev.villageheart.defence.Defences.patrolPoints(server)` lists them for the guards (M18).
 
 ### 5.9 Merchant (Market, Market Stall)
 It sells stockpile **surplus** for emeralds that go into the treasury. Surplus means stock above a reserve:

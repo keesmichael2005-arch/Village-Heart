@@ -113,7 +113,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		double load = load(villager);
 		if (load <= 0) return false;
 		boolean homeTime = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.GO_HOME;
-		return load >= Balance.WORKER_CARRY_STACKS || freeSlots(villager) <= 1 || homeTime;
+		return load >= Balance.WORKER_CARRY_STACKS || freeSlots(villager) <= 1 || homeTime || JobBehaviours.depositNow(villager);
 	}
 
 	private static ItemStack firstCarried(Villager v) {

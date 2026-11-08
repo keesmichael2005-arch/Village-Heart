@@ -11,6 +11,7 @@ import dev.villageheart.client.build.BuildersTableScreen;
 import dev.villageheart.client.heart.HeartScreen;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.blueprint.BuildStatus;
+import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.worker.JobType;
@@ -123,7 +124,7 @@ final class BuildClientTests {
 				context.waitForScreen(BuildersTableScreen.class);
 				context.waitTicks(5);
 				var snap = context.computeOnClient(mc -> table(mc).getMenu().snapshot());
-				if (snap.blueprints().size() != 3 || snap.blueprints().get(0).materials().size() != 6 || snap.blueprints().get(0).locked()) {
+				if (snap.blueprints().size() != Blueprints.all().size() || snap.blueprints().get(0).materials().size() != 6 || snap.blueprints().get(0).locked()) {
 					throw new AssertionError("the table's blueprints: " + snap.blueprints());
 				}
 				var planks = snap.blueprints().get(0).materials().get(1);
@@ -134,6 +135,15 @@ final class BuildClientTests {
 				int clipped = context.computeOnClient(mc -> table(mc).clippedThisFrame());
 				if (clipped != 0) throw new AssertionError("the table screen cut off " + clipped + " texts");
 				context.takeScreenshot("builders_table");
+				// M21: the Gate row (a line blueprint, two clicks, the villager note) and the Watchtower row (locked below Town)
+				for (int[] pick : new int[][] {{4, 0}, {6, 1}}) {
+					HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(pick[0])));
+					if (context.computeOnClient(mc -> table(mc).selectedIndex()) != pick[0]) throw new AssertionError("row " + pick[0] + " was not selected");
+					int clippedHere = context.computeOnClient(mc -> table(mc).clippedThisFrame());
+					if (clippedHere != 0) throw new AssertionError("the table screen cut off " + clippedHere + " texts for row " + pick[0]);
+					context.takeScreenshot(pick[1] == 0 ? "builders_table_gate" : "builders_table_watchtower");
+				}
+				HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(0)));
 				// take the blueprint through the screen
 				boolean takeOn = context.computeOnClient(mc -> table(mc).takeButton().active);
 				if (!takeOn) throw new AssertionError("the Take button is off for the Owner");

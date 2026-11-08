@@ -96,9 +96,21 @@ public final class Balance {
 	/** Heart screen actions per player: token bucket capacity and ticks per refilled token. */
 	public static final int HEART_RATE_CAPACITY = 8;
 	public static final int HEART_RATE_REFILL_TICKS = 5;
-	/** Total XP at which a worker reaches level 2 and 3 (display only until M15 owns levelling, DESIGN section 4). */
+	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;
+
+	// ---- levels (M15) ----
+	/** The highest job level an earned level may reach per tier (indexed by {@code Tier.ordinal()}): Hamlet 1, Village 2, Town 3. */
+	public static final int[] LEVEL_CAPS = {1, 2, 3};
+	/** XP beyond level 3 has no use; XP below a capped level is banked up to here and turns into levels when the village grows. */
+	public static final int MAX_BANKED_XP = LEVEL_3_XP;
+	/** Thousandths of an XP per unit of work, indexed by {@code WorkUnit.ordinal()} (integers, so 0.2 never drifts). Tunable in M26. */
+	private static final int[] MILLI_XP_PER_UNIT = {1000, 1000, 1000, 1000, 5000, 5000, 1000, 2000, 200, 2000};
+
+	public static int milliXpPerUnit(dev.villageheart.core.job.WorkUnit unit) { return MILLI_XP_PER_UNIT[unit.ordinal()]; }
+
+	public static int workUnitXpEntries() { return MILLI_XP_PER_UNIT.length; }
 
 	/** The village's name book (M24): players it remembers by name. Ranked players are never evicted, so at most one less can be ranked. */
 	public static final int MAX_KNOWN_PLAYERS = 64;
@@ -123,6 +135,15 @@ public final class Balance {
 	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
 	public static final int BUILD_IN_THE_WAY_TICKS = 100;
 	public static final int BUILD_UNREACHABLE_RETRY_TICKS = 600;
+	// ---- defence blueprints (M21) ----
+	/** The longest wall or gate line in one blueprint, in blocks. */
+	public static final int MAX_WALL_LENGTH = 32;
+	/** The shortest gate: a 3-wide opening needs a post on each side. */
+	public static final int GATE_MIN_LENGTH = 5;
+	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
+	public static final int DEFENCE_REFRESH_TICKS = 200;
+	/** Recorded defence sites (patrol points) per village. */
+	public static final int MAX_DEFENCE_SITES = 64;
 	// ---- farmer (M10) ----
 	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
 	public static final int FARM_RADIUS = 24;
@@ -175,4 +196,59 @@ public final class Balance {
 	public static final java.util.Set<String> FOOD_RAW = java.util.Set.of(
 			"minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit", "minecraft:cod",
 			"minecraft:salmon", "minecraft:potato");
+
+	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
+
+	/** Work units one haul costs; a stone pickaxe at level 1 earns 1.25 per tick, so a haul is 2000 ticks (2 in-game hours) underground. */
+	public static final double MINER_HAUL_UNITS = 2500;
+	/** An underground miner is stepped every this many ticks. */
+	public static final int MINER_STEP_TICKS = 20;
+	/** Durability a pickaxe loses per completed haul. */
+	public static final int MINER_WEAR_PER_HAUL = 10;
+	/** No new descent from this day time on (less than 600 work ticks are left). */
+	public static final int MINER_LAST_DESCENT = 10400;
+	/** After a shaft turned out unreachable the miner waits this long before it tries again. */
+	public static final int MINER_RETRY_TICKS = 600;
+	/** Underground steps in a row with an unreadable pickaxe chest (or an unknown depth with a haul due) before the miner comes up. */
+	public static final int MINER_UNKNOWN_LIMIT = 60;
+	/** A miner farther than this from the shaft marker walks to its stonecutter first (WalkTo plans at most 48 blocks). */
+	public static final int MINER_FAR_FROM_SHAFT = 40;
+	/** Arrived at the shaft entrance when this close; also when the pathfinder can get no nearer and the miner is within SHAFT_ENTRY_CLOSEST. */
+	public static final double SHAFT_ENTRY_REACH = 2.5;
+	public static final double SHAFT_ENTRY_CLOSEST = 5.0;
+	/** Depth bands of the haul tables by the shaft's deepest Y: HIGH from 40, MID from 0, DEEP below. */
+	public static final int BAND_HIGH_MIN_Y = 40;
+	public static final int BAND_MID_MIN_Y = 0;
+
+	// ---- M17: Hunter + Hunting Ground ---------------------------------------------------------------
+
+	/** Work units one hunting trip costs; at level 1 (1.0 unit per tick) a trip is 3000 ticks, 3 in-game hours away (DESIGN 5.4). */
+	public static final double HUNTER_TRIP_UNITS = 3000;
+	/** An away hunter is stepped every this many ticks. */
+	public static final int HUNTER_STEP_TICKS = 20;
+	/** Durability the leased weapon loses per completed trip. */
+	public static final int HUNTER_WEAR_PER_TRIP = 5;
+	/** Completed trips per day by level (index level - 1, clamped). */
+	public static final int[] HUNTER_TRIPS_PER_DAY = {2, 3, 3};
+	/** A trip starts only if it can end this many ticks before WORK_END. */
+	public static final int HUNTER_DEPART_MARGIN = 300;
+	/** After the ground turned out unreachable the hunter waits this long before it tries again. */
+	public static final int HUNTER_RETRY_TICKS = 600;
+	/** Away steps in a row with an unreadable weapon chest before the hunter comes back. */
+	public static final int HUNTER_UNKNOWN_LIMIT = 60;
+	/** A hunter farther than this from the ground marker walks to its fletching table first (WalkTo plans at most 48 blocks). */
+	public static final int HUNTER_FAR_FROM_GROUND = 40;
+	/** A Hunting Ground links only to a Hunting Lodge within this many blocks (an M5 rule change, M17). */
+	public static final int HUNTING_GROUND_LINK_RANGE = 40;
+	/** Arrived at the ground marker when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
+	public static final double HUNT_ENTRY_REACH = 3.0;
+	public static final double HUNT_ENTRY_CLOSEST = 6.0;
+	public static final int HUNT_MEAT_MIN = 2, HUNT_MEAT_MAX = 4;
+	public static final int HUNT_LEATHER_MIN = 1, HUNT_LEATHER_MAX = 2;
+	public static final int HUNT_FEATHER_MIN = 1, HUNT_FEATHER_MAX = 2;
+	public static final double HUNT_HIDE_CHANCE = 0.5;
+	/** Extra meat for a trip with a bow or crossbow and an arrow taken from the Lodge chest. */
+	public static final int HUNT_ARROW_BONUS_MEAT = 1;
+	/** Meat-kind draws per trip: always all of them, so an arrow never shifts the random stream. */
+	public static final int HUNT_MAX_MEAT_DRAWS = HUNT_MEAT_MAX + HUNT_ARROW_BONUS_MEAT;
 }

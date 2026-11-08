@@ -29,12 +29,14 @@ import dev.villageheart.core.blueprint.Material;
 import dev.villageheart.core.blueprint.Placement;
 import dev.villageheart.core.blueprint.StandPoints;
 import dev.villageheart.core.job.WorkSpeed;
+import dev.villageheart.core.job.WorkUnit;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
+import dev.villageheart.worker.WorkXp;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.worker.DepositTrip;
 import dev.villageheart.worker.WorkerAttachments;
@@ -438,7 +440,7 @@ public final class BuilderJob {
 		Placement pl = job.placement();
 		Pos min = pl.min(bp), max = pl.max(bp);
 		if (ws.ringAt == Long.MIN_VALUE || now - ws.ringAt >= RING_TTL) {
-			ws.standable = SiteValidation.standable(new LevelSiteView(level), job.ground().y());
+			ws.standable = SiteValidation.standableFor(level, job);
 			ws.ring = StandPoints.ring(min, max, ws.standable);
 			ws.ringAt = now;
 		}
@@ -554,6 +556,7 @@ public final class BuilderJob {
 			});
 		}
 		WorkStats.add(JOB, "blocks_placed", 1);
+		WorkXp.award(v, WorkUnit.BLOCK_PLACED, 1);
 		if (l != null) l.acted(v, BuildPlan.Kind.PLACE, step.pos(), outside);
 		BuildJob next = save(server, job, job.cursor() + 1, carried, job.carrier());
 		BuildJobs.afterPlace(server, level, bp, step);

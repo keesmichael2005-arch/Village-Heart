@@ -95,6 +95,48 @@ class ShaftScannerTest {
 		assertTrue(s.notLoaded().x() > 4);
 	}
 
+	private static void assertDeepestCellIsOpenAtDeepestY(FakeGrid g, ShaftSurvey s) {
+		assertEquals(s.deepestY(), s.deepestCell().y(), "the deepest cell is at the deepest y");
+		assertNotEquals(dev.villageheart.core.room.CellKind.SOLID, g.cell(s.deepestCell()).kind(), "and open: " + s.deepestCell());
+		assertEquals(s.deepestY(), s.shaftDepth().deepestY());
+		assertEquals(s.deepestCell(), s.shaftDepth().deepestCell());
+	}
+
+	@Test void deepestCellOfAStraightShaft() {
+		FakeGrid g = shaft(12, 8, true);
+		ShaftSurvey s = ShaftScanner.scan(g, MARKER);
+		assertDeepestCellIsOpenAtDeepestY(g, s);
+		assertEquals(9, s.deepestCell().y());
+		assertTrue(s.deepestCell().x() >= 3 && s.deepestCell().x() <= 5 && s.deepestCell().z() >= 3 && s.deepestCell().z() <= 5, "in the chamber: " + s.deepestCell());
+	}
+
+	@Test void deepestCellOfAnLShapedShaft() {
+		FakeGrid g = shaft(12, 8, true);
+		// a connection at x = 6 and a tunnel two blocks lower than the chamber, running east
+		for (int y = 5; y <= 10; y++) g.clear(6, y, 4);
+		for (int x = 7; x <= 14; x++) { g.clear(x, 5, 4); g.clear(x, 6, 4); }
+		ShaftSurvey s = ShaftScanner.scan(g, MARKER);
+		assertEquals(5, s.deepestY());
+		assertDeepestCellIsOpenAtDeepestY(g, s);
+		assertEquals(16, s.depth());
+	}
+
+	@Test void deepestCellWhenTheBottomIsBesideTheMarkerColumn() {
+		FakeGrid g = new FakeGrid();
+		g.box(0, 0, 0, 40, 20, 40, STONE);
+		for (int y = 8; y <= 20; y++) g.clear(4, y, 4);   // the post column down to y 8
+		for (int y = 8; y <= 9; y++) for (int x = 5; x <= 7; x++) g.clear(x, y, 4); // the chamber to its east
+		for (int x = 5; x <= 7; x++) g.set(x, 8, 4, RAIL);
+		ShaftSurvey s = ShaftScanner.scan(g, MARKER);
+		assertEquals(8, s.deepestY());
+		assertDeepestCellIsOpenAtDeepestY(g, s);
+	}
+
+	@Test void deepestCellIsTheSameInEveryScan() {
+		FakeGrid g = shaft(14, 8, true);
+		assertEquals(ShaftScanner.scan(g, MARKER).deepestCell(), ShaftScanner.scan(g, MARKER).deepestCell());
+	}
+
 	@Test void twoScansAreEqual() {
 		assertEquals(ShaftScanner.scan(shaft(12, 8, true), MARKER), ShaftScanner.scan(shaft(12, 8, true), MARKER));
 	}

@@ -556,6 +556,7 @@ public class BuildGameTests {
 		Blueprint bp = Blueprints.SMALL_HOUSE;
 		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
 		long[] t0 = new long[1];
+		long[] placedBefore = new long[1];
 		Map<String, Long> before = new HashMap<>();
 		var builder = new net.minecraft.world.entity.npc.villager.Villager[1];
 		var log = new BuildTestSupport.ActionLog[1];
@@ -568,6 +569,7 @@ public class BuildGameTests {
 			h.getLevel().setDayTime(1000);
 			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
 			t0[0] = h.getTick();
+			placedBefore[0] = dev.villageheart.worker.job.WorkStats.get("builder", "blocks_placed");
 		}).thenIdle(5).thenExecute(() -> {
 			h.assertTrue(h.getLevel().getDayTime() > 1000, "the day time advances");
 			h.assertTrue(dev.villageheart.worker.WorkerAttachments.get(builder[0]).orElseThrow().needs().speed() == 1.0, "the builder works at full speed");
@@ -586,6 +588,11 @@ public class BuildGameTests {
 			h.assertTrue(builder[0].getInventory().isEmpty(), "the builder carries nothing: " + builder[0].getInventory());
 			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the build is done");
 			h.assertTrue(log[0].places == 172, "172 placements: " + log[0].places);
+			// M15: a builder earns 0.2 XP per block placed (milli-XP sums exactly), no XP for clearing
+			long placed = dev.villageheart.worker.job.WorkStats.get("builder", "blocks_placed") - placedBefore[0];
+			var data = dev.villageheart.worker.WorkerAttachments.get(builder[0]).orElseThrow();
+			h.assertTrue(data.xp() == placed / 5, "builder XP " + data.xp() + " for " + placed + " blocks placed (expected " + placed / 5 + ")");
+			h.assertTrue(data.xp() >= 34, "at least 34 XP for the House: " + data.xp());
 			h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
 			dev.villageheart.worker.build.BuilderJob.listener = null;
 			WorkerTestSupport.end(h);
@@ -738,7 +745,7 @@ public class BuildGameTests {
 			// everybody in the claim may open the table and read it
 			for (var p : List.of(visitor, resident, steward)) {
 				var m = openTable(h, p);
-				h.assertTrue(m.snapshot().blueprints().size() == 3, p.getName().getString() + " sees the 3 blueprints");
+				h.assertTrue(m.snapshot().blueprints().size() == Blueprints.all().size(), p.getName().getString() + " sees every blueprint");
 				h.assertTrue(m.snapshot().viewerRank() == VillageClaims.current(h.getLevel().getServer()).orElseThrow().rankOf(p.getUUID()), "with the viewer's rank");
 				h.assertTrue(m.snapshot().blueprints().get(0).materials().size() == 6, "and the material list");
 				h.assertTrue(!m.snapshot().blueprints().get(0).locked(), "unlocked at Village tier");

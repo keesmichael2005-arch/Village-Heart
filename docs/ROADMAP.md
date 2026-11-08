@@ -105,6 +105,7 @@ from there instead of hard-coding them.
       0 starvation deaths, ≥90% fed villager-days from day 3, logs increase every day
 
 ## M12: Treasury and wages
+- Note (M15): `WorkerRecord` has no `level` on dev. Add it (codec key `level`, default 1) and write it in `WorkXp.setLevel`, `WorkXp.addXp` and `WorkXp.pass` (the three places that change a level), and use it in the re-install branch of `WorkerSystem.tick` instead of `WorkerData.hired` (level 1). Then add the planned T-L2-4 (a worker that lost its attachment comes back at its level).
 - [ ] Deposit emeralds at the Heart (Resident+), Owner withdraw, dawn wages (§6), strikes
 - **L1**: wage bill by level. Paid in hiring order when the treasury is short. Strikers produce nothing
 - **L2**: 3 workers and 2 emeralds → after dawn 2 are paid and 1 is on strike. The striking lumberjack chops 0 logs that day
@@ -112,34 +113,38 @@ from there instead of hard-coding them.
 - Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
 
 ## M13: Cook / Kitchen
+- Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_COOKED, n)` next to the cook counter (one per output item).
 - [ ] §5.5 recipes, fuel use, rates
 - **L2**: 10 raw beef, 9 wheat and coal in Storage + cook → within 1 day, 10 cooked beef and 3 bread, and the raw beef is gone
 - **L2**: with no fuel → nothing is cooked and the reason is "Needs fuel"
 - **L3**: `starter` + cook, 10 days: average nutrition per eaten item rises compared with the M11 baseline (reported in the JSON)
 
 ## M14: Tiers and unlocks
+- Note (M15): `core.tier.TierRules` already exists with `levelCap(Tier)`, `levelFromXp(int)` and `levelFor(xp, tier)` (and `Balance.LEVEL_CAPS`); add the tier-goal rules to that class. The level pass (`WorkXp.pass`, every 20 ticks) turns banked XP into levels after a tier-up, so M14 needs no level code.
 - [ ] §9 goals tracked daily, tier-ups, level caps, marker tier gating, Overview goal checklist
 - **L1**: tier goal evaluation for every Hamlet→Village and Village→Town condition, including "fed N days in a row" resetting on a hungry day
 - **L2**: a village set up to meet the Village goals → tier becomes Village at the next dawn, and a Mine marker turns from red ("Requires Village") to green
 - **L4**: Overview screenshot with a partially met goal checklist
 
-## M15: Job levels and tools
-- [ ] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
+## M15: Job levels and tools ✅
+- [x] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
 - **L1**: speed = tool × level × needs. XP thresholds. The level cap holds at the Hamlet tier
 - **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
 - **L2**: the tool in the camp chest loses durability while it is used
 
-## M16: Miner + Mineshaft
-- [ ] §5.3: walk to the shaft, vanish while inside, haul every 2 hours, depth-band tables. Cosmetic minecart is optional and can be deferred
+## M16: Miner + Mineshaft ✅
+- [x] §5.3: walk to the shaft, vanish while inside, haul every 2 hours, depth-band tables. Cosmetic minecart is optional and can be deferred
 - **L1**: haul tables by depth band and pickaxe tier (seeded RNG: fixed counts and entries with chance ≥30% within 5% of expected over 10k rolls; every entry incl. rare ones within 5% over 400k rolls; clarified by the orchestrator 2026-11-08, a 2% entry over 10k rolls is seed-dependent). Diamonds only with an iron pickaxe or better and Y < 0
 - **L2**: a miner with a stone pickaxe and a valid shaft → ≥40 cobblestone within 1 day. With the shaft invalidated (rails removed) → stops, with the reason
 
-## M17: Hunter + Hunting Ground
-- [ ] §5.4: trips, yields, arrow use
+## M17: Hunter + Hunting Ground ✅
+- Note (M15): award XP with `WorkXp.award(villager, WorkUnit.GAME_HUNTED, 1)` per trip.
+- [x] §5.4: trips, yields, arrow use
 - **L1**: trip yield table with and without a bow
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
+- Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health 20/30/40). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
       Training Yard XP, level perks for health and damage, best gear from the stockpile, raid call-up
@@ -151,6 +156,7 @@ from there instead of hard-coding them.
 - **L3**: scenario `defended` (starter + Barracks with 2 guards), 10 days: villager deaths from mobs ≤ 1
 
 ## M19: Blacksmith / Smithy
+- Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_SMITHED, n)` per ingot, item or repair.
 - [ ] §5.7: smelting, gear targets, repairs, golem build and repair. Vanilla golem spawning is disabled in the claim
 - **L1**: gear target planner (what to craft next given the stock and the number of guards)
 - **L2**: 36 iron ingots + a carved pumpkin + a blacksmith → a new iron golem within 1 day, and the stockpile minus 36 ingots
@@ -169,13 +175,15 @@ from there instead of hard-coding them.
   format has `kind` (BUILDING/DEFENCE), `mode` (`PlacementMode.FOOTPRINT`; M21 adds `LINE` and its two-click flow in `BlueprintUse`) and `BlueprintParams.length`
   (`Blueprints.resolve(id, params)` is where a generated Wall Segment goes); `BuildPlan`, `SiteRules`, `BuildExecutor` and the builder need no change for new blueprints.
 
-## M21: Defence blueprints
-- [ ] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
+## M21: Defence blueprints ✅
+- [x] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
 - **L1**: wall line generation for axis-aligned start/end. Lengths over 32 are rejected
 - **L2**: a 20-long wall segment is built complete. A gate opens. A lamp post stops hostile spawns in its light radius over 1 night
 - **L4**: screenshot of a walled section with a gate, lamp posts and a watchtower
+- Built in M21 (branch m21, deviations in docs/plans/M21.md section 8; the boxes are ticked by the orchestrator, not the builder). Guard patrol points: the source is done and tested (`dev.villageheart.defence.Defences.patrolPoints(server)`); **wiring it into M18's `PatrolPoints` is M18 step 6** (M18 was not merged when M21 was built).
 
 ## M22: Merchant / Market
+- Note (M15): award XP with `WorkXp.award(villager, WorkUnit.TRADE_MADE, 1)` per sale.
 - [ ] §5.9: surplus selling, price table, daily cap, reserve settings on the Stockpile tab
 - **L1**: surplus calculation respects the food and item reserves. Price table. Daily caps by level
 - **L2**: 200 cobblestone in Storage + merchant → treasury +≥4 emeralds within 1 day, and cobblestone never drops below 64

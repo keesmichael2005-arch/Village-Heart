@@ -17,6 +17,15 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			BuildClientTests.builderFlow(context);
 			return;
 		}
+		if ("defence".equals(System.getProperty("villageheart.l4.only"))) {
+			DefenceClientTests.walledSection(context);
+			return;
+		}
+		if ("levels".equals(System.getProperty("villageheart.l4.only"))) {
+			LevelClientTests.levelBadges(context);
+			LevelClientTests.villagersTabLevels(context);
+			return;
+		}
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
 			sp.getServer().runCommand("time set day");
@@ -35,7 +44,12 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		FarmerClientTests.farmerField(context);
 		HeartScreenClientTests.heartTabs(context);
 		BuildClientTests.builderFlow(context);
+		DefenceClientTests.walledSection(context);
 		LumberClientTests.villagersNeedsAxe(context);
+		LevelClientTests.levelBadges(context);
+		LevelClientTests.villagersTabLevels(context);
+		MinerClientTests.villagersTabAwayMining(context);
+		HunterClientTests.villagersTabAwayHunting(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
 	}

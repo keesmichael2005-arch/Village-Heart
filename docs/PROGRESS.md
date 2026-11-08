@@ -413,6 +413,22 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
 - Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
 - Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+## 2026-11-07: M16 plan (Miner + Mineshaft), branch m16-plan
+- Plan: docs/plans/M16.md, 12 steps. Reuses M9's toolkit (`CampTools` PICKAXE lease in the Mine chest, `WalkTo`, `WorkSpeed`, `WorkerStatuses`, `WorkStats`, `DepositTrip` + a `depositNow` hook).
+- "Disappears inside": the villager stays a loaded entity, moved to the shaft's deepest cell and set Invisible + Invulnerable + Silent + NoAI (NoAI freezes the vanilla brain; invulnerable mobs are never targeted); prior flags saved in a new persistent `AwayTrips.AWAY` attachment (separate from `WorkerData`) and restored on surfacing; trade/attack callbacks FAIL; load repair, conversion fix, `restoreVanilla` hook. Heart screen: new `ActivityKind.AWAY_WORKING` "Away (mining)".
+- Haul: 2500 units, stone L1 = 2000 underground ticks, stepped every 20 ticks by `MinerSystem`, progress saved per shaft and kept overnight; 10 durability per haul; tables by `DepthBand` (Y≥40 / 0≤Y<40 / Y<0) with diamonds only for iron+ below 0; `HaulRng` = SplitMix64 of (world seed, UUID, per-worker haul index), so L2 can predict every haul.
+- Shaft depth: `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth` (M5 threw `deepestY` away). Shaft invalid mid-trip → comes up, progress reset, Mine then WORKPLACE_INVALID with M5's reasons.
+- Finding: GameTests run at y ≈ -59, so a shaft in the normal yard is in the Y<0 band (cobbled deepslate). The roadmap's "≥40 cobblestone" test builds its scene high up (relative y computed from the test origin).
+- L1 note: 10k rolls cannot hold 5% for the 2%/10% entries; the plan runs the literal 10k check for fixed and ≥30% entries and a 400k check for all (orchestrator may adjust the ROADMAP wording).
+- Critique: remote critic session, 34 findings, 29 taken, 3 refuted, 2 accepted with reasons. Builds after M9 is on dev. Top risk: hiding a live villager with NoAI (anything else touching those flags or assuming the brain ticks).
+## 2026-11-08: M16 (Miner + Mineshaft), branch m16 (builder)
+- **Done (12 steps):** core `core.mine` (DepthBand, HaulTable, HaulRng, AwayProgress, AwayCheck, MinerPlanner, ShaftChoice, AwayState; 47 L1 tests incl. the roadmap statistics: 10k rolls within 5% for fixed and >=30% entries, 400k rolls for every entry, diamonds only DEEP + iron+); status words (`SITE_UNREACHABLE`, `AWAY_WORKING`, "Away (mining)"); `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth`; `AwayTrips` (hide/surface with prior flags, load repair, interaction blocks, conversion fix); `MinerJob`/`MinerWork`/`MinerSystem`/`MinerHauls`; `JobBehaviours.depositNow` (+ `DepositTrip.wanted`); 14 L2 tests (`MinerGameTests`) and 1 L4 shot (`villagers_tab_away_mining.png`, looked at: row "Mina / Miner L1 / Away (mining)" readable, not cut).
+- **Measured:** stone pickaxe, high scene: 4 hauls and 64 cobblestone by day time 12000 (hauls delivered at ticks 2164, 4504, 6844, 9184, cycle 2340); 1981 to 2000 underground ticks per haul; iron 1669, stone 1989 in the two-miner test; first descent 183 to 250 ticks after hiring.
+- **Bugs found and fixed on the way (details in plans/M16.md section 8):** `Invisible` is not saved with a villager (a reloaded hidden miner came back visible: re-applied at ENTITY_LOAD); the Heart screen snapshot threw for any registered outdoor site (`DetailKind.NONE`).
+- **Test infrastructure:** low scene (tower + staircase, DEEP band) and high scene (stone platform in the air, HIGH band), see TESTING "Miner GameTests". Mutation-checked: no flag restore on conversion (red), no pickaxe wear (red), `depositNow` off (red).
+- **Flake seen once:** in the first full verify `minerHaulsFortyCobblestone` failed its "no item entity lying around" check (1 item). 10 full L2 runs since were green; the message now names the item (stack, position, age) so the next occurrence identifies it. Not understood; nothing in the miner code drops items except the `dropPending` fallback (logs a warning).
+- **Next:** M17 reuses `AwayTrips`/`AwayState`/`DetailKind.NONE`. Doubts: the hidden miner's hitbox (BACKLOG), the one unexplained stray item.
+
 
 ## 2026-11-08: M20 verifier review r3: FAIL (docs/reviews/M20-r3.md)
 - All round-2 items are fixed. Carpets, moss carpets and ascending rails and powered rails in all 4 directions are refused, as are the door, lantern, wall sign and painting probes, and nothing is broken. The flood test goes red only with both mechanisms off. The planner rule is pinned at L2: a livelock when it is reverted. Short materials pause with "Needs N more dirt" in the main pass and in the check pass, with no gap left.
@@ -472,3 +488,87 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Found by the 3rd sim run (1 of 6 failed): an idle lumberjack had drifted 45 blocks from camp and could not path back (range 48). `LumberJob.idle` walks back in legs of 24 blocks (D17). Farmer has the same gap (BACKLOG).
 - Follow-up: `WorkerUnstick` (all jobs, via WorkerSystem) and farmer idle legs. A single-cell trunk is already resolved by vanilla push-out, so the run-7 trip flake cause stays unconfirmed.
 - Next: round 3 review.
+
+## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
+- Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
+- Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
+- Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
+- Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
+- Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
+- Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
+  `core.job.Leveling` applies M14's `TierRules.levelFor` (banked XP up to 300, level = max(stored, levelFor), never lowered); level changes
+  written to attachment and `WorkerRecord.level` at once via M12's `Workers.setLevel`; a 20-tick pass turns banked XP into levels after a tier-up.
+- Feedback: HAPPY_VILLAGER particles, VILLAGER_CELEBRATE sound, chat to online Resident+ members (max 3 lines + summary), a one-off "needs a Village"
+  notice, the vanilla belt badge (VillagerData level 1/2/3), a gold "capped" XP bar on the Villagers tab. Listener seam for M18 perks.
+- Tools: nothing to redo (M9 has tiers, multipliers, sharing, wear per log); M15 extends the speed table test, audits `CampTools.use` per job, and
+  re-proves wear in the side-by-side test.
+- **Blocked on decision D1:** the roadmap's "iron ≥1.3× stone" is impossible with DESIGN's multipliers (iron/stone = 1.5/1.25 = 1.2 is the
+  ceiling, walking only lowers it). Recommended: "≥1.1× stone and ≥1.3× wood" in one three-way test (stacked identical yards at +30/+60 on glass platforms).
+- Critique: a separate critic session, 19 findings (1 blocker = D1 confirmed, 9 major, 9 minor), all taken (plan section 7).
+- Top risk: D1, then the stacked-platform layout of the side-by-side test (fallback: three sequential days, recorded as a deviation).
+
+## 2026-11-08: M15 (job levels and XP; tools done in M9), branch m15
+- **What changed.** Core: `WorkUnit`, `Progress`, `XpChange`, `Leveling` (gain / levelNow / capped / tierForNext / sanitize), `XpAccumulator` (integer milli-XP, 0.2 per block never drifts), `Balance.LEVEL_CAPS`, `MAX_BANKED_XP`, `milliXpPerUnit`; `core.tier.TierRules` (levelCap, levelFromXp, levelFor; M14 was absent, M14 adds the rest to that class). Glue: `Workers.addXp` / `Workers.setLevel`, `WorkXp.award` (what jobs call), `WorkerLevels` (listeners for M18 perks), the 20-tick level pass in `WorkerSystem` (banked XP becomes a level after a tier-up, never lowers a level), the vanilla belt badge follows the level (also on install), `LevelUpFeedback` (particles, celebrate sound, chat to online Resident+, max 3 lines per tick then "and N more", "needs a Village/Town" notice once per threshold, test seam). XP wired into the lumberjack (log), farmer (crop) and builder (0.2 per block placed). Heart screen: `VillagerRow.levelCapped` (+1 byte in the codec), gold full bar and tooltip. Codec clamps values above the table. Zombie conversion also resets the badge level.
+- **Tests.** L1: `LevelingTest`, `XpAccumulatorTest`, `BalanceLevelsTest`, `WorkSpeedTest.fullToolLevelNeedsTable` (7 tiers x 3 levels x needs), codec clamp, snapshot `levelCappedFlag`, codec round trip with the new flag, `LangCoverageTest.levelUpMessages`. L2 (`LevelGameTests`, 10 tests): API and badge, tier-up turns banked XP into levels, reload and fire, cured zombie, felling pace after a level-up (40, 40, then 32 ticks), the Hamlet cap holds pace then lifts after `setTier`, farmer XP, feedback audience (Owner/Resident yes, Visitor no), tier-up flood summary, side-by-side; plus a builder XP assertion in `BuildGameTests.smallHouseWithinTwoDays`. L4: `LevelClientTests` (badges, Villagers tab).
+- **D1 (orchestrator, option A).** Side by side over day ticks [1000, 5000) at Hamlet: wood 71, stone 89, iron 106-107 logs; iron/stone 1.191-1.202 (>= 1.1), iron/wood 1.493-1.507 (>= 1.3), stone/wood 1.254. Eight full Layer 2 runs, each with the test: iron/stone 1.191, 1.202, 1.191, 1.202, 1.191, 1.191, 1.191, 1.202; iron/wood 1.493, 1.507, 1.493, 1.507, 1.493, 1.493, 1.493, 1.507 (plus 5 runs alone: all 1.191 / 1.493). Villager walking is deterministic in the stacked setup (about 4-6 ticks per log). Mutation: iron speed set to stone's turns it red.
+- **Verify.** 8 of 8 full Layer 2 runs green (196 tests). One earlier `./gradlew build` showed the known M9 flake `six_oaks_two_days` ("oak 0 went at tick 600 and was not replanted within a day"), before any glue change; not seen again in 14 runs.
+- **Deviations** (docs/plans/M15.md section 8): no `WorkerRecord.level` (M12 absent: T-L2-4 not written, re-install resets to level 1; M12 note in ROADMAP), codec clamps only above the table (M7's test pins the lower bound), oak trees have only 4-6 logs (T-L2-5/6 use oak seed 3), side-by-side offsets 28 instead of 30/60.
+- **Next.** M16-M19, M22 each call `WorkXp.award` (notes in ROADMAP). M12 adds the record mirror in `WorkXp`. M14 adds tier progression to `TierRules`.
+
+## 2026-11-08: M15 verifier review r1: FAIL (docs/reviews/M15-r1.md)
+- Merged origin/dev (M16, M20) into m15. The five conflicts (docs, client and reset hooks, gametest entrypoints) kept both sides. No enum conflicted. `levelCapped` is appended at the end of the row codec.
+- Every criterion goes red under its mutation: thresholds, cap ignored (L1 and 6 L2 tests), level not applied to speed (L1 and the felling-pace tests), XP not awarded (lumberjack, farmer, builder), the level pass removed, wear off, and the codec lower bound.
+- Fix 1: the merged miner (M16) never calls `WorkXp.award(ITEM_MINED)`, so a miner's level never rises (DESIGN §4: "mined item 1"). It needs the call in `MinerSystem`'s haul branch and an L2 assertion.
+- Full L2: 6 of 6 green in the foreground (209 tests). Side by side: iron/stone 1.191 or 1.202, iron/wood 1.493 or 1.507. No M9 flakes. M16's stray-item flake was seen once, in a mutated run. `scripts/verify.sh` exit 0. I looked at both M15 screenshots.
+- Next: M15 round 2 (fix 1).
+
+## 2026-11-08: M15 review r1 fixes
+- The merged miner (M16) now earns XP: `MinerSystem` awards `ITEM_MINED` (sum of the haul's item counts) next to `work.miner.hauls`; `minerHaulsFortyCobblestone` asserts XP == min(300, items hauled) and goes red without the call ("expected 77, was 0"). Builder, lumberjack and farmer were already wired and tested; no other job is merged. Stale M16 "Note (M15)" removed from ROADMAP.
+- Side-by-side test: the final assertions run in try/finally so a failed assertion still clears the upper platforms (a timeout is still covered only by the clear at the next run's start). T-L2-11 keeps the reflection (a rename fails loudly).
+## 2026-11-08: M21 plan (defence blueprints), branch m21-plan (planner)
+- **Plan:** docs/plans/M21.md, 11 steps. Wall Segment and Gate use the LINE mode (click start, click end, click the line to confirm, sneak to start over), straight along x or z, 1-32 long (gate 5-32, a centred 3-wide fence-gate opening under a lintel), level at the start's height; generated blueprints parsed by the normal parser, so every M20 safety rule applies. Lamp Post = 2 fences + lantern: vanilla's block-light rule (overworld limit 0, verified) gives a 12-step diamond on level ground. Watchtower (Town) = 3x3 shaft, ladder, 5x5 platform, rail. New site rule FOOTING (defences only); touching defence builds allowed; finished lamp posts and towers are saved as patrol-point sources for M18.
+- **Lamp L2 is deterministic:** the spawner's own predicate (`SpawnPlacements.checkSpawnRules` + `isSpawnPositionOk`, seeded random) on every cell over a real night: lit set 0 passes, the hd 13 ring and a control set > 0, the lit cells before the lamp > 0.
+- Critique: remote critic session, 25 findings (8 MAJOR): 23 taken, 2 refuted with reasons (reach formula, byId audit). Top risk: level-only walls on real terrain (no terrain following).
+- Blockers: none. M18 must register `Defences::patrolPoints` if it merges after M21.
+
+## 2026-11-08: M21 (defence blueprints), branch m21 (builder)
+- **What changed.** Core: `WallLines` (two-click line: NOT_STRAIGHT, TOO_LONG, TOO_SHORT), `DefenceBlueprints` (wall 1..32 and gate 5..32 generated and parsed at class init, lamp post, watchtower), `Blueprints` (7 entries, LINE `resolve`), `LampLight`, `SiteRules` (rule 11c FOOTING, defence adjacency in rule 8, `SiteView.solid`, `Box.defence`, appended codes, explicit `overridableByUnchecked`), `StandPoints.avoiding`, `BuildJob.start` with params, `DefenceSite`/`DefenceSpecs`/`Defences`, `VillageState.defences` + codec. Glue: LINE flow in `BlueprintUse` (start, end, confirm on the shown line, sneak clears), `BlueprintSite.length`, `/villageheart build line`, `BuildJobs.finish` records lamp posts and towers, `DefenceSystem` (200-tick refresh) and `dev.villageheart.defence.Defences.patrolPoints(server)`, `SiteValidation` stand-ring wrapper, client preview (line column and long outlines), Builder's Table rows (Gate, Wall, Watchtower detail) and tooltips.
+- **Tests.** L1: `WallLinesTest`, `DefenceBlueprintsTest`, `LampLightTest`, `DefencePlanTest`, `DefenceSiteRulesTest`, `DefencesTest`, `VillageStateDefencesTest`, extended `BlueprintsTest`. L2 (`DefenceGameTests`, 9 tests): attachments in 4 rotations, 8 instant lines, a 20-long wall built by a builder villager from 60 cobblestone in 1 692 ticks, a gate that opens (and the check pass leaves an opened gate), the line flow refusals, tower tier and patrol points (a broken lantern removes the point), the tower check pass repairs a popped ladder, walls queued end to end and round a corner, the lamp post over one (time-warped) night. L4: `DefenceClientTests.walledSection` plus two table rows in `builderFlow`.
+- **Deviations** in docs/plans/M21.md section 8 (watchtower rail centre ANY: 94 touched cells; time-warped lamp night; one-line table rows; a 2-arg limit of `TextLine` found by the L4 picture).
+- **Next.** M18 must register `Defences::patrolPoints` (BACKLOG, blocking line); M14 reads the tier as before.
+
+
+## 2026-11-08: M17 plan (Hunter + Hunting Ground), branch m17-plan
+- `docs/plans/M17.md`: 10 build steps, 12 L1 + 9 L2 + 1 L4 test groups. Reuses M16's away machinery (AwayTrips hide/surface, AwayCheck,
+  AwayProgress with a unit-cost overload, HaulRng, ShaftChoice); hunter-specific core in `core.hunt` (yield table with a pinned draw order,
+  biome meat weights from vanilla creature spawn weights, flat pace 3000 ticks/trip at L1, cap 2/day, departure cut-off 7700, arrows taken
+  at return for +1 meat, bow/crossbow ranked over swords, wear 5/trip).
+- M5 rule change planned: Hunting Ground link range 40 (was unlimited), so a hunter can always walk out and back.
+- Critique: fresh remote session, 27 findings; all but 2 taken (table in the plan's section 7).
+- Assumptions about M16 (built on origin/m16 only up to step 3 when planned): A1-A9 in section 3.1. Top risk: M16's glue API differs.
+- Next: build after M16 is merged on dev. No blockers.
+
+## 2026-11-08: M17 builder (Hunter + Hunting Ground), branch m17
+- Built on M16's real code (checkpoint A1-A9 in `docs/plans/M17.md` section 8): `AwayProgress`/`AwayCheck` unit-cost overloads, `ToolAllocation` ranked overload, `AwayHauls` (job-neutral give/flush), `CampTools.lease(..., rank)`, `AwayState` + `done_day`/`done_today` (M16 names and 8-arg constructor unchanged). New `core.hunt` (`MeatWeights`, `HuntTable`, `HuntPace`, `HunterWeapons`, `HuntBonus`, `TripDay`, `HunterPlanner`) and `worker.hunt` (`HunterJob`, `HunterWork`, `HunterSystem`, `HuntSites`, `HuntGear`, `HunterRuntime`). M5 rule change: a Hunting Ground links only to a Lodge within 40 blocks.
+- Tests: 10 L2 hunter tests (the roadmap test: 2 trips of 2989-2998 ticks away, exactly the predicted yields in Storage, 10 durability) and `villagers_tab_away_hunting.png` (looked at: "Hana / Hunter L1 / Away (hunting)", row readable). L2 is 209 tests; a hunter test costs 1000-6500 ticks, about 2 to 8 s of CPU each.
+- Two flakes found and fixed at the root, not by loosening bounds: a hunter walking behind a hidden one (solid NoAI villager) lost up to 2600 ticks under CPU load (3 of 8 runs under load, 0 of 8 after the fix; deterministic corridor test); `minerHaulsFortyCobblestone`'s stray-item check saw a neighbouring test's dropped chests (it now checks its own footprint: this is very likely the BACKLOG's "unexplained stray item"). A forced-chunk premise for the far-hunter test.
+- Existing assertions changed (reasons in the plan's section 8, item 5): `SiteRulesTest` text for the 40-block range, `HeartTextsActivityTest` generic-fallback examples, `minerHaulsFortyCobblestone` item box.
+- Docs: DESIGN 5.4 "Rules as built (M17)", TESTING "Hunter GameTests (M17)", BACKLOG "From M17".
+- Next: M17 review. ROADMAP not ticked (verifier does that). No blockers. The disk on this machine filled once during the L2 repeat loop (each full run leaves 740 MB in `build/run/gameTest/world`).
+
+## 2026-11-08: M17 review round 1 (verifier): PASS
+- Every criterion mutation-checked: L1 table ranges (leather max 3) and bow bonus (`pieces = base`) red; L2 no bow bonus, trips never delivered, no weapon wear, no arrow use, touch rule off: each red. All restored.
+- Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
+- Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
+- Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
+- `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
+- Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
+## 2026-11-08: M21 review round 1 (verifier): PASS
+- Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
+- Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
+- `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
+- Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.

@@ -46,13 +46,14 @@ class BlueprintsTest {
 	void registryAndInvariants() {
 		Set<String> ids = new HashSet<>();
 		for (Blueprint bp : Blueprints.all()) {
-			assertEquals(Tier.VILLAGE, bp.tier());
-			assertEquals(Blueprint.Kind.BUILDING, bp.kind());
-			assertEquals(PlacementMode.FOOTPRINT, bp.mode());
+			boolean defence = bp.kind() == Blueprint.Kind.DEFENCE;
+			assertEquals(bp == Blueprints.WATCHTOWER ? Tier.TOWN : Tier.VILLAGE, bp.tier());
+			assertEquals(bp.mode() == PlacementMode.LINE, bp.id().equals("wall_segment") || bp.id().equals("gate"));
+			if (!defence) assertEquals(PlacementMode.FOOTPRINT, bp.mode());
 			assertTrue(ids.add(bp.id()));
 			assertTrue(bp.id().matches("[a-z][a-z0-9_]*"));
 			assertSame(bp, Blueprints.byId(bp.id()).orElseThrow());
-			assertSame(bp, Blueprints.resolve(bp.id(), BlueprintParams.NONE).orElseThrow());
+			if (bp.mode() == PlacementMode.FOOTPRINT) assertSame(bp, Blueprints.resolve(bp.id(), BlueprintParams.NONE).orElseThrow());
 			List<String> expected = lines(bp);
 			for (Rotation4 r : Rotation4.values()) {
 				// the material list does not depend on the rotation: it is a property of the blueprint, and the placed cells are a bijection
@@ -66,7 +67,7 @@ class BlueprintsTest {
 				assertEquals(expected, lines(bp));
 			}
 		}
-		assertEquals(3, ids.size());
+		assertEquals(7, ids.size());
 		assertTrue(Blueprints.byId("nope").isEmpty());
 		assertEquals("Needs 12 more planks".substring(0, 0) + "12 planks", Blueprints.SMALL_HOUSE.materials().lines().get(1).material().words(12));
 		assertEquals("1 door", Blueprints.SMALL_HOUSE.materials().lines().get(2).material().words(1));

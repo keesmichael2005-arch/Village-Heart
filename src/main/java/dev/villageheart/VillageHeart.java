@@ -37,9 +37,13 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:lumber", dev.villageheart.worker.lumber.LumberSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
+		dev.villageheart.worker.job.AwayTrips.register();
+		dev.villageheart.world.VillageSystems.register("villageheart:miner", dev.villageheart.worker.mine.MinerSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:hunter", dev.villageheart.worker.hunt.HunterSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:builds", dev.villageheart.build.BuildSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:dinner", dev.villageheart.food.DinnerSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:needs", dev.villageheart.needs.NeedsSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }
