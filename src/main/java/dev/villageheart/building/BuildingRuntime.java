@@ -35,6 +35,8 @@ final class BuildingRuntime {
 	 */
 	final Map<HeartLocation, RoomScan> lastEnclosed = new HashMap<>();
 	final Map<HeartLocation, Verdict> verdicts = new HashMap<>();
+	/** The deepest point of each Mineshaft at its last complete survey (M16: the miner's haul band and hold spot). Runtime only. */
+	final Map<HeartLocation, dev.villageheart.core.building.ShaftScanner.ShaftDepth> shaftDeepest = new HashMap<>();
 	/** The markers each building shared its room with at its last check (edge-triggered re-checks). */
 	final Map<HeartLocation, Set<HeartLocation>> sharedWith = new HashMap<>();
 	boolean primed;
@@ -64,6 +66,7 @@ final class BuildingRuntime {
 		rawScans.remove(loc);
 		lastEnclosed.remove(loc);
 		verdicts.remove(loc);
+		shaftDeepest.remove(loc);
 		sharedWith.remove(loc);
 	}
 }

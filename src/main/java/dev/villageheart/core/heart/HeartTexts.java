@@ -57,6 +57,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "detail.slots", "Slots %s/%s");
 		EN.put(PREFIX + "detail.homes", "Homes %s");
 		EN.put(PREFIX + "detail.containers", "Containers %s");
+		EN.put(PREFIX + "detail.none", "");
 		EN.put(PREFIX + "reasons.more", "(+%s more)");
 		EN.put(PREFIX + "reasons.none", "No problems found.");
 		EN.put(PREFIX + "stock.none", "Nothing stored.");

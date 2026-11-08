@@ -146,6 +146,7 @@
 	"gui.villageheart.heart.detail.slots": "Slots %s/%s",
 	"gui.villageheart.heart.detail.homes": "Homes %s",
 	"gui.villageheart.heart.detail.containers": "Containers %s",
+	"gui.villageheart.heart.detail.none": "",
 	"gui.villageheart.heart.reasons.more": "(+%s more)",
 	"gui.villageheart.heart.reasons.none": "No problems found.",
 	"gui.villageheart.heart.stock.none": "Nothing stored.",

@@ -130,7 +130,7 @@ public final class HeartFacts {
 			int xp = data.map(WorkerData::xp).orElse(0);
 			NeedsFlags needs = data.map(d -> NeedsFlags.of(d.needs().fed(), d.needs().housed(), d.needs().paid()))
 					.orElse(NeedsFlags.UNKNOWN);
-			ActivityKind activity = switch (status) {
+			ActivityKind activity = dev.villageheart.worker.job.AwayTrips.isAway(v) ? ActivityKind.AWAY_WORKING : switch (status) {
 				case STORAGE_FULL -> ActivityKind.STORAGE_FULL;
 				case STORAGE_UNREACHABLE -> ActivityKind.STORAGE_UNREACHABLE;
 				case NEEDS_TOOL -> ActivityKind.NEEDS_TOOL;
@@ -166,12 +166,13 @@ public final class HeartFacts {
 			};
 			List<TextLine> reasons = new ArrayList<>();
 			verdict.ifPresent(vd -> vd.reasons().forEach(r -> reasons.add(new TextLine(r.translationKey(), r.message()))));
-			Requirements.DetailLine line = BuildingRequirements.of(b.type()).detail();
-			DetailKind detail = switch (line) {
-				case WORKER_SLOTS -> DetailKind.WORKER_SLOTS;
-				case HOMES -> DetailKind.HOMES;
-				case CONTAINERS -> DetailKind.CONTAINERS;
-			};
+			// an outdoor site has no room requirements (and no detail line): the Heart screen used to throw for a registered Mineshaft
+			DetailKind detail = b.type().kind() != dev.villageheart.core.building.BuildingKind.ROOM ? DetailKind.NONE
+					: switch (BuildingRequirements.of(b.type()).detail()) {
+						case WORKER_SLOTS -> DetailKind.WORKER_SLOTS;
+						case HOMES -> DetailKind.HOMES;
+						case CONTAINERS -> DetailKind.CONTAINERS;
+					};
 			int count = verdict.map(Verdict::slots).orElse(0);
 			if (status == RowStatus.VALID && b.type() == BuildingType.HOUSE) beds += count;
 			buildings.add(new BuildingFact(b.type().id(), loc.x(), loc.y(), loc.z(), status, reasons, detail, count,

@@ -77,6 +77,7 @@ public final class Workers {
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager.getUUID());
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager.getUUID());
 		dev.villageheart.worker.farm.FarmJob.forget(server, villager.getUUID());
+		dev.villageheart.worker.mine.MinerJob.forget(villager.getUUID());
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
 	}
@@ -144,6 +145,7 @@ public final class Workers {
 		dev.villageheart.worker.job.WorkerStatuses.clear(villager);
 		dev.villageheart.worker.lumber.LumberJob.forget(server, villager);
 		dev.villageheart.worker.farm.FarmJob.forget(server, villager);
+		dev.villageheart.worker.mine.MinerJob.forget(villager);
 		return true;
 	}
 
@@ -167,6 +169,7 @@ public final class Workers {
 
 	/** Turns a worker back into an ordinary unemployed vanilla villager (no profession, no attachment, vanilla brain). */
 	public static void restoreVanilla(ServerLevel level, Villager villager) {
+		dev.villageheart.worker.job.AwayTrips.release(level, villager); // a hidden miner comes up first (M16)
 		villager.removeAttached(WorkerAttachments.WORKER);
 		villager.setVillagerData(villager.getVillagerData()
 				.withProfession(level.registryAccess(), VillagerProfession.NONE).withLevel(1));
