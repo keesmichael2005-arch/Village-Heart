@@ -30,6 +30,13 @@ public final class SelfCraftTestSupport {
 	/** The bound of a self-craft: the work at speed 1.0 (level 1, pinned needs), 10 ticks a block of walking and 400 ticks of slack. */
 	public static int selfBound(int ticks, int dist) { return ticks + 10 * dist + 400; }
 
+	/** The worker's status, or null when there is no village or record any more (a tick hook can outlive the test's reset). */
+	public static dev.villageheart.core.worker.WorkerStatus safeStatus(GameTestHelper h, Villager v) {
+		var village = VillageClaims.current(h.getLevel().getServer());
+		if (village.isEmpty() || village.get().worker(v.getUUID()).isEmpty()) return null;
+		return dev.villageheart.worker.Workers.status(h.getLevel().getServer(), village.get().worker(v.getUUID()).get());
+	}
+
 	public static List<SelfCraft> records(GameTestHelper h) {
 		return VillageClaims.current(h.getLevel().getServer()).map(v -> v.selfCrafts()).orElse(List.of());
 	}

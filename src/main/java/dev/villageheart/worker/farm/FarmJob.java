@@ -221,7 +221,7 @@ public final class FarmJob {
 		WorkerState ws = rt.state(v.getUUID());
 		long now = level.getGameTime();
 		Probe pr = probe(level, v, data, rt, ws, now);
-		if (!pr.snap().workplaceValid()) return true;
+		if (!pr.snap().workplaceValid() || !pr.snap().sweepComplete()) return true; // invalid, or the field is not surveyed yet: unknown counts as work
 		return FarmerPlanner.decide(pr.snap()).action() != Action.IDLE_AT_FARMHOUSE;
 	}
 

@@ -25,7 +25,7 @@ public class SelfCraftGameTests {
 	private static final String YARD = BuildingTestSupport.YARD;
 
 	/** A Mine scene with the village's Storage holding {@code stack}s, day time 1000, a hired miner and the sampler running. */
-	private static GameTestSequence mineScene(GameTestHelper h, Villager[] v, Sampler s, ItemStack[] storage, ItemStack... mineChest) {
+	static GameTestSequence mineScene(GameTestHelper h, Villager[] v, Sampler s, ItemStack[] storage, ItemStack... mineChest) {
 		h.onEachTick(() -> s.sample(h));
 		return scene(h, 0, false, SHAFT1).thenExecute(() -> {
 			lightYard(h, 0);
@@ -36,7 +36,7 @@ public class SelfCraftGameTests {
 		});
 	}
 
-	private static ItemStack[] items(ItemStack... s) { return s; }
+	static ItemStack[] items(ItemStack... s) { return s; }
 
 	// ---- T-L2-1 ----------------------------------------------------------------------------------
 
@@ -47,6 +47,7 @@ public class SelfCraftGameTests {
 		Villager[] v = new Villager[1];
 		Sampler s = new Sampler();
 		long[] t0 = new long[1];
+		long madeBefore = WorkStats.get("miner", "tools_made.stone");
 		GameTestSequence seq = mineScene(h, v, s, items(new ItemStack(Items.OAK_PLANKS, 2), new ItemStack(Items.COBBLESTONE, 3)));
 		seq = seq.thenExecute(() -> t0[0] = h.getTick());
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the status becomes Making a stone pickaxe",
@@ -68,7 +69,7 @@ public class SelfCraftGameTests {
 			h.assertValueEqual(0L, stored(h, Items.COBBLESTONE), "cobblestone used");
 			h.assertValueEqual(0L, stored(h, Items.OAK_PLANKS), "planks used");
 			h.assertValueEqual(2L, stored(h, Items.STICK), "the leftover sticks of the batch");
-			h.assertValueEqual(1L, WorkStats.get("miner", "tools_made.stone"), "counter");
+			h.assertValueEqual(1L, WorkStats.get("miner", "tools_made.stone") - madeBefore, "counter");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the miner uses the pickaxe and goes down", () -> h.assertTrue(AwayTrips.isAway(v[0]), "not away"));
 		seq.thenExecute(() -> {
@@ -113,7 +114,7 @@ public class SelfCraftGameTests {
 		boolean[] making = {false};
 		h.onEachTick(() -> {
 			if (v[0] == null || h.getTick() % 20 != 0) return;
-			WorkerStatus st = status(h, v[0]);
+			WorkerStatus st = safeStatus(h, v[0]);
 			if (st == WorkerStatus.MAKING_STONE_TOOL || st == WorkerStatus.MAKING_WOODEN_TOOL) making[0] = true;
 		});
 		GameTestSequence seq = mineScene(h, v, s, items(new ItemStack(Items.OAK_PLANKS, 10), new ItemStack(Items.COBBLESTONE, 20), new ItemStack(Items.STICK, 4),
@@ -146,6 +147,7 @@ public class SelfCraftGameTests {
 		Villager[] v = new Villager[1];
 		Sampler s = new Sampler();
 		boolean[] put = {false};
+		long cancelledBefore = WorkStats.get("miner", "tools_cancelled");
 		GameTestSequence seq = mineScene(h, v, s, items(new ItemStack(Items.OAK_PLANKS, 2), new ItemStack(Items.COBBLESTONE, 3)));
 		seq = seq.thenWaitUntil(() -> {
 			var st = dev.villageheart.worker.gear.SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[0].getUUID());
@@ -164,7 +166,7 @@ public class SelfCraftGameTests {
 			h.assertValueEqual(3L, stored(h, Items.COBBLESTONE), "cobblestone back");
 			h.assertValueEqual(0, countIn(h, chest(0), Items.STONE_PICKAXE), "no stone pickaxe in the chest");
 			h.assertValueEqual(0L, stored(h, Items.STONE_PICKAXE), "no stone pickaxe in Storage");
-			h.assertValueEqual(1L, WorkStats.get("miner", "tools_cancelled"), "counter");
+			h.assertValueEqual(1L, WorkStats.get("miner", "tools_cancelled") - cancelledBefore, "counter");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the miner uses the iron pickaxe", () -> h.assertTrue(AwayTrips.isAway(v[0]), "not away"));
 		seq = seq.thenIdle(400);
