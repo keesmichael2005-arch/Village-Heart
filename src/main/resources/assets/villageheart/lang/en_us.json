@@ -246,7 +246,7 @@
 	"build.villageheart.msg.site_set": "%s site set at %s",
 	"build.villageheart.msg.line_start": "Click the end: straight along x or z, up to 32 blocks",
 	"build.villageheart.msg.line_cleared": "Line cleared: click the start",
-	"build.villageheart.msg.line_ok": "%s: %s blocks, level at y %s. Click the line to confirm, sneak to start over",
+	"build.villageheart.msg.line_ok": "Line: %s blocks, level at y %s. Click the line to confirm, sneak to start over",
 	"build.villageheart.msg.no_builder": "No builder yet",
 	"container.villageheart.builders_table": "Builder's Table",
 	"build.villageheart.msg.not_in_village": "Not inside a village",

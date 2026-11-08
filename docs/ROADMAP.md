@@ -180,6 +180,7 @@ from there instead of hard-coding them.
 - **L1**: wall line generation for axis-aligned start/end. Lengths over 32 are rejected
 - **L2**: a 20-long wall segment is built complete. A gate opens. A lamp post stops hostile spawns in its light radius over 1 night
 - **L4**: screenshot of a walled section with a gate, lamp posts and a watchtower
+- Built in M21 (branch m21, deviations in docs/plans/M21.md section 8; the boxes are ticked by the orchestrator, not the builder). Guard patrol points: the source is done and tested (`dev.villageheart.defence.Defences.patrolPoints(server)`); **wiring it into M18's `PatrolPoints` is M18 step 6** (M18 was not merged when M21 was built).
 
 ## M22: Merchant / Market
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.TRADE_MADE, 1)` per sale.

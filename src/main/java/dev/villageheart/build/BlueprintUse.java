@@ -123,8 +123,8 @@ public final class BlueprintUse {
 		WallLines.Line line = r.line();
 		Blueprint bp = Blueprints.resolve(unit.id(), new BlueprintParams(line.length())).orElseThrow();
 		SiteProblem problem = SiteValidation.check(level, village, bp, new Placement(line.ground(), line.rotation()), rank);
-		TextLine text = problem == null ? new TextLine("build.villageheart.msg.line_ok", "%s: %s blocks, level at y %s. Click the line to confirm, sneak to start over",
-				List.of(unit.name(), Integer.toString(line.length()), Integer.toString(start.getY() + 1))) : problem.text();
+		TextLine text = problem == null ? new TextLine("build.villageheart.msg.line_ok", "Line: %s blocks, level at y %s. Click the line to confirm, sneak to start over",
+				List.of(Integer.toString(line.length()), Integer.toString(start.getY() + 1))) : problem.text();
 		stack.set(ModComponents.BLUEPRINT_SITE, new BlueprintSite(start.immutable(), line.rotation().ordinal(), problem == null, text, line.length()));
 		say(player, text);
 	}

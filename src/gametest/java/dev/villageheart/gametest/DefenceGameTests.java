@@ -305,6 +305,8 @@ public class DefenceGameTests {
 			BuildingTestSupport.rightClick(h, steward, rel(12, -1, 20), Direction.UP, wall);
 			s = site(h, wall);
 			h.assertTrue(s.ok() && s.length() == 11, "another end gives a line: " + s);
+			h.assertTrue(s.reason().english().equals("Line: 11 blocks, level at y " + (h.absolutePos(rel(2, 0, 20)).getY()) + ". Click the line to confirm, sneak to start over"),
+					"the ok text names the length and the level: " + s.reason().english());
 			// too long
 			ItemStack longWall = BlueprintItem.of(Blueprints.WALL_SEGMENT);
 			BuildingTestSupport.rightClick(h, steward, rel(0, -1, 18), Direction.UP, longWall);

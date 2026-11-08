@@ -17,6 +17,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			BuildClientTests.builderFlow(context);
 			return;
 		}
+		if ("defence".equals(System.getProperty("villageheart.l4.only"))) {
+			DefenceClientTests.walledSection(context);
+			return;
+		}
 		if ("levels".equals(System.getProperty("villageheart.l4.only"))) {
 			LevelClientTests.levelBadges(context);
 			LevelClientTests.villagersTabLevels(context);
@@ -40,6 +44,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		FarmerClientTests.farmerField(context);
 		HeartScreenClientTests.heartTabs(context);
 		BuildClientTests.builderFlow(context);
+		DefenceClientTests.walledSection(context);
 		LumberClientTests.villagersNeedsAxe(context);
 		LevelClientTests.levelBadges(context);
 		LevelClientTests.villagersTabLevels(context);

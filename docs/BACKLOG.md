@@ -170,3 +170,12 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
 
 - [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open
+
+## From M21
+- [ ] **BLOCKING for M18 (guards): register the defence patrol points.** M18 step 6 must add `dev.villageheart.defence.Defences::patrolPoints` (a `List<BlockPos>` for the claimed village: finished Lamp Posts and Watchtowers, one walkable cell each) as a source of its `PatrolPoints.of(server)`. M21 could not do it (M18 not merged); until then guards do not patrol at defences. M21's T-L2-7 asserts the M21 side only
+- [ ] Villagers cannot open fence gates (vanilla `InteractWithDoor` handles doors only): a wall ring with only gates cuts workers off; a later milestone could add gate opening to villager pathing
+- [ ] Two builders working on two touching defence builds at once are untested (T-L2-9 runs three touching walls with the instant builder only)
+- [ ] Walls are level at the start's height (no terrain following); a hilly village needs several segments. A `heights` list in `BlueprintParams` would allow a sloped wall
+- [ ] The lamp test is time-warped (the day time is set per sample), not a real night of 11 000 ticks; the live spawner is not exercised (needs a player; random)
+- [ ] The Watchtower platform centre cell (above the ladder hole) is ANY, not cleared: a natural block there (leaf) would stay in the rail
+

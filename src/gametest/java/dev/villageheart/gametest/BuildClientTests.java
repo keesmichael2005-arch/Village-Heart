@@ -135,6 +135,15 @@ final class BuildClientTests {
 				int clipped = context.computeOnClient(mc -> table(mc).clippedThisFrame());
 				if (clipped != 0) throw new AssertionError("the table screen cut off " + clipped + " texts");
 				context.takeScreenshot("builders_table");
+				// M21: the Gate row (a line blueprint, two clicks, the villager note) and the Watchtower row (locked below Town)
+				for (int[] pick : new int[][] {{4, 0}, {6, 1}}) {
+					HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(pick[0])));
+					if (context.computeOnClient(mc -> table(mc).selectedIndex()) != pick[0]) throw new AssertionError("row " + pick[0] + " was not selected");
+					int clippedHere = context.computeOnClient(mc -> table(mc).clippedThisFrame());
+					if (clippedHere != 0) throw new AssertionError("the table screen cut off " + clippedHere + " texts for row " + pick[0]);
+					context.takeScreenshot(pick[1] == 0 ? "builders_table_gate" : "builders_table_watchtower");
+				}
+				HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(0)));
 				// take the blueprint through the screen
 				boolean takeOn = context.computeOnClient(mc -> table(mc).takeButton().active);
 				if (!takeOn) throw new AssertionError("the Take button is off for the Owner");
