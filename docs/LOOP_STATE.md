@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-08 20:20 NZ): NO cost cap. Use as much usage as po
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 | M16 PASS r1 merged | M11 VERIFY r2 (m11) | M15 BUILD (m15) | M17 BUILD next (needs M16: done)"
+current: "run 2 | M15 PASS r2 merged 15:00Z | M11 finisher fixing (m11) -> verify r3 | M17 VERIFY r1 (m17) | M21, M23 planning | M22 planning | plans ready: M12 M13 M14 M18 M19 (wait on M11)"
 blocked: []
 open_questions_for_human:
   - "M11 starter sim: if a zombie kills a hired worker, food or logs stop for the rest of the 10-day run. Choose: (a) peaceful difficulty for the `starter` scenario, or (b) a scenario re-hire action. Default if unanswered: (b)"
