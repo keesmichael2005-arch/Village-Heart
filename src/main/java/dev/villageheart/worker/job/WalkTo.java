@@ -36,6 +36,8 @@ public final class WalkTo {
 	private long nextPathAt;
 	/** Where the pathfinder could get no nearer: while the villager stays there it counts as arrived. */
 	private Vec3 settled;
+	/** The path this class handed to the navigation: when the navigation holds another one, vanilla replaced it. */
+	private Path mine;
 	/** Jam breaker: where the villager was {@link #JAM_TICKS} ago. */
 	private Vec3 jamAnchor;
 	private long jamAt;
@@ -155,11 +157,20 @@ public final class WalkTo {
 			if (cur != null && cur.getNextNodeIndex() > 0 && jamNeighbour(v)) {
 				var back = cur.getNode(Math.max(0, cur.getNextNodeIndex() - 4)).asBlockPos();
 				nav.moveTo(back.getX() + 0.5, back.getY(), back.getZ() + 0.5, SPEED);
+				mine = nav.getPath();
 				nextPathAt = now + 30 + v.getRandom().nextInt(30);
 				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: steps back to {}", v.getId(), now, v.blockPosition(), back);
 			} else {
 				jamAt = now;
 			}
+		}
+		if (!nav.isDone() && mine != null && nav.getPath() != mine) {
+			// The navigation recomputes its path when a block on it changes (a door opens) and does so with the villager's 16-block range, which
+			// can lead away from the tree and cost a walk to the far corner of the yard. Plan the long path again at once.
+			if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} the navigation replaced my path: planning again", v.getId(), now);
+			nav.stop();
+			mine = null;
+			nextPathAt = now;
 		}
 		if (nav.isDone() && now >= nextPathAt) {
 			nextPathAt = now + REPATH_TICKS;
@@ -173,7 +184,10 @@ public final class WalkTo {
 				return State.ARRIVED;
 			}
 			boolean moving = path != null && nav.moveTo(path, SPEED);
-			if (moving) v.getBrain().setMemory(MemoryModuleType.PATH, path);
+			if (moving) {
+				v.getBrain().setMemory(MemoryModuleType.PATH, path);
+				mine = nav.getPath();
+			}
 			if (TRACE) {
 				dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} path to {} from {}: {} nodes={} reached={} moving={} end={}", v.getId(), now, target,
 						v.blockPosition(), path == null ? "null" : "ok", path == null ? 0 : path.getNodeCount(), path != null && path.canReach(), moving,
