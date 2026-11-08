@@ -90,11 +90,14 @@ public final class WalkTo {
 	 * on the grass in front of a door, two cells from a walker that stopped inside). Never one of our workers (two walkers settle it by
 	 * the id rule; a worker standing at its work keeps working), nor a trading, sleeping or NoAI villager.
 	 */
-	private static Villager idleBlocker(Villager v, Path path) {
+	private static Villager idleBlocker(Villager v, Path path, boolean live) {
 		java.util.List<net.minecraft.world.phys.AABB> cells = new java.util.ArrayList<>();
-		cells.add(v.getBoundingBox().inflate(1.0));
+		// with a live path also the cell just passed and a block around the walker (it pushes against the idler); once the navigation
+		// gave up only the cells ahead on the last planned path count, so a villager that merely stands nearby is left alone
+		if (live) cells.add(v.getBoundingBox().inflate(1.0));
 		if (path != null && path.getNodeCount() > 0) {
-			int i0 = Math.max(0, Math.min(path.getNextNodeIndex(), path.getNodeCount() - 1) - 1);
+			int next = Math.min(path.getNextNodeIndex(), path.getNodeCount() - 1);
+			int i0 = live ? Math.max(0, next - 1) : next;
 			for (int i = i0; i < Math.min(path.getNodeCount(), i0 + 4); i++) {
 				BlockPos n = path.getNode(i).asBlockPos();
 				cells.add(new net.minecraft.world.phys.AABB(n.getX(), n.getY(), n.getZ(), n.getX() + 1, n.getY() + 2, n.getZ() + 1));
@@ -217,7 +220,7 @@ public final class WalkTo {
 			jamAnchor = null;
 			Path cur = nav.getPath();
 			// also once the navigation gave up next to a standing villager: then the last path planned here shows the way
-			Villager idle = idleBlocker(v, cur != null ? cur : lastPath);
+			Villager idle = idleBlocker(v, cur != null ? cur : lastPath, cur != null);
 			if (idle != null && stepAside(idle, v)) {
 				jamAt = now;
 				if (TRACE) dev.villageheart.VillageHeart.LOG.info("[lumber] {} @{} jam at {}: asks the idle villager {} at {} to step aside", v.getId(), now,
