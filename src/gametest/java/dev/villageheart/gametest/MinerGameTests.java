@@ -649,6 +649,52 @@ public class MinerGameTests {
 		return h.getBlockState(mineMarker(high(h))).getValue(dev.villageheart.block.MarkerBlock.STATUS) == dev.villageheart.block.MarkerStatus.VALID;
 	}
 
+	// ---- unreachable shaft ------------------------------------------------------------------------
+
+	/** A staircase with a gap: "Can't reach the Mineshaft", nobody goes down; with the stairs mended it retries and goes down. Low scene (the tower). */
+	@GameTest(environment = "villageheart-gametest:mine_unreachable", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void minerReportsUnreachableShaft(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		Tracker tr = new Tracker(() -> v[0]);
+		h.onEachTick(() -> tr.sample(h));
+		long[] t0 = new long[1];
+		GameTestSequence seq = scene(h, 0, false, SHAFT1).thenExecute(() -> {
+			putInChest(h, chest(0), 0, pickaxe(ToolTier.STONE));
+			lightYard(h, 0);
+			int sx = SHAFT1[0], sz = SHAFT1[1], top = TOWER_TOP;
+			for (int k = 6; k <= 7; k++) h.setBlock(new BlockPos(sx, top - k, sz - 3 - k), net.minecraft.world.level.block.Blocks.AIR);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, 0);
+			tr.start();
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1000, "the status becomes SITE_UNREACHABLE", () -> h.assertValueEqual(
+				dev.villageheart.core.worker.WorkerStatus.SITE_UNREACHABLE, status(h, v[0]), "status"));
+		seq = seq.thenExecute(() -> {
+			System.out.println("[m16] minerReportsUnreachableShaft: SITE_UNREACHABLE after " + (h.getTick() - t0[0]) + " ticks");
+			var text = dev.villageheart.worker.job.WorkerStatusText.of(dev.villageheart.core.worker.WorkerStatus.SITE_UNREACHABLE, dev.villageheart.core.worker.JobType.MINER);
+			h.assertValueEqual("gui.villageheart.heart.activity.site_unreachable.miner", contents(text).getKey(), "text key");
+			h.assertValueEqual("Can't reach the Mineshaft", contents(text).getFallback(), "text");
+			h.assertValueEqual(dev.villageheart.core.heart.ActivityKind.SITE_UNREACHABLE, row(h, v[0]).activity(), "the Villagers tab row");
+			h.assertTrue(tr.descents.isEmpty(), "nobody went down");
+		});
+		seq = seq.thenIdle(300);
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(tr.descents.isEmpty(), "still nobody down while the stairs are broken");
+			int sx = SHAFT1[0], sz = SHAFT1[1], top = TOWER_TOP;
+			for (int k = 6; k <= 7; k++) h.setBlock(new BlockPos(sx, top - k, sz - 3 - k),
+					net.minecraft.world.level.block.Blocks.STONE_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.StairBlock.FACING, net.minecraft.core.Direction.SOUTH));
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, dev.villageheart.core.Balance.MINER_RETRY_TICKS + 500, "it retries and goes down", () -> h.assertTrue(tr.away(), "away"));
+		seq.thenExecute(() -> {
+			System.out.println("[m16] minerReportsUnreachableShaft: down " + (h.getTick() - t0[0]) + " ticks after the stairs were mended");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-7 ----------------------------------------------------------------------------------
 
 	/** Hiding and surfacing give the flags back as they were; orphans and conversions never keep the hidden state. */
