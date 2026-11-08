@@ -450,3 +450,13 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
 - Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
 - Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-08: M17 plan (Hunter + Hunting Ground), branch m17-plan
+- `docs/plans/M17.md`: 10 build steps, 12 L1 + 9 L2 + 1 L4 test groups. Reuses M16's away machinery (AwayTrips hide/surface, AwayCheck,
+  AwayProgress with a unit-cost overload, HaulRng, ShaftChoice); hunter-specific core in `core.hunt` (yield table with a pinned draw order,
+  biome meat weights from vanilla creature spawn weights, flat pace 3000 ticks/trip at L1, cap 2/day, departure cut-off 7700, arrows taken
+  at return for +1 meat, bow/crossbow ranked over swords, wear 5/trip).
+- M5 rule change planned: Hunting Ground link range 40 (was unlimited), so a hunter can always walk out and back.
+- Critique: fresh remote session, 27 findings; all but 2 taken (table in the plan's section 7).
+- Assumptions about M16 (built on origin/m16 only up to step 3 when planned): A1-A9 in section 3.1. Top risk: M16's glue API differs.
+- Next: build after M16 is merged on dev. No blockers.
