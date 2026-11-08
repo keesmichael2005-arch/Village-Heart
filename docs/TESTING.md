@@ -88,8 +88,8 @@ A separate tick listener, or behaviour code outside a section, escapes the budge
   `lastWageDay` is the next index; `out[0]` is the `PayResult` of the run (null when wages are off: the day was consumed). Never jump backwards except to
   test exactly that. `setPhase(h, 900)` moves inside the day without a new run.
 - Dawn counters: `VillageDawn.register("test:<name>", ...)` (ids starting with `test:` are dropped by `reset` and `WageTestSupport.done`).
-- Strike proofs watch positions (a striker never comes within 5 blocks of a tree) plus a control (a paid lumberjack fells logs) and a capability check
-  (a deposit and the same striker walks up to a fresh tree).
+- Strike proofs make the striker the only one who can do the work (two farmers and one lumberjack: any fallen log is the striker's) plus a capability check
+  (one deposit and the same worker fells a log). A first version told two lumberjacks apart by distance to the trees and flaked (a striker may wander).
 - The far-chunk test (`frozenWhileHeartUnloaded`) claims a village 100 000 blocks away in a force-loaded chunk, un-forces it and polls (bound 200 ticks)
   until it unloads. It has no workers: the proof is that `lastWageDay` and the dawn counter do not move while the Heart is unloaded.
 - **L4** `TreasuryClientTests.overviewStrike` (`treasury_overview.png`, `treasury_villagers.png`; `-Dvillageheart.l4.only=treasury` runs just this): hires charged

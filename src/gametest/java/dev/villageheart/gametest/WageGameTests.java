@@ -57,33 +57,26 @@ public class WageGameTests {
 
 	// ---- T-L2-1 (roadmap) -----------------------------------------------------------------------
 
+	/**
+	 * Farmers A and B and lumberjack C, hired in that order, 2 emeralds: A and B are paid, C strikes. C is the only one who can chop, so every
+	 * log that falls is C's: none may fall while it strikes. The capability check is in the same test: one deposit and C fells a log.
+	 */
 	@GameTest(environment = "villageheart-gametest:wages_three", structure = YARD, skyAccess = true, maxTicks = 9000)
 	public void threeWorkersTwoEmeraldsOneStrikes(GameTestHelper h) {
 		WorkerTestSupport.begin(h);
 		Villager[] v = new Villager[3];
 		PayResult[] run = new PayResult[1];
-		BlockPos[] spots = {new BlockPos(3, 0, 14), new BlockPos(3, 0, 22), new BlockPos(3, 0, 29), new BlockPos(14, 0, 24)};
-		BlockPos[] bases = new BlockPos[4];
-		@SuppressWarnings("unchecked") Set<BlockPos>[] logs = new Set[4];
-		double[] min = {1e9, 1e9, 1e9};
-		boolean[] sampling = new boolean[1];
-		h.onEachTick(() -> {
-			if (!sampling[0]) return;
-			for (int i : new int[] {0, 2}) {
-				if (v[i] == null) continue;
-				for (int t = 0; t < 4; t++) if (bases[t] != null) min[i] = Math.min(min[i], distAbs(v[i], bases[t]));
-			}
-		});
-		GameTestSequence seq = scene(h, 2, 1).thenExecute(() -> {
+		BlockPos[] bases = new BlockPos[1];
+		@SuppressWarnings("unchecked") Set<BlockPos>[] logs = new Set[1];
+		int[] total = new int[1];
+		GameTestSequence seq = scene(h, 1, 2).thenExecute(() -> {
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
-			putInChest(h, chest(), 1, axe(ToolTier.STONE));
-			for (int i = 0; i < 3; i++) {
-				bases[i] = growOak(h, spots[i], 10L + i);
-				logs[i] = logsOf(h, bases[i]);
-			}
-			v[0] = hireLumberjack(h, 0); // A
-			v[1] = hireFarmer(h);         // B
-			v[2] = hireLumberjack(h, 3);  // C
+			bases[0] = growOak(h, new BlockPos(3, 0, 22), 10L);
+			logs[0] = logsOf(h, bases[0]);
+			total[0] = logs[0].size();
+			v[0] = hireFarmer(h);          // A
+			v[1] = hire(h, JobType.FARMER, BuildingTestSupport.inside(FARM, 3, 0, 1)); // B
+			v[2] = hireLumberjack(h, 0);   // C
 			wagesOn();
 			deposit(h, 2); // nobody is unpaid yet, so nothing settles
 			h.assertValueEqual(2, treasury(h), "treasury before the dawn");
@@ -100,30 +93,22 @@ public class WageGameTests {
 			h.assertTrue(paid(v[0]) && paid(v[1]), "A and B stay paid");
 			h.assertTrue(status(h, v[0]) != WorkerStatus.ON_STRIKE, "A is not on strike");
 			setPhase(h, 900); // same day index: no second run
-			sampling[0] = true;
 		});
-		// 2500 ticks of the working day, checking C's status every 100
+		// 2500 ticks of the working day: no log falls, and C stays on strike
 		for (int k = 0; k < 25; k++) {
-			seq = seq.thenIdle(100).thenExecute(() -> h.assertValueEqual(WorkerStatus.ON_STRIKE, status(h, v[2]), "C stays on strike"));
+			seq = seq.thenIdle(100).thenExecute(() -> {
+				h.assertValueEqual(WorkerStatus.ON_STRIKE, status(h, v[2]), "C stays on strike");
+				h.assertValueEqual(total[0], standing(h, logs[0]), "no log fell while C is on strike");
+			});
 		}
 		seq = seq.thenExecute(() -> {
-			int felled = 0;
-			for (int i = 0; i < 3; i++) felled += logs[i].size() - standing(h, logs[i]);
-			log("threeWorkersTwoEmeraldsOneStrikes: A closest to a tree " + min[0] + ", C closest " + min[2] + ", logs felled by the day's first 2500 ticks " + felled);
-			h.assertTrue(felled >= 1, "the control: the paid lumberjack A felled at least one log (" + felled + ")");
-			h.assertTrue(min[0] < 4.5, "A walked up to a tree (closest " + min[0] + ")");
-			h.assertTrue(min[2] > 5.0, "C never went near a tree while on strike (closest " + min[2] + ")");
-			// capability: a deposit ends the strike and C then goes to work on a fresh tree
-			bases[3] = growOak(h, spots[3], 20L);
-			logs[3] = logsOf(h, bases[3]);
-			min[2] = 1e9;
 			deposit(h, 1);
 			h.assertTrue(payroll(h).unpaid().isEmpty(), "the deposit paid C");
 			h.assertTrue(paid(v[2]), "C's needs.paid is true in the deposit tick");
 			h.assertValueEqual(0, treasury(h), "the emerald went to C's wage");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 2400, "C reaching a tree once paid",
-				() -> h.assertTrue(min[2] < 4.5, "C walked up to a tree (closest " + min[2] + ")"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, LumberTestSupport.fellBound(1, 30, ToolTier.STONE), "a log falling once C is paid",
+				() -> h.assertTrue(standing(h, logs[0]) < total[0], "a log fell"));
 		seq.thenExecute(() -> {
 			h.assertTrue(status(h, v[2]) != WorkerStatus.ON_STRIKE, "C is no longer on strike");
 			done(h);
