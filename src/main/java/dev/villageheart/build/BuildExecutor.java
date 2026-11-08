@@ -56,6 +56,8 @@ public final class BuildExecutor {
 		if (PaletteStates.holds(st, step.entry())) return CellState.ALREADY_RIGHT;
 		if (st.isAir()) return entityIn(level, step) ? CellState.ENTITY : CellState.FREE;
 		if (LevelSiteView.classify(st) == SiteCell.CLEARABLE) return supports(level, step.pos(), touched) ? CellState.BLOCKED : CellState.CLEARABLE;
+		// water or lava in a cell the check pass finds wrong (a farmland flooded through a gap): put the block back
+		if (step.kind() == BuildPlan.Kind.CHECK && !st.getFluidState().isEmpty()) return CellState.FREE;
 		// a check pass leaves a different block of a player alone
 		return step.kind() == BuildPlan.Kind.CHECK ? CellState.ALREADY_RIGHT : CellState.BLOCKED;
 	}

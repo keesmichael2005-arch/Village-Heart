@@ -212,7 +212,7 @@ public final class BuilderJob {
 		}
 		Material m = step.kind() == BuildPlan.Kind.CLEAR ? null : step.entry().material();
 		boolean clearing = step.kind() == BuildPlan.Kind.CLEAR || cs == CellState.CLEARABLE;
-		boolean inHand = m == null || clearing || carriedAvailable(v, job, m) > 0;
+		boolean inHand = m == null || carriedAvailable(v, job, m) > 0;
 		boolean reserved = !inHand && BuildSystem.reservedByMaterial(server, job).getOrDefault(m.id(), 0) > 0;
 		boolean deposit = DepositTrip.wanted(level, v);
 		boolean inside = insideBox(v, bp, job);
@@ -515,6 +515,18 @@ public final class BuilderJob {
 		v.swing(InteractionHand.MAIN_HAND);
 		v.getBrain().setMemory(MemoryModuleType.LAST_WORKED_AT_POI, now);
 		ActionListener l = listener;
+		Material m = step.kind() == BuildPlan.Kind.CLEAR ? null : step.entry().material();
+		Map<String, Integer> carried = new HashMap<>(job.carried());
+		Item item = null;
+		if (cs == CellState.CLEARABLE && m != null) {
+			// a natural block under a PLACE or CHECK step goes and the new block comes in ONE action: in the gap between two actions water
+			// could flow into the cell (a farmland dried to dirt next to the water)
+			item = takeOne(v, carried, m);
+			if (item == null) {
+				ws.needsPlan = true;
+				return;
+			}
+		}
 		if (cs == CellState.CLEARABLE) {
 			for (ItemStack drop : BuildExecutor.clear(level, step.pos(), v)) {
 				ItemStack rest = v.getInventory().addItem(drop);
@@ -522,13 +534,14 @@ public final class BuilderJob {
 			}
 			WorkStats.add(JOB, "blocks_cleared", 1);
 			if (l != null) l.acted(v, BuildPlan.Kind.CLEAR, step.pos(), outside);
-			if (step.kind() == BuildPlan.Kind.CLEAR) save(server, job, job.cursor() + 1, job.carried(), job.carrier());
-			ws.needsPlan = true;
-			return;
+			if (step.kind() == BuildPlan.Kind.CLEAR) {
+				save(server, job, job.cursor() + 1, job.carried(), job.carrier());
+				ws.needsPlan = true;
+				return;
+			}
+		} else {
+			item = takeOne(v, carried, m);
 		}
-		Material m = step.entry().material();
-		Map<String, Integer> carried = new HashMap<>(job.carried());
-		Item item = takeOne(v, carried, m);
 		if (item == null) {
 			ws.needsPlan = true;
 			return;

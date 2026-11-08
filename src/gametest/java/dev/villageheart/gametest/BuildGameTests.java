@@ -870,6 +870,22 @@ public class BuildGameTests {
 			h.setBlock(standing, Blocks.TORCH);
 			assertRefused(h, bp, p, "torch", standing);
 			h.setBlock(standing, Blocks.AIR);
+			// carpets ask isEmptyBlock (a default method of the level), and an ascending rail is removed by its neighbour update
+			h.setBlock(standing, Blocks.WHITE_CARPET);
+			assertRefused(h, bp, p, "white_carpet", standing);
+			h.setBlock(standing, Blocks.MOSS_CARPET);
+			assertRefused(h, bp, p, "moss_carpet", standing);
+			h.setBlock(standing, Blocks.AIR);
+			h.setBlock(wallTorch.below(), Blocks.STONE);
+			h.setBlock(wallTorch, Blocks.RAIL.defaultBlockState().setValue(net.minecraft.world.level.block.RailBlock.SHAPE, net.minecraft.world.level.block.state.properties.RailShape.ASCENDING_EAST));
+			assertRefused(h, bp, p, "rail", wallTorch);
+			h.setBlock(wallTorch, Blocks.POWERED_RAIL.defaultBlockState().setValue(net.minecraft.world.level.block.PoweredRailBlock.SHAPE, net.minecraft.world.level.block.state.properties.RailShape.ASCENDING_EAST));
+			assertRefused(h, bp, p, "powered_rail", wallTorch);
+			h.setBlock(wallTorch, Blocks.AIR);
+			// a flat rail beside the dirt, resting on stone, does not depend on it
+			h.setBlock(wallTorch, Blocks.RAIL);
+			h.assertTrue(SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER) == null, "a flat rail on stone beside the site is fine");
+			h.setBlock(wallTorch, Blocks.AIR);
 			h.setBlock(ladder, Blocks.LADDER.defaultBlockState().setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.EAST));
 			assertRefused(h, bp, p, "ladder", ladder);
 			h.setBlock(ladder, Blocks.AIR);
@@ -1006,6 +1022,103 @@ public class BuildGameTests {
 					WorkerTestSupport.end(h);
 					VillageTestSupport.done(h);
 				});
+	}
+
+	/** The index of the first CHECK step of a build. */
+	private static int firstCheck(GameTestHelper h) {
+		var steps = BuildJobs.steps(h.getLevel().getServer(), BuildTestSupport.builds(h).get(0));
+		for (int i = 0; i < steps.size(); i++) if (steps.get(i).kind() == dev.villageheart.core.blueprint.BuildPlan.Kind.CHECK) return i;
+		throw new AssertionError("no check pass");
+	}
+
+	/**
+	 * Review of M20 round 2: a farmland next to the water dries to dirt (a player trampled it) when the check pass starts. The builder replaces
+	 * it in ONE action, so the water cannot flow into the gap: the plot ends with 80 farmland and 1 water.
+	 */
+	@GameTest(environment = "villageheart-gametest:build_farm_check", structure = YARD, skyAccess = true, maxTicks = 40000)
+	public void checkPassDoesNotFloodAFarmland(GameTestHelper h) {
+		Blueprint bp = Blueprints.FARM_PLOT;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		var log = new BuildTestSupport.ActionLog[1];
+		BlockPos[] trampled = new BlockPos[1];
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.farmMaterials(1));
+			log[0] = BuildTestSupport.watchActions();
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+		}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.cursor(h) >= firstCheck(h), "the check pass starts: " + BuildTestSupport.cursor(h)))
+				.thenExecute(() -> {
+					var steps = BuildJobs.steps(h.getLevel().getServer(), BuildTestSupport.builds(h).get(0));
+					int cursor = BuildTestSupport.cursor(h);
+					// among the farmland cells next to the water, the one whose check step is the last: it is still to come
+					int best = -1;
+					for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
+						BlockPos c = BuildTestSupport.cell(h, bp, pl, x, 0, z);
+						if (!h.getBlockState(c).is(Blocks.FARMLAND)) continue;
+						boolean nextToWater = false;
+						for (Direction d : Direction.Plane.HORIZONTAL) if (h.getBlockState(c.relative(d)).is(Blocks.WATER)) nextToWater = true;
+						if (!nextToWater) continue;
+						Pos abs = BuildTestSupport.abs(h, c);
+						for (int i = steps.size() - 1; i > cursor; i--) {
+							if (steps.get(i).kind() == dev.villageheart.core.blueprint.BuildPlan.Kind.CHECK && steps.get(i).pos().equals(abs)) {
+								if (i > best) { best = i; trampled[0] = c; }
+								break;
+							}
+						}
+					}
+					h.assertTrue(trampled[0] != null, "a farmland next to the water is still to be checked");
+					h.setBlock(trampled[0], Blocks.DIRT); // dried (or trampled)
+				}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the plot is finished")).thenIdle(200).thenExecute(() -> {
+					int farmland = 0, water = 0;
+					for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
+						BlockState st = h.getBlockState(BuildTestSupport.cell(h, bp, pl, x, 0, z));
+						if (st.is(Blocks.FARMLAND)) farmland++;
+						if (st.is(Blocks.WATER)) water++;
+					}
+					h.assertTrue(farmland == 80 && water == 1, "80 farmland and 1 water: " + farmland + "/" + water);
+					h.assertTrue(h.getBlockState(trampled[0]).is(Blocks.FARMLAND), "the dried cell is farmland again");
+					WorkerTestSupport.end(h);
+					VillageTestSupport.done(h);
+				});
+	}
+
+	/**
+	 * The touched-cell exemption: the check pass finds a wall block of the House turned into dirt under the House's own wall torch. The torch is
+	 * the build's own (a touched cell), so it does not stop the build; the wall comes back and so does the torch that popped.
+	 */
+	@GameTest(environment = "villageheart-gametest:build_own_torch", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void ownTorchDoesNotBlockTheCheckPass(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.NONE);
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			ItemStack[] all = BuildTestSupport.houseMaterials(1);
+			for (ItemStack s : all) {
+				if (s.is(Items.TORCH)) s.setCount(2);
+				if (s.is(Items.OAK_PLANKS)) s.setCount(120);
+			}
+			BuildTestSupport.stock(h, all);
+			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
+			UUID id = BuildTestSupport.onlyBuild(h);
+			var server = h.getLevel().getServer();
+			int check = firstCheck(h);
+			var a = BuildJobs.advance(server, id, check);
+			h.assertTrue(a.steps() == check && !a.finished(), "every main step is done: " + a);
+			BlockPos torch = null;
+			for (var step : BuildJobs.steps(server, BuildTestSupport.builds(h).get(0))) {
+				if (step.kind() == dev.villageheart.core.blueprint.BuildPlan.Kind.PLACE && step.entry().blockId().contains("torch")) torch = BuildTestSupport.rel(h, step.pos());
+			}
+			h.assertTrue(torch != null && h.getBlockState(torch).getBlock() instanceof net.minecraft.world.level.block.WallTorchBlock, "the House has a wall torch");
+			BlockPos support = torch.relative(h.getBlockState(torch).getValue(net.minecraft.world.level.block.WallTorchBlock.FACING).getOpposite());
+			h.assertTrue(h.getBlockState(support).is(Blocks.OAK_PLANKS) || h.getBlockState(support).is(Blocks.COBBLESTONE), "the torch hangs on a wall block: " + h.getBlockState(support));
+			Block wall = h.getBlockState(support).getBlock();
+			h.setBlock(support, Blocks.DIRT);
+			var b = BuildJobs.advance(server, id, Integer.MAX_VALUE);
+			h.assertTrue(b.finished(), "the check pass went through the build's own torch: " + b);
+			h.assertTrue(h.getBlockState(support).is(wall), "the wall block is back");
+			h.assertTrue(h.getBlockState(torch).getBlock() instanceof net.minecraft.world.level.block.WallTorchBlock, "and so is the torch");
+		}).thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
 	// ---- T-L2-14 ---------------------------------------------------------------------------------

@@ -377,3 +377,8 @@ Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: b
 - Farm Plot bug, flaky `farmPlotBuilt` (1 of 17 L2 runs): the check pass clears dried or trampled farmland next to the water in one action and places it in the next, so water flows in and the build finishes with 79 farmland. Reproduced deterministically.
 - Mutations of the 3 new tests all go red; the touched-cell exemption in `SiteSupport` has no test. verify.sh green; `workerOpensDoors` 0 failures in 18 runs (one 301-tick run).
 - Next: builder fixes items 1 to 3, then round 3.
+
+## 2026-11-08: M20 review rounds 1 and 2 (branch m20)
+- Round 1: clearing no longer breaks things of a player that rest on the site (rule 11b `Code.SUPPORT`, `SiteSupport`, per-step re-check in `BuildExecutor.cellState`). Round 2: carpets (default methods on the proxy), ascending rails, and the Farm Plot flood (clear and place in one action; water in a CHECK cell is wrong). Details in docs/plans/M20.md sections 8 and the review notes.
+- New tests: `SiteRulesTest.ruleOrder11b`, `attachedThingsRefuseTheSite`, `attachmentAfterConfirmBlocksTheBuilder`, `checkPassDoesNotFloodAFarmland`, `ownTorchDoesNotBlockTheCheckPass`; each mutation-checked.
+- Open: `workerOpensDoors` (M9) rare 300-tick stall, see BACKLOG. Lesson: the scratchpad is shared between agents, so keep helper scripts in an own subdirectory.

@@ -53,7 +53,8 @@ public final class BuilderPlanner {
 		if (f.cell() == CellState.ALREADY_RIGHT) return Action.of(Type.SKIP);
 		if (f.cell() == CellState.BLOCKED) return new Action(Type.WAIT, WaitReason.BLOCKED);
 		boolean clearing = f.kind() == BuildPlan.Kind.CLEAR || f.cell() == CellState.CLEARABLE;
-		if (!clearing && !f.materialInHand()) {
+		// a natural block under a PLACE step is replaced in one action (clear and place together), so the material must be in hand first
+		if (f.kind() != BuildPlan.Kind.CLEAR && !f.materialInHand()) {
 			return f.materialReserved() ? (f.depositWanted() ? Action.of(Type.YIELD) : Action.of(Type.FETCH))
 					: new Action(Type.WAIT, WaitReason.NEEDS_MATERIALS);
 		}
