@@ -118,3 +118,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] assertNoGiveUpsAt comment and PROGRESS give the wrong reason (a regrown tree stands on the same base)
 - [ ] Trees-before-drops: in a big forest early drops may despawn (collect window only from day time 5000 to despawn); plan T-L1-9 row still states the old order
 - [ ] ToolKind Javadoc names the removed status.villageheart key; CANT_REACH_WALK_TARGET_SINCE not erased by DepositTrip
+
+## From l4flake2-r1
+- [ ] Shared "kill villagers and wait until gone" helper for client tests; WorkerClientTests:122 and LumberClientTests:109/:174 kill villagers right before closing without waiting (the mixin covers it; this is cleanup)
