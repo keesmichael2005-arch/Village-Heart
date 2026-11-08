@@ -63,6 +63,10 @@ class StandPointsTest {
 		assertTrue(StandPoints.crosses(min, max, west.x() + 0.5, west.z() + 0.5, east.x() + 0.5, east.z() + 0.5));
 		Pos way = StandPoints.waypoint(min, max, ring, west, east).orElseThrow();
 		assertTrue(way.x() == -1 && (way.z() == -1 || way.z() == 8), way.toString());
+		// from that corner the target is in the clear only along the side: the next waypoint is the far corner on the same side or none
+		java.util.Optional<Pos> next = StandPoints.waypoint(min, max, ring, way, east);
+		assertTrue(next.isPresent() && next.get().x() == 7 && next.get().z() == way.z(), "the second leg goes to the other corner of that side: " + next);
+		assertTrue(StandPoints.waypoint(min, max, ring, next.get(), east).isEmpty(), "and from there the target is in the clear");
 		// along the west side there is nothing to avoid
 		assertTrue(StandPoints.waypoint(min, max, ring, new Pos(-1, 65, 0), new Pos(-1, 65, 8)).isEmpty());
 		// a corner that is not a stand point is not offered

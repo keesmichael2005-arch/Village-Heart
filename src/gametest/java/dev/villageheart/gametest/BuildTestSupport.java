@@ -121,6 +121,7 @@ public final class BuildTestSupport {
 	 * (Builder's Table, a chest, a torch). The sequence ends when they are valid.
 	 */
 	public static GameTestSequence layout(GameTestHelper h, With with) {
+		dev.villageheart.worker.build.BuilderJob.listener = null;
 		cleanYard(h);
 		boolean grid = with == With.GRID;
 		BlockPos store = grid ? GRID_STORE : STORE;
@@ -292,6 +293,16 @@ public final class BuildTestSupport {
 		return hash;
 	}
 
+	/** A hash of every block of a blueprint's box at a placement (the builder opens doors elsewhere, so the whole yard is too much). */
+	public static int boxHash(GameTestHelper h, Blueprint bp, Placement p) {
+		int hash = 1;
+		Pos a = p.min(bp), b = p.max(bp);
+		for (int x = a.x(); x <= b.x(); x++) for (int y = a.y(); y <= b.y(); y++) for (int z = a.z(); z <= b.z(); z++) {
+			hash = 31 * hash + Block.getId(h.getLevel().getBlockState(new BlockPos(x, y, z)));
+		}
+		return hash;
+	}
+
 	/** The last chat message's translation key, after asserting there is one (BACKLOG M5-r1: never get(0) of an empty list). */
 	public static String lastKey(GameTestHelper h, BuildingTestSupport.RecordingPlayer p) {
 		h.assertTrue(!p.messages.isEmpty(), "the player got a chat message");
@@ -301,5 +312,65 @@ public final class BuildTestSupport {
 	public static String lastOverlayKey(GameTestHelper h, BuildingTestSupport.RecordingPlayer p) {
 		h.assertTrue(!p.overlays.isEmpty(), "the player got an action bar message");
 		return BuildingTestSupport.translatable(p.overlays.get(p.overlays.size() - 1)).getKey();
+	}
+
+	// ---- builders --------------------------------------------------------------------------------
+
+	/** Counts of what builders did, from {@code BuilderJob.listener}: every clear and place, and whether the builder stood outside the box. */
+	public static final class ActionLog implements dev.villageheart.worker.build.BuilderJob.ActionListener {
+		public int places, clears, insideBox;
+		public String firstInside = "";
+
+		@Override
+		public void acted(net.minecraft.world.entity.npc.villager.Villager builder, dev.villageheart.core.blueprint.BuildPlan.Kind kind, Pos cell,
+				boolean outsideBox) {
+			if (kind == dev.villageheart.core.blueprint.BuildPlan.Kind.CLEAR) clears++;
+			else places++;
+			if (!outsideBox) {
+				insideBox++;
+				if (firstInside.isEmpty()) firstInside = kind + " at " + cell + " from " + builder.position();
+			}
+		}
+	}
+
+	public static ActionLog watchActions() {
+		ActionLog log = new ActionLog();
+		dev.villageheart.worker.build.BuilderJob.listener = log;
+		return log;
+	}
+
+	/** A villager spawned in the Hut and hired as the builder (the sequence must already hold a valid Hut). */
+	public static net.minecraft.world.entity.npc.villager.Villager hireBuilder(GameTestHelper h) {
+		var v = WorkerTestSupport.spawnVillager(h, BuildingTestSupport.inside(HUT, 1, 0, 1));
+		var r = dev.villageheart.worker.Workers.hire(h.getLevel(), v, dev.villageheart.core.worker.JobType.BUILDER, java.util.Optional.empty());
+		h.assertTrue(r instanceof dev.villageheart.worker.HireResult.Hired, "the builder was hired: " + r);
+		return v;
+	}
+
+	/**
+	 * A Steward standing south of the site, looking north, takes a Blueprint and confirms the site on the standard ground with two clicks:
+	 * the first shows it (the door turns towards the player), the second confirms. Asserts the pinned rotation.
+	 */
+	public static void confirmSite(GameTestHelper h, Blueprint bp, Rotation4 expected) {
+		var steward = playerWithRank(h, "steward", dev.villageheart.core.Rank.STEWARD);
+		ItemStack stack = dev.villageheart.build.BlueprintItem.of(bp);
+		BuildingTestSupport.rightClick(h, steward, GROUND, Direction.UP, stack);
+		var site = stack.get(dev.villageheart.build.ModComponents.BLUEPRINT_SITE);
+		h.assertTrue(site != null && site.ok(), "the shown site is fine: " + (site == null ? "none" : site.reason().english()));
+		h.assertTrue(site.rotationEnum() == expected, "the first click picks the rotation that turns the door to the player: " + site.rotationEnum());
+		BuildingTestSupport.rightClick(h, steward, GROUND, Direction.UP, stack);
+		h.assertTrue(builds(h).size() == 1 && builds(h).get(0).rotation() == expected, "the second click confirmed the site");
+	}
+
+	/** The cursor of the only build, or -1 when there is none. */
+	public static int cursor(GameTestHelper h) {
+		List<BuildJob> b = builds(h);
+		return b.isEmpty() ? -1 : b.get(0).cursor();
+	}
+
+	public static void assertHouseGreen(GameTestHelper h, Blueprint bp, Placement p) {
+		BlockPos marker = markerCell(h, bp, p);
+		h.assertTrue(markerStatus(h, marker) == MarkerStatus.VALID, "the House marker is green: " + markerStatus(h, marker) + " "
+				+ BuildingTestSupport.reasons(h, marker).stream().map(r -> r.message()).toList());
 	}
 }

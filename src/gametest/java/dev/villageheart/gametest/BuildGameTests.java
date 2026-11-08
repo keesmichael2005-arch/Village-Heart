@@ -4,7 +4,10 @@ import static dev.villageheart.gametest.BuildTestSupport.GRID;
 import static dev.villageheart.gametest.BuildTestSupport.YARD;
 import static dev.villageheart.gametest.BuildTestSupport.env;
 
+import com.mojang.serialization.JsonOps;
 import dev.villageheart.block.MarkerStatus;
+import dev.villageheart.build.BuildRuntime;
+import dev.villageheart.build.BuildSystem;
 import dev.villageheart.build.BlueprintItem;
 import dev.villageheart.build.BlueprintSite;
 import dev.villageheart.build.ModComponents;
@@ -15,6 +18,8 @@ import dev.villageheart.build.SiteValidation;
 import dev.villageheart.building.Buildings;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.Rank;
+import dev.villageheart.core.VillageState;
+import dev.villageheart.world.VillageCodecs;
 import dev.villageheart.stock.StackKey;
 import java.util.UUID;
 import dev.villageheart.core.blueprint.Blueprint;
@@ -520,5 +525,184 @@ public class BuildGameTests {
 			var res = Stockpiles.reservations(h.getLevel().getServer());
 			h.assertTrue(res.reservedBy(id[0], planks) == 119, "119 planks reserved again: " + res.reservedBy(id[0], planks));
 		}).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	// ---- T-L2-7 (roadmap) ------------------------------------------------------------------------
+
+	private static final int TWO_DAYS = 48000;
+
+	private static void assertExactDeduction(GameTestHelper h, Map<String, Long> before, Map<String, Long> expectedAfter, String what) {
+		Map<String, Long> after = Stockpiles.totalsById(h.getLevel().getServer());
+		h.assertTrue(after.equals(expectedAfter), what + ": expected " + expectedAfter + ", got " + after + " (before " + before + ")");
+	}
+
+	private static void assertNoItems(GameTestHelper h, Item... items) {
+		for (var e : h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+				new net.minecraft.world.phys.AABB(h.absolutePos(new BlockPos(-2, -3, -2)).getX(), h.absolutePos(new BlockPos(-2, -3, -2)).getY(),
+						h.absolutePos(new BlockPos(-2, -3, -2)).getZ(), h.absolutePos(new BlockPos(34, 30, 34)).getX(),
+						h.absolutePos(new BlockPos(34, 30, 34)).getY(), h.absolutePos(new BlockPos(34, 30, 34)).getZ()))) {
+			for (Item i : items) h.assertTrue(!e.getItem().is(i), "an item entity of " + i + " lies in the yard");
+		}
+	}
+
+	@GameTest(environment = "villageheart-gametest:build_house_two_days", structure = YARD, skyAccess = true, maxTicks = 50000)
+	public void smallHouseWithinTwoDays(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		long[] t0 = new long[1];
+		Map<String, Long> before = new HashMap<>();
+		var builder = new net.minecraft.world.entity.npc.villager.Villager[1];
+		var log = new BuildTestSupport.ActionLog[1];
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			before.putAll(Stockpiles.totalsById(h.getLevel().getServer()));
+			log[0] = BuildTestSupport.watchActions();
+			builder[0] = BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			t0[0] = h.getTick();
+		}).thenIdle(5).thenExecute(() -> {
+			h.assertTrue(h.getLevel().getDayTime() > 1000, "the day time advances");
+			h.assertTrue(dev.villageheart.worker.WorkerAttachments.get(builder[0]).orElseThrow().needs().speed() == 1.0, "the builder works at full speed");
+		}).thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> {
+			long ticks = h.getTick() - t0[0];
+			System.out.println("[m20] small house finished after " + ticks + " ticks: " + log[0].places + " places, " + log[0].clears + " clears");
+			h.assertTrue(ticks < TWO_DAYS, "the House is green before two days: " + ticks);
+			var server = h.getLevel().getServer();
+			h.assertTrue(BuildingTestSupport.record(h, BuildTestSupport.markerCell(h, bp, pl)).orElseThrow().status() == dev.villageheart.core.building.BuildingStatus.VALID,
+					"the House record is valid");
+			int homes = 0;
+			for (var b : Buildings.valid(server, BuildingType.HOUSE)) homes += b.verdict().orElseThrow().slots();
+			h.assertTrue(homes == 1, "one home: " + homes);
+			assertExactDeduction(h, before, Map.of(), "the materials are deducted exactly and nothing else changed");
+			assertNoItems(h, Items.OAK_PLANKS, Items.COBBLESTONE, Items.OAK_DOOR, Items.WHITE_BED, Items.TORCH);
+			h.assertTrue(builder[0].getInventory().isEmpty(), "the builder carries nothing: " + builder[0].getInventory());
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the build is done");
+			h.assertTrue(log[0].places == 172, "172 placements: " + log[0].places);
+			h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
+			dev.villageheart.worker.build.BuilderJob.listener = null;
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-8 (roadmap) ------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_pauses", structure = YARD, skyAccess = true, maxTicks = 40000)
+	public void pausesAndResumes(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		Map<String, Long> before = new HashMap<>();
+		int[] cursor0 = new int[1];
+		int[] hash0 = new int[1];
+		var builder = new net.minecraft.world.entity.npc.villager.Villager[1];
+		long[] t0 = new long[1];
+		WorkerTestSupport.begin(h);
+		GameTestSequence seq = BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			ItemStack[] all = BuildTestSupport.houseMaterials(1);
+			for (ItemStack s : all) if (s.is(Items.OAK_PLANKS)) s.setCount(107);
+			BuildTestSupport.stock(h, all);
+			before.putAll(Stockpiles.totalsById(h.getLevel().getServer()));
+			builder[0] = BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+		});
+		// the build stops by itself and says what it needs
+		seq = seq.thenWaitUntil(() -> {
+			var server = h.getLevel().getServer();
+			var view = BuildSystem.views(server).stream().findFirst().orElseThrow();
+			h.assertTrue(view.status() == dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, "the build is waiting for materials: " + view.status());
+			h.assertTrue(view.line().english().equals("Needs 12 more planks"), "the build says what it needs: " + view.line().english());
+			h.assertTrue(view.line().key().equals("build.villageheart.needs") && view.line().args().equals(List.of("12", "planks")), "key and args: " + view.line());
+			var rec = VillageClaims.current(server).orElseThrow().worker(builder[0].getUUID()).orElseThrow();
+			h.assertTrue(dev.villageheart.worker.Workers.status(server, rec) == dev.villageheart.core.worker.WorkerStatus.NEEDS_MATERIALS,
+					"the builder's status: " + dev.villageheart.worker.Workers.status(server, rec));
+		});
+		seq = seq.thenExecute(() -> {
+			cursor0[0] = BuildTestSupport.cursor(h);
+			hash0[0] = BuildTestSupport.boxHash(h, bp, pl);
+			t0[0] = h.getTick();
+			System.out.println("[m20] paused at cursor " + cursor0[0] + " after the House was built up to its last 12 roof blocks");
+		}).thenIdle(600).thenExecute(() -> {
+			h.assertTrue(BuildTestSupport.cursor(h) == cursor0[0], "the cursor did not move for 600 ticks: " + cursor0[0] + " -> " + BuildTestSupport.cursor(h));
+			h.assertTrue(BuildTestSupport.boxHash(h, bp, pl) == hash0[0], "no site block changed while waiting");
+			// the planks arrive; the evening must not catch the resume
+			h.getLevel().setDayTime(2000);
+			BuildTestSupport.stock(h, new ItemStack(Items.OAK_PLANKS, 12));
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 600, "the build resumes", () ->
+				h.assertTrue(BuildTestSupport.cursor(h) > cursor0[0] || BuildTestSupport.cursor(h) == -1, "the cursor moves"));
+		seq.thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> {
+			assertExactDeduction(h, before, Map.of(), "all 119 planks and every other material, exactly");
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the build is done");
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-9 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_restart_firing", structure = YARD, skyAccess = true, maxTicks = 50000)
+	public void buildSurvivesRestartAndFiring(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		Map<String, Long> before = new HashMap<>();
+		var builder = new net.minecraft.world.entity.npc.villager.Villager[1];
+		int[] restartCursor = new int[1];
+		long[] carriedBefore = new long[2];
+		UUID[] id = new UUID[1];
+		StackKey planks = StackKey.of(Items.OAK_PLANKS);
+		WorkerTestSupport.begin(h);
+		GameTestSequence seq = BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			before.putAll(Stockpiles.totalsById(h.getLevel().getServer()));
+			builder[0] = BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			id[0] = BuildTestSupport.onlyBuild(h);
+		});
+		// (1) a restart once the floor is down: save, load, install the loaded state, forget every transient thing
+		seq = seq.thenWaitUntil(() -> h.assertTrue(BuildTestSupport.cursor(h) >= 246 + 49 + 10, "the floor is down: " + BuildTestSupport.cursor(h)));
+		seq = seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			VillageState live = VillageClaims.current(server).orElseThrow();
+			VillageState decoded = VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, VillageCodecs.VILLAGE_STATE.encodeStart(JsonOps.INSTANCE, live).getOrThrow()).getOrThrow();
+			h.assertTrue(decoded.equals(live), "the saved village reads back equal");
+			VillageClaims.data(server).update(v -> decoded);
+			BuildRuntime.resetForTests();
+			Stockpiles.resetRuntimeForTests();
+			restartCursor[0] = BuildTestSupport.cursor(h);
+			h.assertTrue(restartCursor[0] >= 305, "the build is where it was: " + restartCursor[0]);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 200, "the build goes on after the restart", () -> {
+			var res = Stockpiles.reservations(h.getLevel().getServer());
+			h.assertTrue(BuildTestSupport.cursor(h) > restartCursor[0], "the cursor moves on from " + restartCursor[0] + ": " + BuildTestSupport.cursor(h));
+			h.assertTrue(res.reservedBy(id[0], planks) > 0, "the reservations are back");
+		});
+		// (2) the builder is fired while it carries planks
+		seq = seq.thenWaitUntil(() -> {
+			var job = BuildTestSupport.builds(h).get(0);
+			h.assertTrue(job.carriedOf("minecraft:oak_planks") > 0 && builder[0].getUUID().equals(job.carrier()), "the builder carries planks: " + job.carried());
+		});
+		seq = seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			var job = BuildTestSupport.builds(h).get(0);
+			carriedBefore[0] = job.carriedOf("minecraft:oak_planks");
+			carriedBefore[1] = Stockpiles.count(server, Items.OAK_PLANKS);
+			h.assertTrue(dev.villageheart.worker.Workers.fire(h.getLevel(), builder[0]), "the builder was fired");
+			h.assertTrue(Stockpiles.count(server, Items.OAK_PLANKS) == carriedBefore[1] + carriedBefore[0],
+					"the carried planks went back to Storage: " + carriedBefore[1] + " + " + carriedBefore[0] + " -> " + Stockpiles.count(server, Items.OAK_PLANKS));
+			var after = BuildTestSupport.builds(h).get(0);
+			h.assertTrue(after.carried().isEmpty() && after.carrier() == null, "nothing is carried for the build any more: " + after.carried());
+			builder[0] = BuildTestSupport.hireBuilder(h);
+		});
+		seq.thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> {
+			assertExactDeduction(h, before, Map.of(), "the total deduction is still exact");
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the build is done");
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
 	}
 }

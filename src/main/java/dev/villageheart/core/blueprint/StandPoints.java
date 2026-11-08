@@ -86,19 +86,25 @@ public final class StandPoints {
 	}
 
 	/**
-	 * The ring corner to walk to first when the straight way from {@code from} to {@code target} crosses the box: the corner nearest to
-	 * the builder, among those in {@code ring}. Empty when the line is clear (or no corner is a stand point).
+	 * The ring corner to walk to first when the straight way from {@code from} to {@code target} crosses the box: of the ring's corners that
+	 * are not where the builder already stands and can be reached in a straight line round the box, the one with the shortest way
+	 * {@code from -> corner -> target} (a corner from which the target is in the clear is always preferred). Empty when the line is clear (or no
+	 * corner qualifies). Called again at each corner, a long way round goes corner by corner.
 	 */
 	public static java.util.Optional<Pos> waypoint(Pos min, Pos max, List<Pos> ring, Pos from, Pos target) {
-		if (!crosses(min, max, from.x() + 0.5, from.z() + 0.5, target.x() + 0.5, target.z() + 0.5)) return java.util.Optional.empty();
+		double fx = from.x() + 0.5, fz = from.z() + 0.5, tx = target.x() + 0.5, tz = target.z() + 0.5;
+		if (!crosses(min, max, fx, fz, tx, tz)) return java.util.Optional.empty();
 		Pos best = null;
-		double bd = Double.MAX_VALUE;
+		double bestScore = Double.MAX_VALUE;
 		for (int[] c : corners(min, max)) {
 			for (Pos r : ring) {
 				if (r.x() != c[0] || r.z() != c[1]) continue;
-				double d = sq(r, from);
-				if (d < bd) {
-					bd = d;
+				double cx = r.x() + 0.5, cz = r.z() + 0.5;
+				if (Math.hypot(cx - fx, cz - fz) < 1.8) continue; // already there
+				if (crosses(min, max, fx, fz, cx, cz)) continue;
+				double score = Math.hypot(cx - fx, cz - fz) + Math.hypot(tx - cx, tz - cz) + (crosses(min, max, cx, cz, tx, tz) ? 1000 : 0);
+				if (score < bestScore) {
+					bestScore = score;
 					best = r;
 				}
 			}
