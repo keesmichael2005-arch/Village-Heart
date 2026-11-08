@@ -180,7 +180,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hunter that arrives with a weapon that is unreadable for a moment (chest scan missing) does not go out and walks back to its table; the next plan decides again (not tested)
 
 ## From M17-r1 (orchestrator, at merge)
-- [ ] Hunter awards no XP: M17 was built before M15 merged. Wire `WorkXp.award(v, GAME_HUNTED, 1)` per completed trip, with a GameTest (sent to the M17 builder)
+- [x] Hunter awards no XP: M17 was built before M15 merged. Wire `WorkXp.award(v, GAME_HUNTED, 1)` per completed trip, with a GameTest (sent to the M17 builder)
 - [ ] Hidden away villagers stay solid for every walker; consider making away villagers non-colliding (would replace the narrow touch rule)
 - [ ] `MineTestSupport.clearHigh` spills chest contents into the world; emptying chests first would explain and close the M16 stray-pickaxe clue
 - [ ] `touchesAwayVillager` also matches away miners (harmless today)

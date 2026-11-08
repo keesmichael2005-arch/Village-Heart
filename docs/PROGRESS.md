@@ -505,3 +505,7 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
 - Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
 - Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
+- `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
+- Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
