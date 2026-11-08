@@ -45,6 +45,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.Workers.setJobSiteSourceForTest(null);
 		WorkerTestSupport.discardSpawned(h.getLevel());
 		dev.villageheart.worker.lumber.LumberRuntime.resetForTests();
+		dev.villageheart.build.BuildRuntime.resetForTests();
+		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.job.WorkerStatuses.clearAll();
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();

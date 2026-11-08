@@ -5,7 +5,13 @@ import static dev.villageheart.gametest.BuildTestSupport.YARD;
 import static dev.villageheart.gametest.BuildTestSupport.env;
 
 import com.mojang.serialization.JsonOps;
+import dev.villageheart.block.JobBlocks;
 import dev.villageheart.block.MarkerStatus;
+import dev.villageheart.build.BuildersTableMenu;
+import dev.villageheart.build.net.CancelBuildPayload;
+import dev.villageheart.build.net.TakeBlueprintPayload;
+import dev.villageheart.item.ModItems;
+import net.minecraft.server.level.ServerPlayer;
 import dev.villageheart.build.BuildRuntime;
 import dev.villageheart.build.BuildSystem;
 import dev.villageheart.build.BlueprintItem;
@@ -231,7 +237,7 @@ public class BuildGameTests {
 				checkFarm(h, bp, p, i);
 			}
 		}).thenIdle(800).thenExecute(() -> {
-			// placed dry (moisture 0): the water makes it moist on its random ticks
+			// at random tick speed 100 farmland without water would have dried out and turned to dirt: the water keeps it moist
 			for (int i = 0; i < 4; i++) {
 				Placement p = BuildTestSupport.placement(h, GRID[i], ROTATIONS[i]);
 				for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
@@ -701,6 +707,329 @@ public class BuildGameTests {
 		seq.thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> {
 			assertExactDeduction(h, before, Map.of(), "the total deduction is still exact");
 			h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the build is done");
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-10 ---------------------------------------------------------------------------------
+
+	private static BuildingTestSupport.RecordingPlayer atTable(GameTestHelper h, String name, Rank rank) {
+		var p = BuildTestSupport.playerWithRank(h, name, rank);
+		var at = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(BuildingTestSupport.inside(BuildTestSupport.HUT, 1, 0, 1)));
+		p.setPos(at.x, at.y, at.z);
+		return p;
+	}
+
+	private static BuildersTableMenu openTable(GameTestHelper h, ServerPlayer p) {
+		BuildingTestSupport.rightClick(h, p, BuildTestSupport.table(), Direction.UP, ItemStack.EMPTY);
+		h.assertTrue(p.containerMenu instanceof BuildersTableMenu, p.getName().getString() + " has the Builder's Table open");
+		return (BuildersTableMenu) p.containerMenu;
+	}
+
+	@GameTest(environment = "villageheart-gametest:build_table_permissions", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void buildersTablePermissions(GameTestHelper h) {
+		var sent = HeartTestSupport.recorder();
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			var visitor = atTable(h, "visitor", Rank.VISITOR);
+			var resident = atTable(h, "resident", Rank.RESIDENT);
+			var steward = atTable(h, "steward", Rank.STEWARD);
+			Item bpItem = ModItems.BLUEPRINT;
+			// everybody in the claim may open the table and read it
+			for (var p : List.of(visitor, resident, steward)) {
+				var m = openTable(h, p);
+				h.assertTrue(m.snapshot().blueprints().size() == 3, p.getName().getString() + " sees the 3 blueprints");
+				h.assertTrue(m.snapshot().viewerRank() == VillageClaims.current(h.getLevel().getServer()).orElseThrow().rankOf(p.getUUID()), "with the viewer's rank");
+				h.assertTrue(m.snapshot().blueprints().get(0).materials().size() == 6, "and the material list");
+				h.assertTrue(!m.snapshot().blueprints().get(0).locked(), "unlocked at Village tier");
+			}
+			// the list shows what Storage could give (nothing here) and what it costs
+			var first = ((BuildersTableMenu) steward.containerMenu).snapshot().blueprints().get(0);
+			h.assertTrue(first.id().equals("small_house") && first.materials().get(1).name().equals("planks") && first.materials().get(1).needed() == 119
+					&& first.materials().get(1).have() == 0, "planks 0 / 119: " + first.materials());
+			// Take: a Visitor and a Resident are refused and get nothing
+			for (var p : List.of(visitor, resident)) {
+				HeartTestSupport.send(p, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(p.containerMenu.containerId, "small_house"));
+				h.assertTrue(p.getInventory().countItem(bpItem) == 0, p.getName().getString() + " got no blueprint");
+				var r = HeartTestSupport.lastResult(sent, p);
+				h.assertTrue(!r.ok() && r.key().equals("gui.villageheart.table.no_permission"), "refused with the rank text: " + r.key());
+			}
+			// a Steward gets exactly one Blueprint of that id
+			HeartTestSupport.send(steward, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(steward.containerMenu.containerId, "small_house"));
+			h.assertTrue(steward.getInventory().countItem(bpItem) == 1, "the Steward got one blueprint");
+			ItemStack got = ItemStack.EMPTY;
+			for (int i = 0; i < steward.getInventory().getContainerSize(); i++) if (steward.getInventory().getItem(i).is(bpItem)) got = steward.getInventory().getItem(i);
+			h.assertTrue("small_house".equals(got.get(ModComponents.BLUEPRINT)), "of the right id");
+			h.assertTrue(HeartTestSupport.lastResult(sent, steward).ok(), "and was told so");
+			// an unknown id, a stale container id
+			HeartTestSupport.send(steward, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(steward.containerMenu.containerId, "castle"));
+			h.assertTrue(HeartTestSupport.lastResult(sent, steward).key().equals("gui.villageheart.table.unknown"), "an unknown blueprint is refused");
+			HeartTestSupport.send(steward, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(steward.containerMenu.containerId + 50, "small_house"));
+			h.assertTrue(HeartTestSupport.lastResult(sent, steward).key().equals("gui.villageheart.table.stale"), "a stale container id is refused");
+			h.assertTrue(steward.getInventory().countItem(bpItem) == 1, "no second blueprint");
+			// Hamlet tier: locked
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.HAMLET);
+			HeartTestSupport.send(steward, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(steward.containerMenu.containerId, "farm_plot"));
+			var locked = HeartTestSupport.lastResult(sent, steward);
+			h.assertTrue(!locked.ok() && locked.key().equals("gui.villageheart.table.locked") && locked.args().equals(List.of("Village")), "locked at Hamlet tier: " + locked);
+			h.assertTrue(steward.getInventory().countItem(bpItem) == 1, "nothing taken");
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.VILLAGE);
+			// Cancel: a Resident is refused, a Steward cancels and the reservations go
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			BuildTestSupport.startBuild(h, Blueprints.SMALL_HOUSE, BuildTestSupport.GROUND, Rotation4.NONE);
+			UUID id = BuildTestSupport.onlyBuild(h);
+			StackKey planks = StackKey.of(Items.OAK_PLANKS);
+			h.assertTrue(Stockpiles.reservations(h.getLevel().getServer()).reservedBy(id, planks) == 119, "the build reserved its planks");
+			HeartTestSupport.send(resident, CancelBuildPayload.CODEC, new CancelBuildPayload(resident.containerMenu.containerId, id));
+			h.assertTrue(BuildTestSupport.builds(h).size() == 1 && !HeartTestSupport.lastResult(sent, resident).ok(), "a Resident cannot cancel");
+			HeartTestSupport.send(steward, CancelBuildPayload.CODEC, new CancelBuildPayload(steward.containerMenu.containerId + 9, id));
+			h.assertTrue(BuildTestSupport.builds(h).size() == 1, "a stale container id cannot cancel");
+			HeartTestSupport.send(steward, CancelBuildPayload.CODEC, new CancelBuildPayload(steward.containerMenu.containerId, id));
+			h.assertTrue(BuildTestSupport.builds(h).isEmpty() && HeartTestSupport.lastResult(sent, steward).ok(), "a Steward cancels");
+			h.assertTrue(Stockpiles.reservations(h.getLevel().getServer()).reservedBy(id, planks) == 0, "and the reservations are released");
+			HeartTestSupport.done(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:build_table_outside", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void tableOutsideTheClaimDoesNotOpen(GameTestHelper h) {
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			var steward = atTable(h, "steward", Rank.STEWARD);
+			var village = VillageClaims.current(h.getLevel().getServer()).orElseThrow();
+			// the Heart moves far away in the saved data: the table is then outside the claim
+			VillageClaims.data(h.getLevel().getServer()).update(v -> new VillageState(new dev.villageheart.core.HeartLocation(v.heart().dimension(),
+					v.heart().x() + 5000, v.heart().y(), v.heart().z()), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(), v.treasury(),
+					v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds()));
+			BuildingTestSupport.rightClick(h, steward, BuildTestSupport.table(), Direction.UP, ItemStack.EMPTY);
+			h.assertTrue(!(steward.containerMenu instanceof BuildersTableMenu), "no menu outside the claim");
+			h.assertTrue(BuildTestSupport.lastKey(h, steward).equals("build.villageheart.msg.not_in_village"), "the player is told");
+			VillageClaims.data(h.getLevel().getServer()).update(v -> village);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-11 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_player_block", structure = YARD, skyAccess = true, maxTicks = 20000)
+	public void playerBlockAppearsMidBuild(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		BlockPos glass = BuildTestSupport.cell(h, bp, pl, 0, 3, 3);
+		Pos glassAbs = pl.world(bp, 0, 3, 3);
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+		}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.cursor(h) >= 246 + 49 + 5, "the builder is in layer 1: " + BuildTestSupport.cursor(h)))
+				.thenExecute(() -> h.setBlock(glass, Blocks.GLASS))
+				.thenWaitUntil(() -> {
+					var view = BuildSystem.views(h.getLevel().getServer()).get(0);
+					h.assertTrue(view.status() == dev.villageheart.core.blueprint.BuildStatus.BLOCKED && view.line().english().equals("glass in the way at " + glassAbs),
+							"the build stops at the glass, naming block and cell " + glassAbs + ": " + view.status() + " " + view.line().english() + " claimed=" + view.claimed() + " pause=" + BuildRuntime.get(h.getLevel().getServer()).pause(view.job().id())
+					+ " now=" + h.getLevel().getServer().overworld().getGameTime() + " day=" + h.getLevel().getDayTime());
+				}).thenIdle(300).thenExecute(() -> {
+					h.assertTrue(h.getBlockState(glass).is(Blocks.GLASS), "the glass was never broken");
+					h.assertTrue(BuildTestSupport.cursor(h) > 0, "the build is still there");
+					h.setBlock(glass, Blocks.AIR);
+				}).thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> {
+					h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "and then it finishes");
+					WorkerTestSupport.end(h);
+					VillageTestSupport.done(h);
+				});
+	}
+
+	// ---- T-L2-12 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_check_pass", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void checkPassRepairs(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.NONE);
+		BlockPos wall = BuildTestSupport.cell(h, bp, pl, 0, 2, 3);
+		UUID[] id = new UUID[1];
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			ItemStack[] all = BuildTestSupport.houseMaterials(1);
+			for (ItemStack s : all) if (s.is(Items.OAK_PLANKS)) s.setCount(120); // one for the repair
+			BuildTestSupport.stock(h, all);
+			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
+			id[0] = BuildTestSupport.onlyBuild(h);
+			var a = BuildJobs.advance(h.getLevel().getServer(), id[0], 246 + 170);
+			h.assertTrue(a.steps() == 416 && !a.finished(), "every main step is done: " + a);
+			h.assertTrue(h.getBlockState(wall).is(Blocks.OAK_PLANKS), "the wall block stands");
+			h.setBlock(wall, Blocks.AIR); // gone, and no item entity (not broken by a player)
+			var b = BuildJobs.advance(h.getLevel().getServer(), id[0], Integer.MAX_VALUE);
+			h.assertTrue(b.finished(), "the build finished: " + b);
+			h.assertTrue(h.getBlockState(wall).is(Blocks.OAK_PLANKS), "the check pass put the wall block back");
+			h.assertTrue(Stockpiles.count(h.getLevel().getServer(), Items.OAK_PLANKS) == 0, "120 planks were used (119 and the repair)");
+		}).thenWaitUntil(() -> BuildTestSupport.assertHouseGreen(h, bp, pl)).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	// ---- T-L2-13 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_farm_plot", structure = YARD, skyAccess = true, maxTicks = 40000)
+	public void farmPlotBuilt(GameTestHelper h) {
+		Blueprint bp = Blueprints.FARM_PLOT;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		var log = new BuildTestSupport.ActionLog[1];
+		long[] t0 = new long[1];
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.farmMaterials(1));
+			log[0] = BuildTestSupport.watchActions();
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			t0[0] = h.getTick();
+		}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.builds(h).isEmpty() && log[0].places >= 121, "the Farm Plot is built: " + BuildTestSupport.cursor(h) + " " + log[0].places))
+				.thenExecute(() -> {
+					long ticks = h.getTick() - t0[0];
+					System.out.println("[m20] farm plot finished after " + ticks + " ticks: " + log[0].places + " places, " + log[0].clears + " clears");
+					h.assertTrue(ticks < Balance.DAY_TICKS, "within one day: " + ticks);
+					h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
+					checkFarm(h, bp, pl, 0);
+					BlockPos gate = BuildTestSupport.cell(h, bp, pl, 5, 1, 0);
+					var player = BuildTestSupport.playerWithRank(h, "farmer", Rank.RESIDENT);
+					var at = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(gate.south(3)));
+					player.setPos(at.x, at.y, at.z);
+					BuildingTestSupport.rightClick(h, player, gate, Direction.SOUTH, ItemStack.EMPTY);
+					h.assertTrue(h.getBlockState(gate).getValue(FenceGateBlock.OPEN), "the gate opens");
+					h.getLevel().setDayTime(11100); // the day's work is over: the builder hands in its spoil
+					h.getLevel().getGameRules().set(GameRules.RANDOM_TICK_SPEED, 100, h.getLevel().getServer()); // the water works through the farmland fast
+				}).thenWaitUntil(() -> {
+					var server = h.getLevel().getServer();
+					h.assertTrue(Stockpiles.count(server, Items.BUCKET) >= 1, "the empty bucket is in Storage");
+					h.assertTrue(Stockpiles.count(server, Items.DIRT) >= 1, "and the cleared grass's dirt");
+				}).thenIdle(600).thenExecute(() -> {
+					for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
+						BlockState s = h.getBlockState(BuildTestSupport.cell(h, bp, pl, x, 0, z));
+						if (s.is(Blocks.WATER)) continue;
+						h.assertTrue(s.is(Blocks.FARMLAND) && s.getValue(FarmBlock.MOISTURE) == 7, "moist farmland at (" + x + ", " + z + "): " + s);
+					}
+					WorkerTestSupport.end(h);
+					VillageTestSupport.done(h);
+				});
+	}
+
+	// ---- T-L2-14 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_entity", structure = YARD, skyAccess = true, maxTicks = 20000)
+	public void entityInTheWay(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
+		BlockPos cell = BuildTestSupport.cell(h, bp, pl, 0, 1, 3);
+		Pos cellAbs = pl.world(bp, 0, 1, 3);
+		var pen = new net.minecraft.world.entity.npc.villager.Villager[1];
+		WorkerTestSupport.begin(h);
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(1));
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			pen[0] = WorkerTestSupport.spawnVillager(h, cell);
+			pen[0].setNoAi(true);
+			pen[0].setNoGravity(true);
+			pen[0].snapTo(h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(cell)).x, h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(cell)).y,
+					h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(cell)).z, 0, 0);
+		}).thenWaitUntil(() -> {
+			var view = BuildSystem.views(h.getLevel().getServer()).get(0);
+			h.assertTrue(view.status() == dev.villageheart.core.blueprint.BuildStatus.IN_THE_WAY
+					&& view.line().english().equals("Something is in the way at " + cellAbs), "the build waits for the villager, naming the cell " + cellAbs + ": "
+					+ view.status() + " " + view.line().english() + " claimed=" + view.claimed() + " pause=" + BuildRuntime.get(h.getLevel().getServer()).pause(view.job().id())
+					+ " now=" + h.getLevel().getServer().overworld().getGameTime() + " day=" + h.getLevel().getDayTime());
+		}).thenIdle(100).thenExecute(() -> {
+			h.assertTrue(h.getBlockState(cell).isAir(), "no block was placed into the entity");
+			var out = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(new BlockPos(30, 0, 30)));
+			pen[0].teleportTo(out.x, out.y, out.z);
+		}).thenWaitUntil(() -> h.assertTrue(h.getBlockState(cell).is(Blocks.OAK_PLANKS), "the wall block is placed once the villager is gone"))
+				.thenExecute(() -> {
+					WorkerTestSupport.end(h);
+					VillageTestSupport.done(h);
+				});
+	}
+
+	// ---- T-L2-16 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_kept_materials", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void keptMaterialsNoTripLoop(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		var builder = new net.minecraft.world.entity.npc.villager.Villager[1];
+		int[] trips = new int[1];
+		long[] before = new long[1];
+		boolean[] watch = new boolean[1];
+		int[] cursor0 = new int[1];
+		WorkerTestSupport.begin(h);
+		h.onEachTick(() -> {
+			if (watch[0] && builder[0] != null && dev.villageheart.worker.Workers.tripRunning(builder[0])) trips[0]++;
+		});
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			builder[0] = BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
+			// seven slots of kept materials and no spoil: the build's carried map names them all
+			Item[] kept = {Items.COBBLESTONE, Items.OAK_PLANKS, Items.SPRUCE_PLANKS, Items.BIRCH_PLANKS, Items.JUNGLE_PLANKS, Items.ACACIA_PLANKS, Items.DARK_OAK_PLANKS};
+			java.util.Map<String, Integer> carried = new java.util.HashMap<>();
+			for (int i = 0; i < kept.length; i++) {
+				builder[0].getInventory().setItem(i, new ItemStack(kept[i], 64));
+				carried.put(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(kept[i]).toString(), 64);
+			}
+			var job = BuildTestSupport.builds(h).get(0);
+			VillageClaims.data(h.getLevel().getServer()).update(v -> v.withBuild(job.withCarried(carried).withCarrier(builder[0].getUUID())));
+			before[0] = Stockpiles.snapshot(h.getLevel().getServer()).totals().stream().mapToLong(t -> t.count()).sum();
+			cursor0[0] = BuildTestSupport.cursor(h);
+			watch[0] = true;
+		}).thenIdle(400).thenExecute(() -> {
+			h.assertTrue(trips[0] <= 1, "at most one deposit trip in 400 ticks: " + trips[0]);
+			long after = Stockpiles.snapshot(h.getLevel().getServer()).totals().stream().mapToLong(t -> t.count()).sum();
+			h.assertTrue(after == before[0], "nothing was handed in: " + before[0] + " -> " + after);
+			h.assertTrue(BuildTestSupport.cursor(h) > cursor0[0] + 5, "the builder places with what it carries: " + cursor0[0] + " -> " + BuildTestSupport.cursor(h));
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-15 ---------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:build_two_builders", structure = YARD, skyAccess = true, maxTicks = 40000)
+	public void twoBuildersTwoBuilds(GameTestHelper h) {
+		Blueprint bp = Blueprints.SMALL_HOUSE;
+		BlockPos groundA = new BlockPos(10, -1, 22), groundB = new BlockPos(22, -1, 22);
+		Placement plA = BuildTestSupport.placement(h, groundA, Rotation4.NONE), plB = BuildTestSupport.placement(h, groundB, Rotation4.CLOCKWISE_90);
+		Map<String, Long> before = new HashMap<>();
+		UUID[] ids = new UUID[2];
+		boolean[] distinct = new boolean[1];
+		boolean[] watch = new boolean[1];
+		WorkerTestSupport.begin(h);
+		h.onEachTick(() -> {
+			if (!watch[0]) return;
+			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
+			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
+			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
+				throw h.assertionException("the younger build was claimed first");
+			}
+		});
+		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
+			h.setBlock(BuildingTestSupport.inside(BuildTestSupport.HUT, 4, 0, 0), JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.BUILDERS_TABLE));
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, BuildTestSupport.hutMarker(), MarkerStatus.VALID);
+			h.assertTrue(BuildingTestSupport.verdict(h, BuildTestSupport.hutMarker()).orElseThrow().slots() == 2, "the Hut has two worker slots");
+		}).thenExecute(() -> {
+			BuildTestSupport.stock(h, BuildTestSupport.houseMaterials(2));
+			before.putAll(Stockpiles.totalsById(h.getLevel().getServer()));
+			BuildTestSupport.startBuild(h, bp, groundA, Rotation4.NONE);
+			BuildTestSupport.startBuild(h, bp, groundB, Rotation4.CLOCKWISE_90);
+			ids[0] = BuildTestSupport.builds(h).get(0).id();
+			ids[1] = BuildTestSupport.builds(h).get(1).id();
+			BuildTestSupport.hireBuilder(h);
+			BuildTestSupport.hireBuilder(h);
+			h.getLevel().setDayTime(1000);
+			watch[0] = true;
+		}).thenWaitUntil(() -> h.assertTrue(distinct[0], "each builder claims its own build")).thenWaitUntil(() -> {
+			BuildTestSupport.assertHouseGreen(h, bp, plA);
+			BuildTestSupport.assertHouseGreen(h, bp, plB);
+		}).thenExecute(() -> {
+			assertExactDeduction(h, before, Map.of(), "both Houses used exactly their materials");
+			watch[0] = false;
 			WorkerTestSupport.end(h);
 			VillageTestSupport.done(h);
 		});

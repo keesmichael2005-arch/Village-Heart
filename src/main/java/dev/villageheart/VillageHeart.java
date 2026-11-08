@@ -24,6 +24,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.room.RoomCells.register();
 		dev.villageheart.heart.ModMenus.register();
 		dev.villageheart.heart.net.HeartNetwork.register();
+		dev.villageheart.build.net.BuildNetwork.register();
 		dev.villageheart.rank.ContainerProtection.register();
 		dev.villageheart.rank.Members.register();
 		dev.villageheart.rank.RankCommands.register();

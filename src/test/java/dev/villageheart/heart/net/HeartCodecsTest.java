@@ -160,11 +160,14 @@ class HeartCodecsTest {
 				Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, StorageAlert.FULL);
 		List<MemberRow> members = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_MEMBERS; i++) members.add(new MemberRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), Rank.RESIDENT, true));
+		TextLine bt = new TextLine("build.villageheart." + s(HeartLimits.MAX_KEY - 19), s(HeartLimits.MAX_TEXT),
+				List.of(s(HeartLimits.MAX_BUILD_ARG), s(HeartLimits.MAX_BUILD_ARG)));
+		assertEquals(HeartLimits.MAX_BUILD_ARG, bt.args().get(0).length(), "the build texts keep their long args");
 		List<dev.villageheart.core.heart.BuildRow> builds = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_BUILDS; i++) {
 			builds.add(new dev.villageheart.core.heart.BuildRow(s(HeartLimits.MAX_ID), Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
-					dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, Integer.MIN_VALUE, Integer.MIN_VALUE, t,
-					java.util.Collections.nCopies(HeartLimits.MAX_BUILD_MISSING, t), s(HeartLimits.MAX_NAME)));
+					dev.villageheart.core.blueprint.BuildStatus.NEEDS_MATERIALS, Integer.MIN_VALUE, Integer.MIN_VALUE, bt,
+					java.util.Collections.nCopies(HeartLimits.MAX_BUILD_MISSING, bt), s(HeartLimits.MAX_NAME)));
 		}
 		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE, builds);
 	}

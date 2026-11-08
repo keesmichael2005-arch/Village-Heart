@@ -5,6 +5,7 @@ import java.util.Optional;
 
 /**
  * The blueprints of the game, as text (no IO), parsed once. M20: Small House, Storage Shed, Farm Plot (docs/plans/M20.md 3.4).
+ * The farmland is placed moist (moisture 7): dry farmland turns to dirt on its first random tick, and the water, placed last, comes long after.
  * "5x5 room" means a 5x5 floor inside the walls (7x7 outside): a 5x5 outside gives 9 floor cells, under the House minimum of 12.
  */
 public final class Blueprints {
@@ -117,7 +118,7 @@ public final class Blueprints {
 			palette
 			. any
 			_ air
-			F minecraft:farmland[moisture=0] <- minecraft:dirt "dirt" "dirt" converts
+			F minecraft:farmland[moisture=7] <- minecraft:dirt "dirt" "dirt" converts
 			W minecraft:water <- minecraft:water_bucket "water bucket" "water buckets" pass=last cell=open converts returns=minecraft:bucket
 			f minecraft:oak_fence <- #minecraft:wooden_fences "fence"
 			G minecraft:oak_fence_gate[facing=north,open=false] <- #minecraft:fence_gates "fence gate"

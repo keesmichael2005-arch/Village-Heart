@@ -87,6 +87,18 @@ public final class HeartCodecs {
 				ARGS.encode(buf, t.args());
 			});
 
+	private static final StreamCodec<ByteBuf, List<String>> BUILD_ARGS = ByteBufCodecs.stringUtf8(HeartLimits.MAX_BUILD_ARG)
+			.apply(ByteBufCodecs.list(HeartLimits.MAX_TEXT_ARGS));
+
+	/** A text of the build system: args may be a position, so up to {@link HeartLimits#MAX_BUILD_ARG} characters (the key must say so). */
+	public static final StreamCodec<ByteBuf, TextLine> BUILD_TEXT_LINE = codec(
+			buf -> new TextLine(KEY.decode(buf), TEXT.decode(buf), BUILD_ARGS.decode(buf)),
+			(buf, t) -> {
+				KEY.encode(buf, t.key());
+				TEXT.encode(buf, t.fallback());
+				BUILD_ARGS.encode(buf, t.args());
+			});
+
 	private static final StreamCodec<ByteBuf, AlertLine> ALERT_LINE = codec(
 			buf -> new AlertLine(ALERT_CODE.decode(buf), SEVERITY.decode(buf), TEXT_LINE.decode(buf)),
 			(buf, a) -> {
@@ -189,7 +201,7 @@ public final class HeartCodecs {
 
 	public static final StreamCodec<ByteBuf, BuildRow> BUILD_ROW = codec(
 			buf -> new BuildRow(ID.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), BUILD_STATUS.decode(buf), INT.decode(buf),
-					INT.decode(buf), TEXT_LINE.decode(buf), TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).decode(buf), NAME.decode(buf)),
+					INT.decode(buf), BUILD_TEXT_LINE.decode(buf), BUILD_TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).decode(buf), NAME.decode(buf)),
 			(buf, b) -> {
 				ID.encode(buf, b.blueprintId());
 				INT.encode(buf, b.x());
@@ -198,8 +210,8 @@ public final class HeartCodecs {
 				BUILD_STATUS.encode(buf, b.state());
 				INT.encode(buf, b.placed());
 				INT.encode(buf, b.total());
-				TEXT_LINE.encode(buf, b.status());
-				TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).encode(buf, b.missing());
+				BUILD_TEXT_LINE.encode(buf, b.status());
+				BUILD_TEXT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILD_MISSING)).encode(buf, b.missing());
 				NAME.encode(buf, b.builderName());
 			});
 

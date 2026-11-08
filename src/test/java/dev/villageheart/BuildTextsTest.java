@@ -75,6 +75,16 @@ class BuildTextsTest {
 	}
 
 	@Test
+	void theBuildersTableTextsAreInTheLangFile() throws Exception {
+		Map<String, Object> lang = lang();
+		for (Map.Entry<String, String> e : dev.villageheart.core.blueprint.TableTexts.EN.entrySet()) {
+			assertEquals(e.getValue(), lang.get(dev.villageheart.core.blueprint.TableTexts.key(e.getKey())), e.getKey());
+		}
+		assertEquals("Builder's Table", lang.get("container.villageheart.builders_table"));
+		assertEquals("Not inside a village", lang.get("build.villageheart.msg.not_in_village"));
+	}
+
+	@Test
 	void theBuilderHasWordsForEveryStatus() throws Exception {
 		Map<String, Object> lang = lang();
 		for (WorkerStatus st : WorkerStatus.values()) {

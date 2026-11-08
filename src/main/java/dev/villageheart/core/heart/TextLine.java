@@ -10,6 +10,9 @@ import java.util.Objects;
  * The fallback is a format string ({@code %s} per arg); {@link #english()} fills it in. All parts are cut to the wire caps.
  */
 public record TextLine(String key, String fallback, List<String> args) {
+	/** Texts of the build system carry positions in their args: those keys may have args up to {@link HeartLimits#MAX_BUILD_ARG}; the wire uses {@code HeartCodecs.BUILD_TEXT_LINE} for them. */
+	public static final String LONG_ARGS_PREFIX = "build.villageheart.";
+
 	public TextLine {
 		Objects.requireNonNull(key, "key");
 		Objects.requireNonNull(fallback, "fallback");
@@ -17,9 +20,10 @@ public record TextLine(String key, String fallback, List<String> args) {
 		key = HeartLimits.cut(key, HeartLimits.MAX_KEY);
 		fallback = HeartLimits.cut(fallback, HeartLimits.MAX_TEXT);
 		List<String> cut = new ArrayList<>();
+		int argCap = key.startsWith(LONG_ARGS_PREFIX) ? HeartLimits.MAX_BUILD_ARG : HeartLimits.MAX_ARG;
 		for (String a : args) {
 			if (cut.size() == HeartLimits.MAX_TEXT_ARGS) break;
-			cut.add(HeartLimits.cut(a, HeartLimits.MAX_ARG));
+			cut.add(HeartLimits.cut(a, argCap));
 		}
 		args = List.copyOf(cut);
 	}
