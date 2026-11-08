@@ -167,3 +167,5 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `ironAxeOutFellsStoneSideBySide` clears its upper platforms only on success; a failed run leaves glass, dark oaks and villagers above its slot
 - [ ] T-L2-11 starts the cure by reflection (`ZombieVillager.startConverting`); the public path (Weakness + golden apple via `mobInteract`) would survive a rename
 - [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
+
+- [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open

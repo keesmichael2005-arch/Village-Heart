@@ -603,36 +603,39 @@ public class LevelGameTests {
 		seq = seq.thenExecute(() -> h.assertTrue(h.getLevel().getDayTime() > 1004, "the day advances"));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() % 24000 >= 5000, "day tick 5000"));
 		seq.thenExecute(() -> {
-			SideSampler s = sampler[0];
-			s.active = false;
-			s.checkWear(h);
-			int iron = s.window[0], stone = s.window[1], wood = s.window[2];
-			double ironStone = iron / (double) Math.max(1, stone), ironWood = iron / (double) Math.max(1, wood);
-			StringBuilder wlog = new StringBuilder();
-			for (int k = 0; k < 3; k++) {
-				double wait = s.window[k] == 0 ? -1 : (4000.0 - s.window[k] * LumberTestSupport.ticksPerLog(tier[k])) / s.window[k];
-				wlog.append(String.format(" %s=%.1f", tier[k], wait));
-			}
-			System.out.println(String.format("[m15] side-by-side wood=%d stone=%d iron=%d ratios iron/stone=%.3f iron/wood=%.3f stone/wood=%.3f overhead(ticks per log)%s felled-total=%s",
-					wood, stone, iron, ironStone, ironWood, stone / (double) Math.max(1, wood), wlog, java.util.Arrays.toString(s.total)));
-			h.assertTrue(s.problems.isEmpty(), "measurement problems: " + s.problems);
-			for (int k = 0; k < 3; k++) {
-				int standing = LumberTestSupport.standing(h, s.sets[k]);
-				h.assertTrue(standing >= 20, "grove ran out at level " + k + " (" + standing + " logs stand): the comparison is invalid");
-				h.assertTrue(s.total[k] > 0 && SideBySide.wear(h, k, startDamage[k], maxDamage[k]) == s.total[k], "level " + k + ": axe wear = logs felled");
-				h.assertTrue(s.longestNeedsAxe[k] <= 8, "level " + k + " was without an axe for " + s.longestNeedsAxe[k] * 5 + " ticks");
-				h.assertValueEqual(1, data(w[k]).level(), "level " + k + " worker stays level 1 at Hamlet");
-				h.assertValueEqual(Math.min(300, s.total[k]), data(w[k]).xp(), "level " + k + " worker: one XP per log felled");
-				var collected = w[k].getInventory().countItem(net.minecraft.world.item.Items.DARK_OAK_LOG)
-						+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest1(k)), net.minecraft.world.item.Items.DARK_OAK_LOG)
-						+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest2(k)), net.minecraft.world.item.Items.DARK_OAK_LOG);
-				h.assertTrue(collected >= s.total[k] - 1, "level " + k + ": " + collected + " logs carried or stored for " + s.total[k] + " felled");
-			}
-			h.assertTrue(wood < stone && stone < iron, "wood < stone < iron: " + wood + " " + stone + " " + iron);
-			h.assertTrue(iron >= 1.1 * stone, "iron fells at least 1.1x stone: " + iron + " vs " + stone + " (" + ironStone + ")");
-			h.assertTrue(iron >= 1.3 * wood, "iron fells at least 1.3x wood: " + iron + " vs " + wood + " (" + ironWood + ")");
+			try {
+				SideSampler s = sampler[0];
+				s.active = false;
+				s.checkWear(h);
+				int iron = s.window[0], stone = s.window[1], wood = s.window[2];
+				double ironStone = iron / (double) Math.max(1, stone), ironWood = iron / (double) Math.max(1, wood);
+				StringBuilder wlog = new StringBuilder();
+				for (int k = 0; k < 3; k++) {
+					double wait = s.window[k] == 0 ? -1 : (4000.0 - s.window[k] * LumberTestSupport.ticksPerLog(tier[k])) / s.window[k];
+					wlog.append(String.format(" %s=%.1f", tier[k], wait));
+				}
+				System.out.println(String.format("[m15] side-by-side wood=%d stone=%d iron=%d ratios iron/stone=%.3f iron/wood=%.3f stone/wood=%.3f overhead(ticks per log)%s felled-total=%s",
+						wood, stone, iron, ironStone, ironWood, stone / (double) Math.max(1, wood), wlog, java.util.Arrays.toString(s.total)));
+				h.assertTrue(s.problems.isEmpty(), "measurement problems: " + s.problems);
+				for (int k = 0; k < 3; k++) {
+					int standing = LumberTestSupport.standing(h, s.sets[k]);
+					h.assertTrue(standing >= 20, "grove ran out at level " + k + " (" + standing + " logs stand): the comparison is invalid");
+					h.assertTrue(s.total[k] > 0 && SideBySide.wear(h, k, startDamage[k], maxDamage[k]) == s.total[k], "level " + k + ": axe wear = logs felled");
+					h.assertTrue(s.longestNeedsAxe[k] <= 8, "level " + k + " was without an axe for " + s.longestNeedsAxe[k] * 5 + " ticks");
+					h.assertValueEqual(1, data(w[k]).level(), "level " + k + " worker stays level 1 at Hamlet");
+					h.assertValueEqual(Math.min(300, s.total[k]), data(w[k]).xp(), "level " + k + " worker: one XP per log felled");
+					var collected = w[k].getInventory().countItem(net.minecraft.world.item.Items.DARK_OAK_LOG)
+							+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest1(k)), net.minecraft.world.item.Items.DARK_OAK_LOG)
+							+ SideBySide.count(StockpileTestSupport.container(h, SideBySide.storeChest2(k)), net.minecraft.world.item.Items.DARK_OAK_LOG);
+					h.assertTrue(collected >= s.total[k] - 1, "level " + k + ": " + collected + " logs carried or stored for " + s.total[k] + " felled");
+				}
+				h.assertTrue(wood < stone && stone < iron, "wood < stone < iron: " + wood + " " + stone + " " + iron);
+				h.assertTrue(iron >= 1.1 * stone, "iron fells at least 1.1x stone: " + iron + " vs " + stone + " (" + ironStone + ")");
+				h.assertTrue(iron >= 1.3 * wood, "iron fells at least 1.3x wood: " + iron + " vs " + wood + " (" + ironWood + ")");
 			assertNoGiveUps(h);
-			SideBySide.clearAll(h);
+			} finally {
+				SideBySide.clearAll(h); // a failed assertion must not leave the platforms above other tests
+			}
 			VillageTestSupport.done(h);
 			end(h);
 		});

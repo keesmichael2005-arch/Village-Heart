@@ -478,3 +478,7 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Fix 1: the merged miner (M16) never calls `WorkXp.award(ITEM_MINED)`, so a miner's level never rises (DESIGN §4: "mined item 1"). It needs the call in `MinerSystem`'s haul branch and an L2 assertion.
 - Full L2: 6 of 6 green in the foreground (209 tests). Side by side: iron/stone 1.191 or 1.202, iron/wood 1.493 or 1.507. No M9 flakes. M16's stray-item flake was seen once, in a mutated run. `scripts/verify.sh` exit 0. I looked at both M15 screenshots.
 - Next: M15 round 2 (fix 1).
+
+## 2026-11-08: M15 review r1 fixes
+- The merged miner (M16) now earns XP: `MinerSystem` awards `ITEM_MINED` (sum of the haul's item counts) next to `work.miner.hauls`; `minerHaulsFortyCobblestone` asserts XP == min(300, items hauled) and goes red without the call ("expected 77, was 0"). Builder, lumberjack and farmer were already wired and tested; no other job is merged. Stale M16 "Note (M15)" removed from ROADMAP.
+- Side-by-side test: the final assertions run in try/finally so a failed assertion still clears the upper platforms (a timeout is still covered only by the clear at the next run's start). T-L2-11 keeps the reflection (a rename fails loudly).
