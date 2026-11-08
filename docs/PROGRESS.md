@@ -336,3 +336,15 @@ Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `tr
 - `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
 - marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
 - Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
+
+## 2026-11-07: M20 plan written (docs/plans/M20.md)
+12-step plan for the Builder and blueprints (buildings). APIs checked against the 1.21.11 sources and data tags (no Gradle run).
+- Core `core.blueprint`: a text format (palette + layers, `base`, `anchor`, `front`, passes, two-block `part=` units, `converts`, room-cell annotations),
+  `Rotation4` (vanilla position rule), `Placement`, `BuildPlan` (clear top-down, place bottom-up, attached, last, check pass, marker last),
+  `SiteRules` (12 ordered refusals incl. overlap with any registered room's interior/shell), `MaterialPlanner`, `FetchBatch`, `BuilderPlanner`, saved `BuildJob`.
+- The three blueprints as data: Small House and Storage Shed (5x5 floor inside a 7x7 shell, marker included: 49 cobblestone, 119 planks, ...), Farm Plot
+  (80 dirt to farmland, water from a bucket, 39 fences, a gate). An L1 test proves both houses are valid rooms in all 4 rotations through the real `RoomScanner`.
+- "Player-placed" = anything outside `#villageheart:builder_clearable` (plus persistent leaves, fluids, block entities, logs); every marked room is protected by the overlap rule.
+- Builder reuses M9's `WorkClock`/`WalkTo`/`WorkerStatuses`/`WorkStats`/`keep`; works only from stand points outside the site; reservations keyed by build id.
+- Revised after a fresh critique (24 findings: confirm click below a base-1 box, check-pass reservations, double-counted carried items, unpinned gamerules, test layouts).
+Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: builder movement (WalkTo to stand points around real village terrain).
