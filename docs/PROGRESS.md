@@ -482,3 +482,12 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 ## 2026-11-08: M15 review r1 fixes
 - The merged miner (M16) now earns XP: `MinerSystem` awards `ITEM_MINED` (sum of the haul's item counts) next to `work.miner.hauls`; `minerHaulsFortyCobblestone` asserts XP == min(300, items hauled) and goes red without the call ("expected 77, was 0"). Builder, lumberjack and farmer were already wired and tested; no other job is merged. Stale M16 "Note (M15)" removed from ROADMAP.
 - Side-by-side test: the final assertions run in try/finally so a failed assertion still clears the upper platforms (a timeout is still covered only by the clear at the next run's start). T-L2-11 keeps the reflection (a rename fails loudly).
+
+## 2026-11-08: M22 plan (Merchant / Market), branch m22-plan
+- Plan: docs/plans/M22.md, 8 steps. A stall job: the merchant stands at its Market Stall and every 600 work ticks (level 1) sells one lot of
+  surplus (32 cobblestone, 16 logs, 10 cooked meat, ...) for 1 emerald, drawn from Storage at the moment of sale and paid through M12's
+  `Treasury.deposit` (so income settles strikers). Surplus = stock − build reservations − 64 (items), food above 3 days of M11's `FoodMath`
+  demand; plain stacks and price-table items only. Caps 8/12/16 per merchant and per stall, 32 per village; `TRADE_MADE` XP per sale.
+  Reserve settings (food days, item reserve) on the Stockpile tab, Steward+ (`Permission.SET_RESERVES`); ledger and reserves saved in `WorldClaim.market`.
+- Critique: a separate critic session, 25 findings (0 blocker, 8 major, 17 minor): 22 taken, 1 in part, 2 refuted (plan section 7).
+- Top risk: M12 (plan only) and M11 (in review) are not on dev; M22 is written against their names with a fallback per assumption.
