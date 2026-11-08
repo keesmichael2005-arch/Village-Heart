@@ -214,3 +214,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
 - [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
 - [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
+
+## From M12-r2
+- [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
+- [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
+
+## From backlog-2-r2
+- [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
+- [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
