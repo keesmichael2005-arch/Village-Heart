@@ -440,7 +440,7 @@ public final class BuilderJob {
 		Placement pl = job.placement();
 		Pos min = pl.min(bp), max = pl.max(bp);
 		if (ws.ringAt == Long.MIN_VALUE || now - ws.ringAt >= RING_TTL) {
-			ws.standable = SiteValidation.standable(new LevelSiteView(level), job.ground().y());
+			ws.standable = SiteValidation.standableFor(level, job);
 			ws.ring = StandPoints.ring(min, max, ws.standable);
 			ws.ringAt = now;
 		}

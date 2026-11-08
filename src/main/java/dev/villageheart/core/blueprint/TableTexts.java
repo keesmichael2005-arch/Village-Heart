@@ -31,6 +31,11 @@ public final class TableTexts {
 		EN.put("no_builder", "No builder yet");
 		EN.put("select", "Select a blueprint");
 		EN.put("stale", "This screen is out of date");
+		EN.put("line_hint", "Two clicks: start and end, up to 32 blocks");
+		EN.put("materials_wall", "Per block (in Storage / needed)");
+		EN.put("materials_gate", "At 5 blocks; +3 cobblestone per extra block");
+		EN.put("gate_note", "Villagers cannot open fence gates");
+		EN.put("line_tag", "line");
 	}
 
 	public static String key(String suffix) {
