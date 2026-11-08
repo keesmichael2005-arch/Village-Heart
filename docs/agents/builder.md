@@ -17,3 +17,4 @@ re-run the full verify, push, and report back.
   and loses the in-flight work. Push after every green step so a restart or handback loses nothing.
 
 - The scratchpad is SHARED between agents. Put any helper scripts or logs in your own subfolder named after your role and milestone (e.g. `scratchpad/m11-builder/`); never run or overwrite a script you did not write.
+- DISK: the session disk allowance is shared and limited. Between repeated full runs, delete `build/run/gameTest/world`, `build/run/clientGameTest` and old sim run dirs in YOUR worktree. Never delete other worktrees.
