@@ -35,6 +35,16 @@ class DinnerPlannerTest {
 		assertEquals(Map.of("bread", 2L), p.consumed());
 	}
 
+	@Test void preparedFoodIsEatenBeforeRichRawFood() {
+		FoodValue cookie = new FoodValue(2, 0.4f, false);
+		// 5 cookies feed the adult exactly; the raw beef (3 each, more than a cookie) stays untouched
+		DinnerPlan<String> p = DinnerPlanner.plan(List.of(s("beef", RAW_BEEF, 10), s("cookie", cookie, 5)), List.of(adult(1)));
+		assertEquals(Map.of("cookie", 5L), p.consumed());
+		// with too few cookies the raw food tops it up after them
+		DinnerPlan<String> q = DinnerPlanner.plan(List.of(s("beef", RAW_BEEF, 10), s("cookie", cookie, 2)), List.of(adult(1)));
+		assertEquals(Map.of("cookie", 2L, "beef", 2L), q.consumed());
+	}
+
 	@Test void bestFirstThenNext() {
 		DinnerPlan<String> p = DinnerPlanner.plan(List.of(s("cooked_beef", BEEF, 1), s("carrot", CARROT, 1), s("bread", BREAD, 1)), List.of(adult(1)));
 		assertEquals(Map.of("cooked_beef", 1, "bread", 1), meal(p, id(1)).items());

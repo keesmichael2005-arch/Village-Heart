@@ -370,6 +370,7 @@ public final class LumberJob {
 	/** The tree cannot be reached: it is left alone for 6000 ticks, a task it had is dropped when nothing was cut yet. */
 	private static void giveUpTree(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
 		HeartLocation key = ws.key;
+		dev.villageheart.worker.job.LeafEscape.free(level, v); // boxed in by a canopy it cut into: leaves touching it are broken
 		if (key != null) {
 			rt.camp(data.building()).giveUp(key, now);
 			rt.giveUps.add(key + ": " + ws.walk.reason());

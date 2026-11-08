@@ -191,6 +191,24 @@ public class NeedsGameTests {
 				});
 	}
 
+	@GameTest(environment = "villageheart-gametest:needs_dinner_raw", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void dinnerEatsPreparedBeforeRicherRaw(GameTestHelper h) {
+		WorkerTestSupport.begin(h);
+		List<Villager>[] vs = new List[1];
+		storageScene(h).thenExecute(() -> {
+			put(h, new ItemStack(Items.BEEF, 10), new ItemStack(Items.COOKIE, 5));
+			vs[0] = spawn(h, 1);
+		}).thenWaitUntil(() -> h.assertValueEqual(1, census(h), "villagers in the census"))
+				.thenExecute(() -> nextDinner(h))
+				.thenWaitUntil(() -> h.assertValueEqual(0L, count(h, Items.COOKIE), "the cookies were eaten"))
+				.thenExecute(() -> {
+					h.assertValueEqual(10L, count(h, Items.BEEF), "the raw beef (3 each, richer than a cookie) is untouched");
+					h.assertTrue(diet(h, vs[0].get(0)).fed(), "fed");
+					VillageTestSupport.done(h);
+					WorkerTestSupport.end(h);
+				});
+	}
+
 	// ---- T-L2-10 ------------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:needs_dinner_edge", structure = YARD, skyAccess = true, maxTicks = 1500)

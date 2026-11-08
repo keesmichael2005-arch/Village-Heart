@@ -146,6 +146,7 @@ public final class StarterActions {
 				if (!level.getBlockState(p).isAir()) set(level, p, air);
 			}
 		}
+		ramp(level, origin, w, d);
 		for (int x = origin.getX() + 2; x < origin.getX() + w; x += 6) for (int z = origin.getZ() + 2; z < origin.getZ() + d; z += 6) {
 			set(level, new BlockPos(x, origin.getY() + 1, z), Blocks.TORCH.defaultBlockState());
 		}
@@ -172,6 +173,31 @@ public final class StarterActions {
 		}
 		VillageHeart.LOG.info("[sim] terrain around the Heart (a=y60, b=61, ...; # not natural; x not ticking){}", map);
 		return total + " columns: " + unloaded + " unloaded, " + natural + " natural (heights " + lo + ".." + hi + "), " + ticking + " entity-ticking";
+	}
+
+	/** Width of the ramp ring around the flattened patch: the patch may differ from the land by at most this many blocks (max_deviation <= 8). */
+	private static final int RAMP = 9;
+
+	/**
+	 * Blends the flattened patch into the land around it: a column k blocks outside it ends at most k blocks above or below the patch floor, so no
+	 * edge drops more than one block per step and a villager that walks off the patch can always walk back (a cliff trapped the starter workers).
+	 */
+	private static void ramp(ServerLevel level, BlockPos origin, int w, int d) {
+		BlockState grass = Blocks.GRASS_BLOCK.defaultBlockState(), dirt = Blocks.DIRT.defaultBlockState(), air = Blocks.AIR.defaultBlockState();
+		for (int x = origin.getX() - RAMP; x < origin.getX() + w + RAMP; x++) for (int z = origin.getZ() - RAMP; z < origin.getZ() + d + RAMP; z++) {
+			int k = Math.max(Math.max(origin.getX() - x, x - (origin.getX() + w - 1)), Math.max(origin.getZ() - z, z - (origin.getZ() + d - 1)));
+			if (k < 1 || level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) continue;
+			int e = level.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z) - 1;
+			for (int i = 0; i < 40 && (level.getBlockState(new BlockPos(x, e, z)).is(BlockTags.LEAVES) || level.getBlockState(new BlockPos(x, e, z)).is(BlockTags.LOGS)); i++) e--;
+			int target = Math.max(origin.getY() - k, Math.min(origin.getY() + k, e));
+			if (target == e && !level.getBlockState(new BlockPos(x, e, z)).isAir()) continue;
+			for (int y = Math.min(e, target) + 1; y < target; y++) set(level, new BlockPos(x, y, z), dirt);
+			if (target != e || level.getBlockState(new BlockPos(x, target + 1, z)).is(BlockTags.LEAVES)) set(level, new BlockPos(x, target, z), grass);
+			for (int y = target + 1; y <= Math.max(e, target) + 2; y++) {
+				BlockPos p = new BlockPos(x, y, z);
+				if (!level.getBlockState(p).isAir()) set(level, p, air);
+			}
+		}
 	}
 
 	// ---- prefab --------------------------------------------------------------------------------

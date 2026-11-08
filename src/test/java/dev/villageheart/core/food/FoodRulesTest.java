@@ -40,6 +40,18 @@ class FoodRulesTest {
 		assertEquals("carrot", l.get(0).key());
 	}
 
+	/** The raw item has MORE nutrition than the prepared one: only the raw flag can put it behind. */
+	@Test void preparedBeatsRawEvenWhenRawIsRicher() {
+		for (String[] pair : new String[][] {{"cookie", "beef"}, {"sweet_berries", "porkchop"}, {"dried_kelp", "mutton"}}) {
+			List<FoodStock<String>> l = new ArrayList<>(List.of(f(pair[1], 3, 1.8f, true), f(pair[0], pair[0].equals("dried_kelp") ? 1 : 2, 0.4f, false)));
+			l.sort(FoodRules.<String>bestFirst());
+			assertEquals(pair[0], l.get(0).key(), pair[0] + " before raw " + pair[1]);
+			Collections.reverse(l);
+			l.sort(FoodRules.<String>bestFirst());
+			assertEquals(pair[0], l.get(0).key());
+		}
+	}
+
 	@Test void rawAndNeverEat() {
 		for (String id : Balance.FOOD_RAW) assertTrue(FoodRules.isRaw(id), id);
 		assertEquals(8, Balance.FOOD_RAW.size());

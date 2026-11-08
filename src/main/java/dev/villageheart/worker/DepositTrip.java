@@ -201,6 +201,8 @@ public final class DepositTrip extends Behavior<Villager> {
 		if (!delivered && load(villager) > 0 && (failed || gameTime - started >= TIMEOUT)) {
 			dev.villageheart.VillageHeart.LOG.info("[trip] deposit trip failed: worker at {} could not reach the Storage door at {} after {} ticks (failed={})",
 					villager.blockPosition().toShortString(), target == null ? "?" : target.toShortString(), gameTime - started, failed);
+			int leaves = dev.villageheart.worker.job.LeafEscape.free(level, villager);
+			if (leaves > 0) dev.villageheart.VillageHeart.LOG.info("[trip] the worker was boxed in by leaves: {} broken", leaves);
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;
 		}

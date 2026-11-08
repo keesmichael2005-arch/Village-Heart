@@ -924,4 +924,35 @@ public class LumberjackGameTests {
 			end(h);
 		});
 	}
+
+	// ---- M11 review: a worker boxed in by leaves gets out ----------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:lumber_leaf_trap", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void lumberjackBoxedInByLeavesGetsOut(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		BlockPos spot = new BlockPos(24, 0, 24);
+		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			// a hollow 3x3x3 cube of leaves around the spot, as left by a canopy the worker cut into
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = 0; dy <= 2; dy++) {
+				boolean centre = dx == 0 && dz == 0 && dy <= 1;
+				h.setBlock(spot.offset(dx, dy, dz), centre ? Blocks.AIR.defaultBlockState()
+						: Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true));
+			}
+			BlockPos abs = h.absolutePos(spot);
+			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 2400, "the trapped lumberjack delivering its logs", () ->
+				h.assertTrue(net.minecraft.core.registries.BuiltInRegistries.ITEM.size() > 0
+						&& dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG) >= 64,
+						"logs in Storage: " + dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), Items.OAK_LOG)));
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }
