@@ -84,8 +84,8 @@ from there instead of hard-coding them.
 - **L4**: screenshot of each of the 4 tabs with a seeded village (3 villagers, 2 buildings, stockpile items), with text readable
 - Deferred out of M8 (on purpose): set guard shift (M18), active blueprint on the Buildings tab (M20), surplus reserve settings (M22), tier goal checklist (M14), wage bill (M12), Ranks tab (M24). "Check now" on a building is an extra beyond this entry (Steward).
 
-## M9: Lumberjack
-- [ ] §5.1: tree finding (natural trees only), whole-tree felling, drop pickup, replanting, deposit
+## M9: Lumberjack ✅
+- [x] §5.1: tree finding (natural trees only), whole-tree felling, drop pickup, replanting, deposit
 - **L1**: tree detection over a fake grid: a log column touching leaves is a tree. Placed logs with no leaves, and logs inside a building room, are not
 - **L2**: **a lumberjack hired next to 6 oak trees, with a stone axe in the camp chest → the stockpile has ≥16 logs within 2 days**
 - **L2**: every felled tree spot has a sapling within 1 day. A log wall 10 blocks away is untouched
