@@ -6,5 +6,7 @@ public enum ActivityKind {
 	/** M20: a builder waits for materials / for a block to go. */
 	NEEDS_MATERIALS, BLOCKED,
 	/** A loaded worker inside its work site (the miner in the Mineshaft, M16), and a site it cannot reach; appended so old values keep their codec index. */
-	AWAY_WORKING, SITE_UNREACHABLE
+	AWAY_WORKING, SITE_UNREACHABLE,
+	/** M19a: a worker making its own tool (fetching the materials or working on it), and a required tool that cannot be made. Appended. */
+	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE
 }

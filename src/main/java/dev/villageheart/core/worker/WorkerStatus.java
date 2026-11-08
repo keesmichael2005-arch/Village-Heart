@@ -18,5 +18,8 @@ public enum WorkerStatus {
 	/** A builder cannot go on: a block that is not natural is in the way (M20). */
 	BLOCKED,
 	/** The job's site (the Mineshaft) could not be reached: it retries after a while (M16). */
-	SITE_UNREACHABLE
+	SITE_UNREACHABLE,
+	/** The worker is making its own tool (M19a): fetching the materials, or working on it at its job block. */
+	MAKING_WOODEN_TOOL,
+	MAKING_STONE_TOOL
 }

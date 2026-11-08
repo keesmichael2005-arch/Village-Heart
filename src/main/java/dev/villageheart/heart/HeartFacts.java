@@ -138,6 +138,8 @@ public final class HeartFacts {
 				case SITE_UNREACHABLE -> ActivityKind.SITE_UNREACHABLE;
 				case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;
 				case BLOCKED -> ActivityKind.BLOCKED;
+				case MAKING_WOODEN_TOOL -> ActivityKind.MAKING_WOODEN_TOOL;
+				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,

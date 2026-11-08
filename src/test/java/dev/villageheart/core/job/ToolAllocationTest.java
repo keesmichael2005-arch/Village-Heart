@@ -25,6 +25,44 @@ class ToolAllocationTest {
 		assertEquals(3, m.size());
 	}
 
+	private static ToolAllocation.Tool<String> t(String ref, ToolTier tier, int order, int remaining) {
+		return new ToolAllocation.Tool<>(ref, tier, order, remaining);
+	}
+
+	@Test
+	void aWornToolOfTheSameRankIsGivenOutFirst() {
+		Map<UUID, String> m = ToolAllocation.assign(List.of(t("fresh@0", ToolTier.STONE, 0, 131), t("worn@5", ToolTier.STONE, 5, 10)),
+				List.of(A, B));
+		assertEquals("worn@5", m.get(A));
+		assertEquals("fresh@0", m.get(B));
+	}
+
+	@Test
+	void aBetterWornToolStillBeatsAFreshLowerOne() {
+		Map<UUID, String> m = ToolAllocation.assign(List.of(t("stone", ToolTier.STONE, 0, 131), t("iron", ToolTier.IRON, 1, 20)), List.of(A, B));
+		assertEquals("iron", m.get(A));
+	}
+
+	@Test
+	void equalRemainingKeepsTheContainerAndSlotOrder() {
+		Map<UUID, String> m = ToolAllocation.assign(List.of(t("b", ToolTier.STONE, 1005, 50), t("a", ToolTier.STONE, 3, 50)), List.of(A, B));
+		assertEquals("a", m.get(A));
+	}
+
+	@Test
+	void theJobsOwnRankBeatsRemaining() {
+		Map<UUID, String> m = ToolAllocation.assign(List.of(t("worn sword", ToolTier.IRON, 0, 5), t("bow", ToolTier.WOOD, 1, 300)), List.of(A, B),
+				x -> x.ref().equals("bow") ? 10 : 1);
+		assertEquals("bow", m.get(A));
+	}
+
+	@Test
+	void hugeDurabilityDoesNotOverflow() {
+		Map<UUID, String> m = ToolAllocation.assign(List.of(t("huge", ToolTier.STONE, 0, 2_000_000_000), t("small", ToolTier.STONE, 999_999, 3)),
+				List.of(A, B));
+		assertEquals("small", m.get(A));
+	}
+
 	@Test
 	void removingTheFirstWorkerPromotesTheNext() {
 		Map<UUID, String> m = ToolAllocation.assign(tools(), List.of(B, C, D));
