@@ -601,3 +601,9 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - Merge with newer origin/m11 (`27e087d`): 7 trivial conflicts, merged tree compiles, 271 L2 green; ScenarioFilesTest then needs 13 / 11 / 12. Details: docs/reviews/M12-r1.md.
 ## 2026-11-08: M11 round-3 fixes (builder, finisher)
 - WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.
+
+## 2026-11-08: M12 review round 1 fixes (builder)
+- Merged origin/m11 (27e087d); 7 textual conflicts kept both sides. `ScenarioFilesTest.starterHasItsActionsAndAssertions` now matches the real starter file (13 actions, 11 on day 0, 12 assertions, `command` at index 1): a genuine scenario change by M12 (`villageheart treasury add 32` + 3 wage assertions), not a weakened test.
+- `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
+- `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
+- Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.
