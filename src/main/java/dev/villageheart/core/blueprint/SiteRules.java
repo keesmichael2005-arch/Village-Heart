@@ -52,7 +52,9 @@ public final class SiteRules {
 	public record SiteFacts(Blueprint bp, Placement p, HeartLocation heart, String dimension, Tier tier, Rank rank, int minY, int maxY,
 			SiteView view, List<Protected> protectedAreas, List<Box> otherBuilds, int activeBuilds, StandPoints.Standable stand) {}
 
-	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, SUPPORT, NO_STAND, UNCHECKED }
+	public enum Code { RANK, TIER, DIMENSION, HEIGHT, OUTSIDE, TOO_MANY, NOT_LOADED, OVERLAP, BUILD_OVERLAP, FLUID, TREE, BLOCKED, SUPPORT, NO_STAND, UNCHECKED,
+		/** M21, appended so the ordinals above stay: rule 11c, and the line problems of {@link WallLines}. */
+		FOOTING, NOT_STRAIGHT, TOO_LONG, TOO_SHORT }
 
 	/** The first rule that failed. The args are not cut (a TextLine cuts them for the wire); {@link #english()} is the chat text. */
 	public record SiteProblem(Code code, String fallback, List<String> args, @Nullable Pos at) {

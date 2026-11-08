@@ -135,6 +135,15 @@ public final class Balance {
 	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
 	public static final int BUILD_IN_THE_WAY_TICKS = 100;
 	public static final int BUILD_UNREACHABLE_RETRY_TICKS = 600;
+	// ---- defence blueprints (M21) ----
+	/** The longest wall or gate line in one blueprint, in blocks. */
+	public static final int MAX_WALL_LENGTH = 32;
+	/** The shortest gate: a 3-wide opening needs a post on each side. */
+	public static final int GATE_MIN_LENGTH = 5;
+	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
+	public static final int DEFENCE_REFRESH_TICKS = 200;
+	/** Recorded defence sites (patrol points) per village. */
+	public static final int MAX_DEFENCE_SITES = 64;
 	// ---- farmer (M10) ----
 	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
 	public static final int FARM_RADIUS = 24;
