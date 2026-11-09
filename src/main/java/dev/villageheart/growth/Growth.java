@@ -283,7 +283,9 @@ public final class Growth {
 
 	/** A bed vanilla took for an unlicensed villager outside the claim lies inside it: give it back (plan 3.2 #6). */
 	public static boolean mustDropBed(ServerLevel level, Villager v, BlockPos bed) {
-		return !seededLicenceOf(v).isPresent() && BreedingGate.claimContains(level.dimension(), bed);
+		boolean drop = !seededLicenceOf(v).isPresent() && BreedingGate.claimContains(level.dimension(), bed);
+		if (drop) GrowthStats.droppedBed();
+		return drop;
 	}
 
 	/** The behaviour set a baby's HOME: it counts only for the licence that reserved this bed. */

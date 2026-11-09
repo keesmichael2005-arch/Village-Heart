@@ -12,7 +12,7 @@ public final class GrowthStats {
 
 	private static final List<Dawn> DAWNS = new ArrayList<>();
 	private static final List<LapseReason> LAPSES = new ArrayList<>();
-	private static int births, unlicensedBirths, aborts;
+	private static int births, unlicensedBirths, aborts, droppedBeds;
 	private static Consumer<Dawn> listener;
 
 	private GrowthStats() {}
@@ -23,6 +23,7 @@ public final class GrowthStats {
 		births = 0;
 		unlicensedBirths = 0;
 		aborts = 0;
+		droppedBeds = 0;
 		listener = null;
 	}
 
@@ -39,6 +40,8 @@ public final class GrowthStats {
 
 	static void abort() { aborts++; }
 
+	static void droppedBed() { droppedBeds++; }
+
 	static void lapse(LapseReason r) { LAPSES.add(r); }
 
 	public static List<Dawn> dawns() { return List.copyOf(DAWNS); }
@@ -52,6 +55,9 @@ public final class GrowthStats {
 
 	/** Babies the make-love behaviour made without a licence: must stay 0 (the gate). */
 	public static int unlicensedBirths() { return unlicensedBirths; }
+
+	/** Beds inside the claim that vanilla's make-love took for an unlicensed villager and the hook gave back. */
+	public static int droppedBeds() { return droppedBeds; }
 
 	/** Make-love runs of licensed pairs that ended without a baby. */
 	public static int aborts() { return aborts; }

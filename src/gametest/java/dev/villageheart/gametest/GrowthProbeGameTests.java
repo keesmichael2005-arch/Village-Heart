@@ -36,9 +36,16 @@ public class GrowthProbeGameTests {
 	private static BlockPos spot(int i) { return new BlockPos(3 + 6 * (i % 5), 0, 3 + 6 * (i / 5)); }
 
 	@GameTest(environment = "villageheart-gametest:growth_probe", structure = YARD, skyAccess = true, maxTicks = 9000)
-	public void breedingAbortProbe(GameTestHelper h) {
+	public void breedingAbortProbe(GameTestHelper h) { probe(h, false); }
+
+	/** Step 9: the same pairs with the make-love fixes of a licensed pair (plan 3.5 a and b) switched on for everybody. */
+	@GameTest(environment = "villageheart-gametest:growth_probe_licensed", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void breedingAbortProbeLicensed(GameTestHelper h) { probe(h, true); }
+
+	private static void probe(GameTestHelper h, boolean licensed) {
 		if (!on()) { h.succeed(); return; }
 		VillageTestSupport.reset(h);
+		dev.villageheart.growth.BreedingGate.setProbeAllLicensed(licensed);
 		WorkerTestSupport.begin(h);
 		BreedTrace.reset();
 		List<Villager[]> pairs = new ArrayList<>();
@@ -93,7 +100,8 @@ public class GrowthProbeGameTests {
 		}
 		seq.thenExecute(() -> {
 			int runs = PAIRS * ROUNDS;
-			System.out.println("[probe] RESULT runs=" + runs + " unfinished=" + unfinished[0] + " " + BreedTrace.summary());
+			dev.villageheart.growth.BreedingGate.setProbeAllLicensed(false);
+			System.out.println("[probe] RESULT " + (licensed ? "LICENSED " : "PLAIN ") + "runs=" + runs + " unfinished=" + unfinished[0] + " " + BreedTrace.summary());
 			WorkerTestSupport.end(h);
 			VillageTestSupport.done(h);
 		});

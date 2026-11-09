@@ -34,7 +34,7 @@ import net.minecraft.world.level.block.Blocks;
  */
 public class GrowthCourtshipGameTests {
 	private static final String YARD = BuildingTestSupport.YARD;
-	private static final BlockPos YARD_BED = new BlockPos(24, 0, 24);
+	private static final BlockPos YARD_BED = new BlockPos(24, 0, 24); // in the open, outside any House
 
 	private static long dayStart(GameTestHelper h) { return WageTestSupport.dayIndex(h) * 24000L; }
 
@@ -54,8 +54,10 @@ public class GrowthCourtshipGameTests {
 				.thenWaitUntil(() -> h.assertTrue(WorkerTestSupport.poiPresent(h, YARD_BED.south()), "the bed outside the House has a POI"))
 				.thenExecute(() -> {
 					h.getLevel().setDayTime(dayStart(h) + 5000);
-					v[0] = adult(h, HOUSE1, 1, 0);
-					v[1] = adult(h, HOUSE1, 3, 0);
+					// the adults live in the House but stand in the open next to the free bed, where vanilla's make-love would find it
+					v[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(22, 0, 22));
+					v[1] = WorkerTestSupport.spawnVillager(h, new BlockPos(23, 0, 22));
+					for (Villager x : v) x.setAge(0);
 					home(h, v[0], bedHead(HOUSE1, 0));
 					home(h, v[1], bedHead(HOUSE1, 1));
 					for (Villager x : v) breadInPockets(x, 3); // vanilla's canBreed would be true
@@ -69,9 +71,14 @@ public class GrowthCourtshipGameTests {
 				h.assertTrue(licence(h).filter(l -> l.active()).isEmpty(), "no licence on day " + d);
 			});
 			// days 1 and 2: the whole courtship window of these villagers; day 3: to the end of every IDLE window
-			seq = watch(seq, d < 3 ? 1500 : 12000, 20, () -> assertNoBaby(h, "on day " + d));
+			// the adults are also seeded by hand all day, the worst case of vanilla's own seeding: without the gate (and the free-bed rule) a baby follows
+			seq = watch(seq, d < 3 ? 1500 : 12000, 20, () -> {
+				assertNoBaby(h, "on day " + d);
+				for (int k = 0; k < 2; k++) if (!v[k].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET)) v[k].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1 - k]);
+			});
 		}
 		seq.thenExecute(() -> {
+			log("T-L2-2: " + BreedTrace.summary() + " unlicensed " + GrowthStats.unlicensedBirths());
 			h.assertTrue(WorkerTestSupport.poiHasSpace(h, YARD_BED.south()), "the yard bed was never taken");
 			h.assertValueEqual(0, GrowthStats.unlicensedBirths(), "no unlicensed birth");
 			end(h);
@@ -361,8 +368,8 @@ public class GrowthCourtshipGameTests {
 		int[] chunks = new int[4];
 		GameTestSequence seq = scene(h, 2, 0, 32).thenExecute(() -> {
 			HeartLocation hl = village(h).heart();
-			bed[0] = new BlockPos(hl.x() + 38, hl.y(), hl.z()); // inside the claim
-			chunks[0] = (hl.x() + 30) >> 4;
+			bed[0] = new BlockPos(hl.x() + 76, hl.y(), hl.z()); // inside the claim (80), 6 blocks from the pair
+			chunks[0] = (hl.x() + 70) >> 4;
 			chunks[1] = (hl.x() + 96) >> 4;
 			chunks[2] = (hl.z() - 16) >> 4;
 			chunks[3] = (hl.z() + 16) >> 4;
@@ -376,8 +383,11 @@ public class GrowthCourtshipGameTests {
 			net.minecraft.world.level.block.state.BlockState bedState = Blocks.RED_BED.defaultBlockState()
 					.setValue(net.minecraft.world.level.block.BedBlock.FACING, net.minecraft.core.Direction.SOUTH);
 			// the claim's bed, and one home bed for each of the pair (so they do not go looking for the claim's)
+			// the ground at both places (the Heart is a few blocks above it)
+			int gy = h.getLevel().getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, hl.x() + 82, hl.z());
+			bed[0] = new BlockPos(bed[0].getX(), gy, bed[0].getZ());
 			setBed(h, bed[0], bedState);
-			BlockPos far = new BlockPos(hl.x() + 86, hl.y(), hl.z());
+			BlockPos far = new BlockPos(hl.x() + 82, gy, hl.z());
 			setBed(h, far.north(8), bedState);
 			setBed(h, far.north(10), bedState);
 			for (int i = 0; i < 2; i++) {
@@ -389,7 +399,7 @@ public class GrowthCourtshipGameTests {
 			h.getLevel().setDayTime(dayStart(h) + 100);
 		}).thenWaitUntil(() -> h.assertTrue(h.getLevel().getPoiManager().getType(bed[0].south()).isPresent(), "the claim's bed has a POI"))
 				.thenExecute(() -> {
-					BlockPos far = new BlockPos(village(h).heart().x() + 86, village(h).heart().y(), village(h).heart().z());
+					BlockPos far = new BlockPos(village(h).heart().x() + 82, bed[0].getY(), village(h).heart().z());
 					claimBedAbs(h, v[0], far.north(8).south());
 					claimBedAbs(h, v[1], far.north(10).south());
 					h.assertFalse(BreedingGate.blocks(v[0]), "the pair is outside the claim: vanilla applies");
@@ -402,7 +412,11 @@ public class GrowthCourtshipGameTests {
 			});
 		}
 		seq.thenExecute(() -> {
-			h.assertTrue(BreedTrace.aborts(BreedTrace.Abort.NO_BED, false) >= 1, "vanilla's run reached the bed and was refused: " + BreedTrace.summary());
+			var path = v[0].getNavigation().createPath(bed[0].south(), 1);
+			h.assertTrue(GrowthStats.droppedBeds() >= 1, "vanilla's run took the claim's bed and the hook gave it back: " + BreedTrace.summary() + " space "
+					+ spaceAbs(h, bed[0].south()) + " path " + (path == null ? "null" : path.canReach()) + " pair at " + v[0].blockPosition() + " bed " + bed[0] + " tick "
+					+ h.getLevel().getGameTime() + " loaded " + h.getLevel().isLoaded(bed[0]) + " type " + h.getLevel().getPoiManager().getType(bed[0].south()));
+			h.assertTrue(BreedTrace.aborts(BreedTrace.Abort.NO_BED, false) >= 1, "and the run ended as a NO_BED abort: " + BreedTrace.summary());
 			h.assertTrue(h.getLevel().getPoiManager().getInSquare(t -> true, bed[0].south(), 0, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE)
 					.anyMatch(r -> r.getPos().equals(bed[0].south())), "the claim's bed still has a free ticket");
 			h.assertTrue(babies(h).isEmpty(), "no baby in the test area");

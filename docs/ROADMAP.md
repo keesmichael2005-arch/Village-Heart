@@ -219,6 +219,7 @@ from there instead of hard-coding them.
 - [ ] §7: dawn breeding trigger, one birth per day max
 - **L1**: breeding conditions (free bed, food days ≥3, ≥2 fed and housed adults)
 - **L2**: a free bed and plenty of food → a baby within 2 days. With no free bed → no baby in 3 days
+- Built in M23 (branch m23, deviations in docs/plans/M23.md section 8; the box above is ticked by the orchestrator). **Orchestrator decision: all vanilla villager breeding inside the claim is blocked**, growth happens only through the dawn licence, so feeding villagers bread does nothing there. L1 `core/growth/*Test`, `GrowthCodecsTest`; L2 `GrowthGameTests` (T-L2-1 is the roadmap "baby within 2 days", `GrowthCourtshipGameTests.noFreeBedNoBabyInThreeDays` the "no baby in 3 days"), `workersCanBreed` rewritten; no L3 assertion and no L4 (no visual change).
 
 ## M24: Ranks and multiplayer ✅
 - [x] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer

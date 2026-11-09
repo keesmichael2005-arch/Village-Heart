@@ -21,11 +21,16 @@ public final class BreedingGate {
 	private record Snapshot(ResourceKey<Level> dimension, int hx, int hy, int hz, long r2, Optional<License> licence) {}
 
 	private static volatile Snapshot snapshot;
+	/** Probe switch (steps 1 and 9 of the plan): every villager counts as licensed for the make-love fixes, with no claim and no bed involved. */
+	private static volatile boolean probeAllLicensed;
 
 	private BreedingGate() {}
 
 	/** No village: vanilla is untouched. */
-	public static void reset() { snapshot = null; }
+	public static void reset() {
+		snapshot = null;
+		probeAllLicensed = false;
+	}
 
 	static void set(ResourceKey<Level> dimension, int hx, int hy, int hz, Optional<License> licence) {
 		long r = Balance.CLAIM_RADIUS;
@@ -57,8 +62,14 @@ public final class BreedingGate {
 		return inClaim(s, v) && !licensed(s, v);
 	}
 
+	public static void setProbeAllLicensed(boolean on) { probeAllLicensed = on; }
+
+	private static final License PROBE = License.issue(0, dev.villageheart.core.growth.BreedingPair.of(new java.util.UUID(0, 1), new java.util.UUID(0, 2)),
+			java.util.OptionalLong.empty());
+
 	/** Today's licence when {@code v} is one of its parents. */
 	public static Optional<License> licenceOf(Villager v) {
+		if (probeAllLicensed) return Optional.of(PROBE);
 		Snapshot s = snapshot;
 		if (s == null || !licensed(s, v)) return Optional.empty();
 		return s.licence;

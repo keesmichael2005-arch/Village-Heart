@@ -85,7 +85,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Tiny window: a pending release runs up to 20 ticks after the chunk loads; a break/re-place plus a vanilla claim in that window would free the new ticket
 - [ ] Crash between the POI save and the saved-data save can leave a stale ticket (documented in TESTING.md)
 - [x] Workers.levelOf/TRIPS use inline fully qualified names (cosmetic) (fixed in M15)
-- [ ] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later
+- [x] T-L2-14 breeding retry windows hide a vanilla breeding abort (~1 in 16); root-cause later (fixed in M23: `workersCanBreed` has one window and no retry. Root cause, measured with `breedingAbortProbe`: a pair that "reached" each other at block offset 2 stands up to 3 blocks apart while the birth tick needs sqrt(5); in 200 plain runs 1 aborted `TOO_FAR` (the 1 in 16 was an artefact of seeding both villagers). Licensed pairs walk to close-enough 1 and re-walk when the gap is too big: 100 runs, 0 aborts; docs/plans/M23.md section 8)
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
 ## Cross-milestone (from the M12 plan)
