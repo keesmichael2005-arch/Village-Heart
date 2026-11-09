@@ -123,6 +123,7 @@ from there instead of hard-coding them.
 
 ## M14: Tiers and unlocks
 - Note (M15): `core.tier.TierRules` already exists with `levelCap(Tier)`, `levelFromXp(int)` and `levelFor(xp, tier)` (and `Balance.LEVEL_CAPS`); add the tier-goal rules to that class. The level pass (`WorkXp.pass`, every 20 ticks) turns banked XP into levels after a tier-up, so M14 needs no level code.
+- Status (M14 builder, 2026-11-09): built on branch m14, awaiting verification; not ticked.
 - [ ] §9 goals tracked daily, tier-ups, level caps, marker tier gating, Overview goal checklist
 - **L1**: tier goal evaluation for every Hamlet→Village and Village→Town condition, including "fed N days in a row" resetting on a hungry day
 - **L2**: a village set up to meet the Village goals → tier becomes Village at the next dawn, and a Mine marker turns from red ("Requires Village") to green
