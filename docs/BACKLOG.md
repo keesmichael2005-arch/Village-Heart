@@ -264,3 +264,13 @@ when it's fixed. Source reviews: docs/reviews/.
 
 ## From M19a-r2
 - [ ] Under heavy CPU load (load ~14) the first L4 client-test world can stall at "Preparing spawn area" until "Timeout loading world"; passed on rerun. Longer world-load timeout, or one full verify.sh at a time across worktrees
+
+## From M13-r1
+- [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
+- [ ] Cook reservations stay held while the cook is unloaded (dinner can't see that food meanwhile)
+- [ ] After a crash, cook inventory and heat bank can disagree by one unit
+- [ ] Heat banks of smokers in no Kitchen are kept (not tied to a specific Kitchen)
+- [ ] `completeUnit` ignores the `addItem` remainder when putting inputs back
+- [ ] Cook keep rules count renamed stacks with plain ones
+- [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
+- [ ] PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
