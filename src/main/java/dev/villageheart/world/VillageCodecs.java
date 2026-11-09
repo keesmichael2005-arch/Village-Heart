@@ -264,7 +264,23 @@ public final class VillageCodecs {
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
-			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts) {}
+			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
+			dev.villageheart.core.tier.TierProgress tierProgress) {}
+
+	private record RawProgress(int fedStreak, long lastDinnerDay, int bestDawnTreasury) {}
+
+	/**
+	 * Tier progress (M14). Lenient: a malformed or missing field reads as its default and a negative number as 0, so a bad value never
+	 * drops the village. {@code last_dinner_day} is written only when a dinner was counted.
+	 */
+	public static final Codec<dev.villageheart.core.tier.TierProgress> TIER_PROGRESS = RecordCodecBuilder.<RawProgress>create(i -> i.group(
+			Codec.INT.lenientOptionalFieldOf("fed_streak", 0).forGetter(RawProgress::fedStreak),
+			Codec.LONG.lenientOptionalFieldOf("last_dinner_day", dev.villageheart.core.tier.TierProgress.NO_DAY).forGetter(RawProgress::lastDinnerDay),
+			Codec.INT.lenientOptionalFieldOf("best_dawn_treasury", 0).forGetter(RawProgress::bestDawnTreasury)
+	).apply(i, RawProgress::new)).xmap(r -> {
+		if (r.fedStreak() < 0 || r.bestDawnTreasury() < 0) LOG.warn("Village save: negative tier progress {} clamped to 0", r);
+		return new dev.villageheart.core.tier.TierProgress(Math.max(0, r.fedStreak()), r.lastDinnerDay(), Math.max(0, r.bestDawnTreasury()));
+	}, p -> new RawProgress(p.fedStreak(), p.lastDinnerDay(), p.bestDawnTreasury()));
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -280,7 +296,8 @@ public final class VillageCodecs {
 			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
 			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds),
 			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences),
-			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(Raw::selfCrafts)
+			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(Raw::selfCrafts),
+			TIER_PROGRESS.lenientOptionalFieldOf("tier_progress", dev.villageheart.core.tier.TierProgress.INITIAL).forGetter(Raw::tierProgress)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
@@ -288,12 +305,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress()));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), v.tierProgress())));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(
