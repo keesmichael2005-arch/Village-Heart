@@ -134,6 +134,8 @@ public final class LumberJob {
 	private static void guard(ServerLevel level, Villager v, WorkerState ws, long now) {
 		if (ws.tree == null || ws.needsPlan || (now + v.getId()) % PLAN_INTERVAL != 0) return;
 		if (!campValid(level, v) || dev.villageheart.worker.DepositTrip.wanted(level, v)) ws.needsPlan = true;
+		WorkerData data = v.getAttached(WorkerAttachments.WORKER);
+		if (data != null && data.needs().speed() <= 0) ws.needsPlan = true; // too hungry (or unpaid): stop felling at once
 	}
 
 	// ---- planning ----------------------------------------------------------------------------------
@@ -166,7 +168,7 @@ public final class LumberJob {
 		FinderState finder = valid ? finderState(level, v, data, rt, now) : FinderState.EXHAUSTED;
 		boolean fell = ws.tree != null;
 		Snapshot snap = new Snapshot(valid, deposit, fell, tool, replant != null, item != null, task,
-				level.getDayTime() % Balance.DAY_TICKS, finder);
+				level.getDayTime() % Balance.DAY_TICKS, finder, data.needs().speed() <= 0);
 		Decision d = LumberjackPlanner.plan(snap);
 		applyStatus(v.getUUID(), d.status());
 		Action before = ws.action;
@@ -235,7 +237,22 @@ public final class LumberJob {
 			ws.walk.release(v);
 			return;
 		}
-		if (!ws.walk.active() || !ws.walk.target().equals(jb)) ws.walk.begin(jb, Balance.JOB_BLOCK_REACH, now);
+		// A worker that drifted further than the walk's path range (48) from its job block (vanilla idle strolls wander) walks back in legs.
+		BlockPos goal = jb;
+		if (ws.idleGoal != null && ws.walk.active() && ws.walk.target().equals(ws.idleGoal) && WalkTo.distance(v, ws.idleGoal) > 3.5) {
+			goal = ws.idleGoal; // finish the leg
+		} else {
+			double[] leg = dev.villageheart.core.worker.ReturnLeg.next(v.getX(), v.getZ(), jb.getX() + 0.5, jb.getZ() + 0.5);
+			if (leg[0] != jb.getX() + 0.5 || leg[1] != jb.getZ() + 0.5) {
+				BlockPos column = BlockPos.containing(leg[0], v.getY(), leg[1]);
+				if (level.hasChunkAt(column)) {
+					goal = new BlockPos(column.getX(), level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+							column.getX(), column.getZ()), column.getZ());
+				}
+			}
+		}
+		ws.idleGoal = goal;
+		if (!ws.walk.active() || !ws.walk.target().equals(goal)) ws.walk.begin(goal, goal.equals(jb) ? Balance.JOB_BLOCK_REACH : 3.0, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();
 			ws.idleBackoffUntil = now + 100;
@@ -393,6 +410,7 @@ public final class LumberJob {
 	/** The tree cannot be reached: it is left alone for 6000 ticks, a task it had is dropped when nothing was cut yet. */
 	private static void giveUpTree(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
 		HeartLocation key = ws.key;
+		dev.villageheart.worker.job.LeafEscape.free(level, v); // boxed in by a canopy it cut into: leaves touching it are broken
 		if (key != null) {
 			rt.camp(data.building()).giveUp(key, now);
 			rt.giveUps.add(key + ": " + ws.walk.reason());

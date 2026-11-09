@@ -18,6 +18,9 @@ public final class WorldClaim {
 	/** Held job blocks whose ticket could not be released (chunk unloaded when the village was released): finished when they load. */
 	private final Set<HeartLocation> pendingTicketReleases = new LinkedHashSet<>();
 
+	/** The day index of the last dinner (M11); belongs to the village, so a new claim starts without one. */
+	private Long lastDinnerDay;
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -33,6 +36,16 @@ public final class WorldClaim {
 		this(village, reservedJobBlocks);
 		this.pendingTicketReleases.addAll(pendingTicketReleases);
 	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
+			java.util.OptionalLong lastDinnerDay) {
+		this(village, reservedJobBlocks, pendingTicketReleases);
+		this.lastDinnerDay = lastDinnerDay.isPresent() ? lastDinnerDay.getAsLong() : null;
+	}
+
+	public java.util.OptionalLong lastDinnerDay() { return lastDinnerDay == null ? java.util.OptionalLong.empty() : java.util.OptionalLong.of(lastDinnerDay); }
+
+	public void setLastDinnerDay(long day) { lastDinnerDay = day; }
 
 	/** A copy of the pending releases. Unlike the reservations they survive {@link #releaseAt} and {@link #clear}. */
 	public Set<HeartLocation> pendingTicketReleases() { return new LinkedHashSet<>(pendingTicketReleases); }
@@ -60,7 +73,10 @@ public final class WorldClaim {
 
 	public ClaimRules.Result claim(HeartLocation at, UUID owner, String ownerName, double distanceToBell, long gameTime) {
 		ClaimRules.Result r = evaluate(distanceToBell);
-		if (r == ClaimRules.Result.CLAIMED) village = VillageState.founded(at, owner, ownerName, gameTime);
+		if (r == ClaimRules.Result.CLAIMED) {
+			village = VillageState.founded(at, owner, ownerName, gameTime);
+			lastDinnerDay = null;
+		}
 		return r;
 	}
 
@@ -69,6 +85,7 @@ public final class WorldClaim {
 		VillageState released = village;
 		village = null;
 		reservedJobBlocks.clear();
+		lastDinnerDay = null;
 		return Optional.of(released);
 	}
 
@@ -87,11 +104,12 @@ public final class WorldClaim {
 	public void clear() {
 		village = null;
 		reservedJobBlocks.clear();
+		lastDinnerDay = null;
 	}
 
 	@Override public boolean equals(Object o) {
 		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
-				&& pendingTicketReleases.equals(w.pendingTicketReleases);
+				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay);
 	}
 
 	@Override public int hashCode() {

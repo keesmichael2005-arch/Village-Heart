@@ -28,7 +28,8 @@ final class SimWorld {
 	/** Fixed so a resumed run is the same owner and gets its player data back. */
 	static final UUID OWNER_UUID = UUID.nameUUIDFromBytes("villageheart-sim-owner".getBytes(StandardCharsets.UTF_8));
 	static final String OWNER_NAME = "SimOwner";
-	static final int LOAD_RADIUS_CHUNKS = 4;
+	/** +-6 chunks (13x13): the claim reaches 80 blocks from the Heart and workers stroll beyond their workplaces; a villager in a loaded chunk that does not tick is frozen for good. */
+	static final int LOAD_RADIUS_CHUNKS = 6;
 
 	/** Nearest plains village start within 100 chunks of spawn (the position is a chunk's block, not structure bounds). */
 	static Optional<BlockPos> locate(ServerLevel level) {
@@ -47,6 +48,17 @@ final class SimWorld {
 				level.setChunkForced(c.x + dx, c.z + dz, true);
 			}
 		}
+	}
+
+	/** True once every forced chunk around the village is entity-ticking: the chunks are promoted over the first seconds, and a site search before that is not deterministic. */
+	static boolean forcedChunksTicking(ServerLevel level, BlockPos around) {
+		ChunkPos c = new ChunkPos(around);
+		for (int dx = -LOAD_RADIUS_CHUNKS; dx <= LOAD_RADIUS_CHUNKS; dx++) {
+			for (int dz = -LOAD_RADIUS_CHUNKS; dz <= LOAD_RADIUS_CHUNKS; dz++) {
+				if (!level.isPositionEntityTicking(new ChunkPos(c.x + dx, c.z + dz).getMiddleBlockPosition(level.getSeaLevel()))) return false;
+			}
+		}
+		return true;
 	}
 
 	static Optional<BlockPos> findBell(ServerLevel level, BlockPos near) {

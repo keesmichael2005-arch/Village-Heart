@@ -177,6 +177,7 @@
 	"gui.villageheart.heart.activity.needs_tool.pickaxe": "Needs pickaxe",
 	"gui.villageheart.heart.activity.needs_tool.hoe": "Needs hoe",
 	"gui.villageheart.heart.activity.needs_tool.bow_or_sword": "Needs bow or sword",
+	"gui.villageheart.heart.activity.too_hungry": "Too hungry to work",
 	"gui.villageheart.heart.activity.no_work": "Nothing to do",
 	"gui.villageheart.heart.activity.no_work.lumberjack": "No trees within 32 blocks",
 	"gui.villageheart.heart.activity.no_work.builder": "No blueprint to build",

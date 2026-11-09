@@ -266,7 +266,9 @@ public final class VillageCodecs {
 			Codec.INT.fieldOf("schema").forGetter(w -> SCHEMA),
 			VILLAGE_STATE.optionalFieldOf("village").forGetter(WorldClaim::village),
 			HEART_LOCATION.listOf().optionalFieldOf("reserved_job_blocks", java.util.List.of()).forGetter(VillageCodecs::sortedReserved),
-			HEART_LOCATION.listOf().optionalFieldOf("pending_ticket_releases", java.util.List.of()).forGetter(VillageCodecs::sortedPending)
-	).apply(i, (schema, village, reserved, pending) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
-			new java.util.LinkedHashSet<>(pending))));
+			HEART_LOCATION.listOf().optionalFieldOf("pending_ticket_releases", java.util.List.of()).forGetter(VillageCodecs::sortedPending),
+			Codec.LONG.optionalFieldOf("last_dinner_day").forGetter(w -> w.lastDinnerDay().isPresent()
+					? Optional.of(w.lastDinnerDay().getAsLong()) : Optional.empty())
+	).apply(i, (schema, village, reserved, pending, dinner) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty())));
 }

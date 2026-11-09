@@ -61,11 +61,13 @@ class MetricsJsonTest {
 		assertEquals(List.of("structure", "bell", "heart"), List.copyOf(((Map<String, Object>) m.get("village")).keySet()));
 		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
 		assertEquals(List.of("day", "game_time", "claimed", "population", "adults", "babies", "employed", "buildings",
-				"stockpile", "food", "treasury", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
+				"stockpile", "food", "housing", "treasury", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
 				"stockpile_tags"), List.copyOf(day.keySet()));
 		assertEquals(List.of("valid", "invalid"), List.copyOf(((Map<String, Object>) day.get("buildings")).keySet()));
 		assertEquals(List.of("total", "distinct", "items"), List.copyOf(((Map<String, Object>) day.get("stockpile")).keySet()));
-		assertEquals(List.of("nutrition", "days_left"), List.copyOf(((Map<String, Object>) day.get("food")).keySet()));
+		assertEquals(List.of("nutrition", "days_left", "dinners", "diners", "fed", "hungry", "eaten_nutrition", "eaten_items", "max_hungry_days"),
+				List.copyOf(((Map<String, Object>) day.get("food")).keySet()));
+		assertEquals(List.of("housed", "house_beds"), List.copyOf(((Map<String, Object>) day.get("housing")).keySet()));
 		assertEquals(List.of("total", "mobs", "by_cause", "list"), List.copyOf(((Map<String, Object>) day.get("deaths")).keySet()));
 		assertEquals(List.of("mean", "p95", "max", "samples"), List.copyOf(((Map<String, Object>) day.get("village_ms")).keySet()));
 		assertEquals(List.of("mspt", "tps", "heap_used_mb"), List.copyOf(((Map<String, Object>) day.get("server")).keySet()));
@@ -113,5 +115,38 @@ class MetricsJsonTest {
 				List.copyOf(((Map<String, Object>) st.get("items")).keySet()));
 		assertEquals(74L, st.get("total"));
 		assertEquals(3L, st.get("distinct"));
+	}
+
+	@Test
+	void needsRoundTripAndOldReportsReadZeros() {
+		DayMetrics d = rich(1);
+		DayMetrics.NeedsDay nd = new DayMetrics.NeedsDay(1, 9, 8, 1, 90, 30, 2, 6, 8);
+		DayMetrics with = new DayMetrics(d.day(), d.gameTime(), d.claimed(), d.population(), d.adults(), d.babies(), d.employed(),
+				1, 3, d.stockpile(), 12, 3.5, 4, d.deaths(), d.villageMs(), 1.5, 470.25, 51.2, 900, 41_000_000L,
+				Map.of(), Map.of(), Map.of(), nd);
+		Report r = new Report("x", SimStatus.PASS, null, true, 1, 0, null, 1, "normal", 1, "1.21.11", VillagePositions.NONE,
+				0, List.of(), null, List.of(with), List.of());
+		String json = MetricsJson.write(r);
+		assertEquals(r, MetricsJson.read(json));
+		Map<String, Double> flat = with.flatten();
+		assertEquals(9.0, flat.get("food.diners"));
+		assertEquals(90.0, flat.get("food.eaten_nutrition"));
+		assertEquals(2.0, flat.get("food.max_hungry_days"));
+		assertEquals(8.0, flat.get("housing.house_beds"));
+		for (String k : List.of("food.dinners", "food.diners", "food.fed", "food.hungry", "food.eaten_nutrition", "food.eaten_items",
+				"food.max_hungry_days", "housing.housed", "housing.house_beds")) {
+			assertTrue(MetricNames.isKnown(k), k);
+			assertTrue(flat.containsKey(k), k);
+		}
+		// a report written before M11 has none of these keys: they read as zeros
+		@SuppressWarnings("unchecked")
+		Map<String, Object> m = (Map<String, Object>) Json.parse(json);
+		@SuppressWarnings("unchecked")
+		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
+		day.remove("housing");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> food = (Map<String, Object>) day.get("food");
+		for (String k : List.of("dinners", "diners", "fed", "hungry", "eaten_nutrition", "eaten_items", "max_hungry_days")) food.remove(k);
+		assertEquals(DayMetrics.NeedsDay.ZERO, MetricsJson.read(Json.write(m, true)).days().get(0).needs());
 	}
 }

@@ -24,4 +24,21 @@ class ScenarioFilesTest {
 			assertEquals(name, s.name());
 		}
 	}
+
+	@Test
+	void starterHasItsActionsAndAssertions() throws Exception {
+		Scenario s = ScenarioParser.parse("starter", Files.readString(Path.of("sim/scenarios/starter.json")));
+		assertEquals(12, s.actions().size());
+		assertEquals(10, s.defaultDays());
+		assertEquals(9 + 1, s.assertions().size());
+		var hires = s.actions().stream().filter(a -> a.type().equals("hire")).toList();
+		assertEquals(2, hires.size());
+		for (var h : hires) {
+			assertEquals(1, h.day());
+			assertEquals(200, h.tick());
+		}
+		assertEquals(10, s.actions().stream().filter(a -> a.day() == 0).count());
+		assertEquals("claim", s.actions().get(0).type());
+		assertEquals("site", s.actions().get(1).type());
+	}
 }

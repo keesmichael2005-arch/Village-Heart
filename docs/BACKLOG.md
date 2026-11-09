@@ -96,7 +96,8 @@ when it's fixed. Source reviews: docs/reviews/.
   - Fixed (backlog-1): `oldMenuAfterReplaceIsStaleInTheSameTick`.
 - [x] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
   - Fixed (backlog-1): `actionFromOutOfReachRejectedInTheSameTick`.
-- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [x] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+  - Done in M11: `WorkerData.needs` is now real (fed from the diet, housed from the House beds), so the icons follow it. Non-worker villagers still show no icons.
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
 
 ## From M24
@@ -144,6 +145,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] clearStrayFarmland discards every item entity; javadoc and TESTING say crop items only
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
+
+## From M11-r1
+- [ ] T-L2-10(d) deferred: no L2 test for a villager 81 blocks (or at the box corner 84.9) from the Heart not eating; the census is `world.VillageCensus` over `ClaimGeometry` (L1-tested)
+- [ ] T-L2-2 (`noFoodAllHungryNoDeaths`) only jumps dinner to dinner and never crosses dawn; M12's dawn wages need the plan's version (each round also crosses 23980)
+- [ ] `sum(deaths.cause.minecraft:starve) == 0` in `starter` can never fail (villagers take no hunger damage); the L2 full-health check is the real guard
+- [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
+- [ ] The site ramp (`StarterActions.ramp`, `core/sim/RampProfile`) is 9 blocks wide plus up to 12 more while it still differs from the land by more than 1: a `max_deviation` above 8 leaves a larger step at the ring (the cone is floor +- k)
+- [ ] `LeafEscape` is not a general unstick: it only frees a worker whose four sides at feet and head height are all blocked and at least one is natural leaves (M11 r2)
 
 ## From M16 (builder notes)
 - [ ] A hidden miner's hitbox still catches the crosshair at the bottom of the shaft (placing or breaking rails there while a miner is down); fix with a `Villager.isPickable` mixin if players complain (the hold spot is the deepest cell, so the entrance and the marker stay free)
@@ -209,6 +218,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
 - [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+- [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
+- [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
 
 ## From M12-r2
 - [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
@@ -227,3 +238,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
 - [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
 - [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+## From M11-r5
+- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`

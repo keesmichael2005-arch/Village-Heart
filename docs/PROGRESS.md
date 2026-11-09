@@ -444,6 +444,50 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
 - Next: M21 (Defence blueprints).
 
+## 2026-11-07: M11 plan written (docs/plans/M11.md)
+Planner. Food, dinner and needs, plus the first real L3 scenario `starter`. Planned on assumptions about M7 (origin/m7 at a49fa0f), M9 (origin/m9-plan)
+and M10 (no plan yet); section 3.1 lists them. M11 is built only after M7, M9 and M10 are on dev.
+- Dinner is abstract: at day tick 11000 a village system takes food straight from the Storage chests for every loaded villager in the claim
+  (no walking). Pure `core.food.DinnerPlanner`: hungriest first, then workers in hiring order; best food first (prepared before raw, then
+  nutrition); a villager eats only if it can reach its full need (10, children 5), so food is not wasted on partial meals. `DinnerClock` fires once per
+  day index (`!=`, so `/time set` works), saved as `last_dinner_day`; no catch-up.
+- Hunger lives in a persistent `villageheart:diet` attachment on every villager (epoch-checked); `WorkerData.needs` becomes a derived copy with
+  the invariant fed == (hungryDays == 0). `Needs.speed()` = hunger {1, 0.5, 0} x unhoused 0.75 x unpaid 0; paid is stubbed true (`PaidSource`) until M12.
+  Housed = HOME bed head is a `#bed` of a valid House scan (or the worker's own building). Workers are moved into free House beds (may take one
+  from an awake non-worker). Speed 0 gets a planner row in M9/M10 (idle + `TOO_HUNGRY`).
+- Harness: five new actions (`site` = deterministic flat-site search in core + flatten + light, `prefab` rooms, `field`, `grove` of worldgen oaks,
+  `hire` at day 1 tick 200), `food.*` and `housing.*` metrics, `sim/scenarios/starter.json` with the assertions for the roadmap criteria.
+- Roadmap correction to make in the build: 4 villagers + 20 bread leaves 12 bread (8 eaten), not 8.
+Revised after a fresh critique (22 findings; 3 refuted: `@prev` exists, `--reload-at` halts at dawn, job/building ids are core enums). Key fixes: test hooks so older worker GameTests keep full pace, adults-before-children tiebreak, lenient needs decode, dinner clock reset after the harness sets dawn.
+Next: BUILD M11 after M10 (orchestrator: approve the 12-bread roadmap correction). Top risk: `starter` relies on the unbuilt M9/M10 workers surviving and producing in an unseeded village for 10 days.
+
+## M11 build (food, dinner and needs, `starter`) - builder
+Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metrics, harness actions, `starter`, docs). Deviations D1-D14: docs/plans/M11.md section 8.
+- **Dinner** at 11000, abstract (no walking), once per day index, `last_dinner_day` saved in the claim. Hunger is a per-villager attachment; 1 missed dinner x0.5, 2+ stops work
+  ("Too hungry to work"), nobody dies. Workers without a House bed work at x0.75 and are moved into a free House bed every 100 ticks. The Heart screen's need icons are real now.
+- **Tests**: L1 +food/needs/sim-harness classes; L2 20 new GameTests (`NeedsGameTests`, `NeedsHousingGameTests`, `NeedsWorkGameTests`, `SimActionGameTests`), 177 total, 9 clean full runs in a row
+  after the last fix. Measured: hungry lumberjack gaps 80/80/80/80 (x0.5), unhoused 53,53,54,53,53 (x0.75), hungry farmer 40-42 ticks per harvest.
+- **Layer 3 `starter` 10 days**: PASS (exit 0), wall 7m02s. 8 villagers all 10 days (no breeding), 8/8 fed at every dinner, 0 deaths, max hungry days 0, housed 2 of 8 villagers
+  (4 House beds). Logs in the stockpile: 37, 80, 116, 149, 187, 227, 278, 322, 347, 375 (first run). Nutrition in the chests rose from 740 to 2033 (the 9x9 carrot field feeds the village ~5x over).
+  **M13 baseline**: eaten nutrition per eaten item = 5.0 on day 1 (bread) and about 3.06 from day 3 (carrots, ~95 nutrition from ~31 items per dinner).
+- `--reload-at 2` with the red extra assertion: exit 1 (only the extra assertion fails), `reloads == [2]`, one dinner every day. The halt/resume needs lists (`[sim-needs]` lines) match for every
+  villager that is loaded at resume (3 of 8 are still unloaded 400 ticks after the resume; that is how the entities of a force-loaded area come back, not a loss).
+- Fixed on the way: the sim's forced chunks became entity-ticking at different speeds (site search was luck): `waitBell` now waits for them; the same race made `forcedChunkGrowsWithoutPlayer` flaky (now waits for ticking, and pins noon: saplings need daylight).
+- Doubt: in 1 of ~6 early 4-day runs the lumberjack's deposit trip reported STORAGE_UNREACHABLE from day 2 on (logs flat). It did not recur in 5 later runs (2x 10 days, 3x 4 days); a `[trip]` log line now names position and door if it does.
+- Next: M12 treasury (add `treasury add` to `starter`, see its description), M13 compares `food.eaten_nutrition / food.eaten_items`.
+
+## 2026-11-08: M11 verifier review r2: FAIL (docs/reviews/M11-r2.md)
+- Both round-1 items are fixed. Cooked-before-raw L1 and L2 tests go red when the raw key is removed. `starter` 10 days: 3 of 3 runs exit 0, logs rise daily, 100 % fed, 0 failed trips.
+- New real-game bug: `LeafEscape` breaks persistent (player-placed) leaves on every failed trip or tree give-up; a probe hedge lost 14 blocks in one give-up. The ramp's 1-block-per-step claim is false, and canopy air pockets leave floating grass (harness).
+- Merged origin/dev (M20): enum conflicts resolved with M20 values first, TOO_HUNGRY appended. L2 205/205 in 6 of 6 foreground runs plus verify.sh; no M9 flakes. verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 3.
+
+## 2026-11-08: M11 round-2 fixes (builder, finisher)
+- `LeafEscape` (real-game bug): never breaks persistent leaves, acts only when the worker is enclosed (4 sides at feet and head blocked, one natural leaf), respects `mobGriefing` (D15). `lumberjackBoxedInByLeavesGetsOut` now uses natural leaves (and lost its always-true filler); three new L2 tests: player hedge and natural hedge survive a give-up, persistent cube is kept. Mutation-checked (persistent check, enclosed check, no-break, old behaviour): each is caught by the test meant for it.
+- Harness ramp: `core/sim/RampProfile` (pure, L1 `RampProfileTest`) gives a 1-block-per-step slope that meets the land; `StarterActions.ramp` reads the ground through canopies (no floating grass). L2 `siteRampHasOneBlockSteps` (red without the slope and without the canopy skip).
+- Found by the 3rd sim run (1 of 6 failed): an idle lumberjack had drifted 45 blocks from camp and could not path back (range 48). `LumberJob.idle` walks back in legs of 24 blocks (D17). Farmer has the same gap (BACKLOG).
+- Follow-up: `WorkerUnstick` (all jobs, via WorkerSystem) and farmer idle legs. A single-cell trunk is already resolved by vanilla push-out, so the run-7 trip flake cause stays unconfirmed.
+- Next: round 3 review.
 ## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
 - Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
 - Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
@@ -519,6 +563,8 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
 - Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
 
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.
 ## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
 - `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
 - Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
@@ -564,3 +610,17 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
 - ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
 - Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.
+## 2026-11-08: M11 review round 4 (verifier): FAIL
+- Merged origin/dev (M21) into m11. Round-3 items 1 and 3 fixed (both new tests red under mutation).
+- Cause of the "silent stall" found: the sim force-loads only 9x9 chunks around the village start chunk (south edge z = 895, 15 blocks past the site). Morning strolls take workers up the hill to z = 896, where the chunk is not entity-ticking and they freeze for good. `starter` failed 2 of 4 runs, each with the farmer frozen at z = 896. Net (b) cannot see it (the job never ticks), and net (c) needs > 40 blocks (the farmer is 31-34).
+- The `[far-worker]` rescue teleports a builder working at a far site and a sleeper in a far House (probes). verify.sh exit 0, L2 3/3 green.
+- Next: notes in `docs/reviews/M11-r4.md` (sim forced area plus a not-ticking metric; remove or narrow net (c); drop net (b)'s teleport).
+
+## 2026-11-08: M11 round-4 fixes (builder, finisher)
+- Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
+- Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-09: M11 review round 5 (verifier): PASS
+- All four round-4 must-fix items are done. A mutation check of the new `not_ticking` assertion: red at radius 3, green at radius 4 by chance, and red naturally in one run at radius 6.
+- `starter 10`: passed 3 of 4 runs. The roadmap L3 criteria held in all 4. Run 1 failed because a farmer fled 111 blocks east at night and froze outside the forced area. That is a fixture problem, now in BACKLOG as high priority.
+- L2: 3 runs, 257/257 each. Full `verify.sh`: exit 0. The needs and overview screenshots were checked by eye. M11 is ticked in the ROADMAP. Notes: `docs/reviews/M11-r5.md`.

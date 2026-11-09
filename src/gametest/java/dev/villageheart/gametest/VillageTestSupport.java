@@ -48,8 +48,13 @@ public final class VillageTestSupport {
 		dev.villageheart.build.BuildRuntime.resetForTests();
 		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();
+		dev.villageheart.worker.farm.FarmJob.setStallTicksForTest(-1);
+		dev.villageheart.worker.farm.FarmJob.setAllCellsTakenForTest(false);
 		dev.villageheart.worker.farm.FarmJob.testKeepAll = i -> false;
 		dev.villageheart.worker.job.WorkerStatuses.clearAll();
+		NeedsTestHooks.disable(); // M11: workers of other tests keep full pace and nobody eats; only the needs_ tests switch it back on
+		dev.villageheart.food.FoodStats.reset();
+		dev.villageheart.needs.Housing.reset();
 		dev.villageheart.worker.LevelUpFeedback.resetForTests();
 		dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
 		dev.villageheart.worker.WorkXp.clear();

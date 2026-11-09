@@ -94,6 +94,7 @@ public final class WorkerSystem implements VillageSystem {
 			}
 			Villager v = findLoaded(server, rec.villager());
 			if (v == null || !(v.level() instanceof ServerLevel level)) continue;
+			dev.villageheart.worker.job.WorkerUnstick.rescue(level, v);
 			if (!WorkerAttachments.isWorker(v)) {
 				JobType.byId(rec.jobId()).ifPresent(job -> Workers.install(level, v, WorkerData.hired(job, rec.building(), rec.jobBlock())));
 			} else {

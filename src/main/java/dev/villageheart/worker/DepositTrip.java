@@ -90,7 +90,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		return out;
 	}
 
-	static double load(Villager v) {
+	public static double load(Villager v) {
 		double load = 0;
 		SimpleContainer inv = v.getInventory();
 		for (int[] d : depositable(v)) load += (double) d[1] / inv.getItem(d[0]).getMaxStackSize();
@@ -167,6 +167,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		try (var t = VillageTicker.section()) {
 			// M9: a long walk with its own path (WalkTo) instead of WALK_TARGET: the vanilla sink plans about 16 blocks and gives up on the
 			// first dead end, and a lumberjack comes back from 30 blocks away, from the side of the Storage that has no door
+			Workers.setTripRunning(villager, true); // refreshes the flag's clock: see Workers.tripRunning
 			WalkTo.State st = walk.tick(villager, gameTime);
 			if (st == WalkTo.State.UNREACHABLE) {
 				failed = true;
@@ -199,6 +200,10 @@ public final class DepositTrip extends Behavior<Villager> {
 		Workers.setTripRunning(villager, false);
 		walk.release(villager);
 		if (!delivered && load(villager) > 0 && (failed || gameTime - started >= TIMEOUT)) {
+			dev.villageheart.VillageHeart.LOG.info("[trip] deposit trip failed: worker at {} could not reach the Storage door at {} after {} ticks (failed={})",
+					villager.blockPosition().toShortString(), target == null ? "?" : target.toShortString(), gameTime - started, failed);
+			int leaves = dev.villageheart.worker.job.LeafEscape.free(level, villager);
+			if (leaves > 0) dev.villageheart.VillageHeart.LOG.info("[trip] the worker was boxed in by leaves: {} broken", leaves);
 			Workers.setTripStatus(villager.getUUID(), WorkerStatus.STORAGE_UNREACHABLE);
 			cooldownUntil = gameTime + COOLDOWN;
 		}

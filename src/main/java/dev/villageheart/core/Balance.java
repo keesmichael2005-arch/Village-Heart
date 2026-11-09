@@ -185,6 +185,27 @@ public final class Balance {
 	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
 	public static final int SLOT_PRESSURE_FREE_SLOTS = 2;
 
+	// ---- food, dinner and needs (M11) ----
+	/** The whole village eats at this day time (DESIGN section 6). */
+	public static final int DINNER_TICK = 11000;
+	/** Nutrition a villager needs at dinner to count as fed: an adult 10, a baby half. */
+	public static final int ADULT_NUTRITION = 10;
+	public static final int CHILD_NUTRITION = 5;
+	/** Work speed after 0, 1 and 2+ missed dinners (index = min(hungryDays, 2)). */
+	public static final double[] HUNGER_SPEED = {1.0, 0.5, 0.0};
+	/** Work speed of a worker without a bed in a valid House. */
+	public static final double UNHOUSED_SPEED = 0.75;
+	/** Housing is re-read (and workers re-homed) this often. */
+	public static final int NEEDS_REFRESH_TICKS = 100;
+	/** Items the village never eats (harmful, teleporting, or a player's valuables). Must equal the item tag villageheart:not_village_food (asserted by a test). */
+	public static final java.util.Set<String> FOOD_NEVER_EAT = java.util.Set.of(
+			"minecraft:rotten_flesh", "minecraft:spider_eye", "minecraft:poisonous_potato", "minecraft:pufferfish",
+			"minecraft:suspicious_stew", "minecraft:chorus_fruit", "minecraft:golden_apple", "minecraft:enchanted_golden_apple",
+			"minecraft:golden_carrot");
+	/** Food a Cook (M13) turns into something better: eaten only after every prepared food. */
+	public static final java.util.Set<String> FOOD_RAW = java.util.Set.of(
+			"minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit", "minecraft:cod",
+			"minecraft:salmon", "minecraft:potato");
 	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
 
 	/** Work units one haul costs; a stone pickaxe at level 1 earns 2.0 per tick, so a haul is 2000 ticks (anchored on stone; wood 4000) (2 in-game hours) underground. */

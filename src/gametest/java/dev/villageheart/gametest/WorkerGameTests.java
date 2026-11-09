@@ -1140,6 +1140,27 @@ public class WorkerGameTests {
 		});
 	}
 
+	/**
+	 * Review of M11 round 3: a trip flag whose behaviour was dropped without its stop (it never ticks again) must expire. Every job returns early
+	 * while a trip "runs", so a flag that stayed set would leave the worker idle at status OK for good.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_deposit_stale", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void deadDepositTripFlagExpires(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = depositSetup(h, false, 3000, v).thenExecute(() -> {
+			Workers.markTripRunningForTest(v[0]);
+			h.assertTrue(Workers.tripRunning(v[0]), "the flag is set");
+		});
+		seq = seq.thenIdle(50).thenExecute(() -> h.assertTrue(Workers.tripRunning(v[0]), "a fresh flag still counts"));
+		seq = seq.thenIdle(120);
+		seq.thenExecute(() -> {
+			h.assertTrue(!Workers.tripRunning(v[0]), "the flag of a trip that no longer ticks has expired");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	/** T-L2-13b (2): with every Storage container full the worker keeps its load, reports STORAGE_FULL and the village alert shows it. */
 	@GameTest(environment = "villageheart-gametest:workers_storage_full", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void depositTripStorageFull(GameTestHelper h) {

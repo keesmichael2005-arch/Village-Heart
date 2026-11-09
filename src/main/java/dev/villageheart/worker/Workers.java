@@ -81,6 +81,8 @@ public final class Workers {
 		HireDecision.Hired hired = (HireDecision.Hired) decision;
 		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock());
 		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock());
+		// a hungry villager stays hungry when hired, and an unhoused one starts unhoused (M11)
+		data = data.withNeeds(dev.villageheart.needs.NeedsSystem.needsFor(server, v, villager, data, record));
 		install(level, villager, data);
 		VillageClaims.data(server).update(s -> s.withWorker(record));
 		return new HireResult.Hired(record);
@@ -123,15 +125,33 @@ public final class Workers {
 		}
 	}
 
-	private static final Set<Villager> TRIPS = Collections.newSetFromMap(new WeakHashMap<>());
+	/** Villager -> game time the running trip last ticked. */
+	private static final java.util.Map<Villager, Long> TRIPS = new WeakHashMap<>();
+	/** A trip ticks every game tick; a flag older than this belongs to a behaviour that was dropped without its stop (a brain rebuilt mid-trip). */
+	private static final long TRIP_STALE_TICKS = 100;
 
-	/** True while a deposit trip runs for this worker: nothing else may take its walk target, and no second trip may start. */
-	public static boolean tripRunning(Villager v) { return TRIPS.contains(v); }
-
-	static void setTripRunning(Villager v, boolean running) {
-		if (running) TRIPS.add(v); else TRIPS.remove(v);
+	/**
+	 * True while a deposit trip runs for this worker: nothing else may take its walk target, and no second trip may start. The flag carries the
+	 * time of the trip's last tick: when the brain is rebuilt during a trip the behaviour never stops, and a flag that stayed set would keep the
+	 * worker out of work for good (no job ticks while a trip "runs"), silently.
+	 */
+	public static boolean tripRunning(Villager v) {
+		Long at = TRIPS.get(v);
+		if (at == null) return false;
+		if (v.level().getGameTime() - at > TRIP_STALE_TICKS) {
+			TRIPS.remove(v);
+			dev.villageheart.VillageHeart.LOG.warn("[trip] stale trip flag cleared for worker {} (no trip tick for {} ticks)", v.getUUID(), v.level().getGameTime() - at);
+			return false;
+		}
+		return true;
 	}
 
+	/** A trip flag with no trip behind it, as a dropped behaviour leaves it (tests). */
+	public static void markTripRunningForTest(Villager v) { setTripRunning(v, true); }
+
+	static void setTripRunning(Villager v, boolean running) {
+		if (running) TRIPS.put(v, v.level().getGameTime()); else TRIPS.remove(v);
+	}
 	private static final Map<UUID, WorkerStatus> TRIP_STATUS = new HashMap<>();
 
 	/** Transient result of the worker's last deposit trip (null clears it). Not saved. */
@@ -146,9 +166,18 @@ public final class Workers {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
 		if (slot != WorkerStatus.OK) return slot;
+		if (tooHungry(server, record)) return WorkerStatus.TOO_HUNGRY;
 		if (trip != null) return trip;
 		WorkerStatus job = dev.villageheart.worker.job.WorkerStatuses.get(record.villager());
 		return job == null ? WorkerStatus.OK : job;
+	}
+
+	/** Two missed dinners: the worker stops working until it has eaten (M11). Read from the loaded worker's needs. */
+	private static boolean tooHungry(MinecraftServer server, WorkerRecord record) {
+		Villager v = WorkerSystem.findLoaded(server, record.villager());
+		if (v == null) return false;
+		WorkerData d = v.getAttached(WorkerAttachments.WORKER);
+		return d != null && d.needs().hungryDays() >= 2;
 	}
 
 	private static WorkerStatus slotStatus(MinecraftServer server, WorkerRecord record) {
