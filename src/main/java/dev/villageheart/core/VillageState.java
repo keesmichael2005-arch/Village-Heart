@@ -12,6 +12,9 @@ import java.util.Set;
 import java.util.UUID;
 import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.defence.DefenceSite;
+import dev.villageheart.core.guard.GuardShift;
+import dev.villageheart.core.guard.Shift;
+import dev.villageheart.core.guard.ShiftBalancer;
 
 /**
  * Immutable snapshot of the one claimed village.
@@ -22,7 +25,15 @@ import dev.villageheart.core.defence.DefenceSite;
  */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
+		Map<UUID, GuardShift> guardShifts) {
+
+	/** Without guard shifts (the shape before M18). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, Map.of());
+	}
 
 	/** Without defence sites (the shape before M21). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
@@ -64,6 +75,8 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		treeTasks = List.copyOf(treeTasks);
 		builds = List.copyOf(builds);
 		defences = List.copyOf(defences);
+		Objects.requireNonNull(guardShifts, "guardShifts");
+		guardShifts = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(guardShifts));
 		Set<UUID> seenDefences = new HashSet<>();
 		for (DefenceSite d : defences) {
 			if (!seenDefences.add(d.id())) throw new IllegalArgumentException("two defence sites share the id " + d.id());
@@ -135,7 +148,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences);
+				newBuildings, newWorkers, treeTasks, builds, defences, guardShifts);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -307,7 +320,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(w, "worker");
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.add(w);
-		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, copy);
+		return withWorkersRebalanced(copy);
 	}
 
 	/** Remove the record of {@code villager}; a no-op when there is none. */
@@ -315,7 +328,42 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (worker(villager).isEmpty()) return this;
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.removeIf(o -> o.villager().equals(villager));
-		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, copy);
+		return withWorkersRebalanced(copy);
+	}
+
+	// ---- guard shifts (M18) ----
+
+	/** The guards in hiring order (the list order of the records). */
+	public List<UUID> guardIds() {
+		return guardIds(workers);
+	}
+
+	private static List<UUID> guardIds(List<WorkerRecord> records) {
+		List<UUID> out = new ArrayList<>();
+		for (WorkerRecord w : records) if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) out.add(w.villager());
+		return out;
+	}
+
+	/** The shift of a guard (auto or pinned); empty for a villager that is no guard. */
+	public Optional<GuardShift> guardShift(UUID villager) { return Optional.ofNullable(guardShifts.get(villager)); }
+
+	private VillageState withWorkersRebalanced(List<WorkerRecord> next) {
+		Map<UUID, GuardShift> shifts = ShiftBalancer.rebalance(guardIds(next), guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, next, treeTasks, builds, defences, shifts);
+	}
+
+	/** Pins a guard to a shift, or (empty) back to automatic keeping the side it is on; a no-op for a villager that is no guard. */
+	public VillageState withGuardPin(UUID villager, Optional<Shift> pin) {
+		GuardShift now = guardShifts.get(villager);
+		if (now == null) return this;
+		Map<UUID, GuardShift> next = new java.util.LinkedHashMap<>(guardShifts);
+		next.put(villager, pin.map(sh -> new GuardShift(sh, true)).orElse(new GuardShift(now.shift(), false)));
+		return withGuardShifts(ShiftBalancer.rebalance(guardIds(), next));
+	}
+
+	/** Replaces the shift map as given (the codec rebalances on load). */
+	public VillageState withGuardShifts(Map<UUID, GuardShift> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next);
 	}
 
 	public List<WorkerRecord> workersAt(HeartLocation building) {
@@ -329,7 +377,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, guardShifts);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -337,7 +385,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, guardShifts);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -380,7 +428,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, guardShifts);
 	}
 
 	// ---- defence sites (M21) ----
@@ -408,7 +456,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, guardShifts);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

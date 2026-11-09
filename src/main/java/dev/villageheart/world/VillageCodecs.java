@@ -221,7 +221,20 @@ public final class VillageCodecs {
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
-			java.util.List<dev.villageheart.core.defence.DefenceSite> defences) {}
+			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<GuardShiftEntry> guardShifts) {}
+
+	/** One saved guard shift (M18): the villager, the shift id and whether it is pinned. */
+	public record GuardShiftEntry(UUID villager, dev.villageheart.core.guard.Shift shift, boolean pinned) {}
+
+	private static final Codec<dev.villageheart.core.guard.Shift> SHIFT = Codec.STRING.comapFlatMap(
+			id -> dev.villageheart.core.guard.Shift.byId(id).map(DataResult::success).orElseGet(() -> DataResult.error(() -> "Unknown guard shift " + id)),
+			dev.villageheart.core.guard.Shift::id);
+
+	public static final Codec<GuardShiftEntry> GUARD_SHIFT_ENTRY = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("villager").forGetter(GuardShiftEntry::villager),
+			SHIFT.fieldOf("shift").forGetter(GuardShiftEntry::shift),
+			Codec.BOOL.optionalFieldOf("pinned", false).forGetter(GuardShiftEntry::pinned)
+	).apply(i, GuardShiftEntry::new));
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -236,20 +249,28 @@ public final class VillageCodecs {
 			WORKER.listOf().optionalFieldOf("workers", java.util.List.of()).forGetter(Raw::workers),
 			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
 			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds),
-			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences)
+			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences),
+			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(Raw::guardShifts)
 	).apply(i, Raw::new));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
+			java.util.Map<UUID, dev.villageheart.core.guard.GuardShift> saved = new java.util.LinkedHashMap<>();
+			for (GuardShiftEntry e : r.guardShifts()) saved.putIfAbsent(e.villager(), new dev.villageheart.core.guard.GuardShift(e.shift(), e.pinned()));
+			java.util.List<UUID> guards = new java.util.ArrayList<>();
+			for (WorkerRecord w : r.workers()) if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) guards.add(w.villager());
+			// a map that does not match the records is brought in line once, here
+			var shifts = dev.villageheart.core.guard.ShiftBalancer.rebalance(guards, saved);
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), shifts));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(),
+			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList())));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(
