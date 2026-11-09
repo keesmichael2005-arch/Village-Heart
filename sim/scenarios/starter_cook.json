@@ -36,6 +36,7 @@
     "treasury <= treasury@prev - 2 from day 3",
     "min(work.farmer.harvested) > 0 from day 3",
     "sum(work.workers.not_ticking) == 0 from day 1",
+    "max(work.workers.max_heart_distance) < 150 from day 1",
     "sum(work.cook.items) >= 40 from day 2",
     "sum(food.eaten_nutrition) / sum(food.eaten_items) > sum(food.eaten_nutrition@base) / sum(food.eaten_items@base) from day 3",
     "village_ms.mean < 1 on every day"

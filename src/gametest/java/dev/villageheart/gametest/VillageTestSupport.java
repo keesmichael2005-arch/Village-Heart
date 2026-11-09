@@ -45,6 +45,9 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.Workers.setJobSiteSourceForTest(null);
 		WorkerTestSupport.discardSpawned(h.getLevel());
 		dev.villageheart.worker.lumber.LumberRuntime.resetForTests();
+		dev.villageheart.worker.gear.SelfCraftRuntime.resetForTests();
+		dev.villageheart.worker.gear.SelfCraftSwitch.reset();
+		dev.villageheart.worker.gear.SmithService.CURRENT.clear();
 		dev.villageheart.build.BuildRuntime.resetForTests();
 		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();

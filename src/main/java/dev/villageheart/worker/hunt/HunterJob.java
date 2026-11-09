@@ -91,6 +91,7 @@ public final class HunterJob {
 		if (data == null || data.job() != JobType.HUNTER) return;
 		if (AwayTrips.isAway(v)) return; // hidden: HunterSystem steps it
 		if (Workers.tripRunning(v)) return; // a deposit trip owns the walk
+		if (dev.villageheart.worker.gear.SelfCraftJob.tick(level, v, now)) return; // making its own sword (M19a)
 		State ws = state(v.getUUID());
 		AwayHauls.flushPending(v);
 		if (ws.decision == null || now - ws.lastPlan >= PLAN_INTERVAL) plan(level, v, data, ws, now);
@@ -98,6 +99,7 @@ public final class HunterJob {
 	}
 
 	public static void stop(ServerLevel level, Villager v) {
+		dev.villageheart.worker.gear.SelfCraftJob.stop(level, v);
 		State ws = STATES.get(v.getUUID());
 		if (ws == null) return;
 		ws.walk.release(v);

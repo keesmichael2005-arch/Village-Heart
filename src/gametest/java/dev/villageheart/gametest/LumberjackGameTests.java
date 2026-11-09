@@ -767,6 +767,8 @@ public class LumberjackGameTests {
 			base[0] = growOak(h, treeRel, 1L);
 			logs[0] = logsOf(h, base[0]);
 			lightYard(h);
+			// M19a: this test is about the old "Needs <tool>" row (no tool, nothing to make one from is a *different* row now); self-crafting is not its subject
+			dev.villageheart.worker.gear.SelfCraftSwitch.off();
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
 			t0[0] = h.getTick();

@@ -80,6 +80,7 @@ public final class SimulationRun implements Host {
 	private MinecraftServer server;
 	private ServerLevel level;
 	private SimPlayer player;
+	private SimTickets tickets;
 	private SimMetricsCollector collector;
 	private SimClock clock;
 	private int stateTicks;
@@ -191,8 +192,9 @@ public final class SimulationRun implements Host {
 			seed = level.getSeed();
 			collector = new SimMetricsCollector(level, null, Balance.CLAIM_RADIUS);
 			collector.register();
+			tickets = new SimTickets(level);
 			if (request.resume()) {
-				SimWorld.forceLoad(level, structure);
+				SimWorld.forceLoad(level, heart != null ? heart : structure);
 				state = State.WAIT_RESUME;
 				VillageHeart.LOG.info("[sim] resuming after day {} at {}", stoppedAfterDayOfResume(), heart.toShortString());
 			} else {
@@ -251,6 +253,12 @@ public final class SimulationRun implements Host {
 		player = SimPlayer.join(server, level, stand);
 		for (ScenarioAction a : schedule.setupActions()) runAction(a);
 		schedule.markSetupDone();
+		if (heart != null) {
+			// from now on the static square follows the Heart (the same chunks on seed 1, where the Heart is in the start chunk)
+			SimWorld.recentre(level, structure, heart);
+			VillageHeart.LOG.info("[sim] forced area: +-{} chunks around the Heart's chunk {}; hired workers carry a +-{}-chunk ticking ticket",
+					SimWorld.LOAD_RADIUS_CHUNKS, SimTickets.chunkOf(heart), dev.villageheart.core.sim.SimArea.FOLLOW_TICKING_CHUNKS);
+		}
 		level.setDayTime(0);
 		// dinner of day index 0 must fire whatever the dinner system did during setup (M11 plan 3.2 #3)
 		if (VillageClaims.current(server).isPresent()) {
@@ -309,6 +317,7 @@ public final class SimulationRun implements Host {
 	private void running() {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
+		if (now % dev.villageheart.core.sim.SimArea.FOLLOW_INTERVAL_TICKS == 0) StarterActions.followWorkers(this, tickets);
 		if (now % 100 == 0) StarterActions.maintain(this);
 		if (resumeLogAt >= 0 && now >= resumeLogAt) {
 			resumeLogAt = -1;

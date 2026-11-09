@@ -1,7 +1,10 @@
 package dev.villageheart.sim;
 
 import com.mojang.datafixers.util.Pair;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.ClaimRules;
+import dev.villageheart.core.sim.SimArea;
+import dev.villageheart.core.sim.SimArea.Chunk;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -18,6 +21,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /** The fixed world facts of a simulation: seed, owner, and how the village is found. */
@@ -28,8 +32,12 @@ final class SimWorld {
 	/** Fixed so a resumed run is the same owner and gets its player data back. */
 	static final UUID OWNER_UUID = UUID.nameUUIDFromBytes("villageheart-sim-owner".getBytes(StandardCharsets.UTF_8));
 	static final String OWNER_NAME = "SimOwner";
-	/** +-6 chunks (13x13): the claim reaches 80 blocks from the Heart and workers stroll beyond their workplaces; a villager in a loaded chunk that does not tick is frozen for good. */
-	static final int LOAD_RADIUS_CHUNKS = 6;
+	/**
+	 * Static ticking square, in chunks: +-6 around the Heart's chunk covers the 80-block claim from any spot in that chunk plus one chunk
+	 * ({@link SimArea#staticRadiusChunks}). Before the claim the same square is centred on the village start, so the bell and the site can be found.
+	 * Workers that walk past it are followed by {@link SimTickets} (a player's simulation distance), so they never freeze at its edge.
+	 */
+	static final int LOAD_RADIUS_CHUNKS = SimArea.staticRadiusChunks(Balance.CLAIM_RADIUS);
 
 	/** Nearest plains village start within 100 chunks of spawn (the position is a chunk's block, not structure bounds). */
 	static Optional<BlockPos> locate(ServerLevel level) {
@@ -40,23 +48,24 @@ final class SimWorld {
 		return hit == null ? Optional.empty() : Optional.of(hit.getFirst());
 	}
 
+	private static Set<Chunk> area(BlockPos around) { return SimArea.square(SimTickets.chunkOf(around), LOAD_RADIUS_CHUNKS); }
+
 	/** Force-loads (and keeps loaded) the chunks around the village. */
 	static void forceLoad(ServerLevel level, BlockPos around) {
-		ChunkPos c = new ChunkPos(around);
-		for (int dx = -LOAD_RADIUS_CHUNKS; dx <= LOAD_RADIUS_CHUNKS; dx++) {
-			for (int dz = -LOAD_RADIUS_CHUNKS; dz <= LOAD_RADIUS_CHUNKS; dz++) {
-				level.setChunkForced(c.x + dx, c.z + dz, true);
-			}
-		}
+		for (Chunk c : area(around)) level.setChunkForced(c.x(), c.z(), true);
+	}
+
+	/** Moves the forced square from {@code from} (the village start) to {@code to} (the Heart): chunks only in the old square are released. */
+	static void recentre(ServerLevel level, BlockPos from, BlockPos to) {
+		Set<Chunk> next = area(to);
+		for (Chunk c : area(from)) if (!next.contains(c)) level.setChunkForced(c.x(), c.z(), false);
+		for (Chunk c : next) level.setChunkForced(c.x(), c.z(), true);
 	}
 
 	/** True once every forced chunk around the village is entity-ticking: the chunks are promoted over the first seconds, and a site search before that is not deterministic. */
 	static boolean forcedChunksTicking(ServerLevel level, BlockPos around) {
-		ChunkPos c = new ChunkPos(around);
-		for (int dx = -LOAD_RADIUS_CHUNKS; dx <= LOAD_RADIUS_CHUNKS; dx++) {
-			for (int dz = -LOAD_RADIUS_CHUNKS; dz <= LOAD_RADIUS_CHUNKS; dz++) {
-				if (!level.isPositionEntityTicking(new ChunkPos(c.x + dx, c.z + dz).getMiddleBlockPosition(level.getSeaLevel()))) return false;
-			}
+		for (Chunk c : area(around)) {
+			if (!level.isPositionEntityTicking(new ChunkPos(c.x(), c.z()).getMiddleBlockPosition(level.getSeaLevel()))) return false;
 		}
 		return true;
 	}

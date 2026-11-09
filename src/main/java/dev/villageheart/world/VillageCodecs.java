@@ -217,6 +217,49 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(out);
 	}
 
+	private static final Codec<dev.villageheart.core.gear.ItemCount> ITEM_COUNT = RecordCodecBuilder.create(i -> i.group(
+			Codec.STRING.fieldOf("id").forGetter(dev.villageheart.core.gear.ItemCount::id),
+			Codec.INT.fieldOf("count").forGetter(dev.villageheart.core.gear.ItemCount::count)
+	).apply(i, (id, n) -> new dev.villageheart.core.gear.ItemCount(id, Math.max(0, n))));
+
+	private record RawSelfCraft(UUID worker, String recipe, HeartLocation building, String need, int slot, int progress,
+			java.util.List<dev.villageheart.core.gear.ItemCount> committed, boolean refundPending) {}
+
+	private static final Codec<RawSelfCraft> RAW_SELF_CRAFT = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("worker").forGetter(RawSelfCraft::worker),
+			Codec.STRING.fieldOf("recipe").forGetter(RawSelfCraft::recipe),
+			HEART_LOCATION.fieldOf("building").forGetter(RawSelfCraft::building),
+			Codec.STRING.fieldOf("need").forGetter(RawSelfCraft::need),
+			Codec.INT.optionalFieldOf("slot", 0).forGetter(RawSelfCraft::slot),
+			Codec.INT.optionalFieldOf("progress", 0).forGetter(RawSelfCraft::progress),
+			ITEM_COUNT.listOf().optionalFieldOf("committed", java.util.List.of()).forGetter(RawSelfCraft::committed),
+			Codec.BOOL.optionalFieldOf("refund_pending", false).forGetter(RawSelfCraft::refundPending)
+	).apply(i, RawSelfCraft::new));
+
+	/**
+	 * A saved self-craft (M19a). Progress above the recipe's ticks is clamped; a negative progress, an unknown recipe or an unknown need loads
+	 * with {@code refund_pending} so the committed items are refunded, never silently dropped.
+	 */
+	public static final Codec<dev.villageheart.core.gear.SelfCraft> SELF_CRAFT = RAW_SELF_CRAFT.xmap(r -> {
+		java.util.Optional<dev.villageheart.core.gear.ToolRecipe> recipe = dev.villageheart.core.gear.ToolRecipes.byOutput(r.recipe());
+		dev.villageheart.core.gear.GearNeed need = null;
+		for (dev.villageheart.core.gear.GearNeed n : dev.villageheart.core.gear.GearNeed.values()) if (n.name().equalsIgnoreCase(r.need())) need = n;
+		boolean bad = recipe.isEmpty() || need == null || r.progress() < 0 || r.slot() < 0;
+		if (bad) LOG.warn("Village save: bad self-craft of {} ({} / {} / progress {}): refunding it", r.worker(), r.recipe(), r.need(), r.progress());
+		int progress = recipe.isPresent() ? Math.max(0, Math.min(r.progress(), recipe.get().tier().selfTicks())) : 0;
+		return new dev.villageheart.core.gear.SelfCraft(r.worker(), new dev.villageheart.core.gear.GearCraft(r.recipe(),
+				new dev.villageheart.core.gear.OrderKey(r.building(), need == null ? dev.villageheart.core.gear.GearNeed.AXE : need, Math.max(0, r.slot())),
+				progress, r.committed()), r.refundPending() || bad);
+	}, s -> new RawSelfCraft(s.worker(), s.craft().recipeId(), s.craft().key().building(), s.craft().key().need().name().toLowerCase(Locale.ROOT),
+			s.craft().key().slot(), s.craft().progress(), s.craft().committed(), s.refundPending()));
+
+	/** The first record wins when two share a worker. */
+	private static java.util.List<dev.villageheart.core.gear.SelfCraft> dedupeSelfCrafts(java.util.List<dev.villageheart.core.gear.SelfCraft> in) {
+		java.util.Map<UUID, dev.villageheart.core.gear.SelfCraft> byWorker = new java.util.LinkedHashMap<>();
+		for (var c : in) byWorker.putIfAbsent(c.worker(), c);
+		return java.util.List.copyOf(byWorker.values());
+	}
+
 	/** The heat banked at one smoker (M13); a negative heat is an error for that entry only (the lenient list drops it). */
 	private record SmokerHeat(HeartLocation smoker, int heat) {}
 
@@ -241,7 +284,8 @@ public final class VillageCodecs {
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
-			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<SmokerHeat> smokerHeat) {}
+			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
+			java.util.List<SmokerHeat> smokerHeat) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(Raw::heart),
@@ -257,6 +301,7 @@ public final class VillageCodecs {
 			TREE_TASK.listOf().optionalFieldOf("tree_tasks", java.util.List.of()).forGetter(Raw::treeTasks),
 			lenientList(BUILD).optionalFieldOf("builds", java.util.List.of()).forGetter(Raw::builds),
 			lenientList(DEFENCE_SITE).optionalFieldOf("defences", java.util.List.of()).forGetter(Raw::defences),
+			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(Raw::selfCrafts),
 			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(Raw::smokerHeat)
 	).apply(i, Raw::new));
 
@@ -265,12 +310,12 @@ public final class VillageCodecs {
 			MemberRepair.Result m = MemberRepair.repair(r.owner(), r.ranks(), r.known());
 			if (!m.dropped().isEmpty()) LOG.warn("Village save: dropped or demoted players to fit the member limits: {}", m.dropped());
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), heatMap(r.smokerHeat())));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), heatMap(r.smokerHeat())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), heatList(v.smokerHeat()))));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), heatList(v.smokerHeat()))));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(

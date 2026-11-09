@@ -35,6 +35,8 @@ import net.minecraft.world.item.crafting.SingleRecipeInput;
  */
 public class CookGameTests {
 	private static final String YARD = BuildingTestSupport.YARD;
+	/** Mutation probes (reviewer r1): flip to true to see a watch go red. */
+	private static final boolean PROBE = false;
 
 	private static void finish(GameTestHelper h) {
 		VillageTestSupport.done(h);
@@ -72,6 +74,8 @@ public class CookGameTests {
 			h.assertTrue(sawLit[0], "the smoker was lit while cooking");
 			h.assertTrue(WorkStats.get("cook", "items") - items0[0] == 13, "work.cook.items " + (WorkStats.get("cook", "items") - items0[0]));
 			h.assertTrue(itemEntities(h) == 0, "nothing was dropped into the world");
+			h.assertValueEqual((int) (13L * dev.villageheart.core.Balance.milliXpPerUnit(dev.villageheart.core.job.WorkUnit.ITEM_COOKED) / 1000),
+					dev.villageheart.worker.WorkerAttachments.get(cook[0]).orElseThrow().xp(), "M15: XP per output item (ITEM_COOKED)");
 		}).thenWaitUntil(() -> {
 			h.assertTrue(carried(cook[0], Items.COOKED_BEEF) == 0 && carried(cook[0], Items.BREAD) == 0 && carried(cook[0], Items.COAL) == 0
 					&& carried(cook[0], Items.BEEF) == 0, "the cook's hands are empty: " + cook[0].getInventory());
@@ -87,6 +91,20 @@ public class CookGameTests {
 		Villager[] cook = new Villager[1];
 		long[] t0 = new long[1];
 		int[] samples = new int[1];
+		boolean[] watch = new boolean[1];
+		List<String> problems = new ArrayList<>();
+		// a failed assertion inside thenWaitUntil is swallowed and retried: the watch records its findings and asserts the list afterwards
+		h.onEachTick(() -> {
+			if (!watch[0] || cook[0] == null || (h.getTick() - t0[0]) % 20 != 0) return;
+			samples[0]++;
+			if (count(h, Items.BEEF) != 10 || count(h, Items.WHEAT) != 9) problems.add("@" + h.getTick() + " raw food moved");
+			if (count(h, Items.COOKED_BEEF) != 0 || count(h, Items.BREAD) != 0 || carried(cook[0], Items.COOKED_BEEF) != 0) problems.add("@" + h.getTick() + " something was cooked");
+			if (carried(cook[0], Items.BEEF) != 0 || carried(cook[0], Items.WHEAT) != 0) problems.add("@" + h.getTick() + " raw food carried");
+			if (lit(h)) problems.add("@" + h.getTick() + " the smoker is lit");
+			if (itemEntities(h) != 0) problems.add("@" + h.getTick() + " an item was dropped");
+			if (reservedBy(h, cook[0].getUUID(), Items.BEEF) != 0) problems.add("@" + h.getTick() + " a reservation is held");
+			if (PROBE) problems.add("probe");
+		});
 		scene(h).thenExecute(() -> {
 			putStore(h, Items.BEEF, 10);
 			putStore(h, Items.WHEAT, 9);
@@ -101,19 +119,14 @@ public class CookGameTests {
 					h.assertValueEqual("Needs fuel", dev.villageheart.worker.job.WorkerStatusText.of(WorkerStatus.NEEDS_FUEL, dev.villageheart.core.worker.JobType.COOK).getString(), "text");
 					t0[0] = h.getTick();
 				})
-				.thenWaitUntil(() -> {
-					if ((h.getTick() - t0[0]) % 100 == 0) {
-						samples[0]++;
-						h.assertTrue(count(h, Items.BEEF) == 10 && count(h, Items.WHEAT) == 9, "the raw food is untouched");
-						h.assertTrue(count(h, Items.COOKED_BEEF) == 0 && count(h, Items.BREAD) == 0 && carried(cook[0], Items.COOKED_BEEF) == 0, "nothing cooked");
-						h.assertTrue(carried(cook[0], Items.BEEF) == 0 && carried(cook[0], Items.WHEAT) == 0, "the cook carries no raw food");
-						h.assertFalse(lit(h), "the smoker never lights");
-						h.assertTrue(itemEntities(h) == 0, "nothing dropped");
-						h.assertTrue(reservedBy(h, cook[0].getUUID(), Items.BEEF) == 0, "no reservation held");
-					}
-					h.assertTrue(h.getTick() - t0[0] >= 3000, "watching");
-				})
 				.thenExecute(() -> {
+					t0[0] = h.getTick();
+					watch[0] = true;
+				})
+				.thenIdle(3000)
+				.thenExecute(() -> {
+					watch[0] = false;
+					h.assertTrue(problems.isEmpty(), "the no-fuel watch saw: " + problems);
 					h.assertTrue(samples[0] >= 25, "sampled " + samples[0]);
 					h.assertTrue(((net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(kitchenChest()))).countItem(Items.COAL) == 4, "the Kitchen chest's coal is not fuel");
 					putStore(h, Items.COAL, 1);
@@ -368,12 +381,92 @@ public class CookGameTests {
 				});
 	}
 
+	// ---- needs: a cook that is unpaid or hungry (reviewer r1) -------------------------------------------
+
+	/** An unpaid cook is on strike: it fetches and cooks nothing and holds no reservation; once the treasury pays it, it cooks. */
+	@GameTest(environment = "villageheart-gametest:cook_strike", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void strikingCookMakesNothing(GameTestHelper h) {
+		Villager[] cook = new Villager[1];
+		boolean[] watch = new boolean[1];
+		long[] t0 = new long[1];
+		List<String> problems = new ArrayList<>();
+		h.onEachTick(() -> {
+			if (!watch[0] || cook[0] == null || (h.getTick() - t0[0]) % 20 != 0) return;
+			if (count(h, Items.COOKED_BEEF) != 0 || carried(cook[0], Items.COOKED_BEEF) != 0) problems.add("@" + h.getTick() + " cooked");
+			if (count(h, Items.BEEF) != 8 || carried(cook[0], Items.BEEF) != 0) problems.add("@" + h.getTick() + " beef moved");
+			if (reservedBy(h, cook[0].getUUID(), Items.BEEF) != 0 || reservedBy(h, cook[0].getUUID(), Items.COAL) != 0) problems.add("@" + h.getTick() + " a reservation");
+			if (lit(h)) problems.add("@" + h.getTick() + " lit");
+			if (status(h, cook[0]) != WorkerStatus.ON_STRIKE) problems.add("@" + h.getTick() + " status " + status(h, cook[0]));
+		});
+		scene(h).thenExecute(() -> {
+			NeedsTestHooks.enableWages(); // the hire is charged: treasury 0, so the cook is a striker from its first tick
+			putStore(h, Items.BEEF, 8);
+			putStore(h, Items.COAL, 1);
+			setDayTime(h, 1000);
+			cook[0] = hire(h);
+			t0[0] = h.getTick();
+			watch[0] = true;
+		}).thenIdle(1200).thenExecute(() -> {
+			watch[0] = false;
+			h.assertTrue(problems.isEmpty(), "the striking cook did something: " + problems);
+			WageTestSupport.deposit(h, 1);
+			t0[0] = h.getTick();
+		}).thenWaitUntil(() -> h.assertTrue(count(h, Items.COOKED_BEEF) + carried(cook[0], Items.COOKED_BEEF) >= 1, "once paid it cooks"))
+				.thenExecute(() -> {
+					h.assertTrue(h.getTick() - t0[0] <= cookBound(1, 1), "the first item after the pay within the bound: " + (h.getTick() - t0[0]));
+					finish(h);
+				});
+	}
+
+	/** A hungry, unhoused cook (x0.5 x 0.75) makes an item every 333 ticks, not 125. */
+	@GameTest(environment = "villageheart-gametest:cook_hungry", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void hungryCookIsSlower(GameTestHelper h) {
+		Villager[] cook = new Villager[1];
+		scene(h).thenExecute(() -> {
+			NeedsTestHooks.enable();
+			setDayTime(h, 1000);
+			cook[0] = hire(h, BuildingTestSupport.inside(KITCHEN, 1, 0, 0));
+			dev.villageheart.food.DietAttachments.write(cook[0], new dev.villageheart.core.needs.Diet(
+					dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().claimedAtGameTime(), 1, 0, 0));
+			dev.villageheart.needs.NeedsSystem.mirror(h.getLevel().getServer(), dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow());
+			cook[0].getInventory().addItem(new ItemStack(Items.BEEF, 4));
+			cook[0].getInventory().addItem(new ItemStack(Items.COAL, 1));
+			double speed = dev.villageheart.worker.WorkerAttachments.get(cook[0]).orElseThrow().needs().speed();
+			h.assertTrue(Math.abs(speed - 0.375) < 1e-9, "hungry and unhoused: speed " + speed);
+		}).thenWaitUntil(() -> h.assertTrue(unitsOf(h, cook[0]).size() >= 4, "units " + unitsOf(h, cook[0]).size()))
+				.thenExecute(() -> {
+					List<Long> t = unitsOf(h, cook[0]);
+					for (int i = 1; i < 4; i++) {
+						long gap = t.get(i) - t.get(i - 1);
+						h.assertTrue(Math.abs(gap - 333.33) <= 1.5, "gap " + i + " is " + gap + ", expected 333 (125 / 0.375)");
+					}
+					log("hungryCookIsSlower: gaps " + t);
+					finish(h);
+				});
+	}
+
 	// ---- T-L2-5 two cooks -------------------------------------------------------------------------------
 
 	/** Two cooks planning together never double-claim: reservations stay within the stock, nothing is lost, and the heat is conserved. */
 	@GameTest(environment = "villageheart-gametest:cook_two", structure = YARD, skyAccess = true, maxTicks = 5000)
 	public void twoCooksShareReservations(GameTestHelper h) {
 		Villager[] cooks = new Villager[2];
+		boolean[] watch = new boolean[1];
+		long[] maxReserved = new long[1];
+		List<String> problems = new ArrayList<>();
+		// per-tick sampler (a failed assertion in thenWaitUntil would be swallowed): findings are recorded and asserted afterwards
+		h.onEachTick(() -> {
+			if (!watch[0] || cooks[0] == null || cooks[1] == null) return;
+			var key = dev.villageheart.stock.StackKey.of(Items.BEEF);
+			var res = Stockpiles.reservations(h.getLevel().getServer());
+			long claimed = res.reservedBy(cooks[0].getUUID(), key) + res.reservedBy(cooks[1].getUUID(), key);
+			maxReserved[0] = Math.max(maxReserved[0], claimed);
+			long total = count(h, Items.BEEF) + count(h, Items.COOKED_BEEF) + carried(cooks[0], Items.BEEF) + carried(cooks[0], Items.COOKED_BEEF)
+					+ carried(cooks[1], Items.BEEF) + carried(cooks[1], Items.COOKED_BEEF);
+			if (total != 12) problems.add("@" + h.getTick() + " accounted " + total);
+			if (claimed > 12) problems.add("@" + h.getTick() + " claimed " + claimed + " of 12");
+			if (claimed > count(h, Items.BEEF)) problems.add("@" + h.getTick() + " claimed " + claimed + " of " + count(h, Items.BEEF) + " in stock");
+		});
 		scene(h).thenExecute(() -> {
 			h.setBlock(smoker2(), net.minecraft.world.level.block.Blocks.SMOKER);
 			putStore(h, Items.BEEF, 12);
@@ -382,23 +475,29 @@ public class CookGameTests {
 		}).thenIdle(60).thenExecute(() -> {
 			cooks[0] = hire(h);
 			cooks[1] = hire(h, BuildingTestSupport.inside(KITCHEN, 3, 0, 1));
-		}).thenWaitUntil(() -> {
-			long reserved = Stockpiles.reservations(h.getLevel().getServer()).reserved(dev.villageheart.stock.StackKey.of(Items.BEEF));
-			long total = count(h, Items.BEEF) + count(h, Items.COOKED_BEEF) + carried(cooks[0], Items.BEEF) + carried(cooks[0], Items.COOKED_BEEF)
-					+ carried(cooks[1], Items.BEEF) + carried(cooks[1], Items.COOKED_BEEF);
-			h.assertTrue(total == 12, "every beef is accounted for once: " + total);
-			h.assertTrue(reserved <= count(h, Items.BEEF), "reserved " + reserved + " of " + count(h, Items.BEEF));
-			h.assertTrue(count(h, Items.COOKED_BEEF) == 12, "cooked " + count(h, Items.COOKED_BEEF));
-		}).thenExecute(() -> {
-			h.assertTrue(count(h, Items.COAL) == 0, "coal " + count(h, Items.COAL));
-			var village = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow();
-			int banks = village.smokerHeat(BuildingTestSupport.loc(h, smoker())) + village.smokerHeat(BuildingTestSupport.loc(h, smoker2()));
-			h.assertTrue(banks == 2 * 1600 - 12 * 200, "the banks sum to " + banks);
-			for (var u : CookRuntime.get(h.getLevel().getServer()).unitLog()) {
-				h.assertTrue(u.at().equals(h.absolutePos(smoker())) || u.at().equals(h.absolutePos(smoker2())), "a unit at " + u.at());
-			}
-			finish(h);
-		});
+			watch[0] = true;
+		}).thenWaitUntil(() -> h.assertTrue(count(h, Items.COOKED_BEEF) == 12, "cooked " + count(h, Items.COOKED_BEEF)))
+				.thenExecute(() -> {
+					watch[0] = false;
+					h.assertTrue(problems.isEmpty(), "the two cooks' sampler saw: " + problems);
+					h.assertTrue(maxReserved[0] >= 8, "the cooks really reserved their beef: peak claim " + maxReserved[0]);
+					h.assertTrue(count(h, Items.COAL) == 0, "coal " + count(h, Items.COAL));
+					var village = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow();
+					int banks = village.smokerHeat(BuildingTestSupport.loc(h, smoker())) + village.smokerHeat(BuildingTestSupport.loc(h, smoker2()));
+					h.assertTrue(banks == 2 * 1600 - 12 * 200, "the banks sum to " + banks);
+					for (Villager c : cooks) {
+						var jb = dev.villageheart.worker.WorkerAttachments.get(c).orElseThrow().jobBlock();
+						int n = 0;
+						for (var u : CookRuntime.get(h.getLevel().getServer()).unitLog()) {
+							if (!u.cook().equals(c.getUUID())) continue;
+							n++;
+							h.assertTrue(u.at().getX() == jb.x() && u.at().getY() == jb.y() && u.at().getZ() == jb.z(), "a unit of " + c.getUUID() + " at " + u.at() + ", its smoker is " + jb);
+						}
+						h.assertTrue(n > 0, "each cook cooked something: " + n);
+					}
+					h.assertTrue(!dev.villageheart.worker.WorkerAttachments.get(cooks[0]).orElseThrow().jobBlock().equals(dev.villageheart.worker.WorkerAttachments.get(cooks[1]).orElseThrow().jobBlock()), "two smokers, two cooks");
+					finish(h);
+				});
 	}
 
 	// ---- T-L2-6 the dinner cutoff -------------------------------------------------------------------------

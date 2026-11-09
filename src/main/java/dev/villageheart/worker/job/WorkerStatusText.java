@@ -27,6 +27,8 @@ public final class WorkerStatusText {
 			case TOO_HUNGRY -> ActivityKind.TOO_HUNGRY;
 			case ON_STRIKE -> ActivityKind.ON_STRIKE;
 			case NEEDS_FUEL -> ActivityKind.NEEDS_FUEL;
+			case MAKING_WOODEN_TOOL -> ActivityKind.MAKING_WOODEN_TOOL;
+			case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 		};
 	}
 

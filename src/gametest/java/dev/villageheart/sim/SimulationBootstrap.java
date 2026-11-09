@@ -15,6 +15,7 @@ public final class SimulationBootstrap implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		SimTickets.register(); // also used by the L2 test of the follow tickets
 		String request = System.getProperty(REQUEST_PROPERTY);
 		if (request == null) return;
 		SimulationRun run = SimulationRun.start(Path.of(request));

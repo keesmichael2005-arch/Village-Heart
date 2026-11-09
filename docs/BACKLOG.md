@@ -251,8 +251,16 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
 - [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
 - [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+
+## From M19a (builder)
+- [ ] Out of scope by plan: copper or better tools (M19), shovels/spears, bows (string), a crafting-table station or held-item animation, repairing tools, XP for crafting, a Heart UI for craft times
+- [ ] M26 tuning: `SELF_TOOL_TICKS` (wooden 2400, stone 4800) and `GEAR_MIN_DURABILITY`; in a dense forest a lumberjack spends about 45 % of its time on axes (plan 3.7)
+- [ ] Wooden pickaxes mine iron (M16 rule as built): self-made wooden pickaxes make this common (plan risk 6)
+- [ ] L3 by hand when M11's `starter` scenario exists: `starter` + Mine with a miner and no tools, 10 oak logs in Storage, 5 days; report `work.<job>.tools_made.<tier>` per day (expected wooden day 1, stone from day 2)
+- [ ] M19 r3 note: the census uses lead 0 whatever `SmithService` says (the plan's 3.8 #4 gives the smith's lead when one serves); M19 passes its lead when it registers the service
+- [ ] `ToolAllocation` still ranks by tier enum order (gold below iron); unchanged here, see the tool-speed item above
 ## From M11-r5
-- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [x] (done on branch `sim-area`: Heart-centred square + follow tickets around hired workers, `work.workers.max_heart_distance < 150` asserted; 8/8 `starter 10` green, and green at a ±3 square too) (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
 - [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`
 
 ## From M12 (builder notes)
@@ -270,3 +278,17 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook: hunger pace (x0.5) is proven by L1 `CookPaceTest` and the `data.needs()` pass-through only; no L2 test drives a hungry cook's gaps
 - [ ] Cook: T-L2-6 and T-L2-7 differ from the plan (no dinner, runtime reset instead of entity reload), see the plan's section 8
 - [ ] No "baseline more than 50 commits old" warning in `simulate.sh`; only the scenario-hash guard
+- [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning
+
+## From M19a-r2
+- [ ] Under heavy CPU load (load ~14) the first L4 client-test world can stall at "Preparing spawn area" until "Timeout loading world"; passed on rerun. Longer world-load timeout, or one full verify.sh at a time across worktrees
+
+## From M13-r1
+- [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
+- [ ] Cook reservations stay held while the cook is unloaded (dinner can't see that food meanwhile)
+- [ ] After a crash, cook inventory and heat bank can disagree by one unit
+- [ ] Heat banks of smokers in no Kitchen are kept (not tied to a specific Kitchen)
+- [ ] `completeUnit` ignores the `addItem` remainder when putting inputs back
+- [ ] Cook keep rules count renamed stacks with plain ones
+- [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
+- [ ] PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
