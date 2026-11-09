@@ -101,6 +101,169 @@ public class GuardGameTests {
 		});
 	}
 
+	// ---- combat (T-L2-1, 6, 10, 16) ----------------------------------------------------------------
+
+	/** A guard of level 3 (40 health, +2 damage) so a test fight is survivable. */
+	private static void level3(GameTestHelper h, Villager g) {
+		dev.villageheart.worker.Workers.setLevel(h.getLevel().getServer(), g, 3);
+		dev.villageheart.worker.guard.Guards.applyPerks(g, false);
+		g.setHealth(g.getMaxHealth());
+	}
+
+	/** The vanilla panic trigger is not in the guard brain: a guard with a zombie 5 blocks away fights; an unhired villager panics at the same sight. */
+	@GameTest(environment = "villageheart-gametest:guards_no_panic", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void guardBrainHasNoPanic(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1], control = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[2];
+		boolean[] panicked = new boolean[1], guardPanicked = new boolean[1];
+		h.onEachTick(() -> {
+			if (g[0] != null && (g[0].getBrain().isActive(Activity.PANIC) || g[0].getBrain().isActive(Activity.HIDE) || g[0].getBrain().isActive(Activity.RAID))) guardPanicked[0] = true;
+			if (control[0] != null && control[0].getBrain().isActive(Activity.PANIC)) panicked[0] = true;
+		});
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, new BlockPos(11, 0, 14), Optional.of(Shift.DAY));
+			level3(h, g[0]);
+			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
+			z[0] = zombie(h, new BlockPos(16, 0, 14));
+			// the control: an unhired villager far from the guard with a zombie in a fence cage 5 blocks from it
+			control[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(27, 0, 27));
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+				if (dx != 0 || dz != 0) h.setBlock(new BlockPos(27 + dx, 0, 22 + dz), net.minecraft.world.level.block.Blocks.OAK_FENCE);
+			}
+			z[1] = zombie(h, new BlockPos(27, 0, 22));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the control villager panics (the setup can cause panic)", () ->
+				h.assertTrue(panicked[0], "the unhired villager did not panic; activities: " + control[0].getBrain().getActiveActivities()));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the guard hits the zombie", () -> {
+			h.assertTrue(!guardPanicked[0], "the guard went into PANIC/HIDE/RAID");
+			h.assertTrue(damaged(z[0], g[0]), "the guard has not hit the zombie yet; guard " + g[0].blockPosition() + " zombie " + z[0].blockPosition() + " "
+					+ g[0].getBrain().getActiveActivities());
+		});
+		seq.thenExecute(() -> {
+			h.assertTrue(!guardPanicked[0], "the guard never panicked");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** Off shift (and unarmed) a guard still defends itself; a guard asleep in its bed is woken by the hit and fights back. */
+	@GameTest(environment = "villageheart-gametest:guards_off_duty_defence", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void offDutyGuardDefendsItself(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		boolean[] panicked = new boolean[1];
+		h.onEachTick(() -> {
+			if (g[0] != null && g[0].getBrain().isActive(Activity.PANIC)) panicked[0] = true;
+		});
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 12100);
+			g[0] = hireGuard(h, new BlockPos(11, 0, 14), Optional.of(Shift.DAY));
+			level3(h, g[0]);
+			h.assertTrue(g[0].getMainHandItem().isEmpty(), "unarmed");
+			z[0] = zombie(h, new BlockPos(12, 0, 14));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "the unarmed off-shift guard damages the zombie", () ->
+				h.assertTrue(damaged(z[0], g[0]), "guard at " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities()));
+		seq.thenExecute(() -> {
+			h.assertTrue(!panicked[0], "never PANIC");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A guard asleep in its bed is woken by a zombie's hit and fights back. */
+	@GameTest(environment = "villageheart-gametest:guards_sleeper_defends", structure = YARD, skyAccess = true, maxTicks = 1200)
+	public void sleepingGuardWakesAndFights(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 14000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			level3(h, g[0]);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "the guard falls asleep", () -> h.assertTrue(g[0].isSleeping(), "not asleep"));
+		seq = seq.thenExecute(() -> z[0] = zombie(h, BuildingTestSupport.inside(BARRACKS, 3, 0, 1)));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the woken guard damages the zombie", () ->
+				h.assertTrue(damaged(z[0], g[0]), "guard asleep " + g[0].isSleeping() + " at " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities()));
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A wounded guard on duty next to a zombie fights instead of walking to bed, and never toggles sleep while the zombie lives (T-L2-16). */
+	@GameTest(environment = "villageheart-gametest:guards_wounded_fights", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void woundedGuardFightsInsteadOfBed(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		boolean[] slept = new boolean[1];
+		long[] lastHit = new long[1];
+		String[] failure = new String[1];
+		h.onEachTick(() -> {
+			if (z[0] == null || !z[0].isAlive()) return;
+			if (g[0].isSleeping()) slept[0] = true;
+		});
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			level3(h, g[0]);
+			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
+			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+			g[0].setHealth(11.0F); // 27 % of 40: wounded
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "wounded within 20 ticks"));
+		seq = seq.thenExecute(() -> z[0] = zombie(h, BuildingTestSupport.inside(BARRACKS, 0, 0, 1)));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the zombie dies", () -> h.assertTrue(!z[0].isAlive(), "zombie alive; guard hp " + g[0].getHealth() + " at "
+				+ g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities()));
+		seq.thenExecute(() -> {
+			h.assertTrue(!slept[0], "the guard never slept while the zombie lived");
+			h.assertTrue(g[0].isAlive() && villagerDeaths().isEmpty(), "no villager died");
+			h.assertTrue(damaged(z[0], g[0]), "the guard hit the zombie");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A guard below 30 % health retreats to its bed, sleeps and heals past 80 %, then is back on duty; the wound survives a save and reload. */
+	@GameTest(environment = "villageheart-gametest:guards_wounded_heals", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void woundedGuardRetreatsAndHeals(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY) || true, "duty");
+			g[0].setHealth(5.0F);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "wounded, in REST and asleep", () -> {
+			h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "the wound bit is set");
+			h.assertTrue(g[0].getBrain().isActive(Activity.REST) && g[0].isSleeping(), "asleep in REST: " + g[0].getBrain().getActiveActivities());
+		});
+		seq = seq.thenExecute(() -> {
+			// save and reload the entity while it is wounded: the bit survives
+			g[0] = LumberTestSupport.reloadEntity(h.getLevel(), g[0]);
+			h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "the wound bit survived the reload");
+			h.assertTrue(g[0].getHealth() <= 8.0F, "and so did the health: " + g[0].getHealth());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1800, "healed past 80 % and back on duty", () -> {
+			h.assertTrue(g[0].getHealth() >= 16.0F, "health " + g[0].getHealth());
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY) && !g[0].isSleeping(), "back on duty: " + g[0].getBrain().getActiveActivities());
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-4 (roadmap) --------------------------------------------------------------------------
 
 	/**

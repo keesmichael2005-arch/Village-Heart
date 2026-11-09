@@ -45,6 +45,7 @@ public final class Guards {
 	public static void register() {
 		GuardActivities.register();
 		GuardAttachments.register();
+		GuardCombat.register();
 		// the finished Lamp Posts and Watchtowers of M21 are patrol points (BACKLOG M21, blocking for M18)
 		PatrolPoints.register(dev.villageheart.defence.Defences::patrolPoints);
 		FabricDefaultAttributeRegistry.register(EntityType.VILLAGER,
@@ -88,7 +89,8 @@ public final class Guards {
 		return switch (phaseOf(guard, level)) {
 			case DUTY -> GuardActivities.DUTY;
 			case OFF -> GuardActivities.OFF;
-			case SLEEP -> Activity.REST;
+			// DEFEND beats wounded and sleep: a guard that has a target stays awake and out of bed until the fight is over
+			case SLEEP -> GuardCombat.engaged(guard) ? GuardActivities.OFF : Activity.REST;
 		};
 	}
 

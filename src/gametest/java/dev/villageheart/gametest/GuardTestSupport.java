@@ -103,6 +103,55 @@ public final class GuardTestSupport {
 
 	public static ItemStack stack(net.minecraft.world.item.Item item) { return new ItemStack(item); }
 
+	// ---- recorders and mobs -------------------------------------------------------------------------
+
+	/** (victim, attacker) of every damage with a source entity since {@link #clearRecords}. */
+	private static final java.util.List<java.util.UUID[]> DAMAGE = new java.util.ArrayList<>();
+	/** Every villager that died since {@link #clearRecords}. */
+	private static final java.util.List<java.util.UUID> VILLAGER_DEATHS = new java.util.ArrayList<>();
+	private static boolean installed;
+
+	/** Registers the test-wide recorders once (Fabric events cannot be removed); {@link #clearRecords} empties them per test. */
+	public static void installRecorders() {
+		if (!installed) {
+			installed = true;
+			net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register((e, src, base, taken, blocked) -> {
+				if (src.getEntity() != null) DAMAGE.add(new java.util.UUID[] {e.getUUID(), src.getEntity().getUUID()});
+			});
+			net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((e, src) -> {
+				if (e instanceof Villager) VILLAGER_DEATHS.add(e.getUUID());
+			});
+		}
+		clearRecords();
+	}
+
+	public static void clearRecords() {
+		DAMAGE.clear();
+		VILLAGER_DEATHS.clear();
+	}
+
+	/** Has {@code attacker} damaged {@code victim} since the records were cleared? */
+	public static boolean damaged(net.minecraft.world.entity.Entity victim, net.minecraft.world.entity.Entity attacker) {
+		return DAMAGE.stream().anyMatch(d -> d[0].equals(victim.getUUID()) && d[1].equals(attacker.getUUID()));
+	}
+
+	public static java.util.List<java.util.UUID> villagerDeaths() { return java.util.List.copyOf(VILLAGER_DEATHS); }
+
+	/** An adult zombie that does not burn in daylight (iron helmet) and stays loaded. */
+	public static net.minecraft.world.entity.monster.zombie.Zombie zombie(GameTestHelper h, BlockPos rel) {
+		var z = h.spawn(net.minecraft.world.entity.EntityType.ZOMBIE, rel);
+		z.setBaby(false);
+		z.setPersistenceRequired();
+		z.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
+		h.assertTrue(!z.isBaby(), "the zombie is an adult");
+		return z;
+	}
+
+	public static void arm(Villager g, net.minecraft.world.item.Item sword) {
+		g.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new ItemStack(sword));
+		g.setGuaranteedDrop(net.minecraft.world.entity.EquipmentSlot.MAINHAND);
+	}
+
 	/** Puts a stack in a slot of the Barracks chest. */
 	public static void putInChest(GameTestHelper h, int slot, ItemStack stack) { LumberTestSupport.putInChest(h, chest(), slot, stack); }
 }

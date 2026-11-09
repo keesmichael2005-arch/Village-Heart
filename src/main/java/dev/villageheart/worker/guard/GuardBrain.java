@@ -41,6 +41,7 @@ public final class GuardBrain {
 				WorkerBrain.p(0, new dev.villageheart.defence.GateTraffic()),
 				WorkerBrain.p(0, new LookAtTargetSink(45, 90)),
 				WorkerBrain.p(0, WakeUp.create()),
+				WorkerBrain.p(0, new GuardCombatBehaviour()),
 				WorkerBrain.p(1, new MoveToTargetSink()),
 				WorkerBrain.p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14))),
 				WorkerBrain.p(99, new UpdateWorkerActivity())));

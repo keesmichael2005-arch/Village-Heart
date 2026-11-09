@@ -24,7 +24,7 @@ final class GuardOffBehaviour extends Behavior<Villager> {
 
 	@Override
 	protected void tick(ServerLevel level, Villager villager, long gameTime) {
-		GuardRuntime.tickOff(level, villager, gameTime);
+		if (!GuardCombat.engaged(villager)) GuardRuntime.tickOff(level, villager, gameTime);
 	}
 
 	@Override
