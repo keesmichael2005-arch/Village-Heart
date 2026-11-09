@@ -231,6 +231,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
 - [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
 - [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
+- [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
+- [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
+
 ## From M12-r2
 - [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
 - [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
@@ -248,3 +251,15 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
 - [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
 - [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+## From M11-r5
+- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`
+
+## From M12 (builder notes)
+- [ ] **No `GatedWork` wrapper** (plan 3.2 #7): a striker stops through M11's per-job speed-0 handling (planner rows and `WorkSpeed`), which every current job already honours; `core.worker.WorkGate.mayWork` exists and `StrikersProduceNothingTest` pins speed 0 for every `JobType`. A wrapper around `JobBehaviours.work` would also stop the idle walk-back of a hungry or unpaid lumberjack/farmer (M11 r2 legs), so it was left out. M13+ jobs must read `needs.speed()` themselves (or call `WorkGate.mayWork`).
+- [ ] `NeedsOverride.forceDefaultNeeds` keeps its name (plan: `forceFedAndHoused`) to keep M11's tests untouched; its Javadoc says `paid` is never forced
+- [ ] `frozenWhileHeartUnloaded` has no workers in the far village (building one 100 000 blocks away is heavy): it proves `lastWageDay` and the dawn counter do not move while unloaded and that exactly one run happens on load, not that a treasury figure stays put
+- [ ] `threeWorkersTwoEmeraldsOneStrikes` uses two farmers and one lumberjack (C, the striker, is the only chopper, so any fallen log is C's; no per-villager log watcher exists) and watches the working day's first 2 500 ticks, not all 11 000
+- [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
+- [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
+- [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`

@@ -583,6 +583,48 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
 - `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
 - Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
+
+## 2026-11-08: backlog-2 review round 2 (verifier): FAIL
+- `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
+- Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
+- Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.
+## 2026-11-09: tool-speed (builder)
+- Human decision: tool work speed follows vanilla mining speeds. `Balance.TOOL_SPEED` is now derived from `VANILLA_TOOL_SPEED` {wood 2, stone 4, copper 5, gold 12, iron 6, diamond 8, netherite 9} / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5 (gold was 1.0, a deliberate change).
+- Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
+- ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
+- Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.
+## 2026-11-08: M11 review round 4 (verifier): FAIL
+- Merged origin/dev (M21) into m11. Round-3 items 1 and 3 fixed (both new tests red under mutation).
+- Cause of the "silent stall" found: the sim force-loads only 9x9 chunks around the village start chunk (south edge z = 895, 15 blocks past the site). Morning strolls take workers up the hill to z = 896, where the chunk is not entity-ticking and they freeze for good. `starter` failed 2 of 4 runs, each with the farmer frozen at z = 896. Net (b) cannot see it (the job never ticks), and net (c) needs > 40 blocks (the farmer is 31-34).
+- The `[far-worker]` rescue teleports a builder working at a far site and a sleeper in a far House (probes). verify.sh exit 0, L2 3/3 green.
+- Next: notes in `docs/reviews/M11-r4.md` (sim forced area plus a not-ticking metric; remove or narrow net (c); drop net (b)'s teleport).
+
+## 2026-11-08: M11 round-4 fixes (builder, finisher)
+- Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
+- Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-09: M11 review round 5 (verifier): PASS
+- All four round-4 must-fix items are done. A mutation check of the new `not_ticking` assertion: red at radius 3, green at radius 4 by chance, and red naturally in one run at radius 6.
+- `starter 10`: passed 3 of 4 runs. The roadmap L3 criteria held in all 4. Run 1 failed because a farmer fled 111 blocks east at night and froze outside the forced area. That is a fixture problem, now in BACKLOG as high priority.
+- L2: 3 runs, 257/257 each. Full `verify.sh`: exit 0. The needs and overview screenshots were checked by eye. M11 is ticked in the ROADMAP. Notes: `docs/reviews/M11-r5.md`.
 ## 2026-11-07: M12 plan written (docs/plans/M12.md, branch m12-plan)
 8-step plan for the treasury and wages. APIs checked with javap against the 1.21.11 jar (no Gradle run).
 - Deposit: right-click the Heart with emeralds in the main hand (`useItemOn`; other items `TRY_WITH_EMPTY_HAND` → M8's screen) plus "Deposit all" on the Overview;

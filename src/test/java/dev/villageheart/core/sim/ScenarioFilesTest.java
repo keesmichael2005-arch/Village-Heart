@@ -30,7 +30,7 @@ class ScenarioFilesTest {
 		Scenario s = ScenarioParser.parse("starter", Files.readString(Path.of("sim/scenarios/starter.json")));
 		assertEquals(13, s.actions().size()); // M12 added `villageheart treasury add 32` (a real scenario change)
 		assertEquals(10, s.defaultDays());
-		assertEquals(13, s.assertions().size()); // M11 10 (farmer work line, not_ticking) + M12 3 wage assertions
+		assertEquals(13, s.assertions().size()); // M11 10 (incl. farmer harvest + not_ticking), M12 + 3 wage assertions
 		var hires = s.actions().stream().filter(a -> a.type().equals("hire")).toList();
 		assertEquals(2, hires.size());
 		for (var h : hires) {
