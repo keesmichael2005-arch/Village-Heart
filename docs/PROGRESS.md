@@ -818,3 +818,10 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - verify.sh: L1 and L2 each "All 341 required tests passed"; L4 timed out loading a world at load 5-10 (known flake), then was green at load 3.7 (39 screenshots, all gates 0). `two_hunters_one_ground` failed once in a standalone build (load flake candidate, BACKLOG).
 - No GameTest discards the result of `VillageTestSupport.reload(server)`.
 - Next: merge m22 into dev. Blockers: none.
+
+## 2026-11-09: M23 Population growth (builder)
+- Built on dev `9e23a95`, branch `m23`, deviations in `docs/plans/M23.md` section 8. Orchestrator decision applied: all vanilla villager breeding in the claim is blocked (`BreedingGate`: `canBreed`, `getBreedOffspring`, and the claim-bed drop in the make-love hook); growth only through the dawn licence. `GrowthStats.unlicensedBirths` is 0 in every test.
+- Saved state on `WorldClaim.growth` (optional lenient `growth` object); `VillageState` and `VillageCodecs.RAW` untouched, no ordinal enums added.
+- Probe: vanilla 100 runs 97 births 1 `TOO_FAR`, and 100 runs 100 births; licensed fixes 100 runs 100 births 0 `TOO_FAR`. The old "1 in 16" was an artefact of seeding both villagers.
+- Tests: L1 `core/growth/*Test`, `GrowthCodecsTest`; L2 `GrowthGameTests`, `GrowthCourtshipGameTests` (15), `workersCanBreed` rewritten (one window). Mutation-checked: gate, bed hook, walk fixes. Two vacuous first versions were found and fixed (see plan section 8).
+- verify.sh at `5ab85ae`: L1 unit tests and L2 "All 357 required tests passed" green, perf green. L4 failed twice with the known "Timeout loading world" at load 7-10 (no client change in M23). Next: orchestrator review. Blockers: none.
