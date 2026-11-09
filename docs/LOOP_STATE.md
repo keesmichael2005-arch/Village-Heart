@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 ~188. Run 2 (to the weekly limit, hit ~23:20Z 8 Nov): session cost_usd 871 - 188 = ~683 for 34%->100% weekly (~$10.3 per 1%). Run 3 starts at the 03:05Z 9 Nov weekly reset, from cost_usd 871"
-current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 r1 FAIL (6 items: alarm for L3 defended, retarget when hurt, flaky test, 2 missing tests, sleeper screenshot; codec 16/16 after M14 merge) -> fresh builder fixing (original worktree removed too early: keep builder worktrees until merge) | M13 MERGED (r2 PASS, e80ec5d; RAW codec now 16/16, M18 merge must split) | M14 MERGED (r1 PASS, 56c136e) | M22 r1 FAIL (1 item: vacuous reload asserts) -> builder fixing | FLAKES on dev queued (BACKLOG) | plans ready: M19 (r3, needs M13+M18), M23, M25 (r2 siege), M26"
+current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 r1 FAIL (6 items: alarm for L3 defended, retarget when hurt, flaky test, 2 missing tests, sleeper screenshot; codec 16/16 after M14 merge) -> fresh builder fixing (original worktree removed too early: keep builder worktrees until merge) | M13 MERGED (r2 PASS, e80ec5d; RAW codec now 16/16, M18 merge must split) | M14 MERGED (r1 PASS, 56c136e) | M22 r1 FAIL (1 item: vacuous reload asserts) -> builder fixing | FLAKES fix BUILD (flakes) | plans ready: M19 (r3, needs M13+M18), M23, M25 (r2 siege), M26"
 blocked: []
 decisions_by_human:
   - "2026-11-09: v1.0 gate '2 players' = M24's 1 real client + 1 server-side FakePlayer test. ACCEPTED"
