@@ -304,3 +304,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+
+## Flakes on dev (orchestrator, 2026-11-09, from the M22 builder's runs) — next free slot: a flake-fix agent
+- [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).
+- [ ] `level_game_tests_iron_axe_out_fells_stone_side_by_side`: "axe wear 112 but 110 logs felled".
+- [ ] `tier_game_tests_village_goals_tier_up_at_dawn`: "Expected one dinner to be 1: was 2".
+- [ ] L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
+Fix root causes; never loosen a bound without a written reason.
