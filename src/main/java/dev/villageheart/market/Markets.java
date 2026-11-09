@@ -68,8 +68,7 @@ public final class Markets {
 	}
 
 	/** The stockpile as the market sees it: one item per variant, claims of others subtracted, nutrition from the village's own catalog. */
-	static List<StockItem<StackKey>> stockItems(MinecraftServer server) {
-		freshViews++;
+	public static List<StockItem<StackKey>> stockItems(MinecraftServer server) {
 		StockSnapshot<StackKey> snap = Stockpiles.snapshot(server);
 		Reservations<StackKey> reserved = Stockpiles.reservations(server);
 		List<StockItem<StackKey>> out = new ArrayList<>();
@@ -87,6 +86,7 @@ public final class Markets {
 		int tick = server.getTickCount();
 		Cached c = cachedView;
 		if (!fresh && c != null && c.server == server && tick >= c.tick && tick - c.tick < dev.villageheart.core.Balance.MARKET_VIEW_TTL) return c.stock;
+		freshViews++;
 		List<StockItem<StackKey>> s = stockItems(server);
 		cachedView = new Cached(server, tick, s);
 		return s;

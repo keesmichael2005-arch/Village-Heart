@@ -82,6 +82,17 @@ public final class HeartTexts {
 		EN.put(PREFIX + "stock.line2_none", "Food: %s nutrition");
 		EN.put(PREFIX + "stock.more", "+%s more kinds");
 		EN.put(PREFIX + "stock.count", "\u00d7 %s");
+		EN.put(PREFIX + "stock.market_sold", "Market: sold %s emeralds today");
+		EN.put(PREFIX + "stock.market_none", "No merchant: nothing is sold");
+		EN.put(PREFIX + "stock.for_sale", "Up to %s for sale above the reserve");
+		EN.put(PREFIX + "reserve.label_food", "Keep: food");
+		EN.put(PREFIX + "reserve.days", "%s days");
+		EN.put(PREFIX + "reserve.label_items", "other items");
+		EN.put(PREFIX + "reserve.each", "%s each");
+		EN.put(PREFIX + "reserve.food_less", "-");
+		EN.put(PREFIX + "reserve.food_more", "+");
+		EN.put(PREFIX + "reserve.items_less", "-");
+		EN.put(PREFIX + "reserve.items_more", "+");
 		EN.put(PREFIX + "activity.working", "Working");
 		EN.put(PREFIX + "activity.idle", "Idle");
 		EN.put(PREFIX + "activity.going_home", "Going home");

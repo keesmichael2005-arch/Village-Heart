@@ -90,6 +90,7 @@ public final class HeartActions {
 			case HeartAction.Transfer t -> transfer(player, containerId, server, t);
 			case HeartAction.Deposit d -> deposit(player, containerId);
 			case HeartAction.Withdraw w -> withdraw(player, containerId, w);
+			case HeartAction.SetReserves r -> setReserves(player, containerId, server, r);
 		};
 		if (ok) {
 			HeartFacts.invalidate();
@@ -173,6 +174,14 @@ public final class HeartActions {
 			reply(player, containerId, true, "message.villageheart.treasury.deposited", "Deposited %s emeralds. Treasury: %s",
 					List.of(Integer.toString(r.accepted()), Integer.toString(r.treasuryAfter())));
 		}
+		return true;
+	}
+
+	/** The gate already checked the rank and the range. */
+	private static boolean setReserves(ServerPlayer player, int containerId, MinecraftServer server, HeartAction.SetReserves r) {
+		dev.villageheart.market.Markets.setReserves(server, r.reserves());
+		reply(player, containerId, true, "message.villageheart.market.reserves_set", "The market keeps %s days of food and %s of every other item.",
+				List.of(Integer.toString(r.foodDays()), Integer.toString(r.itemReserve())));
 		return true;
 	}
 

@@ -469,4 +469,129 @@ public class MarketGameTests {
 			finish(h);
 		});
 	}
+
+	// ---- T-L2-6 -----------------------------------------------------------------------------------
+
+	/** A striking merchant does not sell; the first emerald pays it, and its first sale's emerald pays the next striker in the same tick. */
+	@GameTest(environment = "villageheart-gametest:market_strike", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void strikeStopsSalesIncomeSettles(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		dev.villageheart.core.economy.PayResult[] pay = new dev.villageheart.core.economy.PayResult[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			WorkerTestSupport.farmhouse(h, WageTestSupport.FARM, 1);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.FARMHOUSE, WageTestSupport.farmMarker(), net.minecraft.core.Direction.NORTH);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, WageTestSupport.farmMarker(), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenExecute(() -> {
+			stock(h, Items.COBBLESTONE, 200);
+			v[0] = hire(h, 0);
+			v[1] = WageTestSupport.hireFarmer(h);
+			WageTestSupport.wagesOn();
+			setTreasury(h, 0);
+		});
+		seq = WageTestSupport.toDawn(h, seq, pay);
+		seq = seq.thenIdle(1800).thenExecute(() -> {
+			h.assertValueEqual(WorkerStatus.ON_STRIKE, status(h, v[0]), "the merchant strikes");
+			h.assertValueEqual(0, treasury(h), "treasury");
+			h.assertValueEqual(200L, count(h, Items.COBBLESTONE), "no sale while on strike");
+			h.assertTrue(WorkerTestSupport.distance(h, v[0], stall(0)) <= 1.6, "at its stall");
+			dev.villageheart.economy.Treasury.deposit(h.getLevel().getServer(), 1, null);
+			h.assertTrue(WageTestSupport.paid(v[0]), "the first emerald pays the merchant (hired first)");
+			h.assertTrue(!WageTestSupport.paid(v[1]), "the farmer still strikes");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= 1, "the merchant sells within a sale time"));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(168L, count(h, Items.COBBLESTONE), "one lot sold");
+			h.assertTrue(WageTestSupport.paid(v[1]), "the sale's emerald paid the farmer");
+			h.assertTrue(WageTestSupport.payroll(h).unpaid().isEmpty(), "nobody is unpaid");
+			h.assertValueEqual(0, treasury(h), "the emerald went to the wage");
+			WageTestSupport.wagesOff();
+			finish(h);
+		});
+	}
+
+	// ---- T-L2-12 ----------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:market_full", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void treasuryFullStops(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			stock(h, Items.COBBLESTONE, 200);
+			setTreasury(h, dev.villageheart.core.Balance.MAX_TREASURY);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, 0);
+		});
+		seq = seq.thenIdle(1200).thenExecute(() -> {
+			h.assertValueEqual(dev.villageheart.core.Balance.MAX_TREASURY, treasury(h), "nothing went into a full treasury");
+			h.assertValueEqual(200L, count(h, Items.COBBLESTONE), "the goods stay");
+			h.assertValueEqual(WorkerStatus.TREASURY_FULL, status(h, v[0]), "status");
+			setTreasury(h, dev.villageheart.core.Balance.MAX_TREASURY - 1);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(168L, count(h, Items.COBBLESTONE), "one sale"));
+		seq = seq.thenIdle(30).thenExecute(() -> {
+			h.assertValueEqual(dev.villageheart.core.Balance.MAX_TREASURY, treasury(h), "full again");
+			h.assertValueEqual(WorkerStatus.TREASURY_FULL, status(h, v[0]), "status again");
+			setTreasury(h, 0);
+			finish(h);
+		});
+	}
+
+	// ---- T-L2-4 -----------------------------------------------------------------------------------
+
+	private static void act(net.minecraft.server.level.ServerPlayer p, dev.villageheart.core.heart.HeartAction a) {
+		dev.villageheart.heart.HeartActions.RATE.forget(p.getUUID());
+		dev.villageheart.heart.HeartActions.handle(p, p.containerMenu.containerId, a);
+	}
+
+	private static dev.villageheart.core.heart.Stock lastStock(List<HeartTestSupport.Sent> sent, net.minecraft.server.level.ServerPlayer p) {
+		var all = HeartTestSupport.snapshotsTo(sent, p);
+		return all.get(all.size() - 1).snapshot().stock();
+	}
+
+	/** A Steward sets the reserves and every open screen shows them; a Resident cannot; a crafted value is refused; they survive a reload. */
+	@GameTest(environment = "villageheart-gametest:market_ui", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void reserveSettingsOnTheScreen(GameTestHelper h) {
+		begin(h);
+		net.minecraft.server.level.ServerPlayer[] p = new net.minecraft.server.level.ServerPlayer[3]; // owner, steward, resident
+		List<HeartTestSupport.Sent>[] sent = new List[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			sent[0] = HeartTestSupport.recorder();
+			p[0] = BuildingTestSupport.owner();
+			p[1] = HeartTestSupport.player(h, "stew", dev.villageheart.core.Rank.STEWARD);
+			p[2] = HeartTestSupport.player(h, "res", dev.villageheart.core.Rank.RESIDENT);
+			for (var q : p) HeartTestSupport.open(h, q);
+			stock(h, Items.COBBLESTONE, 200);
+			h.getLevel().setDayTime(1000);
+			hire(h, 0);
+			act(p[1], new dev.villageheart.core.heart.HeartAction.SetReserves(3, 128));
+			h.assertValueEqual(new Reserves(3, 128), Markets.state(h.getLevel().getServer()).reserves(), "the Steward's setting is saved");
+		});
+		seq = seq.thenIdle(25).thenExecute(() -> {
+			for (var q : p) {
+				var st = lastStock(sent[0], q);
+				h.assertValueEqual(new Reserves(3, 128), st.reserves(), q.getName().getString() + " sees the reserves");
+				long cobble = st.items().stream().filter(l -> l.itemId().equals("minecraft:cobblestone")).mapToLong(l -> l.forSale()).sum();
+				h.assertValueEqual(72L, cobble, q.getName().getString() + " sees what is for sale");
+				h.assertValueEqual(1, st.merchants(), "merchants");
+			}
+			act(p[2], new dev.villageheart.core.heart.HeartAction.SetReserves(3, 0));
+			h.assertValueEqual(dev.villageheart.core.heart.Rejection.NO_PERMISSION.langKey(), HeartTestSupport.lastResult(sent[0], p[2]).key(), "a Resident cannot");
+			act(p[0], new dev.villageheart.core.heart.HeartAction.SetReserves(31, 64));
+			h.assertValueEqual(dev.villageheart.core.heart.Rejection.BAD_RESERVE.langKey(), HeartTestSupport.lastResult(sent[0], p[0]).key(), "out of range");
+			h.assertValueEqual(new Reserves(3, 128), Markets.state(h.getLevel().getServer()).reserves(), "unchanged");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 2, "two sales: " + treasury(h)));
+		seq = seq.thenIdle(700).thenExecute(() -> {
+			h.assertValueEqual(2, treasury(h), "200 - 128 = 72: two lots");
+			h.assertValueEqual(136L, count(h, Items.COBBLESTONE), "cobblestone");
+			try {
+				VillageTestSupport.reload(h.getLevel().getServer());
+			} catch (java.io.IOException e) {
+				throw new AssertionError(e);
+			}
+			h.assertValueEqual(new Reserves(3, 128), Markets.state(h.getLevel().getServer()).reserves(), "after a reload");
+			HeartTestSupport.done(h);
+		});
+	}
 }

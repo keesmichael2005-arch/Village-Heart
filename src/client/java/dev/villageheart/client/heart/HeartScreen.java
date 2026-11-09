@@ -165,6 +165,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		}
 		if (actionsDirty) rebuildActions();
 		if (tab == 0) refreshTreasuryButtons();
+		if (tab == 3) refreshReserveButtons();
 	}
 
 	private HeartSnapshot snap() { return menu.snapshot(); }
@@ -285,6 +286,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (tab == 1) return villagerActionBar();
 		if (tab == 2) return allows(Permission.RECHECK_BUILDING) && selectedBuilding != null;
 		if (tab == TAB_RANKS) return selectedMemberRow() != null && selectedMemberRow().rank() != Rank.OWNER;
+		if (tab == 3) return true; // the reserve bar (M22)
 		return false;
 	}
 
@@ -482,11 +484,70 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			transfer.active = member;
 			if (!member) transfer.setTooltip(Tooltip.create(t("ranks.transfer_needs_member")));
 			addAction(transfer);
+		} else if (tab == 3) {
+			reserveBar(y);
 		} else if (tab == 2 && allows(Permission.RECHECK_BUILDING) && selectedBuilding != null) {
 			BlockPos p = selectedBuilding;
 			addAction(Button.builder(t("check_now"), b -> ClientPlayNetworking.send(new RecheckBuildingPayload(menu.containerId, p)))
 					.bounds(MARGIN, y, 100, 20).build());
 		}
+	}
+
+	// ---- the reserve bar of the Stockpile tab (M22) ----------------------------------------------------
+
+	private Button foodLess, foodMore, itemsLess, itemsMore;
+	/** x of the four labels and values of the bar, set by {@link #reserveBar}. */
+	private int barFoodLabelX, barFoodValueX, barItemsLabelX, barItemsValueX;
+
+	private static final int BAR_BTN_W = 20, BAR_VALUE_W = 54;
+
+	private void sendReserves(int foodDays, int itemReserve) {
+		ClientPlayNetworking.send(new dev.villageheart.heart.net.SetReservesPayload(menu.containerId, foodDays, itemReserve));
+	}
+
+	/** "Keep: food [-] 3 days [+]   other items [-] 64 each [+]": buttons for those who may set the reserves, the values for everyone. */
+	private void reserveBar(int y) {
+		foodLess = foodMore = itemsLess = itemsMore = null;
+		int x = MARGIN;
+		barFoodLabelX = x;
+		x += font.width(t("reserve.label_food").getString()) + 6;
+		int bx = x;
+		boolean edit = allows(Permission.SET_RESERVES);
+		if (edit) {
+			foodLess = Button.builder(t("reserve.food_less"), b -> sendReserves(snap().stock().reserves().foodDays() - Balance.FOOD_RESERVE_STEP, snap().stock().reserves().itemReserve()))
+					.bounds(bx, y, BAR_BTN_W, 20).build();
+			addAction(foodLess);
+		}
+		barFoodValueX = bx + (edit ? BAR_BTN_W + 4 : 0);
+		if (edit) {
+			foodMore = Button.builder(t("reserve.food_more"), b -> sendReserves(snap().stock().reserves().foodDays() + Balance.FOOD_RESERVE_STEP, snap().stock().reserves().itemReserve()))
+					.bounds(barFoodValueX + BAR_VALUE_W + 4, y, BAR_BTN_W, 20).build();
+			addAction(foodMore);
+		}
+		x = barFoodValueX + BAR_VALUE_W + (edit ? BAR_BTN_W + 8 : 0) + 10;
+		barItemsLabelX = x;
+		x += font.width(t("reserve.label_items").getString()) + 6;
+		if (edit) {
+			itemsLess = Button.builder(t("reserve.items_less"), b -> sendReserves(snap().stock().reserves().foodDays(), snap().stock().reserves().itemReserve() - Balance.ITEM_RESERVE_STEP))
+					.bounds(x, y, BAR_BTN_W, 20).build();
+			addAction(itemsLess);
+		}
+		barItemsValueX = x + (edit ? BAR_BTN_W + 4 : 0);
+		if (edit) {
+			itemsMore = Button.builder(t("reserve.items_more"), b -> sendReserves(snap().stock().reserves().foodDays(), snap().stock().reserves().itemReserve() + Balance.ITEM_RESERVE_STEP))
+					.bounds(barItemsValueX + BAR_VALUE_W + 4, y, BAR_BTN_W, 20).build();
+			addAction(itemsMore);
+		}
+		refreshReserveButtons();
+	}
+
+	/** The buttons stop at the ends of the range (checked against the latest snapshot, every tick). */
+	private void refreshReserveButtons() {
+		var r = snap().stock().reserves();
+		if (foodLess != null) foodLess.active = r.foodDays() - Balance.FOOD_RESERVE_STEP >= 0;
+		if (foodMore != null) foodMore.active = r.foodDays() + Balance.FOOD_RESERVE_STEP <= Balance.MAX_FOOD_RESERVE_DAYS;
+		if (itemsLess != null) itemsLess.active = r.itemReserve() - Balance.ITEM_RESERVE_STEP >= 0;
+		if (itemsMore != null) itemsMore.active = r.itemReserve() + Balance.ITEM_RESERVE_STEP <= Balance.MAX_ITEM_RESERVE;
 	}
 
 	private Button depositButton, withdrawOneButton, withdrawStackButton;
@@ -980,12 +1041,18 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int ft = s.overview().foodDaysTenths();
 		text(g, ft < 0 ? t("stock.line2_none", st.nutrition()) : t("stock.line2", st.nutrition(), days(ft)), MARGIN, y + 12, w,
 				WHITE, AREA_BODY, grp);
+		boolean alerted = false;
 		if (st.alert() != StorageAlert.OK) {
 			for (AlertLine a : s.overview().alerts()) {
 				if (a.code() == dev.villageheart.core.heart.AlertCode.NO_STORAGE || a.code() == dev.villageheart.core.heart.AlertCode.STORAGE_FULL) {
 					text(g, text(a.text()), MARGIN, y + 24, w, severityColor(a.severity()), AREA_BODY, grp);
+					alerted = true;
 				}
 			}
+		}
+		if (!alerted) {
+			// the market line takes the place of the (usually empty) storage alert
+			text(g, st.merchants() > 0 ? t("stock.market_sold", st.soldToday()) : t("stock.market_none"), MARGIN, y + 24, w, st.merchants() > 0 ? GREEN : GREY, AREA_BODY, grp);
 		}
 		int[] r = listRect();
 		clip = new int[] {r[0], r[1], r[0] + r[2], r[1] + r[3]};
@@ -997,8 +1064,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		for (int i = 0; i < items.size(); i += 2) {
 			if (ry + STOCK_ROW_H > r[1] && ry < r[1] + r[3]) {
 				int rg = groupCounter++;
-				drawStockCell(g, items.get(i), r[0], ry, cellW, rg);
-				if (i + 1 < items.size()) drawStockCell(g, items.get(i + 1), r[0] + cellW, ry, cellW, rg);
+				drawStockCell(g, items.get(i), r[0], ry, cellW, rg, mx, my);
+				if (i + 1 < items.size()) drawStockCell(g, items.get(i + 1), r[0] + cellW, ry, cellW, rg, mx, my);
 			}
 			ry += STOCK_ROW_H;
 		}
@@ -1008,9 +1075,31 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		g.disableScissor();
 		clip = new int[] {0, bodyTop(), width, bodyBottom()};
 		scrollbar(g, r, contentHeight());
+		drawReserveBar(g, mx, my, st);
 	}
 
-	private void drawStockCell(GuiGraphics g, StockLine line, int x, int y, int w, int grp) {
+	/** Labels and values of the reserve bar; the buttons themselves are widgets ({@link #reserveBar}). */
+	private void drawReserveBar(GuiGraphics g, int mx, int my, Stock st) {
+		int y = bodyBottom() - 24;
+		int grp = groupCounter++;
+		int ty = y + 6;
+		var r = st.reserves();
+		boolean edit = allows(Permission.SET_RESERVES);
+		if (!edit) {
+			// no buttons were laid out: compute the same positions for the read-only values
+			int x = MARGIN;
+			barFoodLabelX = x;
+			barFoodValueX = x + font.width(t("reserve.label_food").getString()) + 6;
+			barItemsLabelX = barFoodValueX + BAR_VALUE_W + 10;
+			barItemsValueX = barItemsLabelX + font.width(t("reserve.label_items").getString()) + 6;
+		}
+		text(g, t("reserve.label_food"), barFoodLabelX, ty, 100, GREY, AREA_BODY, grp);
+		text(g, t("reserve.days", r.foodDays()), barFoodValueX, ty, BAR_VALUE_W, WHITE, AREA_BODY, grp);
+		text(g, t("reserve.label_items"), barItemsLabelX, ty, 100, GREY, AREA_BODY, grp);
+		text(g, t("reserve.each", r.itemReserve()), barItemsValueX, ty, BAR_VALUE_W, WHITE, AREA_BODY, grp);
+	}
+
+	private void drawStockCell(GuiGraphics g, StockLine line, int x, int y, int w, int grp, int mx, int my) {
 		ItemStack stack = stack(line.itemId());
 		if (!stack.isEmpty()) g.renderItem(stack, x + 2, y + 1);
 		note(AREA_BODY, grp, x + 2, y + 1, 16, 16);
@@ -1018,6 +1107,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int countW = font.width(count.getString());
 		Component name = stack.isEmpty() ? Component.literal(line.itemId()) : stack.getHoverName();
 		text(g, name, x + 22, y + 5, w - 22 - countW - 10, WHITE, AREA_BODY, grp);
-		textRight(g, count, x + w - 6, y + 5, countW + 2, GREY, AREA_BODY, grp);
+		textRight(g, count, x + w - 6, y + 5, countW + 2, line.forSale() > 0 ? 0xFF55FF55 : GREY, AREA_BODY, grp);
+		int[] lr = listRect();
+		if (line.forSale() > 0 && mx >= x && mx < x + w && my >= y && my < y + STOCK_ROW_H && my >= lr[1] && my < lr[1] + lr[3]) {
+			g.setTooltipForNextFrame(font, t("stock.for_sale", line.forSale()), mx, my);
+		}
 	}
 }
