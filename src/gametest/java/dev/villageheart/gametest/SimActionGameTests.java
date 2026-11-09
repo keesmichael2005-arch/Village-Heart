@@ -6,7 +6,9 @@ import dev.villageheart.building.Buildings;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.sim.ScenarioAction;
 import dev.villageheart.core.sim.ScenarioParser;
+import dev.villageheart.core.sim.SimArea;
 import dev.villageheart.sim.Host;
+import dev.villageheart.sim.SimTickets;
 import dev.villageheart.sim.StarterActions;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.stock.StorageContainers;
@@ -18,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -27,6 +30,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -316,5 +321,66 @@ public class SimActionGameTests {
 			h.assertValueEqual(0, floating, "grass blocks with air below them");
 			h.succeed();
 		});
+	}
+
+	// ---- sim-area: follow tickets (a player's simulation distance around each hired worker) ----------------------------------------------
+
+	/**
+	 * The L3 follow ticket really makes a far, otherwise unloaded chunk entity-tick: an entity there ticks, the chunks
+	 * {@link SimArea#FOLLOW_TICKING_CHUNKS} away tick too and the next ring does not; when the ticket moves the old spot stops ticking and the
+	 * new one starts; after {@code releaseAll} nothing is left.
+	 */
+	@GameTest(environment = "villageheart-gametest:sim_follow_tickets", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void followTicketKeepsFarChunkTicking(GameTestHelper h) {
+		ServerLevel level = h.getLevel();
+		BlockPos near = h.absolutePos(BlockPos.ZERO);
+		// mid-chunk, far from every other test (the wage test uses z + 100 000)
+		BlockPos far = new BlockPos(((near.getX() + 60_000) & ~15) + 8, 100, (near.getZ() & ~15) + 8);
+		BlockPos edge = far.east(16 * SimArea.FOLLOW_TICKING_CHUNKS);
+		BlockPos outside = far.east(16 * (SimArea.FOLLOW_TICKING_CHUNKS + 1));
+		BlockPos moved = far.east(16 * 10);
+		UUID worker = UUID.randomUUID();
+		SimTickets tickets = new SimTickets(level);
+		ArmorStand[] stand = new ArmorStand[1];
+		int[] ticksAt = new int[1];
+		GameTestSequence seq = h.startSequence().thenExecute(() -> {
+			h.assertFalse(level.isPositionEntityTicking(far), "the far chunk does not tick before the ticket");
+			generate(level, far);
+			h.assertValueEqual(1, tickets.follow(Map.of(worker, SimTickets.chunkOf(far))), "one ticket placed");
+			h.assertValueEqual(0, tickets.follow(Map.of(worker, SimTickets.chunkOf(far.west(3)))), "same chunk: no change");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the followed chunk entity-ticking", () -> {
+			h.assertTrue(level.isPositionEntityTicking(far), "the followed chunk ticks entities");
+			h.assertTrue(level.isPositionEntityTicking(edge), "and so does the chunk " + SimArea.FOLLOW_TICKING_CHUNKS + " away");
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertFalse(level.isPositionEntityTicking(outside), "the next ring does not tick entities");
+			int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, far.getX(), far.getZ());
+			stand[0] = new ArmorStand(level, far.getX() + 0.5, y, far.getZ() + 0.5);
+			h.assertTrue(level.addFreshEntity(stand[0]), "an entity can be added in the followed chunk");
+			ticksAt[0] = stand[0].tickCount;
+		});
+		seq = seq.thenIdle(20).thenExecute(() -> {
+			h.assertTrue(stand[0].tickCount >= ticksAt[0] + 15, "the entity in the followed chunk ticks (" + (stand[0].tickCount - ticksAt[0]) + " of 20 ticks)");
+			stand[0].discard();
+			generate(level, moved);
+			h.assertValueEqual(2, tickets.follow(Map.of(worker, SimTickets.chunkOf(moved))), "the ticket moves: one removed, one added");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the ticket following the worker", () -> {
+			h.assertTrue(level.isPositionEntityTicking(moved), "the new chunk ticks");
+			h.assertFalse(level.isPositionEntityTicking(far), "the old chunk no longer ticks");
+		});
+		seq = seq.thenExecute(tickets::releaseAll);
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the released chunk", () -> h.assertFalse(level.isPositionEntityTicking(moved), "released: nothing ticks"));
+		seq.thenExecute(h::succeed);
+	}
+
+	/**
+	 * Generates the ticket's whole loading square now, on the server thread. The GameTest server does not wait between ticks, so an
+	 * asynchronous generation of ~100 fresh chunks 60 000 blocks out lasts longer than any tick budget (seen: 2000 ticks in one second).
+	 */
+	private static void generate(ServerLevel level, BlockPos centre) {
+		int r = SimArea.FOLLOW_TICKET_RADIUS;
+		for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) level.getChunk((centre.getX() >> 4) + dx, (centre.getZ() >> 4) + dz);
 	}
 }

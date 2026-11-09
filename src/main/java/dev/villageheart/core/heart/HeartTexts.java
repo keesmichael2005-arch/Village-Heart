@@ -93,6 +93,27 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
 		EN.put(PREFIX + "activity.too_hungry", "Too hungry to work");
 		EN.put(PREFIX + "activity.on_strike", "On strike");
+		// M19a: a worker making its own tool, and why it cannot
+		EN.put(PREFIX + "activity.making_wooden_tool", "Making a wooden tool");
+		EN.put(PREFIX + "activity.making_wooden_tool.axe", "Making a wooden axe");
+		EN.put(PREFIX + "activity.making_wooden_tool.pickaxe", "Making a wooden pickaxe");
+		EN.put(PREFIX + "activity.making_wooden_tool.hoe", "Making a wooden hoe");
+		EN.put(PREFIX + "activity.making_wooden_tool.bow_or_sword", "Making a wooden sword");
+		EN.put(PREFIX + "activity.making_stone_tool", "Making a stone tool");
+		EN.put(PREFIX + "activity.making_stone_tool.axe", "Making a stone axe");
+		EN.put(PREFIX + "activity.making_stone_tool.pickaxe", "Making a stone pickaxe");
+		EN.put(PREFIX + "activity.making_stone_tool.hoe", "Making a stone hoe");
+		EN.put(PREFIX + "activity.making_stone_tool.bow_or_sword", "Making a stone sword");
+		EN.put(PREFIX + "activity.tool_no_materials", "Needs a tool (no wood)");
+		EN.put(PREFIX + "activity.tool_no_materials.axe", "Needs axe (no wood)");
+		EN.put(PREFIX + "activity.tool_no_materials.pickaxe", "Needs pickaxe (no wood)");
+		EN.put(PREFIX + "activity.tool_no_materials.hoe", "Needs hoe (no wood)");
+		EN.put(PREFIX + "activity.tool_no_materials.bow_or_sword", "Needs sword (no wood)");
+		EN.put(PREFIX + "activity.tool_no_space", "Needs a tool (no room)");
+		EN.put(PREFIX + "activity.tool_no_space.axe", "Needs axe (no room)");
+		EN.put(PREFIX + "activity.tool_no_space.pickaxe", "Needs pickaxe (no room)");
+		EN.put(PREFIX + "activity.tool_no_space.hoe", "Needs hoe (no room)");
+		EN.put(PREFIX + "activity.tool_no_space.bow_or_sword", "Needs sword (no room)");
 		EN.put(PREFIX + "activity.no_work", "Nothing to do");
 		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
 		EN.put(PREFIX + "activity.no_work.builder", "No blueprint to build");
@@ -153,11 +174,12 @@ public final class HeartTexts {
 	 */
 	public static String activityKey(ActivityKind activity, String jobId) {
 		String name = activity.name().toLowerCase(java.util.Locale.ROOT);
-		if (activity == ActivityKind.NEEDS_TOOL) {
+		if (activity == ActivityKind.NEEDS_TOOL || activity == ActivityKind.MAKING_WOODEN_TOOL || activity == ActivityKind.MAKING_STONE_TOOL
+				|| activity == ActivityKind.TOOL_NO_MATERIALS || activity == ActivityKind.TOOL_NO_SPACE) {
 			String tool = dev.villageheart.core.worker.JobType.byId(jobId).flatMap(dev.villageheart.core.worker.JobType::tool)
 					.map(t -> t.kind().id()).orElse("");
-			String specific = "activity.needs_tool." + tool;
-			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.needs_tool");
+			String specific = "activity." + name + "." + tool;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity." + name);
 		}
 		if (activity == ActivityKind.NO_WORK || activity == ActivityKind.AWAY_WORKING || activity == ActivityKind.SITE_UNREACHABLE) {
 			String specific = "activity." + name + "." + jobId;

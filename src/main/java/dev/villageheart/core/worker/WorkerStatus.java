@@ -22,5 +22,8 @@ public enum WorkerStatus {
 	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
 	TOO_HUNGRY,
 	/** Unpaid: the worker stops working until the treasury pays it (M12). */
-	ON_STRIKE
+	ON_STRIKE,
+	/** The worker is making its own tool (M19a): fetching the materials, or working on it at its job block. */
+	MAKING_WOODEN_TOOL,
+	MAKING_STONE_TOOL
 }

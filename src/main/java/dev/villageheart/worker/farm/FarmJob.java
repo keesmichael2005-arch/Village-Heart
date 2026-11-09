@@ -115,6 +115,7 @@ public final class FarmJob {
 			ws.needsPlan = true;
 			return;
 		}
+		if (dev.villageheart.worker.gear.SelfCraftJob.tick(level, v, now)) return; // making its own hoe in idle time (M19a)
 		if (ws.decision == null || ws.needsPlan || now - ws.lastPlan >= PLAN_INTERVAL) plan(level, v, data, rt, ws, now);
 		run(level, v, data, rt, ws, now);
 		stallWatchdog(level, v, ws, now);
@@ -163,6 +164,7 @@ public final class FarmJob {
 
 	/** The behaviour ended (night, panic, raid, fired): the claim is released; nothing is half done. */
 	public static void stop(ServerLevel level, Villager v) {
+		dev.villageheart.worker.gear.SelfCraftJob.stop(level, v);
 		FarmRuntime rt = FarmRuntime.get(level.getServer());
 		WorkerState ws = rt.workers.get(v.getUUID());
 		if (ws == null) return;
@@ -239,10 +241,50 @@ public final class FarmJob {
 
 	private record Seed(CropKind kind, boolean inInventory, BlockPos chest) {}
 
+	/** Everything one planning pass reads (side-effect free) plus what {@link #plan} needs after the decision. */
+	private record Probe(Snapshot snap, Pos mature, Pos plantAt, CropKind plantKind, BlockPos plantChest, Pos boneAt, ItemEntity collect,
+			Map<CropKind, Integer> wantedCount, int cells, int surplus) {}
+
+	/**
+	 * M19a: does the farmer have farm work right now (anything but idling at a valid farmhouse)? A fresh, side-effect-free planner run, so
+	 * a self-craft never relies on a decision that went stale while it owned the tick. An invalid workplace counts as "has work" (no craft).
+	 */
+	public static boolean hasWork(ServerLevel level, Villager v) {
+		WorkerData data = v.getAttached(WorkerAttachments.WORKER);
+		if (data == null || data.job() != JobType.FARMER) return true;
+		FarmRuntime rt = FarmRuntime.get(level.getServer());
+		WorkerState ws = rt.state(v.getUUID());
+		long now = level.getGameTime();
+		Probe pr = probe(level, v, data, rt, ws, now);
+		if (!pr.snap().workplaceValid() || !pr.snap().sweepComplete()) return true; // invalid, or the field is not surveyed yet: unknown counts as work
+		return FarmerPlanner.decide(pr.snap()).action() != Action.IDLE_AT_FARMHOUSE;
+	}
+
 	private static void plan(ServerLevel level, Villager v, WorkerData data, FarmRuntime rt, WorkerState ws, long now) {
-		MinecraftServer server = level.getServer();
 		ws.lastPlan = now;
 		ws.needsPlan = false;
+		Probe pr = probe(level, v, data, rt, ws, now);
+		Pos mature = pr.mature();
+		Pos plantAt = pr.plantAt();
+		CropKind plantKind = pr.plantKind();
+		BlockPos plantChest = pr.plantChest();
+		Pos boneAt = pr.boneAt();
+		ItemEntity collect = pr.collect();
+		Map<CropKind, Integer> wantedCount = pr.wantedCount();
+		int surplus = pr.surplus();
+		Snapshot snap = pr.snap();
+		Decision d = FarmerPlanner.decide(snap);
+		applyStatus(v.getUUID(), d.status());
+		if (TRACE && (ws.decision == null || ws.decision.action() != d.action())) {
+			trace("{} @{} plan {} (mature {}, plant {}->{}, collect {}, bone {}, surplus {}, cells {})", v.getId(), now, d, mature, plantAt, plantKind,
+					collect != null, boneAt, surplus, pr.cells());
+		}
+		ws.decision = d;
+		applyDecision(level, v, rt, ws, d, mature, plantAt, plantKind, plantChest, boneAt, collect, wantedCount, now);
+	}
+
+	private static Probe probe(ServerLevel level, Villager v, WorkerData data, FarmRuntime rt, WorkerState ws, long now) {
+		MinecraftServer server = level.getServer();
 		boolean valid = campValid(level, v);
 		boolean deposit = valid && DepositTrip.wanted(level, v);
 		WorkerStatus trip = Workers.tripStatus(v.getUUID());
@@ -338,13 +380,11 @@ public final class FarmJob {
 		boolean inProgress = isTargeted(ws.action) && targetValid(level, v, rt, ws, surplus, ready, now);
 		Snapshot snap = new Snapshot(valid, deposit, blocked, inProgress, freeSlots(v), surplus, mature != null, collect != null,
 				plantAt != null, plantChest != null, ready, boneAt != null, idx.sweepComplete(), noFarmland, data.needs().speed() <= 0);
-		Decision d = FarmerPlanner.decide(snap);
-		applyStatus(v.getUUID(), d.status());
-		if (TRACE && (ws.decision == null || ws.decision.action() != d.action())) {
-			trace("{} @{} plan {} (mature {}, plant {}->{}, collect {}, bone {}, surplus {}, ready {}, cells {})", v.getId(), now, d, mature, plantAt, plantKind,
-					collect != null, boneAt, surplus, ready, cells.size());
-		}
-		ws.decision = d;
+		return new Probe(snap, mature, plantAt, plantKind, plantChest, boneAt, collect, wantedCount, cells.size(), surplus);
+	}
+
+	private static void applyDecision(ServerLevel level, Villager v, FarmRuntime rt, WorkerState ws, Decision d, Pos mature, Pos plantAt,
+			CropKind plantKind, BlockPos plantChest, Pos boneAt, ItemEntity collect, Map<CropKind, Integer> wantedCount, long now) {
 		if (d.action() == Action.CONTINUE) return;
 		Action before = ws.action;
 		ws.action = d.action();

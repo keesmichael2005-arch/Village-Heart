@@ -123,6 +123,8 @@ class VillageGuardShiftsTest {
 		calls.put("withoutBuild", s -> s.withBuild(job).withoutBuild(job.id()));
 		calls.put("withDefence", s -> s.withDefence(lamp));
 		calls.put("withoutDefence", s -> s.withDefence(lamp).withoutDefence(lamp.id()));
+		calls.put("withoutSelfCraft", s -> s.withoutSelfCraft(G1));
+		calls.put("withSelfCraft", s -> s.withoutSelfCraft(G1)); // a craft record is heavy to build; both rebuild through withSelfCrafts
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		// the names that rebuild the guard map on purpose are tested above
 		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin");

@@ -10,5 +10,7 @@ public enum ActivityKind {
 	/** M11: missed two dinners or more. */
 	TOO_HUNGRY,
 	/** M12: unpaid, the worker stops working until the treasury pays it. */
-	ON_STRIKE
+	ON_STRIKE,
+	/** M19a: a worker making its own tool (fetching the materials or working on it), and a required tool that cannot be made. Appended. */
+	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE
 }

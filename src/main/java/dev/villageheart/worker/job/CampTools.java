@@ -78,14 +78,17 @@ public final class CampTools {
 			Container c = chests.get().get(ci).container();
 			for (int si = 0; si < c.getContainerSize(); si++) {
 				ItemStack s = c.getItem(si);
-				if (isTool(kind, s)) tools.add(new ToolAllocation.Tool<>(new Ref(ci, si), tierOf(s), ci * 1000 + si));
+				// the durability left decides among equals: a worn tool is used up before its replacement (M19a)
+				if (isTool(kind, s)) tools.add(new ToolAllocation.Tool<>(new Ref(ci, si), tierOf(s), ci * 1000 + si, Math.max(0, s.getMaxDamage() - s.getDamageValue())));
 			}
 		}
+		// a worker with an open order (fetching or crafting a tool) does not use one meanwhile, so it is left out (M19a)
+		java.util.Set<UUID> crafting = dev.villageheart.worker.gear.GearOrders.crafting();
 		List<UUID> workers = new ArrayList<>();
 		for (WorkerRecord w : village.get().workers()) {
-			if (w.building().equals(data.get().building()) && w.jobId().equals(data.get().jobId())) workers.add(w.villager());
+			if (w.building().equals(data.get().building()) && w.jobId().equals(data.get().jobId()) && !crafting.contains(w.villager())) workers.add(w.villager());
 		}
-		if (!workers.contains(villager.getUUID())) workers.add(villager.getUUID());
+		if (!workers.contains(villager.getUUID()) && !crafting.contains(villager.getUUID())) workers.add(villager.getUUID());
 		Map<UUID, Ref> assigned = rank == null ? ToolAllocation.assign(tools, workers)
 				: ToolAllocation.assign(tools, workers, t -> rank.applyAsInt(chests.get().get(t.ref().container()).container().getItem(t.ref().slot())));
 		Ref mine = assigned.get(villager.getUUID());

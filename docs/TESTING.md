@@ -107,6 +107,20 @@ through the real `useItemOn` path), sets the time to dawn, records a baseline an
 `reports/sim/<scenario>.json` (one record per day, schema in `core.sim.MetricsJson`), `.summary.md`, `.log` (`.2.log` after a reload).
 Expect about 50 s per in-game day on 4 cores; a 5-day run is 5-6 minutes. The script's timeout is `240 + 150 * days` seconds.
 
+**Ticking area (sim-area).** A villager in a chunk that is loaded but not entity-ticking freezes for good, and in a real game the player's
+simulation distance is what keeps a village's surroundings ticking. The sim stands in for that presence in two parts (`core.sim.SimArea`, glue `SimWorld` + `SimTickets`):
+- **Static square.** ±`SimArea.staticRadiusChunks(CLAIM_RADIUS)` = ±6 chunks, force-loaded. It is centred on the village start until the claim, then on the
+  **Heart's** chunk (`SimWorld.recentre`), so it covers the whole claim plus one chunk on any seed. On seed 1 the Heart is in the start chunk, so the chunks do not change.
+- **Follow tickets.** Every 20 ticks each loaded hired worker gets a non-persistent ticket (`SimTickets.WORKER`, loading + simulation) that keeps its chunk
+  and 2 chunks around it entity-ticking, like a player's simulation distance that goes where the action is. One ticket per occupied chunk, shared
+  and reference-counted (`SimArea.Follower`). So a worker that strolls or flees past the square keeps its brain and walks home (vanilla HOME walk limit 150 blocks).
+- **Still visible.** `work.workers.max_heart_distance` is the farthest a hired worker was from the Heart that day (sampled every 20 ticks, blocks, rounded down),
+  and `starter` asserts it stays `< 150`. A worker past the walk-home limit is lost for real and fails the run. `work.workers.not_ticking` (sampled every 100 ticks)
+  stays asserted `== 0`: a worker that is unloaded or frozen anyway (for example after `--reload-at`, which starts with no follow tickets) is still red.
+- L1 `SimAreaTest` (square coverage, the reference counts, a random walk); L2 `SimActionGameTests.followTicketKeepsFarChunkTicking` (a far chunk ticks entities
+  under the ticket, 2 chunks out ticks too, 3 does not; the ticket moves; release leaves nothing). The GameTest server does not wait between ticks, so the test
+  generates the ticket's square synchronously first (asynchronous generation 60 000 blocks out lasted longer than 2000 ticks).
+
 | Exit | Meaning |
 |---|---|
 | 0 | `PASS`, `clean_shutdown`, N day records, no crash report, Gradle rc 0 |
@@ -343,3 +357,12 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Layer 4** `DefenceClientTests.walledSection` (`wall_line_preview.png`, `walled_section.png`, `walled_section_gate_closed.png`, `walled_section_gate_open.png`, `watchtower.png`): the line preview from two real clicks (client-side `blueprint_site` length 16, green dust), the section built by command at dusk and seen from a stand high over the wall (lanterns lit), the gate opened with a real right-click, the tower seen from inside the wall. `-Dvillageheart.l4.only=defence` runs just this. `BuildClientTests.builderFlow` also selects the Gate and Watchtower rows of the table (`builders_table_gate.png`, `builders_table_watchtower.png`).
 - **Text args:** `TextLine` keeps at most 2 args (`HeartLimits.MAX_TEXT_ARGS`); a lang text with three `%s` shows as the raw format string on the client (the L4 picture caught it).
 
+
+## Self-craft GameTests (M19a)
+`SelfCraftGameTests` (miner basics, helpers in `SelfCraftTestSupport`), `SelfCraftLifecycleGameTests` (wood then stone, the lumberjack bootstrap, overnight pause and reload, refunds, sharing, Storage tools, a full chest, worn-first) and `SelfCraftJobsGameTests` (hunter, farmer, the smith seam, the recipe tables against the game). Environments `villageheart-gametest:selfcraft_<name>` (the farmer's carries `random_tick_speed 0` like the farm ones); scenes come from `MineTestSupport` (the low scene, a second stonecutter where two miners are hired), `LumberTestSupport`, `HuntTestSupport` and `FarmTestSupport`, with the Storage's first chest filled by `SelfCraftTestSupport.add`. Day time is set to 1000 after the scene; every test logs `[m19a]` tick counts.
+- **The clock**: `SelfCraftTestSupport.Sampler` (register `h.onEachTick(() -> s.sample(h))` from the test body) records when a worker's `self_crafts` record appeared (the commit), when it went, and the ticks its progress really advanced (`SelfCraftRuntime.State.progress`). The timing asserts check the clock against `Balance.SELF_TOOL_TICKS` (`[tier - 20, tier + 100]`) and the wall time against `selfBound(ticks, dist)`.
+- **`WorkStats` counters are global**: read the counter before the scene and assert the delta.
+- **A tick hook outlives the test's reset**: use `safeStatus` (null without a village) in `h.onEachTick`, not `status`.
+- **The older tool tests**: a tool worker with no or a worn tool in a world whose Storage holds wood now stops to craft. Tests whose subject is the old "Needs <tool>" row (`minerNeedsPickaxe`, `noAxeNoLogs`, `hunterNeedsWeapon`, and the L4 `villagersNeedsAxe`) call `SelfCraftSwitch.off()` after the scene (`VillageTestSupport.reset` turns it back on); the row for "no tool and nothing to make one from" is the new `TOOL_NO_MATERIALS` ("Needs axe (no wood)"), shown by `noWoodSaysSo` and the L4 shot.
+- **Restart path**: `SelfCraftRuntime.resetForTests()` + `GearOrders.rebuild(server)` is what a server start does (`SelfCraftRuntime.get` rebuilds the committed orders from the saved records).
+- **Layer 4** `SelfCraftClientTests.villagersTabMakingTool` (`villagers_tab_making_tool.png`): a miner with a saved stone-pickaxe craft ("Making a stone pickaxe") and a lumberjack with an empty Storage ("Needs axe (no wood)").

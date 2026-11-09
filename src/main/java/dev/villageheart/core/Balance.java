@@ -271,6 +271,26 @@ public final class Balance {
 	public static final double HUNTER_TRIP_UNITS = 3000;
 	/** An away hunter is stepped every this many ticks. */
 	public static final int HUNTER_STEP_TICKS = 20;
+
+	// ---- self-made tools (M19a) ---------------------------------------------------------------------------------------------
+	/** Work ticks at level 1 to make a tool yourself, per CraftTier (tunable; never indexed by ordinal). */
+	public static final int SELF_WOODEN_TICKS = 2400, SELF_STONE_TICKS = 4800;
+	/** A tool is worn when less than this share of its durability is left (tunable). */
+	/** The cancel check of every saved self-craft runs this often. */
+	public static final int SELF_CANCEL_CHECK_TICKS = 100;
+	/** Progress of a self-craft is saved this often. */
+	public static final int SELF_CRAFT_SAVE_TICKS = 200;
+	/** Swing, sound and particles every this many ticks of progress. */
+	public static final int SELF_CRAFT_HIT_TICKS = 100;
+	/** No fetch starts after this day time: it could not be committed and finished today. */
+	public static final int SELF_CRAFT_LAST_FETCH = WORK_END - 300;
+	/** With a smith serving, a MISSING required slot with no order for this many work ticks may be self-crafted. */
+	public static final int SELF_CRAFT_FALLBACK_TICKS = 3000;
+	/** The walk to Storage for a fetch is given up after this many ticks. */
+	public static final int SELF_FETCH_TIMEOUT = 600;
+	/** A building that stays registered but invalid this many work days refunds its self-crafts. */
+	public static final int SELF_CRAFT_INVALID_REFUND_DAYS = 3;
+	// ---- end self-made tools ----
 	/** Durability the leased weapon loses per completed trip. */
 	public static final int HUNTER_WEAR_PER_TRIP = 5;
 	/** Completed trips per day by level (index level - 1, clamped). */
