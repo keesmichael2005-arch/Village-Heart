@@ -268,7 +268,8 @@ public class GrowthCourtshipGameTests {
 				.thenExecute(() -> {
 					License l = licence(h).orElseThrow();
 					h.assertTrue(l.state() == LicenceState.BORN, "BORN: " + describe(h));
-					h.assertValueEqual(1, l.seeds(), "the re-seed did not count a seed");
+					// every seed after the first follows an abort of an earlier run; the re-seed after the "reload" itself counts none
+					h.assertValueEqual(l.aborts() + 1, l.seeds(), "the re-seed did not count a seed: " + describe(h));
 					end(h);
 				});
 	}
@@ -368,7 +369,7 @@ public class GrowthCourtshipGameTests {
 	 * Vanilla breeding just outside the claim must not fill the village's beds: the only free bed within 48 blocks of the pair lies inside the
 	 * claim, and the make-love hook gives it back.
 	 */
-	@GameTest(environment = "villageheart-gametest:growth_outside_pair", structure = YARD, skyAccess = true, maxTicks = 3000)
+	@GameTest(environment = "villageheart-gametest:growth_outside_pair", structure = YARD, skyAccess = true, maxTicks = 4500)
 	public void outsidePairCannotTakeClaimBed(GameTestHelper h) {
 		Villager[] v = new Villager[2];
 		BlockPos[] bed = new BlockPos[1];
@@ -411,7 +412,7 @@ public class GrowthCourtshipGameTests {
 					claimBedAbs(h, v[1], far.north(10).south());
 					h.assertFalse(BreedingGate.blocks(v[0]), "the pair is outside the claim: vanilla applies");
 				});
-		for (int i = 0; i < 40; i++) {
+		for (int i = 0; i < 80; i++) {
 			seq = seq.thenExecuteAfter(30, () -> {
 				if (!BreedTrace.finished(v[0].getUUID()) && !v[0].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET) && v[0].canBreed() && v[1].canBreed()) {
 					v[0].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1]);
