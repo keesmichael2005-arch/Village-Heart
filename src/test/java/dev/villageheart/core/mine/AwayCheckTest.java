@@ -75,7 +75,7 @@ class AwayCheckTest {
 
 	@Test
 	void aDueHaulIsTakenWhenTheDepthIsKnown() {
-		Inputs due = new Inputs(true, true, true, true, Lease.HELD, 1.25, true, new AwayProgress(2475), 0);
+		Inputs due = new Inputs(true, true, true, true, Lease.HELD, 2.0, true, new AwayProgress(3960), 0);
 		Outcome o = AwayCheck.check(due);
 		assertSurface(SurfaceReason.HAUL, o);
 		assertEquals(0.0, o.progress().units(), 1e-9);
@@ -83,7 +83,7 @@ class AwayCheckTest {
 
 	@Test
 	void aDueHaulWaitsForTheDepthAndGivesUpAfterSixtySteps() {
-		Inputs due = new Inputs(true, true, true, true, Lease.HELD, 1.25, false, new AwayProgress(2475), 0);
+		Inputs due = new Inputs(true, true, true, true, Lease.HELD, 2.0, false, new AwayProgress(3960), 0);
 		Outcome o = AwayCheck.check(due);
 		assertTrue(o.stays());
 		assertEquals(Balance.MINER_HAUL_UNITS, o.progress().units());
@@ -92,6 +92,23 @@ class AwayCheckTest {
 		Outcome up = AwayCheck.check(late);
 		assertSurface(SurfaceReason.STOPPED_WORKING, up);
 		assertEquals(Balance.MINER_HAUL_UNITS, up.progress().units());
+	}
+
+	@Test
+	void theHunterNumbersMakeATripDueAt3000AndTheMinersAt4000() {
+		double u = Balance.HUNTER_TRIP_UNITS;
+		int step = Balance.HUNTER_STEP_TICKS, lim = Balance.HUNTER_UNKNOWN_LIMIT;
+		Inputs at3980 = new Inputs(true, true, true, true, Lease.HELD, 1.0, true, new AwayProgress(3980), 0);
+		assertSurface(SurfaceReason.HAUL, AwayCheck.check(at3980)); // the miner's number (4000): due
+		Inputs at2980 = new Inputs(true, true, true, true, Lease.HELD, 1.0, true, new AwayProgress(2980), 0);
+		assertTrue(AwayCheck.check(at2980).stays()); // the miner's: not yet
+		assertSurface(SurfaceReason.HAUL, AwayCheck.check(at2980, u, step, lim)); // the hunter's 3000: due
+		Inputs at3000 = new Inputs(true, true, true, true, Lease.HELD, 1.0, true, new AwayProgress(2980), 0);
+		assertSurface(SurfaceReason.HAUL, AwayCheck.check(at3000, u, step, lim));
+		assertEquals(0.0, AwayCheck.check(at3000, u, step, lim).progress().units(), 1e-9);
+		// unknown limit is the caller's
+		assertTrue(AwayCheck.check(with(true, true, true, true, Lease.UNKNOWN, 1.0, true, 58), u, step, 60).stays());
+		assertSurface(SurfaceReason.STOPPED_WORKING, AwayCheck.check(with(true, true, true, true, Lease.UNKNOWN, 1.0, true, 58), u, step, 59));
 	}
 
 	@Test

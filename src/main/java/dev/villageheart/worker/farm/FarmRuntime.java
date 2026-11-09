@@ -144,6 +144,14 @@ public final class FarmRuntime {
 		FarmerPlanner.Decision decision;
 		FarmerPlanner.Action action = FarmerPlanner.Action.IDLE_AT_FARMHOUSE;
 		long idleBackoffUntil;
+		/** Game time of the last harvest or planting (-1: none yet); the stall watchdog's clock. */
+		long lastProgress = -1;
+		long lastWatch;
+		long stallLoggedAt = Long.MIN_VALUE / 2;
+		/** What the last plan saw of the field, for the stall report: cells, mature cells, mature cells in entity-ticking chunks, cells skipped as claimed/blacklisted. */
+		int seenCells, seenMature, seenMatureTicking, seenUnavailable;
+		/** The point an idle worker is walking to: its job block, or the end of a leg of the way back when it is far from it. */
+		BlockPos idleGoal;
 		final WalkTo walk = new WalkTo();
 		WorkClock clock = new WorkClock(1);
 		@Nullable Pos clockKey;

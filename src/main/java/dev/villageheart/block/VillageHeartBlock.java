@@ -2,9 +2,12 @@ package dev.villageheart.block;
 
 import dev.villageheart.VillageHeart;
 import dev.villageheart.core.ClaimRules;
+import dev.villageheart.economy.Treasury;
 import dev.villageheart.heart.HeartScreens;
 import dev.villageheart.world.VillageClaims;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -52,6 +55,20 @@ public class VillageHeartBlock extends Block {
 			VillageHeart.LOG.warn("Village Heart placed at {} but claim was {} (logic bug)", pos, result);
 		}
 		player.displayClientMessage(VillageClaims.refusalMessage(result, player), true);
+	}
+
+	/**
+	 * Right-click with emeralds in the main hand puts the whole stack into the treasury (M12; Residents and above, as much as fits). Anything else,
+	 * a refused Visitor included, falls through to {@link #useWithoutItem}, so the screen still opens. Sneaking with an item skips both (vanilla).
+	 */
+	@Override
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
+			BlockHitResult hit) {
+		if (hand != InteractionHand.MAIN_HAND || !stack.is(Items.EMERALD)) return InteractionResult.TRY_WITH_EMPTY_HAND;
+		if (!(level instanceof ServerLevel server) || !(player instanceof ServerPlayer sp)) return InteractionResult.SUCCESS;
+		boolean ours = VillageClaims.current(server.getServer()).filter(v -> v.isHeartAt(VillageClaims.locate(server, pos))).isPresent();
+		if (!ours) return InteractionResult.TRY_WITH_EMPTY_HAND;
+		return Treasury.depositFromHand(sp, hand) == Treasury.HandResult.CONSUMED ? InteractionResult.SUCCESS : InteractionResult.TRY_WITH_EMPTY_HAND;
 	}
 
 	/**

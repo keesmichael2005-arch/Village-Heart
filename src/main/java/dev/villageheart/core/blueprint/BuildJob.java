@@ -32,7 +32,12 @@ public record BuildJob(UUID id, String blueprintId, BlueprintParams params, Hear
 	}
 
 	public static BuildJob start(UUID id, String blueprintId, HeartLocation ground, Rotation4 rotation, long now, UUID startedBy) {
-		return new BuildJob(id, blueprintId, BlueprintParams.NONE, ground, rotation, now, startedBy, 0, Map.of(), null);
+		return start(id, blueprintId, BlueprintParams.NONE, ground, rotation, now, startedBy);
+	}
+
+	public static BuildJob start(UUID id, String blueprintId, BlueprintParams params, HeartLocation ground, Rotation4 rotation, long now,
+			UUID startedBy) {
+		return new BuildJob(id, blueprintId, params, ground, rotation, now, startedBy, 0, Map.of(), null);
 	}
 
 	public BuildJob withCursor(int c) {

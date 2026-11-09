@@ -49,7 +49,10 @@ public final class BuildingSystem implements VillageSystem {
 	}
 
 	/** Tests: forget every cache, as after a restart. */
-	public static void resetRuntimeForTests() { runtime = null; }
+	public static void resetRuntimeForTests() {
+		runtime = null;
+		dev.villageheart.worker.hunt.HunterRuntime.resetForTests();
+	}
 
 	/** Tests: markers noted by onPlace since the runtime was created. */
 	public static int placedNotesForTests(MinecraftServer server) { return runtime(server).placedNotes; }

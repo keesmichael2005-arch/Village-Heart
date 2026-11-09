@@ -13,8 +13,11 @@ public final class MetricsJson {
 	public record Pos(int x, int y, int z) {}
 
 	/** Any member may be null before it is known. */
-	public record VillagePositions(Pos structure, Pos bell, Pos heart) {
-		public static final VillagePositions NONE = new VillagePositions(null, null, null);
+	public record VillagePositions(Pos structure, Pos bell, Pos heart, Pos site) {
+		public static final VillagePositions NONE = new VillagePositions(null, null, null, null);
+
+		/** Without the prefab site (M11). */
+		public VillagePositions(Pos structure, Pos bell, Pos heart) { this(structure, bell, heart, null); }
 	}
 
 	public record Report(String scenario, SimStatus status, String error, boolean cleanShutdown, long heartbeat,
@@ -54,6 +57,7 @@ public final class MetricsJson {
 		v.put("structure", pos(r.village().structure()));
 		v.put("bell", pos(r.village().bell()));
 		v.put("heart", pos(r.village().heart()));
+		if (r.village().site() != null) v.put("site", pos(r.village().site()));
 		m.put("village", v);
 		m.put("g0", r.g0());
 		List<Object> reloads = new ArrayList<>();
@@ -118,8 +122,26 @@ public final class MetricsJson {
 		Map<String, Object> f = new LinkedHashMap<>();
 		f.put("nutrition", (long) d.foodNutrition());
 		f.put("days_left", d.foodDaysLeft());
+		f.put("dinners", d.needs().dinners());
+		f.put("diners", d.needs().diners());
+		f.put("fed", d.needs().fed());
+		f.put("hungry", d.needs().hungry());
+		f.put("eaten_nutrition", d.needs().eatenNutrition());
+		f.put("eaten_items", d.needs().eatenItems());
+		f.put("max_hungry_days", d.needs().maxHungryDays());
 		m.put("food", f);
+		Map<String, Object> hs = new LinkedHashMap<>();
+		hs.put("housed", d.needs().housed());
+		hs.put("house_beds", d.needs().houseBeds());
+		m.put("housing", hs);
 		m.put("treasury", (long) d.treasury());
+		Map<String, Object> wg = new LinkedHashMap<>();
+		wg.put("runs", d.wages().runs());
+		wg.put("bill", d.wages().bill());
+		wg.put("paid", d.wages().paid());
+		wg.put("spent", d.wages().spent());
+		wg.put("strikers", d.wages().strikers());
+		m.put("wages", wg);
 		Map<String, Object> de = new LinkedHashMap<>();
 		de.put("total", (long) d.deaths().size());
 		de.put("mobs", (long) d.mobDeaths());
@@ -178,7 +200,7 @@ public final class MetricsJson {
 				(Boolean) m.get("clean_shutdown"), lng(m, "heartbeat"), (int) lng(m, "actions_done"),
 				stopped == null ? null : ((Number) stopped).intValue(), lng(m, "seed"), (String) m.get("difficulty"),
 				(int) lng(m, "days_requested"), (String) m.get("minecraft"),
-				new VillagePositions(readPos(v.get("structure")), readPos(v.get("bell")), readPos(v.get("heart"))),
+				new VillagePositions(readPos(v.get("structure")), readPos(v.get("bell")), readPos(v.get("heart")), readPos(v.get("site"))),
 				lng(m, "g0"), reloads, m.get("baseline") == null ? null : readDay(Json.obj(m.get("baseline"), "baseline")),
 				days, as);
 	}
@@ -195,6 +217,12 @@ public final class MetricsJson {
 		return n.longValue();
 	}
 
+	/** A count that reports before M11 do not have: reads 0. */
+	private static long optLng(Map<String, Object> m, String k) {
+		Object o = m.get(k);
+		return o instanceof Number n ? n.longValue() : 0L;
+	}
+
 	private static double dbl(Map<String, Object> m, String k) {
 		Object o = m.get(k);
 		return o == null ? Double.NaN : ((Number) o).doubleValue();
@@ -204,6 +232,8 @@ public final class MetricsJson {
 		Map<String, Object> b = Json.obj(m.get("buildings"), "buildings");
 		Map<String, Object> s = Json.obj(m.get("stockpile"), "stockpile");
 		Map<String, Object> f = Json.obj(m.get("food"), "food");
+		Map<String, Object> hs = m.get("housing") == null ? Map.of() : Json.obj(m.get("housing"), "housing");
+		Map<String, Object> wg = m.get("wages") == null ? Map.of() : Json.obj(m.get("wages"), "wages");
 		Map<String, Object> de = Json.obj(m.get("deaths"), "deaths");
 		Map<String, Object> vm = Json.obj(m.get("village_ms"), "village_ms");
 		Map<String, Object> sv = Json.obj(m.get("server"), "server");
@@ -221,6 +251,9 @@ public final class MetricsJson {
 				(int) lng(f, "nutrition"), dbl(f, "days_left"), (int) lng(m, "treasury"), deaths,
 				new TickStats(lng(vm, "samples"), dbl(vm, "mean"), dbl(vm, "p95"), dbl(vm, "max")),
 				dbl(sv, "mspt"), dbl(sv, "tps"), dbl(m, "wall_seconds"), lng(sv, "heap_used_mb"), lng(w, "save_bytes"),
-				readLongs(m.get("work")), readLongs(m.get("worker_status")), readLongs(m.get("stockpile_tags")));
+				readLongs(m.get("work")), readLongs(m.get("worker_status")), readLongs(m.get("stockpile_tags")),
+				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
+						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
+				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")));
 	}
 }

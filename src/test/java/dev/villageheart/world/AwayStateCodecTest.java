@@ -53,6 +53,34 @@ class AwayStateCodecTest {
 	}
 
 	@Test
+	void theHuntersTripCounterRoundTripsAndAnM16SaveDecodesWithDefaults() {
+		AwayState s = AwayState.NONE.withRolls(3).withDone(7L, 2);
+		JsonObject o = enc(s).getAsJsonObject();
+		assertEquals(Set.of("rolls", "done_day", "done_today"), o.keySet());
+		assertEquals(7L, o.get("done_day").getAsLong());
+		assertEquals(s, dec(o));
+		assertEquals(7L, dec(o).doneDay());
+		assertEquals(2, dec(o).doneToday());
+		// a day 0 counter is not the default (-1) and must survive
+		assertEquals(AwayState.NONE.withDone(0L, 1), dec(enc(AwayState.NONE.withDone(0L, 1))));
+		// M16 save (no counter): -1 / 0
+		AwayState m16 = dec(JsonParser.parseString("{\"rolls\":4,\"progress\":12.0}"));
+		assertEquals(-1L, m16.doneDay());
+		assertEquals(0, m16.doneToday());
+		// the default counter is never written: M16's pinned names are unchanged
+		assertFalse(enc(AwayState.NONE.withRolls(1)).getAsJsonObject().has("done_day"));
+		assertEquals(0, dec(JsonParser.parseString("{\"done_today\":-3}")).doneToday(), "negative counts are clamped");
+	}
+
+	@Test
+	void theCounterSurvivesTheOtherWithMethods() {
+		AwayState s = AwayState.NONE.withDone(5L, 2).withRolls(1).withPending(Map.of("minecraft:beef", 1)).withUnknownSteps(2)
+				.withProgress(new AwayProgress(5), Optional.empty()).withLastReason(Optional.of(SurfaceReason.HAUL)).withTrip(Optional.empty()).repaired();
+		assertEquals(5L, s.doneDay());
+		assertEquals(2, s.doneToday());
+	}
+
+	@Test
 	void anEmptyObjectDecodesToTheDefaults() {
 		assertEquals(AwayState.NONE, dec(JsonParser.parseString("{}")));
 	}

@@ -24,6 +24,8 @@ public final class WorkerStatusText {
 			case SITE_UNREACHABLE -> ActivityKind.SITE_UNREACHABLE;
 			case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;
 			case BLOCKED -> ActivityKind.BLOCKED;
+			case TOO_HUNGRY -> ActivityKind.TOO_HUNGRY;
+			case ON_STRIKE -> ActivityKind.ON_STRIKE;
 		};
 	}
 

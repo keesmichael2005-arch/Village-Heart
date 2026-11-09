@@ -18,5 +18,9 @@ public enum WorkerStatus {
 	/** A builder cannot go on: a block that is not natural is in the way (M20). */
 	BLOCKED,
 	/** The job's site (the Mineshaft) could not be reached: it retries after a while (M16). */
-	SITE_UNREACHABLE
+	SITE_UNREACHABLE,
+	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
+	TOO_HUNGRY,
+	/** Unpaid: the worker stops working until the treasury pays it (M12). */
+	ON_STRIKE
 }

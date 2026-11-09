@@ -31,7 +31,12 @@ public final class SimActions {
 			"command", SimActions::command,
 			"fail", (ctx, a) -> { throw new IllegalStateException("scenario fail action"); },
 			"crash", (ctx, a) -> crashRequested = true,
-			"hang", SimActions::hang);
+			"hang", SimActions::hang,
+			"site", StarterActions::site,
+			"prefab", StarterActions::prefab,
+			"field", StarterActions::field,
+			"grove", StarterActions::grove,
+			"hire", StarterActions::hire);
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");

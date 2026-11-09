@@ -93,8 +93,9 @@ public final class VillageClaims {
 		return released;
 	}
 
+	/** Test and command use: the same path as a player's deposit (clamped, and it pays the strikers it can). */
 	public static void depositTreasury(MinecraftServer server, int emeralds) {
-		data(server).update(v -> v.depositTreasury(emeralds));
+		dev.villageheart.economy.Treasury.deposit(server, emeralds, null);
 	}
 
 	public static void setRank(MinecraftServer server, UUID player, Rank rank) {

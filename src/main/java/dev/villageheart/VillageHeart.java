@@ -19,6 +19,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.item.ModCreativeTab.register();
 		dev.villageheart.worker.ModProfessions.register();
 		dev.villageheart.worker.WorkerAttachments.register();
+		dev.villageheart.food.DietAttachments.register();
 		dev.villageheart.worker.WorkerBrain.register();
 		dev.villageheart.worker.WorkerCommands.register();
 		dev.villageheart.room.RoomCells.register();
@@ -38,7 +39,12 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
 		dev.villageheart.worker.job.AwayTrips.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:miner", dev.villageheart.worker.mine.MinerSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:hunter", dev.villageheart.worker.hunt.HunterSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:builds", dev.villageheart.build.BuildSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:dinner", dev.villageheart.food.DinnerSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:needs", dev.villageheart.needs.NeedsSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:wages", dev.villageheart.economy.WageSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }

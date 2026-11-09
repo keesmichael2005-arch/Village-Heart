@@ -51,4 +51,18 @@ class ReplantRulesTest {
 		assertEquals(0, ReplantRules.keepCount(0, 2));
 		assertEquals(8, ReplantRules.keepCount(64, 4));
 	}
+
+	@Test
+	void aFelledTreeYieldsWhatItsStumpStillLacks() {
+		assertEquals(1, ReplantRules.cuttings(1, 1, 0), "no sapling anywhere: the stump gets one");
+		assertEquals(0, ReplantRules.cuttings(1, 1, 1), "one on hand covers the stump");
+		assertEquals(0, ReplantRules.cuttings(1, 3, 5), "enough on hand for every open spot");
+		assertEquals(1, ReplantRules.cuttings(1, 3, 2), "two on hand, three open spots: this stump's one");
+		assertEquals(1, ReplantRules.cuttings(1, 6, 0), "never more than the stump's own cells, although other spots are open");
+		assertEquals(4, ReplantRules.cuttings(4, 4, 0), "a 2x2 stump gets four");
+		assertEquals(2, ReplantRules.cuttings(4, 4, 2), "and only what is missing");
+		assertEquals(0, ReplantRules.cuttings(4, 4, 4), "four in the camp chest: none");
+		assertEquals(1, ReplantRules.cuttings(1, 1, -3), "a negative count is read as none");
+		assertThrows(IllegalArgumentException.class, () -> ReplantRules.cuttings(0, 1, 0));
+	}
 }

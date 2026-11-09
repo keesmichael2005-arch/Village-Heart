@@ -30,7 +30,13 @@ public final class HeartTexts {
 		EN.put(PREFIX + "overview.food", "Food: %s days");
 		EN.put(PREFIX + "overview.food_none", "Food: -");
 		EN.put(PREFIX + "overview.treasury", "Treasury: %s emeralds");
-		EN.put(PREFIX + "overview.wages", "Wages tomorrow: -");
+		EN.put(PREFIX + "overview.wages", "Wages tomorrow: %s emeralds");
+		EN.put(PREFIX + "overview.wages_none", "Wages tomorrow: -");
+		EN.put(PREFIX + "deposit_all", "Deposit all");
+		EN.put(PREFIX + "deposit_all.tip", "Deposit every emerald you carry");
+		EN.put(PREFIX + "withdraw_one", "Withdraw 1");
+		EN.put(PREFIX + "withdraw_stack", "Withdraw 64");
+		EN.put(PREFIX + "withdraw.tip", "Only the Owner can take emeralds out");
 		EN.put(PREFIX + "overview.no_alerts", "No alerts");
 		EN.put(PREFIX + "overview.more_alerts", "(+%s more)");
 		EN.put(PREFIX + "villagers.none", "No villagers nearby.");
@@ -85,6 +91,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_tool.pickaxe", "Needs pickaxe");
 		EN.put(PREFIX + "activity.needs_tool.hoe", "Needs hoe");
 		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
+		EN.put(PREFIX + "activity.too_hungry", "Too hungry to work");
+		EN.put(PREFIX + "activity.on_strike", "On strike");
 		EN.put(PREFIX + "activity.no_work", "Nothing to do");
 		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
 		EN.put(PREFIX + "activity.no_work.builder", "No blueprint to build");
@@ -98,6 +106,9 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.away_working.miner", "Away (mining)");
 		EN.put(PREFIX + "activity.site_unreachable", "Can't reach its site");
 		EN.put(PREFIX + "activity.site_unreachable.miner", "Can't reach the Mineshaft");
+		EN.put(PREFIX + "activity.no_work.hunter", "No valid Hunting Ground");
+		EN.put(PREFIX + "activity.away_working.hunter", "Away (hunting)");
+		EN.put(PREFIX + "activity.site_unreachable.hunter", "Can't reach the Hunting Ground");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

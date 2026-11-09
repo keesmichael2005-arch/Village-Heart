@@ -6,6 +6,7 @@ import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.economy.Wages;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.world.VillageSystem;
 import dev.villageheart.world.VillageTicker;
@@ -94,8 +95,11 @@ public final class WorkerSystem implements VillageSystem {
 			}
 			Villager v = findLoaded(server, rec.villager());
 			if (v == null || !(v.level() instanceof ServerLevel level)) continue;
+			dev.villageheart.worker.job.WorkerUnstick.rescue(level, v);
 			if (!WorkerAttachments.isWorker(v)) {
-				JobType.byId(rec.jobId()).ifPresent(job -> Workers.install(level, v, WorkerData.hired(job, rec.building(), rec.jobBlock())));
+				// back at the level the registry recorded (M12), not at level 1
+				JobType.byId(rec.jobId()).ifPresent(job -> Workers.install(level, v,
+						WorkerData.hired(job, rec.building(), rec.jobBlock()).withProgress(rec.level(), 0)));
 			} else {
 				Optional<JobType> job = JobType.byId(rec.jobId());
 				if (job.isPresent() && !v.getVillagerData().profession().equals(ModProfessions.holder(job.get()))) {
@@ -103,6 +107,9 @@ public final class WorkerSystem implements VillageSystem {
 				}
 				if (!v.isBaby() && !WorkerBrain.isWorkerBrain(v)) v.refreshBrain(level);
 				WorkXp.pass(level, v, village.tier());
+				// the wage bill of a worker that is away reads this mirror (M12); M15's paths write it at once, this repairs a lag or a direct write
+				WorkerData now = v.getAttached(WorkerAttachments.WORKER);
+				if (now != null && now.level() != rec.level()) Wages.mirrorLevel(server, rec.villager(), now.level());
 			}
 		}
 	}

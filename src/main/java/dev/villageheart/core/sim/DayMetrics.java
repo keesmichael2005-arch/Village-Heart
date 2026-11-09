@@ -12,9 +12,48 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		int foodNutrition, double foodDaysLeft, int treasury,
 		List<DeathRecord> deaths,
 		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
-		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags) {
+		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages) {
+
+	/**
+	 * What dinner and housing did that day (M11): the dinner's totals, the hungriest villager at the end of the day, and how many villagers
+	 * sleep in a valid House. A report without them (M2-M10) reads zeros.
+	 */
+	public record NeedsDay(long dinners, long diners, long fed, long hungry, long eatenNutrition, long eatenItems, long maxHungryDays,
+			long housed, long houseBeds) {
+		public static final NeedsDay ZERO = new NeedsDay(0, 0, 0, 0, 0, 0, 0, 0, 0);
+	}
+
+	/**
+	 * What the wage runs of that day did (M12): how many ran, what they cost in all, how many workers were paid and how many went on strike.
+	 * A report without them (M2-M11) reads zeros.
+	 */
+	public record WageDay(long runs, long bill, long paid, long spent, long strikers) {
+		public static final WageDay ZERO = new WageDay(0, 0, 0, 0, 0);
+	}
+
+	/** Without the M12 wage record. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, WageDay.ZERO);
+	}
+
+	/** Without the M11 needs record. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, NeedsDay.ZERO);
+	}
 
 	public DayMetrics {
+		java.util.Objects.requireNonNull(needs, "needs");
+		java.util.Objects.requireNonNull(wages, "wages");
 		stockpile = Map.copyOf(stockpile);
 		deaths = List.copyOf(deaths);
 		work = Map.copyOf(work);
@@ -28,7 +67,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
 			long worldSaveBytes) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
-				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, Map.of(), Map.of(), Map.of());
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, Map.of(), Map.of(), Map.of(),
+				NeedsDay.ZERO);
 	}
 
 	public long stockpileTotal() {
@@ -62,7 +102,21 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		for (Map.Entry<String, Long> e : workerStatus.entrySet()) m.put("workers.status." + e.getKey(), (double) e.getValue());
 		m.put("food.nutrition", (double) foodNutrition);
 		m.put("food.days_left", foodDaysLeft);
+		m.put("food.dinners", (double) needs.dinners());
+		m.put("food.diners", (double) needs.diners());
+		m.put("food.fed", (double) needs.fed());
+		m.put("food.hungry", (double) needs.hungry());
+		m.put("food.eaten_nutrition", (double) needs.eatenNutrition());
+		m.put("food.eaten_items", (double) needs.eatenItems());
+		m.put("food.max_hungry_days", (double) needs.maxHungryDays());
+		m.put("housing.housed", (double) needs.housed());
+		m.put("housing.house_beds", (double) needs.houseBeds());
 		m.put("treasury", (double) treasury);
+		m.put("wages.runs", (double) wages.runs());
+		m.put("wages.bill", (double) wages.bill());
+		m.put("wages.paid", (double) wages.paid());
+		m.put("wages.spent", (double) wages.spent());
+		m.put("wages.strikers", (double) wages.strikers());
 		m.put("deaths.total", (double) deaths.size());
 		m.put("deaths.mobs", (double) mobDeaths());
 		Map<String, Integer> byCause = new LinkedHashMap<>();

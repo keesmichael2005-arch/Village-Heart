@@ -7,6 +7,7 @@ import dev.villageheart.core.Balance;
  * <ol>
  *   <li>workplace invalid: idle</li>
  *   <li>a deposit trip is wanted (and Storage is not known to be full or out of reach): yield to it</li>
+ *   <li>the worker cannot work (work speed 0: too hungry, or unpaid, M11): idle, whatever it was doing</li>
  *   <li>an action is in progress and its target is still valid: carry on</li>
  *   <li>few free slots and surplus seeds: compost before harvesting more</li>
  *   <li>Storage not full and a mature crop: harvest</li>
@@ -28,13 +29,22 @@ public final class FarmerPlanner {
 
 	public record Snapshot(boolean workplaceValid, boolean depositWanted, boolean storageBlocked, boolean inProgress, int freeSlots,
 			int surplusSeeds, boolean matureAvailable, boolean collectAvailable, boolean plantAvailable, boolean plantNeedsFetch,
-			boolean composterReady, boolean boneMealTarget, boolean sweepComplete, boolean noFarmland) {}
+			boolean composterReady, boolean boneMealTarget, boolean sweepComplete, boolean noFarmland, boolean cannotWork) {
+		/** A worker that can work. */
+		public Snapshot(boolean workplaceValid, boolean depositWanted, boolean storageBlocked, boolean inProgress, int freeSlots,
+				int surplusSeeds, boolean matureAvailable, boolean collectAvailable, boolean plantAvailable, boolean plantNeedsFetch,
+				boolean composterReady, boolean boneMealTarget, boolean sweepComplete, boolean noFarmland) {
+			this(workplaceValid, depositWanted, storageBlocked, inProgress, freeSlots, surplusSeeds, matureAvailable, collectAvailable,
+					plantAvailable, plantNeedsFetch, composterReady, boneMealTarget, sweepComplete, noFarmland, false);
+		}
+	}
 
 	public record Decision(Action action, StatusChange status) {}
 
 	public static Decision decide(Snapshot s) {
 		if (!s.workplaceValid()) return new Decision(Action.IDLE_AT_FARMHOUSE, StatusChange.KEEP);
 		if (s.depositWanted() && !s.storageBlocked()) return new Decision(Action.YIELD, StatusChange.KEEP);
+		if (s.cannotWork()) return new Decision(Action.IDLE_AT_FARMHOUSE, StatusChange.KEEP);
 		if (s.inProgress()) return new Decision(Action.CONTINUE, StatusChange.CLEAR);
 		if (s.freeSlots() <= Balance.SLOT_PRESSURE_FREE_SLOTS && s.surplusSeeds() > 0) return new Decision(Action.COMPOST, StatusChange.CLEAR);
 		if (!s.storageBlocked() && s.matureAvailable()) return new Decision(Action.HARVEST, StatusChange.CLEAR);

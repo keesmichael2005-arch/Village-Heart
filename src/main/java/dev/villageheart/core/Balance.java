@@ -56,14 +56,24 @@ public final class Balance {
 	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
 
 	// ---- jobs (M9) ----
-	/** Work speed multiplier per tool tier, indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
-	public static final double[] TOOL_SPEED = {1.0, 1.25, 1.375, 1.0, 1.5, 1.75, 2.0};
+	/** Vanilla 1.21.11 mining speed per tool tier ({@code ToolMaterial}), indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
+	public static final double[] VANILLA_TOOL_SPEED = {2, 4, 5, 12, 6, 8, 9};
+	/** Vanilla speed is divided by this to get the work multiplier (wood 1.0, stone 2.0, ...): the ratios between tiers are vanilla's. */
+	public static final double TOOL_SPEED_DIVISOR = 2.0;
+	/** Work speed multiplier per tool tier = vanilla speed / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5. */
+	public static final double[] TOOL_SPEED = toolSpeeds();
+
+	private static double[] toolSpeeds() {
+		double[] m = new double[VANILLA_TOOL_SPEED.length];
+		for (int i = 0; i < m.length; i++) m[i] = VANILLA_TOOL_SPEED[i] / TOOL_SPEED_DIVISOR;
+		return m;
+	}
 	/** Work speed multiplier per worker level 1..3 (M15 raises levels). */
 	public static final double[] LEVEL_SPEED = {1.0, 1.25, 1.5};
 	/** Speed of a job whose tool is optional and missing. */
 	public static final double NO_TOOL_SPEED = 0.5;
-	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x1.25) fells a log in 40 ticks. */
-	public static final double BASE_TICKS_PER_LOG = 50;
+	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x2.0) fells a log in 40 ticks (anchored on stone; wood 80). */
+	public static final double BASE_TICKS_PER_LOG = 80;
 	/** A tree counts only with this many face contacts with natural (non-persistent) leaves. */
 	public static final int TREE_MIN_LEAF_CONTACTS = 3;
 	public static final int MAX_TREE_LOGS = 192;
@@ -135,6 +145,15 @@ public final class Balance {
 	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
 	public static final int BUILD_IN_THE_WAY_TICKS = 100;
 	public static final int BUILD_UNREACHABLE_RETRY_TICKS = 600;
+	// ---- defence blueprints (M21) ----
+	/** The longest wall or gate line in one blueprint, in blocks. */
+	public static final int MAX_WALL_LENGTH = 32;
+	/** The shortest gate: a 3-wide opening needs a post on each side. */
+	public static final int GATE_MIN_LENGTH = 5;
+	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
+	public static final int DEFENCE_REFRESH_TICKS = 200;
+	/** Recorded defence sites (patrol points) per village. */
+	public static final int MAX_DEFENCE_SITES = 64;
 	// ---- farmer (M10) ----
 	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
 	public static final int FARM_RADIUS = 24;
@@ -166,10 +185,32 @@ public final class Balance {
 	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
 	public static final int SLOT_PRESSURE_FREE_SLOTS = 2;
 
+	// ---- food, dinner and needs (M11) ----
+	/** The whole village eats at this day time (DESIGN section 6). */
+	public static final int DINNER_TICK = 11000;
+	/** Nutrition a villager needs at dinner to count as fed: an adult 10, a baby half. */
+	public static final int ADULT_NUTRITION = 10;
+	public static final int CHILD_NUTRITION = 5;
+	/** Work speed after 0, 1 and 2+ missed dinners (index = min(hungryDays, 2)). */
+	public static final double[] HUNGER_SPEED = {1.0, 0.5, 0.0};
+	/** Work speed of a worker without a bed in a valid House. */
+	public static final double UNHOUSED_SPEED = 0.75;
+	/** Housing is re-read (and workers re-homed) this often. */
+	public static final int NEEDS_REFRESH_TICKS = 100;
+	/** Items the village never eats (harmful, teleporting, or a player's valuables). Must equal the item tag villageheart:not_village_food (asserted by a test). */
+	public static final java.util.Set<String> FOOD_NEVER_EAT = java.util.Set.of(
+			"minecraft:rotten_flesh", "minecraft:spider_eye", "minecraft:poisonous_potato", "minecraft:pufferfish",
+			"minecraft:suspicious_stew", "minecraft:chorus_fruit", "minecraft:golden_apple", "minecraft:enchanted_golden_apple",
+			"minecraft:golden_carrot");
+	/** Food a Cook (M13) turns into something better: eaten only after every prepared food. */
+	public static final java.util.Set<String> FOOD_RAW = java.util.Set.of(
+			"minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit", "minecraft:cod",
+			"minecraft:salmon", "minecraft:potato");
+
 	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
 
-	/** Work units one haul costs; a stone pickaxe at level 1 earns 1.25 per tick, so a haul is 2000 ticks (2 in-game hours) underground. */
-	public static final double MINER_HAUL_UNITS = 2500;
+	/** Work units one haul costs; a stone pickaxe at level 1 earns 2.0 per tick, so a haul is 2000 ticks (anchored on stone; wood 4000) (2 in-game hours) underground. */
+	public static final double MINER_HAUL_UNITS = 4000;
 	/** An underground miner is stepped every this many ticks. */
 	public static final int MINER_STEP_TICKS = 20;
 	/** Durability a pickaxe loses per completed haul. */
@@ -188,4 +229,50 @@ public final class Balance {
 	/** Depth bands of the haul tables by the shaft's deepest Y: HIGH from 40, MID from 0, DEEP below. */
 	public static final int BAND_HIGH_MIN_Y = 40;
 	public static final int BAND_MID_MIN_Y = 0;
+
+	// ---- M17: Hunter + Hunting Ground ---------------------------------------------------------------
+
+	/** Work units one hunting trip costs; at level 1 (1.0 unit per tick) a trip is 3000 ticks, 3 in-game hours away (DESIGN 5.4). */
+	public static final double HUNTER_TRIP_UNITS = 3000;
+	/** An away hunter is stepped every this many ticks. */
+	public static final int HUNTER_STEP_TICKS = 20;
+	/** Durability the leased weapon loses per completed trip. */
+	public static final int HUNTER_WEAR_PER_TRIP = 5;
+	/** Completed trips per day by level (index level - 1, clamped). */
+	public static final int[] HUNTER_TRIPS_PER_DAY = {2, 3, 3};
+	/** A trip starts only if it can end this many ticks before WORK_END. */
+	public static final int HUNTER_DEPART_MARGIN = 300;
+	/** After the ground turned out unreachable the hunter waits this long before it tries again. */
+	public static final int HUNTER_RETRY_TICKS = 600;
+	/** Away steps in a row with an unreadable weapon chest before the hunter comes back. */
+	public static final int HUNTER_UNKNOWN_LIMIT = 60;
+	/** A hunter farther than this from the ground marker walks to its fletching table first (WalkTo plans at most 48 blocks). */
+	public static final int HUNTER_FAR_FROM_GROUND = 40;
+	/** A Hunting Ground links only to a Hunting Lodge within this many blocks (an M5 rule change, M17). */
+	public static final int HUNTING_GROUND_LINK_RANGE = 40;
+	/** Arrived at the ground marker when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
+	public static final double HUNT_ENTRY_REACH = 3.0;
+	public static final double HUNT_ENTRY_CLOSEST = 6.0;
+	public static final int HUNT_MEAT_MIN = 2, HUNT_MEAT_MAX = 4;
+	public static final int HUNT_LEATHER_MIN = 1, HUNT_LEATHER_MAX = 2;
+	public static final int HUNT_FEATHER_MIN = 1, HUNT_FEATHER_MAX = 2;
+	public static final double HUNT_HIDE_CHANCE = 0.5;
+	/** Extra meat for a trip with a bow or crossbow and an arrow taken from the Lodge chest. */
+	public static final int HUNT_ARROW_BONUS_MEAT = 1;
+	/** Meat-kind draws per trip: always all of them, so an arrow never shifts the random stream. */
+	public static final int HUNT_MAX_MEAT_DRAWS = HUNT_MEAT_MAX + HUNT_ARROW_BONUS_MEAT;
+
+	// ---- M12: treasury and wages ---------------------------------------------------------------------
+
+	/** The wage run happens when the day index changes (day time 0, the first tick of a day). */
+	public static final int WAGE_TICK = 0;
+	/** Emeralds paid per day by worker level 1, 2, 3 (tunable). Read through {@link #wageForLevel}. */
+	private static final int[] WAGES = {1, 1, 2};
+	/** The most emeralds one Withdraw action takes out. */
+	public static final int MAX_WITHDRAW = 64;
+	/** The treasury never holds more than this (a release drops it as item entities, one per 64). */
+	public static final int MAX_TREASURY = 100_000;
+
+	/** The daily wage of a worker of this level; a level below 1 reads as 1 and above 3 as 3. */
+	public static int wageForLevel(int level) { return WAGES[Math.max(1, Math.min(level, WAGES.length)) - 1]; }
 }

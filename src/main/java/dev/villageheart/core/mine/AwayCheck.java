@@ -46,6 +46,11 @@ public final class AwayCheck {
 	}
 
 	public static Outcome check(Inputs in) {
+		return check(in, Balance.MINER_HAUL_UNITS, Balance.MINER_STEP_TICKS, Balance.MINER_UNKNOWN_LIMIT);
+	}
+
+	/** The same checks with another job's numbers (the hunter, M17): units per trip, ticks per step, unknown steps before giving up. */
+	public static Outcome check(Inputs in, double unitCost, int stepTicks, int unknownLimit) {
 		if (!in.registeredMiner()) return up(SurfaceReason.NOT_A_MINER, in.progress(), 0);
 		if (!in.phaseIsWork()) return up(SurfaceReason.DAY_END, in.progress(), 0);
 		if (!in.siteValid() || !in.slotHeld()) return up(SurfaceReason.SITE_INVALID, AwayProgress.ZERO, 0);
@@ -55,20 +60,20 @@ public final class AwayCheck {
 				return up(SurfaceReason.NO_TOOL, in.progress(), 0);
 			case UNKNOWN:
 				unknown++;
-				if (unknown >= Balance.MINER_UNKNOWN_LIMIT) return up(SurfaceReason.STOPPED_WORKING, in.progress(), 0);
+				if (unknown >= unknownLimit) return up(SurfaceReason.STOPPED_WORKING, in.progress(), 0);
 				return new Outcome(Optional.empty(), false, in.progress(), unknown);
 			case HELD:
 				break;
 		}
 		if (in.multiplier() <= 0) return up(SurfaceReason.STOPPED_WORKING, in.progress(), 0);
 		if (!in.depthKnown()) {
-			AwayProgress held = in.progress().addHeld(Balance.MINER_STEP_TICKS, in.multiplier());
-			if (!held.due()) return new Outcome(Optional.empty(), false, held, 0);
+			AwayProgress held = in.progress().addHeld(stepTicks, in.multiplier(), unitCost);
+			if (!held.due(unitCost)) return new Outcome(Optional.empty(), false, held, 0);
 			unknown++; // a haul is waiting for the depth: bounded like an unreadable chest
-			if (unknown >= Balance.MINER_UNKNOWN_LIMIT) return up(SurfaceReason.STOPPED_WORKING, held, 0);
+			if (unknown >= unknownLimit) return up(SurfaceReason.STOPPED_WORKING, held, 0);
 			return new Outcome(Optional.empty(), false, held, unknown);
 		}
-		AwayProgress.Step step = in.progress().add(Balance.MINER_STEP_TICKS, in.multiplier());
+		AwayProgress.Step step = in.progress().add(stepTicks, in.multiplier(), unitCost);
 		if (step.hauls() > 0) return up(SurfaceReason.HAUL, step.next(), 0);
 		return new Outcome(Optional.empty(), false, step.next(), 0);
 	}

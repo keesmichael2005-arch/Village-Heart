@@ -18,21 +18,28 @@ public record AwayProgress(double units) {
 	public record Step(AwayProgress next, int hauls) {}
 
 	/** At most one haul per step; what is left over is capped at one haul. */
-	public Step add(int ticks, double multiplier) {
+	public Step add(int ticks, double multiplier) { return add(ticks, multiplier, Balance.MINER_HAUL_UNITS); }
+
+	/** The same for a job whose haul or trip costs {@code unitCost} units (the hunter, M17). */
+	public Step add(int ticks, double multiplier, double unitCost) {
 		double u = units + (multiplier > 0 ? ticks * multiplier : 0);
-		if (u >= Balance.MINER_HAUL_UNITS - EPS) {
-			double rest = Math.min(Math.max(u - Balance.MINER_HAUL_UNITS, 0), Balance.MINER_HAUL_UNITS);
+		if (u >= unitCost - EPS) {
+			double rest = Math.min(Math.max(u - unitCost, 0), unitCost);
 			return new Step(new AwayProgress(rest), 1);
 		}
 		return new Step(new AwayProgress(u), 0);
 	}
 
 	/** The same, but a haul that falls due is not taken: the progress stays at one haul (the shaft depth is not known yet). */
-	public AwayProgress addHeld(int ticks, double multiplier) {
+	public AwayProgress addHeld(int ticks, double multiplier) { return addHeld(ticks, multiplier, Balance.MINER_HAUL_UNITS); }
+
+	public AwayProgress addHeld(int ticks, double multiplier, double unitCost) {
 		double u = units + (multiplier > 0 ? ticks * multiplier : 0);
-		return new AwayProgress(Math.min(u, Balance.MINER_HAUL_UNITS));
+		return new AwayProgress(Math.min(u, unitCost));
 	}
 
 	/** A whole haul is waiting. */
-	public boolean due() { return units >= Balance.MINER_HAUL_UNITS - EPS; }
+	public boolean due() { return due(Balance.MINER_HAUL_UNITS); }
+
+	public boolean due(double unitCost) { return units >= unitCost - EPS; }
 }

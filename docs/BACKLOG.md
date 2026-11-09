@@ -2,8 +2,14 @@
 
 ## Priority (flaky infrastructure)
 - [ ] **M16 stray-item flake clue (M15-r1):** in `minerHaulsFortyCobblestone`, the stray item was a STONE PICKAXE at age 0 at tick 11007 (just after the WORK window ends at 11000). Likely a tool returned or dropped at day end (CampTools lease release / dropPending?) instead of going back into the Mine chest. Root-cause it
-- [ ] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+- [x] **M9 `fellResumesAfterInterrupt` still flakes** (1 of 11 runs in M20-r3: "a log of the second oak fell on tick 4002" plus a "cannot reach the tree" line, same signature as M9-r1). Root-cause it (WalkTo / give-up path); not M20-caused
+  - **Fixed (backlog-2).** A gameplay gap: the fired first lumberjack (a plain villager now) idled in front of the camp door; the second one stood in the doorway, its jam rule "stepped back" to its own cell (the idler has the lower id) and after 201 ticks gave the open oak up for 6000 ticks. `WalkTo` now asks an idle villager within a block to step aside (a vanilla WALK_TARGET away from it). Deterministic test `idlerInTheDoorwayStepsAside` (red without the nudge, with the natural signature).
 - [ ] **M9 `workerOpensDoors` slow outliers** (456 vs 400 once; 301 once): add walk-time logging and root-cause it
+  - backlog-2: walk-time logging added (`[m7] workerOpensDoors: at the job block after N ticks; trace [...]`, every 20 ticks: position, door, activity, WALK_TARGET/PATH/CANT_REACH, mobs within 8; also in the failure text). Not root-caused: 0 outliers in 9 full L2 runs (5 on origin/m11 + backlog-2) and 8 isolated runs, all 64 ticks from the start of the walk. Leave open until a slow run's trace shows the cause.
+- [x] **M9 `sixOaksTwoDays` "oak N ... not replanted within a day"** (several full verify runs; ~2 of 5 on origin/m11)
+  - **Fixed (backlog-2).** Oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`: alone the test always sees the same window (9 saplings, needs 6), in a full run earlier tests shift it, and 2-5% of this world's 250-300-roll windows hold fewer than 6 saplings. Game change: a felled tree gives its lumberjack the saplings its own stump still lacks (`ReplantRules.cuttings`). Test `stumpsReplantedWhenLeavesDropNoSapling` (sequence reset to a salt with no leaf sapling).
+- [x] **M17 `farHunterWalksViaLodge` "the far spot is not entity-ticking yet on tick 2602"** (M21-r1)
+  - **Fixed (backlog-2).** Not load: the test forced only the chunks of the strip's two corners; at 9 of 256 placements (mod 16) the far spot's chunk is neither and stays block-ticking. It now forces every chunk the strip touches and asserts the far spot's chunk is one of them.
 - [x] **L4 client flake:** `AssertionError: Network synchronizer in invalid state` from Fabric's client-gametest synchronizer under load, followed by a server crash. Seen in the M3 builder's first full verify and in M4-r2 verify run 2; a rerun passed both times. Investigate (world-load waits? running two client tests in one JVM?) and fix or add a robust retry with logging
   - **Fixed (branch l4-flake).** Root cause is in Fabric, not our tests: a lost-wakeup race in `NetworkSynchronizer.waitForPacketHandlers` (predicate tested outside the lock, then `await(10 s)` with no re-test). The server thread's first tick of a new world misses the signal for the client's login packet and sleeps 10 s, which the synchronizer reports as invalid. Fixed by a gametest-only mixin that re-tests before parking and parks in 20 ms slices (no retry). See TESTING.md "Layer 4 and Fabric's NetworkSynchronizer".
 
@@ -83,14 +89,16 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
 ## Cross-milestone (from the M12 plan)
-- [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+- [x] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+  - Done in M12: `starter.json` seeds 32 emeralds and asserts the wage metrics (hand run recorded in PROGRESS).
 
 ## From M8-r1
 - [x] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
   - Fixed (backlog-1): `oldMenuAfterReplaceIsStaleInTheSameTick`.
 - [x] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
   - Fixed (backlog-1): `actionFromOutOfReachRejectedInTheSameTick`.
-- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [x] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+  - Done in M11: `WorkerData.needs` is now real (fed from the diet, housed from the House beds), so the icons follow it. Non-worker villagers still show no icons.
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
 
 ## From M24
@@ -98,7 +106,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] **Creative pick-block with data copies a protected chest:** `PlayerPickItemEvents.BLOCK` exists in Fabric for a later fix
 - [ ] Should breaking a registered marker be Steward-only (today Residents can, Visitors cannot)?
 - [ ] No self step-down: an Owner can demote anyone but must transfer to stop being Owner
-- [ ] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+- [x] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+  - Done in M12: both permissions and rows, `WageGameTests.onlyOwnerCanWithdraw`, and step 5 of `MultiplayerClientTests` (deposit all and withdraw 64 through the buttons on the dedicated server, inventory equality checked by `syncCheck`).
 - [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
 - [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
@@ -139,6 +148,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
 
+## From M11-r1
+- [ ] T-L2-10(d) deferred: no L2 test for a villager 81 blocks (or at the box corner 84.9) from the Heart not eating; the census is `world.VillageCensus` over `ClaimGeometry` (L1-tested)
+- [ ] T-L2-2 (`noFoodAllHungryNoDeaths`) only jumps dinner to dinner and never crosses dawn; M12's dawn wages need the plan's version (each round also crosses 23980)
+- [ ] `sum(deaths.cause.minecraft:starve) == 0` in `starter` can never fail (villagers take no hunger damage); the L2 full-health check is the real guard
+- [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
+- [ ] The site ramp (`StarterActions.ramp`, `core/sim/RampProfile`) is 9 blocks wide plus up to 12 more while it still differs from the land by more than 1: a `max_deviation` above 8 leaves a larger step at the ring (the cone is floor +- k)
+- [ ] `LeafEscape` is not a general unstick: it only frees a worker whose four sides at feet and head height are all blocked and at least one is natural leaves (M11 r2)
+
 ## From M16 (builder notes)
 - [ ] A hidden miner's hitbox still catches the crosshair at the bottom of the shaft (placing or breaking rails there while a miner is down); fix with a `Villager.isPickable` mixin if players complain (the hold spot is the deepest cell, so the entrance and the marker stay free)
 - [ ] The wooden pickaxe mines iron and lapis (vanilla's "wood cannot mine iron" is not modelled; it uses the stone table, only slower); redstone/lapis counts (4) are planner choices
@@ -170,3 +187,68 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
 
 - [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open
+
+## From M21
+- [ ] **BLOCKING for M18 (guards): register the defence patrol points.** M18 step 6 must add `dev.villageheart.defence.Defences::patrolPoints` (a `List<BlockPos>` for the claimed village: finished Lamp Posts and Watchtowers, one walkable cell each) as a source of its `PatrolPoints.of(server)`. M21 could not do it (M18 not merged); until then guards do not patrol at defences. M21's T-L2-7 asserts the M21 side only
+- [ ] Villagers cannot open fence gates (vanilla `InteractWithDoor` handles doors only): a wall ring with only gates cuts workers off; a later milestone could add gate opening to villager pathing
+- [ ] Two builders working on two touching defence builds at once are untested (T-L2-9 runs three touching walls with the instant builder only)
+- [ ] Walls are level at the start's height (no terrain following); a hilly village needs several segments. A `heights` list in `BlueprintParams` would allow a sloped wall
+- [ ] The lamp test is time-warped (the day time is set per sample), not a real night of 11 000 ticks; the live spawner is not exercised (needs a player; random)
+- [ ] The Watchtower platform centre cell (above the ladder hole) is ANY, not cleared: a natural block there (leaf) would stay in the rail
+
+
+## From M17 (builder notes)
+- [ ] **Before v1:** a hidden hunter in the open keeps an invisible hitbox that can catch a player's crosshair (placing or breaking blocks next to the ground marker while a hunter is out); fix with a `Villager.isPickable` mixin (client side, guessing from the synced flags). Raised from the miner note: the hunter hides where players walk, the miner at the bottom of a pit
+- [ ] `DepositTrip` walks with `WalkTo` (range 48) and the Storage may be anywhere in the claim: a hunter that comes back 46 blocks out from a far Storage reports "Storage unreachable" and waits; give `DepositTrip` a walk-via-the-job-block step for all away jobs
+- [ ] Infinity bows are not modelled (an arrow is taken anyway); the crossbow counts as a bow; spears, the mace and the trident are not hunter weapons
+- [ ] The biome weights are read at the marker and 8 points 12 blocks away; a sample in an unloaded chunk is skipped and a partial result is not cached (the yield of a trip after a restart can differ from the one before it if a sample chunk is unloaded)
+- [ ] "Hunting Ground inside a house reads valid after a restart until re-scan" (M5): a hunter can go out to such a ground in the first re-check cycle after a restart (one trip at most); still open
+- [ ] `farHunterWalksViaLodge` forces two chunks outside the structure and unforces them at its end; a failed run leaves them forced (harmless, they are 10 blocks from the yard)
+- [ ] A hunter that arrives with a weapon that is unreadable for a moment (chest scan missing) does not go out and walks back to its table; the next plan decides again (not tested)
+
+## From M17-r1 (orchestrator, at merge)
+- [x] Hunter awards no XP: M17 was built before M15 merged. Wire `WorkXp.award(v, GAME_HUNTED, 1)` per completed trip, with a GameTest (sent to the M17 builder)
+- [ ] Hidden away villagers stay solid for every walker; consider making away villagers non-colliding (would replace the narrow touch rule)
+- [ ] `MineTestSupport.clearHigh` spills chest contents into the world; emptying chests first would explain and close the M16 stray-pickaxe clue
+- [ ] `touchesAwayVillager` also matches away miners (harmless today)
+
+## From M26 plan (orchestrator)
+- [ ] Village-logic tick timer double-counts nested sections (e.g. `BuildSystem.tick` inside `tickAll`) and misses work outside sections (`AwayTrips.processLoaded`, `LevelUpFeedback.flush`, event handlers). M26 step plans an outermost-only timer plus a JFR cross-check
+- [ ] (M17-xp) `farHunterWalksViaLodge` timed out at tick 2602 of 2600 under heavy machine load (another agent's GameTests running at the same time); M9 `sixOaksTwoDays` replant flaked again in the same window. Check the margin when the machine is quiet
+
+## From M21-r1
+- [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
+- [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
+- [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+- [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
+- [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
+
+## From M12-r2
+- [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
+- [ ] `writeAndSettle` saves the payroll before the treasury: if the treasury write itself throws while strikers are settled, they end up paid with nothing taken
+
+## From backlog-2-r2
+- [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
+- [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
+
+## From backlog-2-r3
+- [ ] `WalkTo.lastPath` is not cleared on `retarget()` or arrival: a walker whose navigation is idle reads the cells ahead of a stale path until it plans again (a stray nudge of a plain villager at most)
+
+## From tool-speed-r1
+- [ ] `ToolAllocation` ranks tools by enum order: gold ranks below iron although gold is now the fastest (but 32 durability) — decide the ranking rule
+- [ ] A miner underground during the mod update keeps progress on the old 2500-unit scale (one longer haul; harmless)
+- [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
+- [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
+- [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+## From M11-r5
+- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`
+
+## From M12 (builder notes)
+- [ ] **No `GatedWork` wrapper** (plan 3.2 #7): a striker stops through M11's per-job speed-0 handling (planner rows and `WorkSpeed`), which every current job already honours; `core.worker.WorkGate.mayWork` exists and `StrikersProduceNothingTest` pins speed 0 for every `JobType`. A wrapper around `JobBehaviours.work` would also stop the idle walk-back of a hungry or unpaid lumberjack/farmer (M11 r2 legs), so it was left out. M13+ jobs must read `needs.speed()` themselves (or call `WorkGate.mayWork`).
+- [ ] `NeedsOverride.forceDefaultNeeds` keeps its name (plan: `forceFedAndHoused`) to keep M11's tests untouched; its Javadoc says `paid` is never forced
+- [ ] `frozenWhileHeartUnloaded` has no workers in the far village (building one 100 000 blocks away is heavy): it proves `lastWageDay` and the dawn counter do not move while unloaded and that exactly one run happens on load, not that a treasury figure stays put
+- [ ] `threeWorkersTwoEmeraldsOneStrikes` uses two farmers and one lumberjack (C, the striker, is the only chopper, so any fallen log is C's; no per-villager log watcher exists) and watches the working day's first 2 500 ticks, not all 11 000
+- [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
+- [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
+- [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`

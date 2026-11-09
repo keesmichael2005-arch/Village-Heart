@@ -19,6 +19,19 @@ public final class StandPoints {
 		OptionalInt feetY(int x, int z);
 	}
 
+	/**
+	 * A standable that leaves out the columns inside any of the given pending boxes (M21 3.2 #6): once that build stands, the column is
+	 * not a place to stand any more, and a wall between two touching walls would lose its whole ring.
+	 */
+	public static Standable avoiding(Standable base, List<SiteRules.Box> boxes) {
+		return (x, z) -> {
+			for (SiteRules.Box b : boxes) {
+				if (x >= b.min().x() && x <= b.max().x() && z >= b.min().z() && z <= b.max().z()) return OptionalInt.empty();
+			}
+			return base.feetY(x, z);
+		};
+	}
+
 	/** The columns of the box grown by 1 in x and z (a ring one block wide), in a fixed order, each with its feet y; unstandable ones are left out. */
 	public static List<Pos> ring(Pos min, Pos max, Standable standable) {
 		List<Pos> out = new ArrayList<>();

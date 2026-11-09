@@ -19,10 +19,18 @@ import java.util.Optional;
  * @param lastReason    why the villager came up the last time (tests and logs)
  * @param unknownSteps  consecutive underground steps spent waiting for an unreadable chest or an unknown depth
  * @param broken        the saved trip could not be read (decode only, never saved): the flags are repaired to the vanilla defaults
+ * @param doneDay       the day (day time / 24000) {@code doneToday} was counted on, -1 = never (the hunter's daily trip cap, M17)
+ * @param doneToday     trips completed on {@code doneDay}
  */
 public record AwayState(Optional<AwayTrip> trip, AwayProgress progress, Optional<HeartLocation> progressShaft, long rolls,
-		Map<String, Integer> pending, Optional<SurfaceReason> lastReason, int unknownSteps, boolean broken) {
+		Map<String, Integer> pending, Optional<SurfaceReason> lastReason, int unknownSteps, boolean broken, long doneDay, int doneToday) {
 	public static final AwayState NONE = new AwayState(Optional.empty(), AwayProgress.ZERO, Optional.empty(), 0, Map.of(), Optional.empty(), 0, false);
+
+	/** The M16 shape: no trip counter. */
+	public AwayState(Optional<AwayTrip> trip, AwayProgress progress, Optional<HeartLocation> progressShaft, long rolls,
+			Map<String, Integer> pending, Optional<SurfaceReason> lastReason, int unknownSteps, boolean broken) {
+		this(trip, progress, progressShaft, rolls, pending, lastReason, unknownSteps, broken, -1L, 0);
+	}
 
 	public AwayState {
 		Objects.requireNonNull(trip, "trip");
@@ -31,24 +39,42 @@ public record AwayState(Optional<AwayTrip> trip, AwayProgress progress, Optional
 		Objects.requireNonNull(lastReason, "lastReason");
 		if (rolls < 0) throw new IllegalArgumentException("rolls must be >= 0: " + rolls);
 		if (unknownSteps < 0) throw new IllegalArgumentException("unknownSteps must be >= 0: " + unknownSteps);
+		if (doneToday < 0) throw new IllegalArgumentException("doneToday must be >= 0: " + doneToday);
 		pending = Map.copyOf(new LinkedHashMap<>(pending));
 	}
 
-	public AwayState withTrip(Optional<AwayTrip> t) { return new AwayState(t, progress, progressShaft, rolls, pending, lastReason, unknownSteps, false); }
-
-	public AwayState withProgress(AwayProgress p, Optional<HeartLocation> shaft) {
-		return new AwayState(trip, p, shaft, rolls, pending, lastReason, unknownSteps, broken);
+	public AwayState withTrip(Optional<AwayTrip> t) {
+		return new AwayState(t, progress, progressShaft, rolls, pending, lastReason, unknownSteps, false, doneDay, doneToday);
 	}
 
-	public AwayState withRolls(long r) { return new AwayState(trip, progress, progressShaft, r, pending, lastReason, unknownSteps, broken); }
+	public AwayState withProgress(AwayProgress p, Optional<HeartLocation> shaft) {
+		return new AwayState(trip, p, shaft, rolls, pending, lastReason, unknownSteps, broken, doneDay, doneToday);
+	}
 
-	public AwayState withPending(Map<String, Integer> p) { return new AwayState(trip, progress, progressShaft, rolls, p, lastReason, unknownSteps, broken); }
+	public AwayState withRolls(long r) {
+		return new AwayState(trip, progress, progressShaft, r, pending, lastReason, unknownSteps, broken, doneDay, doneToday);
+	}
 
-	public AwayState withLastReason(Optional<SurfaceReason> r) { return new AwayState(trip, progress, progressShaft, rolls, pending, r, unknownSteps, broken); }
+	public AwayState withPending(Map<String, Integer> p) {
+		return new AwayState(trip, progress, progressShaft, rolls, p, lastReason, unknownSteps, broken, doneDay, doneToday);
+	}
 
-	public AwayState withUnknownSteps(int n) { return new AwayState(trip, progress, progressShaft, rolls, pending, lastReason, n, broken); }
+	public AwayState withLastReason(Optional<SurfaceReason> r) {
+		return new AwayState(trip, progress, progressShaft, rolls, pending, r, unknownSteps, broken, doneDay, doneToday);
+	}
 
-	public AwayState repaired() { return new AwayState(trip, progress, progressShaft, rolls, pending, lastReason, unknownSteps, false); }
+	public AwayState withUnknownSteps(int n) {
+		return new AwayState(trip, progress, progressShaft, rolls, pending, lastReason, n, broken, doneDay, doneToday);
+	}
+
+	/** The completed-trips counter (the hunter's daily cap). */
+	public AwayState withDone(long day, int n) {
+		return new AwayState(trip, progress, progressShaft, rolls, pending, lastReason, unknownSteps, broken, day, n);
+	}
+
+	public AwayState repaired() {
+		return new AwayState(trip, progress, progressShaft, rolls, pending, lastReason, unknownSteps, false, doneDay, doneToday);
+	}
 
 	/**
 	 * The villager's flags before it was hidden.

@@ -3,7 +3,10 @@ package dev.villageheart.build;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.BuildTexts;
 import dev.villageheart.core.blueprint.Blueprints;
+import dev.villageheart.core.blueprint.LampLight;
 import dev.villageheart.core.blueprint.MaterialList;
+import dev.villageheart.core.blueprint.PlacementMode;
+import dev.villageheart.core.blueprint.TableTexts;
 import dev.villageheart.item.ModItems;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -51,9 +54,18 @@ public final class BlueprintItem extends Item {
 	@SuppressWarnings("deprecation")
 	public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> out, TooltipFlag flag) {
 		blueprintOf(stack).ifPresent(bp -> {
+			if (bp.mode() == PlacementMode.LINE) {
+				out.accept(Component.translatable(TableTexts.key("line_hint")).withStyle(ChatFormatting.DARK_GRAY));
+				out.accept(Component.translatable(TableTexts.key(bp.id().equals("gate") ? "materials_gate" : "materials_wall")).withStyle(ChatFormatting.DARK_GRAY));
+			}
 			for (MaterialList.Line l : bp.materials().lines()) {
 				out.accept(Component.literal(l.material().words(l.count())).withStyle(ChatFormatting.GRAY));
 			}
+			if (bp.id().equals("lamp_post")) {
+				out.accept(Component.translatable("item.villageheart.blueprint.lamp_radius", LampLight.radius(LampLight.LANTERN_EMISSION, 2))
+						.withStyle(ChatFormatting.DARK_GRAY));
+			}
+			if (bp.id().equals("gate")) out.accept(Component.translatable(TableTexts.key("gate_note")).withStyle(ChatFormatting.DARK_GRAY));
 		});
 	}
 

@@ -202,7 +202,7 @@ public class MinerGameTests {
 			h.assertValueEqual((int) (10 * rolls), chestSlot(h, chest(dy), 0).getDamageValue(), "10 durability per haul");
 			h.assertValueEqual(rolls, dev.villageheart.worker.job.WorkStats.get("miner", "hauls") - hauls0[0], "work.miner.hauls");
 			h.assertFalse(AwayTrips.isAway(v[0]), "up again at the end of the day");
-			var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(new BlockPos(16, dy, 16))).inflate(40.0));
+			var items = level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, net.minecraft.world.phys.AABB.encapsulatingFullBlocks(h.absolutePos(new BlockPos(0, dy - 14, 0)), h.absolutePos(new BlockPos(32, dy + 14, 32))));
 			h.assertTrue(items.isEmpty(), "no item entity lying around: " + items.stream().map(e -> e.getItem() + " at " + e.blockPosition() + " age " + e.getAge()).toList());
 			clearHigh(h, dy);
 			VillageTestSupport.done(h);
@@ -387,7 +387,7 @@ public class MinerGameTests {
 			h.assertValueEqual(SurfaceReason.DAY_END, a.record().reason(), "the reason");
 			h.assertTrue(a.dayTime() >= 11000 && a.dayTime() <= 11030, "up at 11000 + one step: " + a.dayTime());
 			h.assertTrue(a.inventory().isEmpty(), "no haul");
-			h.assertTrue(Math.abs(a.progress() - underground * 1.25) <= 25, "progress = underground ticks x 1.25 (+-25), got " + a.progress() + " for " + underground);
+			h.assertTrue(Math.abs(a.progress() - underground * 2.0) <= 40, "progress = underground ticks x 2.0 (+-40), got " + a.progress() + " for " + underground);
 			h.assertValueEqual(0L, AwayTrips.state(v[0]).rolls(), "no haul rolled");
 			progress[0] = a.progress();
 			h.getLevel().setDayTime(1000); // the next morning
@@ -397,10 +397,10 @@ public class MinerGameTests {
 		seq.thenExecute(() -> {
 			Ascent a = tr.ascents.get(1);
 			long underground = a.record().gameTime() - tr.descents.get(1).since();
-			double want = (2500 - progress[0]) / 1.25;
+			double want = (4000 - progress[0]) / 2.0;
 			System.out.println("[m16] minerComesUpAtDayEnd: the haul came after " + underground + " underground ticks, expected " + want);
 			h.assertValueEqual(SurfaceReason.HAUL, a.record().reason(), "the reason");
-			h.assertTrue(Math.abs(underground - want) <= 20, "(2500 - progress) / 1.25 = " + want + " +-20, got " + underground);
+			h.assertTrue(Math.abs(underground - want) <= 20, "(4000 - progress) / 2.0 = " + want + " +-20, got " + underground);
 			clearHigh(h, dy);
 			VillageTestSupport.done(h);
 			end(h);
@@ -427,7 +427,7 @@ public class MinerGameTests {
 			tr.start();
 		});
 		seq = awaitAway(h, seq, tr, v, 700, "the miner goes down");
-		seq = seq.thenWaitUntil(() -> h.assertTrue(AwayTrips.state(v[0]).progress().units() >= 1000, "about 800 ticks underground"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(AwayTrips.state(v[0]).progress().units() >= 1600, "about 800 ticks underground (2.0 units per tick)"));
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(dev.villageheart.core.heart.ActivityKind.AWAY_WORKING, row(h, v[0]).activity(), "the Villagers tab row before");
 			trip[0] = AwayTrips.state(v[0]).trip().orElseThrow();
@@ -631,13 +631,13 @@ public class MinerGameTests {
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 2200, "both hauls", () -> h.assertTrue(t0.ascents.size() >= 2 && t1.ascents.size() >= 2, "hauls pending"));
 		seq.thenExecute(() -> {
-			// the first hired miner got the best pickaxe (iron, x1.5: 2500 / 30 = 84 steps), the second the stone one (x1.25: 100 steps)
+			// the first hired miner got the best pickaxe (iron, x3.0: 4000 / 60 = 67 steps), the second the stone one (x2.0: 100 steps)
 			long iron = t0.ascents.get(1).record().gameTime() - t0.descents.get(1).since();
 			long stone = t1.ascents.get(1).record().gameTime() - t1.descents.get(1).since();
 			System.out.println("[m16] twoMinersAndBrokenMarker: iron haul after " + iron + " underground ticks, stone haul after " + stone);
 			h.assertValueEqual(SurfaceReason.HAUL, t0.ascents.get(1).record().reason(), "iron: reason");
 			h.assertValueEqual(SurfaceReason.HAUL, t1.ascents.get(1).record().reason(), "stone: reason");
-			h.assertTrue(Math.abs(iron - 1667) <= 25, "iron: 1667 +- 25, got " + iron);
+			h.assertTrue(Math.abs(iron - 1333) <= 25, "iron: 1333 +- 25, got " + iron);
 			h.assertTrue(Math.abs(stone - 2000) <= 25, "stone: 2000 +- 25, got " + stone);
 			h.assertValueEqual(10, chestSlot(h, chest(dy), 1).getDamageValue(), "the iron pickaxe wore by one haul");
 			h.assertValueEqual(10, chestSlot(h, chest(dy), 0).getDamageValue(), "the stone pickaxe wore by one haul");

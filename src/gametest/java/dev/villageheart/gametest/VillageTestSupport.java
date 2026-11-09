@@ -48,12 +48,21 @@ public final class VillageTestSupport {
 		dev.villageheart.build.BuildRuntime.resetForTests();
 		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();
+		dev.villageheart.worker.farm.FarmJob.setStallTicksForTest(-1);
+		dev.villageheart.worker.farm.FarmJob.setAllCellsTakenForTest(false);
 		dev.villageheart.worker.farm.FarmJob.testKeepAll = i -> false;
 		dev.villageheart.worker.job.WorkerStatuses.clearAll();
+		NeedsTestHooks.disable(); // M11: workers of other tests keep full pace and nobody eats; only the needs_ tests switch it back on
+		dev.villageheart.food.FoodStats.reset();
+		dev.villageheart.needs.Housing.reset();
 		dev.villageheart.worker.LevelUpFeedback.resetForTests();
+		dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
 		dev.villageheart.worker.WorkXp.clear();
 		dev.villageheart.worker.job.AwayTrips.clearForTests();
 		dev.villageheart.worker.mine.MinerJob.clearForTests();
+		dev.villageheart.worker.hunt.HunterRuntime.resetForTests();
+		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
+		dev.villageheart.economy.WageStats.setTestListener(null);
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();
 		h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);

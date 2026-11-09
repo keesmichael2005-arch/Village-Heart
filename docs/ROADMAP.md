@@ -97,7 +97,7 @@ from there instead of hard-coding them.
 - **L2**: immature crops are not harvested. Farmland outside 24 blocks is untouched
 
 ## M11: Food, dinner and needs
-- [ ] §4 needs, §6 food rules: dinner at tick 11000, best-food-first, children at half, fed/housed/paid multipliers (paid is stubbed until M12)
+- [x] §4 needs, §6 food rules: dinner at tick 11000, best-food-first, children at half, fed/housed/paid multipliers (paid is stubbed until M12)
 - **L1**: dinner allocation (best food first, cooked before raw, 10 nutrition each, children 5). Food-days-left calculation.
       Hungry for 1 day → ×0.5, 2 days → 0. No bed → ×0.75
 - **L2**: 4 villagers and 20 bread in Storage → after dinner, 12 bread are left (8 eaten: 2 × 5 nutrition each) and all are fed. With 0 food → all hungry, and still alive after 3 days
@@ -106,11 +106,12 @@ from there instead of hard-coding them.
 
 ## M12: Treasury and wages
 - Note (M15): `WorkerRecord` has no `level` on dev. Add it (codec key `level`, default 1) and write it in `WorkXp.setLevel`, `WorkXp.addXp` and `WorkXp.pass` (the three places that change a level), and use it in the re-install branch of `WorkerSystem.tick` instead of `WorkerData.hired` (level 1). Then add the planned T-L2-4 (a worker that lost its attachment comes back at its level).
-- [ ] Deposit emeralds at the Heart (Resident+), Owner withdraw, dawn wages (§6), strikes
+- [x] Deposit emeralds at the Heart (Resident+), Owner withdraw, dawn wages (§6), strikes (verified: docs/reviews/M12-r2.md)
 - **L1**: wage bill by level. Paid in hiring order when the treasury is short. Strikers produce nothing
 - **L2**: 3 workers and 2 emeralds → after dawn 2 are paid and 1 is on strike. The striking lumberjack chops 0 logs that day
 - **L4**: Overview tab screenshot showing the treasury, wage bill and a strike alert
 - Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
+- Built (M12 builder, branch `m12`; boxes left for the verifier): `WageGameTests` (12 tests incl. the roadmap case `threeWorkersTwoEmeraldsOneStrikes`, M24's `onlyOwnerCanWithdraw`, M15's `workerComesBackAtItsLevel`), L1 `PayRunTest`/`PayrollTest`/`WageRulesTest`/`StrikersProduceNothingTest`/`DailyClockTest`/..., L4 `TreasuryClientTests` (`treasury_overview.png`, `treasury_villagers.png`), L3 `starter` seeded and asserted. See PROGRESS for deviations.
 
 ## M13: Cook / Kitchen
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_COOKED, n)` next to the cook counter (one per output item).
@@ -129,7 +130,7 @@ from there instead of hard-coding them.
 ## M15: Job levels and tools ✅
 - [x] XP per work unit, levels 1–3 within the tier cap, tool tier multipliers, tool durability use
 - **L1**: speed = tool × level × needs. XP thresholds. The level cap holds at the Hamlet tier
-- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.1× the logs of a stone-axe one and ≥1.3× a wooden-axe one (orchestrator decision D1, 2026-11-08: the original "iron ≥1.3× stone" is unreachable with DESIGN §4 multipliers iron 1.5 / stone 1.25 = 1.2 max; see docs/plans/M15.md)
+- **L2**: side by side over one day's felling window, an iron-axe lumberjack fells ≥1.3× the logs of a stone-axe one and ≥1.3× a wooden-axe one (the original criterion, restored by the human 2026-11-09 with the vanilla-speed tool table: iron 3.0 / stone 2.0 = 1.5; it had been relaxed to ≥1.1× by orchestrator decision D1, 2026-11-08, when iron/stone was only 1.2)
 - **L2**: the tool in the camp chest loses durability while it is used
 
 ## M16: Miner + Mineshaft ✅
@@ -137,9 +138,9 @@ from there instead of hard-coding them.
 - **L1**: haul tables by depth band and pickaxe tier (seeded RNG: fixed counts and entries with chance ≥30% within 5% of expected over 10k rolls; every entry incl. rare ones within 5% over 400k rolls; clarified by the orchestrator 2026-11-08, a 2% entry over 10k rolls is seed-dependent). Diamonds only with an iron pickaxe or better and Y < 0
 - **L2**: a miner with a stone pickaxe and a valid shaft → ≥40 cobblestone within 1 day. With the shaft invalidated (rails removed) → stops, with the reason
 
-## M17: Hunter + Hunting Ground
+## M17: Hunter + Hunting Ground ✅
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.GAME_HUNTED, 1)` per trip.
-- [ ] §5.4: trips, yields, arrow use
+- [x] §5.4: trips, yields, arrow use
 - **L1**: trip yield table with and without a bow
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
@@ -175,11 +176,12 @@ from there instead of hard-coding them.
   format has `kind` (BUILDING/DEFENCE), `mode` (`PlacementMode.FOOTPRINT`; M21 adds `LINE` and its two-click flow in `BlueprintUse`) and `BlueprintParams.length`
   (`Blueprints.resolve(id, params)` is where a generated Wall Segment goes); `BuildPlan`, `SiteRules`, `BuildExecutor` and the builder need no change for new blueprints.
 
-## M21: Defence blueprints
-- [ ] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
+## M21: Defence blueprints ✅
+- [x] Wall Segment (two-click line), Gate, Lamp Post, Watchtower (Town). Watchtowers and lamp posts become guard patrol points
 - **L1**: wall line generation for axis-aligned start/end. Lengths over 32 are rejected
 - **L2**: a 20-long wall segment is built complete. A gate opens. A lamp post stops hostile spawns in its light radius over 1 night
 - **L4**: screenshot of a walled section with a gate, lamp posts and a watchtower
+- Built in M21 (branch m21, deviations in docs/plans/M21.md section 8; the boxes are ticked by the orchestrator, not the builder). Guard patrol points: the source is done and tested (`dev.villageheart.defence.Defences.patrolPoints(server)`); **wiring it into M18's `PatrolPoints` is M18 step 6** (M18 was not merged when M21 was built).
 
 ## M22: Merchant / Market
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.TRADE_MADE, 1)` per sale.
@@ -197,8 +199,8 @@ from there instead of hard-coding them.
 - **L1**: permission matrix for every rank × action
 - **L2**: a Visitor fake player cannot open a Storage chest, and a Resident can. A Steward can hire. Only the Owner can withdraw from the treasury
 - **L4**: Ranks tab screenshot with 3 players
-- Pending M12: "Only the Owner can withdraw from the treasury" (plan T-L2-6) is not built or tested yet, because the treasury actions do not exist. M12 adds
-  `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` with their rows in `PermissionsTest` and T-L2-6. Everything else above passed review (docs/reviews/M24-r1.md).
+- [x] Done in M12: "Only the Owner can withdraw from the treasury" (plan T-L2-6) is `WageGameTests.onlyOwnerCanWithdraw`, and `PermissionsTest` has the
+  `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` rows (verified: docs/reviews/M12-r1.md and M12-r2.md). Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
