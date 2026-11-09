@@ -222,3 +222,7 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From backlog-2-r2
 - [ ] Iron golems and wandering traders standing in a doorway still jam a worker until it gives up (only `Villager` is nudged); leashed villagers and passengers are re-nudged with no effect
 - [ ] Step-aside target (`LandRandomPos.getPosAway`, 4 blocks) has no reachability check (fenced villagers stay inside, since they cannot open gates)
+
+## From M11-r5
+- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`

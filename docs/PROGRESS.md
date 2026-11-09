@@ -582,3 +582,8 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 ## 2026-11-08: M11 round-4 fixes (builder, finisher)
 - Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
 - Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-09: M11 review round 5 (verifier): PASS
+- All four round-4 must-fix items are done. A mutation check of the new `not_ticking` assertion: red at radius 3, green at radius 4 by chance, and red naturally in one run at radius 6.
+- `starter 10`: passed 3 of 4 runs. The roadmap L3 criteria held in all 4. Run 1 failed because a farmer fled 111 blocks east at night and froze outside the forced area. That is a fixture problem, now in BACKLOG as high priority.
+- L2: 3 runs, 257/257 each. Full `verify.sh`: exit 0. The needs and overview screenshots were checked by eye. M11 is ticked in the ROADMAP. Notes: `docs/reviews/M11-r5.md`.
