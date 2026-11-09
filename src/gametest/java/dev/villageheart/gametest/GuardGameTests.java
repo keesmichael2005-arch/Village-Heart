@@ -124,10 +124,10 @@ public class GuardGameTests {
 		});
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
 			setTime(h, 2000);
-			g[0] = hireGuard(h, new BlockPos(11, 0, 14), Optional.of(Shift.DAY));
+			g[0] = hireGuard(h, new BlockPos(2, 0, 10), Optional.of(Shift.DAY)); // more than 24 blocks (the guard's sight) from the control below
 			level3(h, g[0]);
 			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
-			z[0] = zombie(h, new BlockPos(14, 0, 14));
+			z[0] = zombie(h, new BlockPos(5, 0, 10));
 			// the control: an unhired villager far from the guard with a zombie in a fence cage 5 blocks from it
 			control[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(27, 0, 27));
 			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
@@ -774,5 +774,120 @@ public class GuardGameTests {
 		java.util.Map<String, Object> f = new java.util.LinkedHashMap<>(a.fields());
 		if (f.get("at") instanceof java.util.List<?> l) f.put("at", java.util.List.of(((Number) l.get(0)).longValue() + dx, ((Number) l.get(1)).longValue() + dz));
 		return new dev.villageheart.core.sim.ScenarioAction(a.type(), a.day(), a.tick(), f);
+	}
+
+	// ---- review r1 ---------------------------------------------------------------------------------
+
+	private static net.minecraft.world.entity.monster.zombie.Zombie sturdy(net.minecraft.world.entity.monster.zombie.Zombie z) {
+		z.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		z.setHealth(1000.0F);
+		return z;
+	}
+
+	/** The alarm: a zombie hurts an ordinary villager in the claim; two sleeping day guards wake and come on duty, and are back in bed when it is over. */
+	@GameTest(environment = "villageheart-gametest:guards_alarm", structure = YARD, skyAccess = true, maxTicks = 2600)
+	public void alarmWakesSleepingGuardsAndTheyReturn(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[2];
+		Villager[] victim = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			setTime(h, 18000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			g[1] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.DAY));
+			for (Villager v : g) arm(v, net.minecraft.world.item.Items.IRON_SWORD);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both day guards asleep", () -> h.assertTrue(g[0].isSleeping() && g[1].isSleeping(), "asleep"));
+		seq = seq.thenExecute(() -> {
+			lightYard(h);
+			victim[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(24, 0, 14));
+			z[0] = zombie(h, new BlockPos(25, 0, 14));
+			installRecorders();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both guards awake and on duty", () -> {
+			for (Villager v : g) h.assertTrue(!v.isSleeping() && v.getBrain().isActive(GuardActivities.DUTY), "guard " + v.getId() + " " + v.getBrain().getActiveActivities());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the zombie is dead", () -> h.assertTrue(!z[0].isAlive(), "zombie alive at " + z[0].blockPosition()));
+		seq = BuildingTestSupport.awaitWithin(h, seq, dev.villageheart.core.Balance.GUARD_ALARM_HOLD_TICKS + 300, "the guards go back to bed", () -> {
+			for (Villager v : g) h.assertTrue(v.getBrain().isActive(Activity.REST), "guard " + v.getId() + " " + v.getBrain().getActiveActivities());
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A guard chasing a sturdy caged zombie switches to a free zombie that hits it from behind. */
+	@GameTest(environment = "villageheart-gametest:guards_retarget", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void guardSwitchesToTheMobThatHurtsIt(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[2];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, new BlockPos(2, 0, 12), Optional.of(Shift.DAY));
+			level3(h, g[0]);
+			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+				if (dx != 0 || dz != 0) h.setBlock(new BlockPos(7 + dx, 0, 12 + dz), net.minecraft.world.level.block.Blocks.OAK_FENCE);
+			}
+			z[0] = sturdy(zombie(h, new BlockPos(7, 0, 12)));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "the guard targets the caged zombie", () ->
+				h.assertTrue(dev.villageheart.worker.guard.GuardCombat.targetOf(g[0].getUUID()).filter(z[0].getUUID()::equals).isPresent(), "target " + dev.villageheart.worker.guard.GuardCombat.targetOf(g[0].getUUID())));
+		seq = seq.thenExecute(() -> z[1] = zombie(h, new BlockPos(0, 0, 12)));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the guard turns on the zombie that hits it", () ->
+				h.assertTrue(dev.villageheart.worker.guard.GuardCombat.targetOf(g[0].getUUID()).filter(z[1].getUUID()::equals).isPresent(),
+						"target " + dev.villageheart.worker.guard.GuardCombat.targetOf(g[0].getUUID()) + " hp " + g[0].getHealth()));
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A hired worker whose HOME is a Barracks bed loses it; a guard whose Barracks workplace is broken stays on duty with status Workplace invalid. */
+	@GameTest(environment = "villageheart-gametest:guards_worker_evicted", structure = YARD, skyAccess = true, maxTicks = 1200)
+	public void barracksBedEvictsHiredWorker(GameTestHelper h) {
+		begin(h);
+		Villager[] w = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			BuildingTestSupport.room(h, STORE, 5, 4);
+			h.setBlock(BuildingTestSupport.inside(STORE, 0, 0, 0), dev.villageheart.block.JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.CHOPPING_BLOCK));
+			h.setBlock(BuildingTestSupport.inside(STORE, 4, 0, 3), net.minecraft.world.level.block.Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(STORE, 2, 0, 3), net.minecraft.world.level.block.Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.LUMBER_CAMP, storeMarker(), net.minecraft.core.Direction.NORTH);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, storeMarker(), dev.villageheart.block.MarkerStatus.VALID)).thenExecute(() -> {
+			w[0] = WorkerTestSupport.spawnVillager(h, BuildingTestSupport.inside(STORE, 2, 0, 1));
+			h.assertTrue(dev.villageheart.worker.Workers.hire(h.getLevel(), w[0], dev.villageheart.core.worker.JobType.LUMBERJACK, Optional.empty()) instanceof dev.villageheart.worker.HireResult.Hired, "hired");
+			w[0].getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME, net.minecraft.core.GlobalPos.of(h.getLevel().dimension(), h.absolutePos(bedHead(0))));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "the worker loses the Barracks bed", () ->
+				h.assertTrue(w[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME).isEmpty(), "HOME " + w[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME)));
+		seq.thenIdle(100).thenExecute(() -> {
+			h.assertTrue(w[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME).filter(p -> p.pos().equals(h.absolutePos(bedHead(0)))).isEmpty(), "and does not take it back");
+			h.assertTrue(freeTickets(h, bedHead(0)) == 0, "the bed ticket is still the mod's");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:guards_grindstone_broken", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void brokenGrindstoneKeepsTheGuardOnDuty(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+		}).thenIdle(40).thenExecute(() -> h.setBlock(grindstone(0), net.minecraft.world.level.block.Blocks.AIR));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the status is Workplace invalid", () -> {
+			var rec = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g[0].getUUID()).orElseThrow();
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.WORKPLACE_INVALID, dev.villageheart.worker.Workers.status(h.getLevel().getServer(), rec), "status");
+		});
+		seq.thenIdle(60).thenExecute(() -> {
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY) && !g[0].isSleeping(), "still on duty: " + g[0].getBrain().getActiveActivities());
+			VillageTestSupport.done(h);
+			end(h);
+		});
 	}
 }

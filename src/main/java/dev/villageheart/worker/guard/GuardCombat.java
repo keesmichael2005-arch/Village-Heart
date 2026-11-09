@@ -59,6 +59,7 @@ public final class GuardCombat {
 		int shortPaths;
 		final Map<UUID, Long> ignoreUntil = new HashMap<>();
 		boolean navigating;
+		int switchedAt = -1;
 	}
 
 	private static final Map<UUID, Fight> FIGHTS = new HashMap<>();
@@ -130,6 +131,17 @@ public final class GuardCombat {
 		if (target != null && shouldGiveUp(level, guard, f, target, now)) {
 			drop(guard, f, target, now, true);
 			target = null;
+		}
+		// a different hostile that hurts the guard while it chases another one takes over (vanilla HurtByTargetGoal): the attacker comes first
+		if (target != null && guard.getLastHurtByMob() instanceof Mob hb && hb != target && hb.isAlive()
+				&& guard.getLastHurtByMobTimestamp() != f.switchedAt && guard.tickCount - guard.getLastHurtByMobTimestamp() < 100) {
+			GuardTargets.Kind k = kind(hb);
+			f.switchedAt = guard.getLastHurtByMobTimestamp();
+			if (k != null && k != GuardTargets.Kind.CREEPER && k != GuardTargets.Kind.UNREACHABLE) {
+				f.ignoreUntil.remove(hb.getUUID());
+				target = hb;
+				acquire(level, guard, f, target, now);
+			}
 		}
 		if (target == null && (now + guard.getId()) % Balance.GUARD_SCAN_TICKS == 0) {
 			target = scan(level, guard, f, now);

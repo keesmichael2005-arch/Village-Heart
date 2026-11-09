@@ -156,6 +156,8 @@ public final class Balance {
 	public static final int GEAR_RECHECK_TICKS = 1200;
 	/** Gear with less durability left than this fraction is left for repair (shared with M19a). */
 	public static final double GEAR_MIN_DURABILITY = 0.1;
+	/** The guard alarm (a hostile hurt a villager in the claim) stays up this long after the last attack or hostile that hunts a villager. */
+	public static final int GUARD_ALARM_HOLD_TICKS = 600;
 	public static final int PATROL_DWELL_TICKS = 100;
 	public static final int PATROL_SKIP_TICKS = 1200;
 

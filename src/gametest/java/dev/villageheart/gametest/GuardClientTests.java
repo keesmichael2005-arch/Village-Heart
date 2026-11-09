@@ -67,7 +67,7 @@ final class GuardClientTests {
 				barracks(srv, y, 2);
 				UUID day = new UUID(0, 41), night = new UUID(0, 42);
 				srv.runCommand("summon minecraft:villager -1 " + y + " 12 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(day) + "}");
-				srv.runCommand("summon minecraft:villager 3 " + y + " 12 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(night) + "}");
+				srv.runCommand("summon minecraft:villager 1.5 " + y + " 8.5 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(night) + "}");
 				BlockPos marker = new BlockPos(0, y + 2, 12);
 				String state = "";
 				for (int i = 0; i < 200 && !state.equals("VALID"); i++) {
@@ -86,12 +86,21 @@ final class GuardClientTests {
 					d.setYBodyRot(180.0F);
 					d.setYHeadRot(180.0F);
 					d.setNoAi(true);
-					n.teleportTo(-1.5, fy, 9.0);
-					n.startSleeping(new BlockPos(-2, fy, 9));
-					n.setNoAi(true);
 					return a + " " + b;
 				});
 				if (hired.contains("Refused")) throw new AssertionError("a hire failed: " + hired);
+				// the night guard goes to bed by itself (noon, night shift) and is frozen once it lies there: a teleported sleeper renders in the wrong place
+				boolean asleep = false;
+				for (int i = 0; i < 400 && !asleep; i++) {
+					context.waitTicks(1);
+					asleep = srv.computeOnServer(sv -> ((Villager) sv.overworld().getEntity(night)).isSleeping());
+				}
+				if (!asleep) throw new AssertionError("the night guard did not go to sleep");
+				final BlockPos bed = srv.computeOnServer(sv -> dev.villageheart.worker.guard.GuardSystem.bedOf(night).orElseThrow());
+				srv.computeOnServer(sv -> {
+					((Villager) sv.overworld().getEntity(night)).setNoAi(true);
+					return null;
+				});
 				srv.runCommand("fill -2 " + y + " 6 2 " + (y + 1) + " 6 minecraft:air"); // after the hires: an opening in the north wall, the camera looks in from there
 				srv.runCommand("fill -2 " + y + " 7 -1 " + y + " 7 minecraft:air"); // the grindstones would hide the sleeper from the camera
 				boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
@@ -101,12 +110,19 @@ final class GuardClientTests {
 				sp.getClientWorld().waitForChunksRender();
 				int dayEid = srv.computeOnServer(sv -> sv.overworld().getEntity(day).getId());
 				int nightEid = srv.computeOnServer(sv -> sv.overworld().getEntity(night).getId());
+				String where = srv.computeOnServer(sv -> {
+					Villager n = (Villager) sv.overworld().getEntity(night);
+					double d = n.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(bed));
+					return (d <= 1.5 && n.isSleeping() ? "ok" : "bad") + " " + n.position() + " sleeping=" + n.isSleeping() + " pos=" + n.getSleepingPos() + " d=" + d;
+				});
+				if (!where.startsWith("ok")) throw new AssertionError("the night guard is not in its bed: " + where);
 				List<String> wrong = context.computeOnClient(mc -> {
 					List<String> bad = new java.util.ArrayList<>();
 					if (!(mc.level.getEntity(dayEid) instanceof Villager d)
 							|| !d.getMainHandItem().is(Items.IRON_SWORD)) bad.add("the day guard does not hold the iron sword on the client");
 					if (!(mc.level.getEntity(nightEid) instanceof Villager n)
 							|| n.getPose() != Pose.SLEEPING) bad.add("the night guard is not sleeping on the client");
+					else if (n.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(bed)) > 1.5) bad.add("the night guard is not at its bed on the client: " + n.position());
 					return bad;
 				});
 				if (!wrong.isEmpty()) throw new AssertionError("client side differs: " + wrong);

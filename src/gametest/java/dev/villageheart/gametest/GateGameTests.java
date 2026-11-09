@@ -224,6 +224,9 @@ public class GateGameTests {
 		seq = seq.thenWaitUntil(() -> {
 			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 1);
 			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
+
+			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 1);
+			h.assertTrue(plain == null || !plain.canReach(), "and the unemployed villager is still refused (the zombie is not what keeps it out)");
 		});
 		seq.thenExecute(() -> {
 			h.assertTrue(!anyOpen(h), "planning does not open a gate");

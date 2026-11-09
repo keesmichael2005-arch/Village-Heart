@@ -68,6 +68,7 @@ public final class GuardSystem implements VillageSystem {
 		if (server.getTickCount() % INTERVAL != 0) return;
 		try (var t = VillageTicker.section()) {
 			assignBeds(server, village);
+			GuardAlarm.refresh(server, village);
 			for (UUID id : village.guardIds()) {
 				Villager g = Workers.findLoaded(server, id).orElse(null);
 				if (g == null || !(g.level() instanceof ServerLevel level) || !Guards.isGuard(g)) continue;

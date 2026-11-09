@@ -46,6 +46,7 @@ public final class Guards {
 		GuardActivities.register();
 		GuardAttachments.register();
 		GuardCombat.register();
+		GuardAlarm.register();
 		// the finished Lamp Posts and Watchtowers of M21 are patrol points (BACKLOG M21, blocking for M18)
 		PatrolPoints.register(dev.villageheart.defence.Defences::patrolPoints);
 		FabricDefaultAttributeRegistry.register(EntityType.VILLAGER,
@@ -92,7 +93,7 @@ public final class Guards {
 		WorkerData data = guard.getAttached(WorkerAttachments.WORKER);
 		boolean canWork = data == null || WorkGate.mayWork(data.needs());
 		boolean raid = RaidCheck.active(level, village.get());
-		return GuardSchedule.phase(shift, level.getDayTime(), raid, GuardAttachments.get(guard).wounded(), canWork);
+		return GuardSchedule.phase(shift, level.getDayTime(), raid, GuardAlarm.active(level), GuardAttachments.get(guard).wounded(), canWork);
 	}
 
 	/** The activity of this guard's brain right now. */

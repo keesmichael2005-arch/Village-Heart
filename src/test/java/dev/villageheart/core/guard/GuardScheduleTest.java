@@ -45,6 +45,16 @@ class GuardScheduleTest {
 	}
 
 	@Test
+	void alarmCallsEveryGuardUpButWoundedStaysInBed() {
+		assertEquals(DUTY, GuardSchedule.phase(Shift.NIGHT, 6000, false, true, false, true), "asleep night guard");
+		assertEquals(DUTY, GuardSchedule.phase(Shift.DAY, 13500, false, true, false, true), "asleep day guard");
+		assertEquals(DUTY, GuardSchedule.phase(Shift.DAY, 12500, false, true, false, true), "off-shift guard");
+		assertEquals(SLEEP, GuardSchedule.phase(Shift.NIGHT, 18000, false, true, true, true), "wounded beats the alarm");
+		assertEquals(SLEEP, GuardSchedule.phase(Shift.DAY, 13500, false, false, false, true));
+		assertEquals(DUTY, GuardSchedule.phase(Shift.DAY, 100, false, true, false, false), "the alarm is like a raid: it skips the cannot-work rule");
+	}
+
+	@Test
 	void everyShiftHasTwelveThousandDutyTicks() {
 		for (Shift s : Shift.values()) {
 			int duty = 0, off = 0, sleep = 0;
