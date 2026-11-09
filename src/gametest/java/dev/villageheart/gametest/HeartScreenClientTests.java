@@ -145,6 +145,11 @@ final class HeartScreenClientTests {
 					return r.toString();
 				});
 				if (!hired.startsWith("Hired")) throw new AssertionError("the hire failed: " + hired);
+				// M14: one fed day on the way to a Village, so the checklist is partly met
+				srv.computeOnServer(server -> {
+					dev.villageheart.world.VillageClaims.data(server).update(v -> v.withTierProgress(new dev.villageheart.core.tier.TierProgress(1, 0, 0)));
+					return 0;
+				});
 
 				// stand south of the Heart, looking at it
 				double eyeY = y + 1.62, targetY = y + 0.5, pz = 3.5;
@@ -164,6 +169,12 @@ final class HeartScreenClientTests {
 				// ---- Overview
 				HeartSnapshot s = snapshot(context);
 				if (s.overview().population() != 3 || s.overview().workers() != 1) throw new AssertionError("overview numbers: " + s.overview());
+				var goals = s.overview().goals();
+				java.util.List<Boolean> metFlags = goals.stream().map(dev.villageheart.core.heart.GoalLine::met).toList();
+				if (goals.size() != 6 || !metFlags.equals(java.util.List.of(false, false, true, true, false, false))
+						|| !s.overview().nextTier().equals(Optional.of(dev.villageheart.core.Tier.VILLAGE))) {
+					throw new AssertionError("the Village checklist: " + goals + " next " + s.overview().nextTier());
+				}
 				assertClean(context, "overview");
 				context.takeScreenshot("heart_overview");
 
