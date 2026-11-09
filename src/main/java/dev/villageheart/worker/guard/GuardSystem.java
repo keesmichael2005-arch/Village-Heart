@@ -7,6 +7,11 @@ import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.guard.GuardBeds;
+import dev.villageheart.core.guard.GuardRation;
+import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.world.VillageClaims;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
 import dev.villageheart.core.guard.GuardData;
 import dev.villageheart.core.guard.WoundRule;
 import dev.villageheart.core.room.Pos;
@@ -31,8 +36,8 @@ import net.minecraft.world.entity.npc.villager.Villager;
 
 /**
  * Every 20 ticks (M18 3.5, 3.3): assigns the beds of each valid Barracks to its guards and sets their HOME, evaluates the wound bit from the
- * current health, heals a guard asleep in its own bed ({@link Balance#GUARD_SLEEP_HEAL_TICKS} per half heart) and re-applies the level perks
- * (covers {@code Workers.setLevel}, which fires no listener, and a reload). The mod keeps the POI ticket of a Barracks bed; a guard does not
+ * current health, ends a training day, feeds the guards (refill the ration, eat to heal: the only healing there is), re-ranks the shifts with
+ * the guards' XP and re-applies the level perks (covers {@code Workers.setLevel}, which fires no listener, and a reload). The mod keeps the POI ticket of a Barracks bed; a guard does not
  * need one to sleep.
  */
 public final class GuardSystem implements VillageSystem {
@@ -41,8 +46,8 @@ public final class GuardSystem implements VillageSystem {
 
 	/** Guard -> its Barracks bed (head block). Not saved: a pass rebuilds it from the guards' HOME memories. */
 	private static final Map<UUID, Pos> BEDS = new HashMap<>();
-	/** Guard -> game time of its last sleep heal. */
-	private static final Map<UUID, Long> LAST_HEAL = new HashMap<>();
+		/** Guard -> its last known XP (the village state mirrors levels only; unloaded guards keep their last value). */
+	private static final Map<UUID, Integer> XP = new HashMap<>();
 
 	private GuardSystem() {}
 
@@ -60,7 +65,8 @@ public final class GuardSystem implements VillageSystem {
 
 	public static void resetForTests() {
 		BEDS.clear();
-		LAST_HEAL.clear();
+		XP.clear();
+		GuardRations.resetForTests();
 	}
 
 	@Override
@@ -74,25 +80,50 @@ public final class GuardSystem implements VillageSystem {
 				if (g == null || !(g.level() instanceof ServerLevel level) || !Guards.isGuard(g)) continue;
 				Guards.applyPerks(g, false);
 				GuardData d = GuardAttachments.get(g);
+				WorkerData wd = g.getAttached(WorkerAttachments.WORKER);
+				if (wd != null) XP.put(id, wd.xp());
 				boolean hasBed = BEDS.containsKey(id);
 				boolean wounded = hasBed && WoundRule.wounded(d.wounded(), g.getHealth(), g.getMaxHealth());
-				if (wounded != d.wounded()) GuardAttachments.set(g, new GuardData(wounded));
-				healInBed(level, g);
+				long now = level.getDayTime();
+				boolean qualifiedNow = d.trainingUntil() > 0 && !d.training(now);
+				if (wounded != d.wounded() || qualifiedNow) {
+					d = d.withWounded(wounded);
+					if (qualifiedNow) d = d.withTrainingUntil(0);
+					GuardAttachments.set(g, d);
+				}
+				feed(level, g, d);
 			}
+			int night = 0, day = 0;
+			for (UUID id : village.guardIds()) {
+				var s = village.guardShift(id);
+				if (s.isPresent() && s.get().shift() == dev.villageheart.core.guard.Shift.NIGHT) night++; else day++;
+			}
+			dev.villageheart.worker.job.WorkStats.max("guard", "guards_night", night);
+			dev.villageheart.worker.job.WorkStats.max("guard", "guards_day", day);
+			// seniors take the nights: re-rank with the XP the mirror does not hold (M18 r3)
+			var ranked = village.withGuardSeniority(XP);
+			if (ranked != village) VillageClaims.data(server).update(s -> s.withGuardSeniority(XP));
 		}
 	}
 
-	private static void healInBed(ServerLevel level, Villager g) {
-		BlockPos bed = bedOf(g.getUUID()).orElse(null);
-		if (bed == null || !g.isSleeping() || g.getHealth() >= g.getMaxHealth()) return;
-		if (g.getSleepingPos().filter(bed::equals).isEmpty()) return;
-		long now = level.getGameTime();
-		Long last = LAST_HEAL.get(g.getUUID());
-		if (last == null || now - last >= Balance.GUARD_SLEEP_HEAL_TICKS) {
-			if (last != null) g.heal(1.0F);
-			LAST_HEAL.put(g.getUUID(), now);
-		}
+	/** Food: refill a low ration when off duty or at the Barracks, and eat when hurt with no hostile near. No other healing exists (M18 r3). */
+	private static void feed(ServerLevel level, Villager g, GuardData d) {
+		boolean hurt = g.getHealth() < g.getMaxHealth();
+		boolean wantsRefill = GuardRation.wantsRefill(d.ration());
+		if (!hurt && !wantsRefill) return;
+		if (!level.getEntitiesOfClass(Mob.class, g.getBoundingBox().inflate(Balance.GUARD_EAT_SAFE_DISTANCE), m -> m.isAlive() && m instanceof Enemy).isEmpty()) return;
+		if (wantsRefill && (Guards.activityFor(g, level) != GuardActivities.DUTY || nearBarracks(g))) GuardRations.refill(level, g);
+		if (hurt && server(g).getTickCount() % Balance.GUARD_EAT_TICKS == 0) GuardRations.bite(level, g);
 	}
+
+	private static boolean nearBarracks(Villager g) {
+		WorkerData d = g.getAttached(WorkerAttachments.WORKER);
+		if (d == null) return false;
+		var b = d.building();
+		return g.blockPosition().distSqr(new BlockPos(b.x(), b.y(), b.z())) <= 16 * 16;
+	}
+
+	private static MinecraftServer server(Villager g) { return g.level().getServer(); }
 
 	private static void assignBeds(MinecraftServer server, VillageState village) {
 		List<UUID> seen = new ArrayList<>();
@@ -129,7 +160,7 @@ public final class GuardSystem implements VillageSystem {
 		}
 		// guards of no valid Barracks (invalid building, fired): no bed
 		BEDS.keySet().removeIf(id -> !seen.contains(id));
-		LAST_HEAL.keySet().removeIf(id -> !seen.contains(id));
+		XP.keySet().removeIf(id -> !village.guardIds().contains(id));
 	}
 
 	private static Pos homeBedOf(MinecraftServer server, UUID id, String dim) {

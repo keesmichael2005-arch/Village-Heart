@@ -4,6 +4,7 @@ import static dev.villageheart.gametest.GuardTestSupport.*;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
+import dev.villageheart.core.guard.GuardPerks;
 import dev.villageheart.core.guard.Shift;
 import dev.villageheart.worker.guard.GuardActivities;
 import dev.villageheart.worker.guard.GuardSystem;
@@ -134,9 +135,17 @@ public class GuardGameTests {
 				if (dx != 0 || dz != 0) h.setBlock(new BlockPos(27 + dx, 0, 22 + dz), net.minecraft.world.level.block.Blocks.OAK_FENCE);
 			}
 			z[1] = zombie(h, new BlockPos(27, 0, 22));
+			// the control is penned too: an unpenned villager strolls, and one that strolls out of the zombie's 8 blocks or behind a wall has no hostile in its
+			// memory, so it need not panic for as long as it likes. (The M18 r2 review saw one 438-tick wait in 10 runs; 300 rounds of this setup, with and
+			// without the fight next to it, panic within 38 ticks every time, so the stroll is the suspect that a pen removes.)
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+				if (dx != 0 || dz != 0) h.setBlock(new BlockPos(27 + dx, 0, 27 + dz), net.minecraft.world.level.block.Blocks.OAK_FENCE);
+			}
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the control villager panics (the setup can cause panic)", () ->
-				h.assertTrue(panicked[0], "the unhired villager did not panic; activities: " + control[0].getBrain().getActiveActivities()));
+				h.assertTrue(panicked[0], "the unhired villager did not panic; activities: " + control[0].getBrain().getActiveActivities() + " hostile memory "
+						+ control[0].getBrain().getMemory(MemoryModuleType.NEAREST_HOSTILE).map(e -> e.getType().toString()).orElse("none") + " distance " + control[0].distanceTo(z[1])
+						+ " line of sight " + control[0].hasLineOfSight(z[1]) + " at " + control[0].blockPosition() + " zombie alive " + z[1].isAlive()));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the guard hits the zombie", () -> {
 			h.assertTrue(!guardPanicked[0], "the guard went into PANIC/HIDE/RAID");
 			h.assertTrue(damaged(z[0], g[0]), "the guard has not hit the zombie yet; guard " + g[0].blockPosition() + " zombie " + z[0].blockPosition() + " "
@@ -166,6 +175,7 @@ public class GuardGameTests {
 			setTime(h, 12100);
 			g[0] = hireGuard(h, new BlockPos(11, 0, 14), Optional.of(Shift.DAY));
 			level3(h, g[0]);
+			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.ItemStack.EMPTY); // the starting sword is taken away: unarmed
 			h.assertTrue(g[0].getMainHandItem().isEmpty(), "unarmed");
 			z[0] = zombie(h, new BlockPos(12, 0, 14));
 		});
@@ -221,7 +231,7 @@ public class GuardGameTests {
 			level3(h, g[0]);
 			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
 			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
-			g[0].setHealth(11.0F); // 22 % of 50: wounded
+			g[0].setHealth(11.0F); // 27 % of 40: wounded
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "wounded within 20 ticks"));
 		seq = seq.thenExecute(() -> z[0] = zombie(h, BuildingTestSupport.inside(BARRACKS, 0, 0, 1)));
@@ -236,7 +246,10 @@ public class GuardGameTests {
 		});
 	}
 
-	/** A guard below 30 % health retreats to its bed, sleeps and heals past 80 %, then is back on duty; the wound survives a save and reload. */
+	/**
+	 * A guard below 30 % health retreats to its bed, sleeps, eats its ration there (the only healing: no free regeneration, M18 r3) and heals past
+	 * 80 %, then is back on duty; the wound survives a save and reload.
+	 */
 	@GameTest(environment = "villageheart-gametest:guards_wounded_heals", structure = YARD, skyAccess = true, maxTicks = 3000)
 	public void woundedGuardRetreatsAndHeals(GameTestHelper h) {
 		begin(h);
@@ -246,6 +259,7 @@ public class GuardGameTests {
 			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
 			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY) || true, "duty");
 			g[0].setHealth(5.0F);
+			dev.villageheart.worker.guard.GuardAttachments.set(g[0], dev.villageheart.worker.guard.GuardAttachments.get(g[0]).withRation(12));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "wounded, in REST and asleep", () -> {
 			h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "the wound bit is set");
@@ -475,7 +489,7 @@ public class GuardGameTests {
 				dev.villageheart.worker.guard.Guards.applyPerks(g[i], false);
 				wear(g[i], net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.item.Items.IRON_CHESTPLATE);
 				wear(g[i], net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.Items.IRON_SWORD);
-				h.assertTrue(g[i].getMaxHealth() == 40.0, "level 2 health");
+				h.assertTrue(g[i].getMaxHealth() == 30.0, "level 2 health");
 			}
 		}).thenIdle(30);
 		seq = seq.thenExecute(() -> {
@@ -587,13 +601,13 @@ public class GuardGameTests {
 					setTime(h, 11900);
 					g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
 					setXp(g[0], 1, dev.villageheart.core.Balance.LEVEL_2_XP - 1);
-					h.assertTrue(g[0].getMaxHealth() == 30.0, "max health 20 at the start");
+					h.assertTrue(g[0].getMaxHealth() == 20.0, "max health 20 at the start (level 1)");
 					spar0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "spar_xp");
 				});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 1000, "level 2 from sparring", () -> {
 			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level " + g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level()
 					+ ", xp " + xpOf(g[0]) + " at " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities());
-			h.assertTrue(g[0].getMaxHealth() == 40.0, "max health " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health " + g[0].getMaxHealth());
 		});
 		seq.thenExecute(() -> {
 			h.assertTrue(xpOf(g[0]) >= dev.villageheart.core.Balance.LEVEL_2_XP, "xp " + xpOf(g[0]));
@@ -622,7 +636,7 @@ public class GuardGameTests {
 			dev.villageheart.worker.guard.Guards.applyPerks(g[0], false);
 			g[0].setHealth(25.0F);
 			g[0] = LumberTestSupport.reloadEntity(h.getLevel(), g[0]);
-			h.assertTrue(g[0].getMaxHealth() == 40.0, "max health survives the reload: " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health survives the reload: " + g[0].getMaxHealth());
 			h.assertTrue(g[0].getHealth() == 25.0F, "and so does the health: " + g[0].getHealth());
 			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level intact");
 			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow().pinned(), "pin intact");
@@ -764,7 +778,7 @@ public class GuardGameTests {
 					dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.BARRACKS).get(0).marker())).orElseThrow()) {
 				for (int i = 0; i < chest.container().getContainerSize(); i++) if (!chest.container().getItem(i).isEmpty()) chestItems.add(chest.container().getItem(i).getItem().toString());
 			}
-			h.assertTrue(chestItems.stream().filter(s -> s.contains("iron_sword")).count() >= 1 && chestItems.stream().anyMatch(s -> s.contains("iron_chestplate")), "kit in the chest: " + chestItems);
+			h.assertTrue(chestItems.stream().noneMatch(s -> s.contains("iron") || s.contains("diamond")), "no iron kit any more (M18 r3: wooden swords, no armour): " + chestItems);
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -807,7 +821,7 @@ public class GuardGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both guards awake and on duty", () -> {
 			for (Villager v : g) h.assertTrue(!v.isSleeping() && v.getBrain().isActive(GuardActivities.DUTY), "guard " + v.getId() + " " + v.getBrain().getActiveActivities());
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the zombie is dead", () -> h.assertTrue(!z[0].isAlive(), "zombie alive at " + z[0].blockPosition()));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the zombie is dead", () -> h.assertTrue(!z[0].isAlive(), "zombie alive at " + z[0].blockPosition() + " guards " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities() + " nav done " + g[0].getNavigation().isDone() + " path " + (g[0].getNavigation().getPath() == null ? "null" : g[0].getNavigation().getPath().getNextNodeIndex() + "/" + g[0].getNavigation().getPath().getNodeCount() + " reach " + g[0].getNavigation().getPath().canReach()) + " below " + h.getLevel().getBlockState(g[0].blockPosition().below()).getBlock() + " feet " + h.getLevel().getBlockState(g[0].blockPosition()).getBlock() + " onGround " + g[0].onGround() + " y " + g[0].getY() + " sleeping " + g[0].isSleeping() + " engaged " + dev.villageheart.worker.guard.GuardCombat.engaged(g[0]) + " / " + g[1].blockPosition() + " hp " + g[0].getHealth() + " victim " + victim[0].isAlive() + " " + victim[0].blockPosition()));
 		seq = BuildingTestSupport.awaitWithin(h, seq, dev.villageheart.core.Balance.GUARD_ALARM_HOLD_TICKS + 300, "the guards go back to bed", () -> {
 			for (Villager v : g) h.assertTrue(v.getBrain().isActive(Activity.REST), "guard " + v.getId() + " " + v.getBrain().getActiveActivities());
 		});
@@ -904,7 +918,7 @@ public class GuardGameTests {
 		return hits.size() + " hits" + b;
 	}
 
-	/** One level-1 guard with an iron sword and a helmet against one zombie on flat ground in daylight: it must win fast (measured cost 8-12 of 20 health). */
+	/** One level-1 guard with the starting wooden sword and no armour against one zombie on flat ground in daylight: it must win and keep half its health. */
 	@GameTest(environment = "villageheart-gametest:guards_duel", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void guardBeatsOneZombie(GameTestHelper h) {
 		begin(h);
@@ -915,9 +929,9 @@ public class GuardGameTests {
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
 			setTime(h, 2000);
 			g[0] = hireGuard(h, new BlockPos(2, 0, 12), Optional.of(Shift.DAY));
-			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
-			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
-			g[0].setGuaranteedDrop(net.minecraft.world.entity.EquipmentSlot.HEAD);
+			h.assertTrue(g[0].getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_SWORD), "the guard starts with a wooden sword: " + g[0].getMainHandItem());
+			h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).isEmpty() && g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty(), "and no armour");
+			h.assertTrue(g[0].getHealth() == GuardPerks.maxHealth(1) && g[0].getMaxHealth() == 20.0F, "level 1: vanilla 20 health, full at hire: " + g[0].getHealth() + "/" + g[0].getMaxHealth());
 			z[0] = zombie(h, new BlockPos(8, 0, 12));
 			t0[0] = h.getLevel().getGameTime();
 		});
@@ -926,11 +940,305 @@ public class GuardGameTests {
 		seq.thenExecute(() -> {
 			System.out.println("[m18] duel: guard " + describe(hits(z[0], g[0])) + "; zombie " + describe(hits(g[0], z[0])) + "; guard hp left " + g[0].getHealth()
 					+ ", attack damage attribute " + g[0].getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) + ", done in " + (h.getLevel().getGameTime() - t0[0]) + " ticks");
-			// measured: 4 hits of 6.0 at 21-27 ticks, the zombie lands 3-4 hits of ~2.9 against a helmet, so a duel costs 8-12 of 20 health (no bug: damage and
-			// rate are vanilla's); the bound is a quarter of the health, which a regression in damage, reach or targeting would break
-			h.assertTrue(g[0].isAlive() && g[0].getHealth() >= 5.0F, "the guard wins with at least a quarter of its health: " + g[0].getHealth());
+			// the owner's bound (M18 r2 item 3): the guard wins with at least half of its max health left
+			h.assertTrue(g[0].isAlive() && g[0].getHealth() >= 0.5 * g[0].getMaxHealth(), "the guard wins with at least half of its health: " + g[0].getHealth() + " of " + g[0].getMaxHealth());
 			VillageTestSupport.done(h);
 			end(h);
 		});
 	}
+
+	// ---- the owner's redesign (M18 r3): training, rations, wake on death, no night hire, seniors on nights ----
+
+	private static dev.villageheart.core.guard.GuardData data(Villager g) { return dev.villageheart.worker.guard.GuardAttachments.get(g); }
+
+	private static void setData(Villager g, dev.villageheart.core.guard.GuardData d) { dev.villageheart.worker.guard.GuardAttachments.set(g, d); }
+
+	private static Shift shiftOf(GameTestHelper h, Villager g) {
+		return dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g.getUUID()).orElseThrow().shift();
+	}
+
+	/**
+	 * A new guard (hired at 2000, pinned to nights, no Training Yard): wooden sword, no armour, vanilla 20 health; it spends the day training (awake,
+	 * not on duty, status Training, the night guard does not go to bed), is qualified at dusk and on duty that night.
+	 */
+	@GameTest(environment = "villageheart-gametest:guards_training", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void newGuardTrainsOneDayThenWorksTheNight(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireTrainee(h, spawnSpot(), Optional.of(Shift.NIGHT));
+			h.assertTrue(g[0].getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_SWORD), "a wooden sword: " + g[0].getMainHandItem());
+			for (var slot : new net.minecraft.world.entity.EquipmentSlot[] {net.minecraft.world.entity.EquipmentSlot.HEAD, net.minecraft.world.entity.EquipmentSlot.CHEST,
+					net.minecraft.world.entity.EquipmentSlot.LEGS, net.minecraft.world.entity.EquipmentSlot.FEET}) h.assertTrue(g[0].getItemBySlot(slot).isEmpty(), "no armour in " + slot);
+			h.assertTrue(g[0].getHealth() == GuardPerks.maxHealth(1), "full level-1 health right after the hire: " + g[0].getHealth());
+			h.assertTrue(data(g[0]).training(h.getLevel().getDayTime()), "training");
+			h.assertTrue(dev.villageheart.heart.HeartFacts.activityOf(g[0]) == dev.villageheart.core.heart.ActivityKind.TRAINING, "status Training: " + dev.villageheart.heart.HeartFacts.activityOf(g[0]));
+		}).thenIdle(40);
+		seq = seq.thenExecute(() -> {
+			setTime(h, 6000); // a night guard would be asleep in its bed now
+		}).thenIdle(100);
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(!g[0].isSleeping() && !g[0].getBrain().isActive(Activity.REST), "a trainee is not sent to bed by the clock: " + g[0].getBrain().getActiveActivities());
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.OFF) && !g[0].getBrain().isActive(GuardActivities.DUTY), "training, not on duty: " + g[0].getBrain().getActiveActivities());
+			h.assertTrue(dev.villageheart.heart.HeartFacts.activityOf(g[0]) == dev.villageheart.core.heart.ActivityKind.TRAINING, "still Training");
+			setTime(h, 11940);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 12100, "dusk passed"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "qualified and on duty that night", () -> {
+			h.assertTrue(!data(g[0]).training(h.getLevel().getDayTime()) && data(g[0]).trainingUntil() == 0, "qualified: " + data(g[0]));
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY), "on duty: " + g[0].getBrain().getActiveActivities());
+			h.assertTrue(dev.villageheart.heart.HeartFacts.activityOf(g[0]) != dev.villageheart.core.heart.ActivityKind.TRAINING, "no longer Training");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** With a linked Training Yard the training day is sparring: a trainee gains XP before it qualifies. */
+	@GameTest(environment = "villageheart-gametest:guards_training_yard", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void traineeSparsAtTheYardAndGainsXp(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		int[] xp0 = new int[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> buildYard(h))
+				.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, YARD_MARKER, dev.villageheart.block.MarkerStatus.VALID)).thenExecute(() -> {
+					setTime(h, 2000);
+					g[0] = hireTrainee(h, spawnSpot(), Optional.of(Shift.NIGHT));
+					xp0[0] = xpOf(g[0]);
+					h.assertTrue(g[0].getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_SWORD), "it keeps its starting sword while training");
+				});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "sparring gives XP", () -> {
+			h.assertTrue(xpOf(g[0]) > xp0[0], "xp " + xpOf(g[0]) + " mode " + dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID()) + " at " + g[0].blockPosition());
+			h.assertTrue(dev.villageheart.heart.HeartFacts.activityOf(g[0]) == dev.villageheart.core.heart.ActivityKind.TRAINING, "status Training");
+			h.assertTrue(g[0].getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_SWORD), "a trainee does not hand its sword in");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** Eating is the only healing: a hurt guard with a ration eats a point at a time and heals, and stops when the ration is gone. */
+	@GameTest(environment = "villageheart-gametest:guards_eat", structure = YARD, skyAccess = true, maxTicks = 1200)
+	public void guardEatsItsRationToHeal(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			g[0].setHealth(8.0F);
+			setData(g[0], data(g[0]).withRation(6));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "6 bites: 6 health, an empty ration", () -> {
+			h.assertTrue(g[0].getHealth() >= 14.0F && data(g[0]).ration() == 0, "health " + g[0].getHealth() + " ration " + data(g[0]).ration());
+		});
+		seq = seq.thenIdle(400);
+		seq.thenExecute(() -> {
+			h.assertTrue(g[0].getHealth() == 14.0F, "no food, no more healing: " + g[0].getHealth());
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** No food in storage and none carried: a guard asleep in its bed all night does not heal (no free regeneration). */
+	@GameTest(environment = "villageheart-gametest:guards_no_food", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void noFoodNoHealingNotEvenInBed(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 5000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.NIGHT));
+			g[0].setHealth(12.0F); // 60 %: tired, not wounded
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "asleep in its bed", () -> h.assertTrue(g[0].isSleeping(), "asleep"));
+		seq = seq.thenIdle(800);
+		seq.thenExecute(() -> {
+			h.assertTrue(g[0].isSleeping() || g[0].getBrain().isActive(Activity.REST), "still resting");
+			h.assertTrue(g[0].getHealth() == 12.0F, "no healing without food: " + g[0].getHealth());
+			h.assertTrue(data(g[0]).ration() == 0, "and no ration");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** Off duty a guard with an empty ration withdraws cooked food from Storage (the stock goes down) and then heals from it. */
+	@GameTest(environment = "villageheart-gametest:guards_refill", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void offDutyGuardRefillsFromStorageAndHeals(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		BlockPos food = BuildingTestSupport.inside(STORE, 0, 0, 3);
+		long[] eaten0 = new long[1];
+		GameTestSequence seq = sceneWithStorage(h, 1).thenExecute(() -> {
+			LumberTestSupport.putInChest(h, food, 0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 10));
+			setTime(h, 13200); // a day guard is off duty / in bed
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			g[0].setHealth(10.0F);
+			eaten0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "food_eaten");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "it took bread from Storage", () -> {
+			h.assertTrue(StockpileTestSupport.container(h, food).getItem(0).getCount() < 10, "stock " + StockpileTestSupport.container(h, food).getItem(0).getCount());
+			h.assertTrue(data(g[0]).ration() > 0 || g[0].getHealth() > 10.0F, "ration " + data(g[0]).ration());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "and healed from it", () -> h.assertTrue(g[0].getHealth() >= 16.0F, "health " + g[0].getHealth()));
+		seq.thenExecute(() -> {
+			int taken = 10 - StockpileTestSupport.container(h, food).getItem(0).getCount();
+			h.assertTrue(taken >= 1 && taken <= 3, "a bread or three: " + taken);
+			h.assertTrue(dev.villageheart.worker.job.WorkStats.get("guard", "food_eaten") > eaten0[0], "work.guard.food_eaten counted");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A guard dies: the guard that is asleep (off duty) wakes and comes on duty, with no hostile having touched a villager. */
+	@GameTest(environment = "villageheart-gametest:guards_death_wake", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void guardDeathWakesTheOffDutyGuards(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[2];
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			setTime(h, 18000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.NIGHT));
+			g[1] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.DAY));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the day guard sleeps, the night guard is on duty", () -> {
+			h.assertTrue(g[1].isSleeping() && g[1].getBrain().isActive(Activity.REST), "asleep: " + g[1].getBrain().getActiveActivities());
+			h.assertTrue(g[0].getBrain().isActive(GuardActivities.DUTY), "on duty");
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(!dev.villageheart.worker.guard.GuardAlarm.active(h.getLevel()), "no alarm yet");
+			g[0].hurt(h.getLevel().damageSources().genericKill(), 1000.0F);
+			h.assertTrue(!g[0].isAlive(), "the night guard died");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the sleeper woke and is on duty", () -> {
+			h.assertTrue(!g[1].isSleeping() && g[1].getBrain().isActive(GuardActivities.DUTY), "guard 1 " + g[1].getBrain().getActiveActivities() + " sleeping " + g[1].isSleeping());
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A guard is hired by day only: at night the hire is refused with GUARD_AT_NIGHT, in the morning the same villager is hired. */
+	@GameTest(environment = "villageheart-gametest:guards_no_night_hire", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void noGuardIsHiredAtNight(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		scene(h, 1).thenExecute(() -> {
+			v[0] = WorkerTestSupport.spawnVillager(h, spawnSpot());
+			setTime(h, 18000);
+			var r = dev.villageheart.worker.Workers.hire(h.getLevel(), v[0], dev.villageheart.core.worker.JobType.GUARD, Optional.empty());
+			h.assertTrue(r instanceof dev.villageheart.worker.HireResult.Refused ref && ref.reason() == dev.villageheart.core.worker.HireRefusal.GUARD_AT_NIGHT, "refused at night: " + r);
+			h.assertTrue(!dev.villageheart.worker.WorkerAttachments.isWorker(v[0]), "still no worker");
+			setTime(h, 24000 + 300);
+			var r2 = dev.villageheart.worker.Workers.hire(h.getLevel(), v[0], dev.villageheart.core.worker.JobType.GUARD, Optional.empty());
+			h.assertTrue(r2 instanceof dev.villageheart.worker.HireResult.Hired, "hired the next morning: " + r2);
+			h.assertTrue(data(v[0]).training(h.getLevel().getDayTime()), "and trains that day");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** Seniors take the nights: three unpinned guards, the two with the most XP work nights; a junior that gains XP past one of them takes its night. */
+	@GameTest(environment = "villageheart-gametest:guards_seniors", structure = YARD, skyAccess = true, maxTicks = 800)
+	public void seniorGuardsTakeTheNights(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[3];
+		GameTestSequence seq = scene(h, 3).thenExecute(() -> {
+			setTime(h, 2000);
+			for (int i = 0; i < 3; i++) g[i] = hireGuard(h, spawnSpot().east(i - 1), Optional.empty());
+			setXp(g[0], 1, 0);
+			setXp(g[1], 1, 20);
+			setXp(g[2], 1, 40);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the two most senior on nights, the junior on days", () -> {
+			h.assertTrue(shiftOf(h, g[2]) == Shift.NIGHT && shiftOf(h, g[1]) == Shift.NIGHT && shiftOf(h, g[0]) == Shift.DAY,
+					shiftOf(h, g[0]) + " " + shiftOf(h, g[1]) + " " + shiftOf(h, g[2]));
+		});
+		seq = seq.thenExecute(() -> setXp(g[0], 1, 90));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the junior gained XP and took the night of the least senior night guard", () -> {
+			h.assertTrue(shiftOf(h, g[0]) == Shift.NIGHT && shiftOf(h, g[2]) == Shift.NIGHT && shiftOf(h, g[1]) == Shift.DAY,
+					shiftOf(h, g[0]) + " " + shiftOf(h, g[1]) + " " + shiftOf(h, g[2]));
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * Below half health a guard falls back behind a healthy guard, eats its ration there and heals, and fights again at 80 %: the zombie (a sturdy
+	 * one that deals no damage, so the outcome is the retreat and not luck) keeps both guards busy for the whole test.
+	 */
+	@GameTest(environment = "villageheart-gametest:guards_retreat_eat", structure = YARD, skyAccess = true, maxTicks = 2400)
+	public void hurtGuardFallsBackEatsAndRejoins(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[2];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		long[] retreats0 = new long[1];
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, new BlockPos(2, 0, 10), Optional.of(Shift.DAY));
+			g[1] = hireGuard(h, new BlockPos(2, 0, 20), Optional.of(Shift.DAY));
+			z[0] = sturdy(zombie(h, new BlockPos(7, 0, 10)));
+			z[0].getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE).setBaseValue(0.0);
+			g[0].setHealth(8.0F); // 40 %
+			setData(g[0], data(g[0]).withRation(12));
+			retreats0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "retreats");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "the hurt guard falls back to the healthy one", () -> {
+			h.assertTrue(dev.villageheart.worker.guard.GuardCombat.retreating(g[0].getUUID()), "retreating");
+			h.assertTrue(g[0].distanceToSqr(g[1]) <= 36.0, "within 6 blocks of the healthy guard: " + Math.sqrt(g[0].distanceToSqr(g[1])));
+		});
+		seq = seq.thenExecute(() -> h.assertTrue(dev.villageheart.worker.job.WorkStats.get("guard", "retreats") > retreats0[0], "work.guard.retreats counted"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "it ate and healed to 80 % and rejoined", () -> {
+			h.assertTrue(g[0].getHealth() >= 16.0F, "health " + g[0].getHealth() + " ration " + data(g[0]).ration());
+			h.assertTrue(!dev.villageheart.worker.guard.GuardCombat.retreating(g[0].getUUID()), "no longer retreating");
+		});
+		seq.thenExecute(() -> {
+			h.assertTrue(data(g[0]).ration() <= 12 - 8, "it ate at least 8 points: " + data(g[0]).ration());
+			h.assertTrue(z[0].isAlive() && g[0].isAlive() && g[1].isAlive(), "everyone alive, the fight goes on");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** The alarm state is cleared by the reset (server stop and start call it) and its spot is only valid in the dimension it was raised in. */
+	@GameTest(environment = "villageheart-gametest:guards_alarm_reset", structure = YARD, skyAccess = true, maxTicks = 100)
+	public void alarmResetsAndKeepsItsDimension(GameTestHelper h) {
+		begin(h);
+		var level = h.getLevel();
+		dev.villageheart.worker.guard.GuardAlarm.raise(level, new BlockPos(5, 64, 5));
+		h.assertTrue(dev.villageheart.worker.guard.GuardAlarm.active(level) && dev.villageheart.worker.guard.GuardAlarm.spot(level).isPresent(), "raised");
+		var nether = level.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
+		h.assertTrue(nether != null && dev.villageheart.worker.guard.GuardAlarm.spot(nether).isEmpty(), "the spot is a place in the overworld, not in the Nether");
+		dev.villageheart.worker.guard.GuardAlarm.reset();
+		h.assertTrue(!dev.villageheart.worker.guard.GuardAlarm.active(level) && dev.villageheart.worker.guard.GuardAlarm.spot(level).isEmpty(), "cleared by the reset");
+		VillageTestSupport.done(h);
+		end(h);
+	}
+
+	/** Fire and re-hire is no free heal: a hurt level-2 guard that is fired and hired again has the health it had (clamped), not a fresh bar. */
+	@GameTest(environment = "villageheart-gametest:guards_rehire_heal", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void fireAndRehireIsNoFreeHeal(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			dev.villageheart.worker.Workers.setLevel(h.getLevel().getServer(), g[0], 2);
+			dev.villageheart.worker.guard.Guards.applyPerks(g[0], false);
+			h.assertTrue(g[0].getMaxHealth() == 30.0, "level 2: 30");
+			g[0].setHealth(9.0F);
+			dev.villageheart.worker.Workers.fire(h.getLevel(), g[0]);
+			var r = dev.villageheart.worker.Workers.hire(h.getLevel(), g[0], dev.villageheart.core.worker.JobType.GUARD, Optional.empty());
+			h.assertTrue(r instanceof dev.villageheart.worker.HireResult.Hired, "hired again: " + r);
+			h.assertTrue(g[0].getHealth() == 9.0F, "no free heal from a fire and a hire: " + g[0].getHealth());
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+
+
 }

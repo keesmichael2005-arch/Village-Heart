@@ -135,8 +135,8 @@ public final class Balance {
 
 	// ---- guards (M18) ----
 	public static final double GUARD_BASE_DAMAGE = 1.0;
-	/** Max health (30 / 40 / 50: lever c of the M18 r1 balance pass, tunable for M26) and bonus melee damage by level 1..3. */
-	public static final double[] GUARD_LEVEL_HEALTH = {30, 40, 50};
+	/** Max health by level 1..3 (M18 r3 owner design: a level 1 guard has the vanilla 20, more only from levelling; tunable for M26) and bonus melee damage. */
+	public static final double[] GUARD_LEVEL_HEALTH = {20, 30, 40};
 	public static final double[] GUARD_LEVEL_DAMAGE = {0, 1, 2};
 	public static final int DAY_DUTY_START = 0;
 	public static final int NIGHT_DUTY_START = 12000;
@@ -150,7 +150,19 @@ public final class Balance {
 	public static final int GUARD_GIVE_UP_TICKS = 200;
 	public static final double GUARD_WOUNDED_BELOW = 0.3;
 	public static final double GUARD_HEALED_AT = 0.8;
-	public static final int GUARD_SLEEP_HEAL_TICKS = 40;
+	/** Food ration (M18 r3): nutrition points a guard carries, the level below which it refills, ticks per bite, health per point eaten. */
+	public static final int GUARD_RATION_CAP = 12;
+	public static final int GUARD_RATION_REFILL_BELOW = 6;
+	public static final int GUARD_EAT_TICKS = 40;
+	public static final double GUARD_HEAL_PER_POINT = 1.0;
+	/** A guard falls back below this fraction of its health, to a guard with at least GUARD_ALLY_HEALTHY_AT, and fights again at GUARD_HEALED_AT. */
+	public static final double GUARD_RETREAT_BELOW = 0.5;
+	public static final double GUARD_ALLY_HEALTHY_AT = 0.7;
+	/** A guard eats only with no hostile within this many blocks. */
+	public static final int GUARD_EAT_SAFE_DISTANCE = 10;
+	/** Day time at which a new guard's one training day ends (dusk), and the day time from which guards are not hired (night). */
+	public static final int GUARD_TRAINING_END = 12000;
+	public static final int GUARD_NO_HIRE_FROM = 12000;
 	/** Sparring ticks (at speed 1.0) that make one SPAR unit (1 XP). */
 	public static final int SPAR_TICKS_PER_XP = 40;
 	public static final int GEAR_RECHECK_TICKS = 1200;

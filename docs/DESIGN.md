@@ -348,43 +348,68 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Overall rate.** 8 per hour is the rate at the smoker; with the fetch and deposit walks a cook makes about 4 to 5 items an hour.
 
 ### 5.6 Guard (Barracks, Grindstone)
-- **Shifts**: each guard is on **day** or **night** shift. The default auto-balances 50/50, and
-  Stewards can change it per guard. A guard sleeps in a Barracks bed during its off shift, so night-shift guards sleep in the day.
-- **On shift**: it patrols between the Heart, Watchtowers and lamp posts. It attacks hostile mobs and
-  raiders inside the claim. During a raid every guard is called on shift.
-- **Training**: off-shift time while awake is spent sparring at the Training Yard (guards in pairs, or
-  against armor stands), which earns XP. Guards also earn XP from kills.
-- **Level perks**: max health **30 / 40 / 50** (M18 r1 balance lever: a 20-health guard dies to three zombies; tunable for M26) and melee damage +0 / +1 / +2 *(tunable)*.
+- **Shifts**: each guard is on a **day** or a **night** shift. **Most guards work nights** (where the mobs are): the day keeps `max(1, n / 3)` guards
+  once there are two or more (2 guards: 1 + 1, 3: 2 + 1, 6: 4 + 2; a lone guard works nights). **Seniors take the nights** (level, then XP); a new guard
+  starts on days and moves to the night as it gains XP or when a night guard falls. A Steward can pin a guard to a shift (the Shift button).
+  A guard sleeps in a Barracks bed during its off shift, so night-shift guards sleep in the day.
+- **On shift**: it patrols between the Heart, Watchtowers and lamp posts. It attacks hostile mobs and raiders inside the claim. During a raid, or when a
+  hostile hurts a villager, or when a guard dies, every guard that is not wounded or in training is called on duty.
+- **Training**: a **newly hired guard spends one day training** (status "Training"): it spars at the Training Yard for XP (at a village without one it
+  drills idle at the Barracks and gains nothing), is not on duty, and is qualified at dusk, so it fights that night. Guards are **hired by day only**: a
+  guard that fell at night is replaced the next morning. After its training day, off-shift time while awake is spent sparring too. Guards also earn XP from kills.
+- **Starting gear**: a **wooden sword and no armour**. A guard takes better gear only from what the village has (Barracks chest, Storage, later the Smithy).
+- **Level perks**: max health **20 / 30 / 40** (a level 1 guard has the vanilla 20; more only from levelling; tunable for M26) and melee damage +0 / +1 / +2 *(tunable)*.
+- **Food and healing**: there is **no free regeneration**. A guard carries a small food ration (nutrition points, up to 12) that it withdraws from the
+  village's food Storage (so it counts against the food days) when it is low and the guard is off duty or at the Barracks. A hurt guard with no hostile
+  near eats one point per 2 seconds and heals 1 health per point. No food in storage means no healing.
+- **Retreat**: a guard below 50 % health falls back behind a healthy guard (at least 70 %), eats there and heals, and rejoins the fight at 80 %.
 - **Gear**: at the start of each shift it equips the best armour and weapon available in the stockpile
-  and Barracks chest (leather < chainmail < iron < diamond), and returns damaged gear when off shift. There is no bow combat in v1.
+  and Barracks chest (leather < chainmail < iron < diamond), and returns damaged gear when off shift. There is no bow combat in v1; **archers are not built** (a later milestone).
 
 #### Rules as built (M18)
 - **Shifts** (`core.guard.GuardSchedule`): day shift on duty `[0, 12000)`, off `[12000, 13000)` (hand in gear, spar), asleep `[13000, 24000)`; night
-  shift off `[0, 1000)`, asleep `[1000, 12000)`, on duty `[12000, 24000)`. Overrides, first wins: wounded goes to bed (even in a raid), a raid
-  puts every guard on duty, a guard that cannot work (strike, starving) is off instead of on duty but still sleeps. The balancer keeps every
-  existing shift, puts a new guard on the side with fewer guards (**a tie goes to night**: one guard is a night guard), and moves at most the most
-  recently hired unpinned guard when two sides differ by more than one. A Steward pins a guard on the Villagers tab (`[Shift: Auto|Day|Night]`).
+  shift off `[0, 1000)`, asleep `[1000, 12000)`, on duty `[12000, 24000)`. Overrides, first wins: wounded goes to bed (even in a raid), a trainee is
+  off and awake (never on duty, never sent to bed by the clock), a raid or the alarm puts every guard on duty, a guard that cannot work (strike,
+  starving) is off instead of on duty but still sleeps. `ShiftBalancer.assign` ranks the unpinned guards by level, then XP (ties keep the side a guard
+  is on, then hiring order, so nothing flaps) and gives the best `n - max(1, n / 3)` the night; pinned guards never move and count for their side.
+  `GuardSystem` re-ranks every 20 ticks with the XP the village state does not hold.
+- **Alarm** (`GuardAlarm`): raised when a hostile hurts a villager in the claim, or when a guard dies (so every sleeping or off-duty guard wakes and
+  comes). `refresh` keeps it up every 20 ticks while a hostile that hunts a villager is within 24 blocks of a guard; it ends 600 ticks after the last
+  sign of a threat (no flapping). Wounded guards stay in bed. While it is up the guards gather at its spot. The state is static, so it is cleared when
+  a server stops or starts, and the spot is kept with its dimension.
 - **Brain**: a guard has its own brain (`GuardBrain`): no panic trigger, no bell reaction, no raid hiding, no HOME acquisition. Activities
   `GUARD_DUTY`, `GUARD_OFF` (the default) and vanilla REST; combat runs in CORE so a guard that is attacked wakes up and fights even when it
   would go to bed (defend beats wounded and sleep). Night-shift guards sleep by day with vanilla `SleepInBed`, which has no time-of-day check.
 - **Beds**: the mod holds the POI ticket of every Barracks bed, so no ordinary villager takes a guard's bed; each guard gets a bed of its own
-  Barracks (`GuardBeds.assign`) and `HOME` is set by `GuardSystem` every 20 ticks. A guard heals half a heart per 40 ticks asleep in its bed; a
-  guard below 30 % health goes to bed (hysteresis: back at 80 %), but a guard with no bed never counts as wounded.
+  Barracks (`GuardBeds.assign`) and `HOME` is set by `GuardSystem` every 20 ticks. A guard below 30 % health goes to bed (hysteresis: back at 80 %),
+  but a guard with no bed never counts as wounded. A bed does not heal: food does.
+- **Food** (`core.guard.GuardRation`, `GuardRations`): the ration is in the guard's attachment (`ration`, nutrition points, cap 12). Below 6 points,
+  off duty or within 16 blocks of the Barracks and with no hostile within 10 blocks, `GuardSystem` withdraws cooked food (one item at a time, up to
+  4) from Storage (`Stockpiles.withdrawFirst`, nothing if there is none; a miss is retried after 200 ticks). A hurt guard with no hostile within 10
+  blocks (and a retreating guard behind its ally) eats one point per 40 ticks for 1 health, asleep or awake. `work.guard.ration_items`,
+  `ration_points` and `food_eaten` count it. The withdrawal is remote (the guard does not walk to Storage for its ration, unlike gear).
 - **Combat**: the villager gets a real `ATTACK_DAMAGE` attribute (a mod registration for every villager), so vanilla `doHurtTarget` gives the
   sword's damage, enchantments and kill credit. Targets: hostiles and raiders inside the claim (24 blocks of sight), neutral mobs only when they
   hunt a villager; **creepers are ignored** (guards are melee) and flying mobs are never chosen. A kill in the claim is 5 XP; a sword wears per
-  hit, worn armour per hit taken (vanilla's rule). Villagers do not swing visibly, so a hit shows a sweep particle and the attack sound.
+  hit, worn armour per hit taken (vanilla's rule). A guard that a different hostile hurts switches to it. A guard below 50 % health with a healthy
+  awake guard (at least 70 %) within 32 blocks falls back to within 5 blocks of it, eats and holds the line there, defending itself only against what
+  reaches it, and fights again at 80 % (`work.guard.retreats`); with nobody to fall back to it fights on.
+  A duel of one level-1 guard (wooden sword, no armour) against one zombie is a test (`guardBeatsOneZombie`): it must end with at least half the max health.
 - **Gear**: worn on the villager with a guaranteed drop (a dead guard drops it intact; a converted guard's gear drops and the zombie villager
-  wears nothing). At the start of duty and every 1200 ticks a guard plans one pick per slot, strictly better than what it wears, from the Barracks
+  wears nothing). A hired guard gets a wooden sword (a trainee keeps it; a fired guard hands it in with the rest). At the start of duty and every 1200
+  ticks a guard plans one pick per slot, strictly better than what it wears, from the Barracks
   chest and the stockpile (leather < copper < chainmail = gold < iron < diamond < netherite by armour value; swords by attack damage), reserves
   it and fetches it; off shift it hands everything back to the Barracks chest (else Storage, else the ground). **Enchantments are not ranked**
   (they are no attribute modifiers) and **armour is invisible** on the villager model (v1: only the held sword shows).
 - **Patrol**: the Heart, then a **door point** three cells outside every valid room's door (a guard is a hired worker, and workers are never
   asked to step aside, so a guard must not dwell in a doorway), then the finished Lamp Posts and Watchtowers. A closed fence gate on the way is
   opened by the guard (see below).
-- **Training**: off shift with a valid Training Yard linked to the Barracks, a guard walks there and spars at its work pace: one XP per 40
-  ticks (1 XP per SPAR unit). It does not pair up or pick a dummy in v1; it stands at the yard. Level perks are permanent attribute modifiers
-  (`villageheart:guard_health`, `villageheart:guard_damage`), saved with the entity.
+- **Training** (`core.guard.GuardTraining`, `GuardData.trainingUntil`): `Workers.hire` refuses a guard from day time 12000 to 24000
+  (`HireRefusal.GUARD_AT_NIGHT`); a hire sets `trainingUntil` to dusk (12000) of that day. Until then `GuardSchedule` gives the trainee OFF, it
+  spars at the valid Training Yard linked to its Barracks (one XP per 40 ticks) or stands at the Barracks, and the Villagers tab shows "Training".
+  After it is qualified, off shift with a valid Training Yard a guard spars at its work pace the same way. Level perks are permanent attribute
+  modifiers (`villageheart:guard_health`, `villageheart:guard_damage`), saved with the entity. Hiring and firing keep the health the guard has
+  (clamped to the new max): a fire and a hire is no free heal.
 - **Raid call-up**: `RaidCheck` (a raid that is not over or stopped, with its centre or a raider in the claim; `getRaidAt` alone matches any
   raid within 96 blocks). M25 replaces the answer through `RaidCheck.setSource`.
 

@@ -200,7 +200,9 @@ public class GateGameTests {
 		begin(h);
 		Villager[] v = new Villager[2];
 		Zombie[] z = new Zombie[2];
-		BlockPos inside = new BlockPos(15, 0, 16);
+		// (16,0,15), accuracy 0: the cell just inside the ring that an unhired villager provably reaches when the hired rule is broken (the M18 r2 review
+		// measured that (15,0,16) at accuracy 1 never reaches whatever the rule says, so a mutation of GatePaths.isHired did not turn this test red)
+		BlockPos inside = new BlockPos(16, 0, 15);
 		GameTestSequence seq = scene(h).thenExecute(() -> {
 			v[0] = hire(h, new BlockPos(15, 0, 10));
 			v[1] = WorkerTestSupport.spawnVillager(h, new BlockPos(17, 0, 10));
@@ -211,9 +213,9 @@ public class GateGameTests {
 		});
 		seq = seq.thenIdle(5);
 		seq = seq.thenExecute(() -> {
-			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 1);
-			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 1);
-			Path mob = z[0].getNavigation().createPath(h.absolutePos(inside), 1);
+			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 0);
+			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 0);
+			Path mob = z[0].getNavigation().createPath(h.absolutePos(inside), 0);
 			h.assertTrue(plain == null || !plain.canReach(), "an unemployed villager cannot plan through the gate");
 			h.assertTrue(mob == null || !mob.canReach(), "a zombie cannot plan through the gate");
 			// the zombie is 3-4 blocks from the gate: a hostile near keeps the hired worker out as well
@@ -222,10 +224,10 @@ public class GateGameTests {
 		});
 		// the discarded zombie leaves the entity list at the end of the tick: ask again until the path is found
 		seq = seq.thenWaitUntil(() -> {
-			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 1);
+			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 0);
 			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
 
-			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 1);
+			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 0);
 			h.assertTrue(plain == null || !plain.canReach(), "and the unemployed villager is still refused (the zombie is not what keeps it out)");
 		});
 		seq.thenExecute(() -> {

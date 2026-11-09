@@ -58,6 +58,7 @@
 	"message.villageheart.hire.already_employed": "That villager already has a job.",
 	"message.villageheart.hire.tier_locked": "The village is too small for that job.",
 	"message.villageheart.hire.not_in_preferred_building": "That building has no free job block.",
+	"message.villageheart.hire.guard_at_night": "Guards are hired by day. Try again in the morning.",
 	"message.villageheart.hire.no_free_slot": "There is no free job block for that job.",
 	"message.villageheart.hire.hired": "Hired as %s.",
 	"message.villageheart.hire.fired": "That villager is no longer a worker.",

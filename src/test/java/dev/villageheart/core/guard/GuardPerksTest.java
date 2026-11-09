@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 class GuardPerksTest {
 	@Test
 	void healthAndDamageByLevel() {
-		assertEquals(30.0, GuardPerks.maxHealth(1));
-		assertEquals(40.0, GuardPerks.maxHealth(2));
-		assertEquals(50.0, GuardPerks.maxHealth(3));
+		assertEquals(20.0, GuardPerks.maxHealth(1), "a level 1 guard has the vanilla villager health: no boost at hire");
+		assertEquals(30.0, GuardPerks.maxHealth(2));
+		assertEquals(40.0, GuardPerks.maxHealth(3));
 		assertEquals(0.0, GuardPerks.bonusDamage(1));
 		assertEquals(1.0, GuardPerks.bonusDamage(2));
 		assertEquals(2.0, GuardPerks.bonusDamage(3));
-		assertEquals(50.0, GuardPerks.maxHealth(4));
+		assertEquals(40.0, GuardPerks.maxHealth(4));
 		assertEquals(2.0, GuardPerks.bonusDamage(9));
 		assertThrows(IllegalArgumentException.class, () -> GuardPerks.maxHealth(0));
 		assertThrows(IllegalArgumentException.class, () -> GuardPerks.bonusDamage(0));

@@ -218,6 +218,7 @@ public final class HeartActions {
 			case NOT_ADULT -> "Only adult villagers can be hired.";
 			case NITWIT -> "Nitwits cannot work.";
 			case OUTSIDE_CLAIM -> "That villager is outside the village.";
+			case GUARD_AT_NIGHT -> "Guards are hired by day. Try again in the morning.";
 			case ALREADY_EMPLOYED -> "That villager already has a job.";
 			case TIER_LOCKED -> "The village is too small for that job.";
 			case NOT_IN_PREFERRED_BUILDING -> "That building has no free job block.";

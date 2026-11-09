@@ -128,7 +128,9 @@ public final class GuardRuntime {
 			if (data == null) return;
 			Optional<BlockPos> yard = trainingYard(level, data);
 			boolean canWork = WorkGate.mayWork(data.needs());
-			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, GuardGear.wearsAnything(guard), yard.isPresent(), canWork));
+			// a trainee keeps its starting sword and trains; nothing makes it hand gear in (M18 r3)
+			boolean trainee = GuardAttachments.get(guard).training(level.getDayTime());
+			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, !trainee && GuardGear.wearsAnything(guard), yard.isPresent(), canWork));
 			if (off == GuardPlanner.OffMode.RETURN_GEAR) returnGear(level, guard, s, now);
 			else if (off == GuardPlanner.OffMode.SPAR) spar(level, guard, s, data, yard.get(), now);
 			else {

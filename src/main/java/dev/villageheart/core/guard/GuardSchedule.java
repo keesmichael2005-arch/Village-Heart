@@ -26,6 +26,15 @@ public final class GuardSchedule {
 		return p == GuardPhase.DUTY && !canWork ? GuardPhase.OFF : p;
 	}
 
+	/**
+	 * With the training day (M18 r3): a guard that is not yet qualified is never on duty and never sent to bed by the clock, it trains (OFF,
+	 * awake, sparring at the Training Yard) until it qualifies at dusk. Wounded still comes first. Nothing calls a trainee up, not even a raid.
+	 */
+	public static GuardPhase phase(Shift shift, long dayTime, boolean raid, boolean alarm, boolean wounded, boolean canWork, boolean training) {
+		if (training && !wounded) return GuardPhase.OFF;
+		return phase(shift, dayTime, raid, alarm, wounded, canWork);
+	}
+
 	private static GuardPhase base(Shift shift, long t) {
 		int duty = Balance.GUARD_DUTY_TICKS, off = Balance.GUARD_OFF_TICKS;
 		if (shift == Shift.DAY) {

@@ -280,9 +280,11 @@ public final class HeartFacts {
 		return v.getVillagerData().profession().unwrapKey().map(k -> k.identifier().toString()).orElse("");
 	}
 
-	static ActivityKind activityOf(Villager v) {
+	public static ActivityKind activityOf(Villager v) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) {
 			if (dev.villageheart.worker.guard.GuardCombat.engaged(v)) return ActivityKind.FIGHTING;
+			// the training day: the status says so whether or not there is a Training Yard to spar at (M18 r3)
+			if (dev.villageheart.worker.guard.GuardAttachments.get(v).training(v.level().getDayTime()) && !dev.villageheart.worker.guard.GuardAttachments.get(v).wounded()) return ActivityKind.TRAINING;
 			var mode = dev.villageheart.worker.guard.GuardRuntime.modeOf(v.getUUID());
 			if (v.getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY)) {
 				return switch (mode) {

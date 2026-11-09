@@ -386,6 +386,15 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		return guardIds(workers);
 	}
 
+	/** The guards in hiring order with their mirror level and the given XP (0 when unknown): what {@link ShiftBalancer} ranks. */
+	private static List<ShiftBalancer.Guard> guardRank(List<WorkerRecord> records, Map<UUID, Integer> xp) {
+		List<ShiftBalancer.Guard> out = new ArrayList<>();
+		for (WorkerRecord w : records) {
+			if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) out.add(new ShiftBalancer.Guard(w.villager(), w.level(), xp.getOrDefault(w.villager(), 0)));
+		}
+		return out;
+	}
+
 	private static List<UUID> guardIds(List<WorkerRecord> records) {
 		List<UUID> out = new ArrayList<>();
 		for (WorkerRecord w : records) if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) out.add(w.villager());
@@ -396,7 +405,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	public Optional<GuardShift> guardShift(UUID villager) { return Optional.ofNullable(guardShifts.get(villager)); }
 
 	private VillageState withWorkersRebalanced(List<WorkerRecord> next) {
-		Map<UUID, GuardShift> shifts = ShiftBalancer.rebalance(guardIds(next), guardShifts);
+		Map<UUID, GuardShift> shifts = ShiftBalancer.assign(guardRank(next, java.util.Map.of()), guardShifts);
 		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, next, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, shifts);
 	}
 
@@ -406,7 +415,13 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (now == null) return this;
 		Map<UUID, GuardShift> next = new java.util.LinkedHashMap<>(guardShifts);
 		next.put(villager, pin.map(sh -> new GuardShift(sh, true)).orElse(new GuardShift(now.shift(), false)));
-		return withGuardShifts(ShiftBalancer.rebalance(guardIds(), next));
+		return withGuardShifts(ShiftBalancer.assign(guardRank(workers, java.util.Map.of()), next));
+	}
+
+	/** Re-ranks the guards with their XP (the state mirrors levels only): seniors take the nights. Returns {@code this} when nothing moves. */
+	public VillageState withGuardSeniority(Map<UUID, Integer> xp) {
+		Map<UUID, GuardShift> next = ShiftBalancer.assign(guardRank(workers, xp), guardShifts);
+		return next.equals(guardShifts) ? this : withGuardShifts(next);
 	}
 
 	/** Replaces the shift map as given (the codec rebalances on load). */

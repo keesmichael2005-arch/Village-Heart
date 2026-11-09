@@ -8,6 +8,7 @@ import dev.villageheart.core.guard.GuardPerks;
 import dev.villageheart.core.guard.GuardPhase;
 import dev.villageheart.core.guard.GuardSchedule;
 import dev.villageheart.core.guard.GuardShift;
+import dev.villageheart.core.guard.GuardTraining;
 import dev.villageheart.core.guard.Shift;
 import dev.villageheart.core.job.XpChange;
 import dev.villageheart.core.worker.JobType;
@@ -53,7 +54,11 @@ public final class Guards {
 				Villager.createAttributes().add(Attributes.ATTACK_DAMAGE, Balance.GUARD_BASE_DAMAGE));
 		// Villager.die releases HOME, which would free the Barracks bed's ticket the mod holds: erase the memory first (it fires before die)
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
-			if (entity instanceof Villager v && isGuard(v)) v.getBrain().eraseMemory(MemoryModuleType.HOME);
+			if (entity instanceof Villager v && isGuard(v)) {
+				v.getBrain().eraseMemory(MemoryModuleType.HOME);
+				// a guard fell: every guard that is off duty wakes and comes (M18 r3, on top of the alarm of the attack)
+				if (v.level() instanceof ServerLevel level) GuardAlarm.raise(level, v.blockPosition());
+			}
 			return true;
 		});
 		// a guard that a zombie (or lightning) converts: the gear stays in the world, the result wears nothing and has no perks
@@ -93,7 +98,8 @@ public final class Guards {
 		WorkerData data = guard.getAttached(WorkerAttachments.WORKER);
 		boolean canWork = data == null || WorkGate.mayWork(data.needs());
 		boolean raid = RaidCheck.active(level, village.get());
-		return GuardSchedule.phase(shift, level.getDayTime(), raid, GuardAlarm.active(level), GuardAttachments.get(guard).wounded(), canWork);
+		GuardData gd = GuardAttachments.get(guard);
+		return GuardSchedule.phase(shift, level.getDayTime(), raid, GuardAlarm.active(level), gd.wounded(), canWork, gd.training(level.getDayTime()));
 	}
 
 	/** The activity of this guard's brain right now. */
@@ -110,7 +116,9 @@ public final class Guards {
 	public static void onHired(ServerLevel level, Villager guard) {
 		guard.releasePoi(MemoryModuleType.HOME);
 		guard.getBrain().eraseMemory(MemoryModuleType.HOME);
-		GuardAttachments.set(guard, GuardData.FRESH);
+		// one training day, then qualified at dusk (M18 r3); a wooden sword and no armour: better gear only from what the village has
+		GuardAttachments.set(guard, GuardData.FRESH.withTrainingUntil(GuardTraining.qualifiesAt(level.getDayTime())));
+		if (guard.getMainHandItem().isEmpty()) GuardGear.equip(guard, net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WOODEN_SWORD));
 		applyPerks(guard, false);
 	}
 

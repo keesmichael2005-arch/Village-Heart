@@ -1,51 +1,62 @@
 package dev.villageheart.core.guard;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Splits the guards into a day and a night shift with as few moves as possible (M18 3.3). Guards that already have a shift keep it; a new
- * guard goes to the side with fewer guards (a tie goes to NIGHT: night is when the mobs come); entries of guards that are gone are dropped.
- * Then, while the two sides differ by more than one, the most recently hired unpinned guard of the bigger side moves across. Pins never move.
+ * Splits the guards into a night and a day shift (M18 r3, owner design): most guards take the night, where the mobs are, and the day keeps
+ * {@code max(1, n / 3)} guards once there are two or more (2 guards: 1 + 1, 3: 2 + 1, 6: 4 + 2; a lone guard works nights). The most senior
+ * guards (level, then XP) take the nights; a new guard starts on days and moves to the night as it gains XP or when a night guard falls.
+ * Ties keep the side a guard is on, then the hiring order, so the shifts do not flap. Pinned guards (the player's Shift button) never move
+ * and count toward their side.
  */
 public final class ShiftBalancer {
 	private ShiftBalancer() {}
 
-	public static Map<UUID, GuardShift> rebalance(List<UUID> guardsInHiringOrder, Map<UUID, GuardShift> current) {
-		Map<UUID, GuardShift> kept = new LinkedHashMap<>();
-		int[] count = new int[2];
-		for (UUID g : guardsInHiringOrder) {
-			GuardShift s = current.get(g);
-			if (s != null && !kept.containsKey(g)) {
-				kept.put(g, s);
-				count[s.shift().ordinal()]++;
+	/** A guard as the balancer sees it: hiring order is the list order. */
+	public record Guard(UUID id, int level, int xp) {}
+
+	/** How many guards of {@code n} work the day. */
+	public static int dayCount(int n) { return n < 2 ? 0 : Math.max(1, n / 3); }
+
+	public static Map<UUID, GuardShift> assign(List<Guard> guardsInHiringOrder, Map<UUID, GuardShift> current) {
+		int n = guardsInHiringOrder.size();
+		int nightWant = n - dayCount(n);
+		Map<UUID, GuardShift> pinned = new LinkedHashMap<>();
+		List<Guard> free = new ArrayList<>();
+		int pinnedNight = 0;
+		Map<UUID, Integer> order = new LinkedHashMap<>();
+		for (int i = 0; i < n; i++) {
+			Guard g = guardsInHiringOrder.get(i);
+			order.put(g.id(), i);
+			GuardShift s = current.get(g.id());
+			if (s != null && s.pinned()) {
+				pinned.put(g.id(), s);
+				if (s.shift() == Shift.NIGHT) pinnedNight++;
+			} else {
+				free.add(g);
 			}
 		}
+		free.sort(Comparator.<Guard>comparingInt(Guard::level).reversed()
+				.thenComparing(Comparator.<Guard>comparingInt(Guard::xp).reversed())
+				.thenComparingInt(g -> current.get(g.id()) != null && current.get(g.id()).shift() == Shift.NIGHT ? 0 : 1)
+				.thenComparingInt(g -> order.get(g.id())));
+		int nightSlots = Math.max(0, Math.min(free.size(), nightWant - pinnedNight));
+		Map<UUID, GuardShift> assigned = new LinkedHashMap<>();
+		for (int i = 0; i < free.size(); i++) assigned.put(free.get(i).id(), new GuardShift(i < nightSlots ? Shift.NIGHT : Shift.DAY, false));
 		Map<UUID, GuardShift> out = new LinkedHashMap<>();
-		for (UUID g : guardsInHiringOrder) {
-			if (out.containsKey(g)) continue;
-			GuardShift s = kept.get(g);
-			if (s == null) {
-				Shift side = count[Shift.NIGHT.ordinal()] <= count[Shift.DAY.ordinal()] ? Shift.NIGHT : Shift.DAY;
-				s = new GuardShift(side, false);
-				count[side.ordinal()]++;
-			}
-			out.put(g, s);
-		}
-		while (Math.abs(count[0] - count[1]) > 1) {
-			Shift bigger = count[Shift.DAY.ordinal()] > count[Shift.NIGHT.ordinal()] ? Shift.DAY : Shift.NIGHT;
-			UUID mover = null;
-			for (UUID g : guardsInHiringOrder) {
-				GuardShift s = out.get(g);
-				if (!s.pinned() && s.shift() == bigger) mover = g;
-			}
-			if (mover == null) break;
-			out.put(mover, new GuardShift(bigger.other(), false));
-			count[bigger.ordinal()]--;
-			count[bigger.other().ordinal()]++;
-		}
+		for (Guard g : guardsInHiringOrder) out.put(g.id(), pinned.containsKey(g.id()) ? pinned.get(g.id()) : assigned.get(g.id()));
 		return out;
+	}
+
+	/** As {@link #assign} with every guard at level 1 and no XP: the side a guard is on and the hiring order decide. */
+	public static Map<UUID, GuardShift> rebalance(List<UUID> guardsInHiringOrder, Map<UUID, GuardShift> current) {
+		List<Guard> gs = new ArrayList<>();
+		for (UUID id : guardsInHiringOrder) gs.add(new Guard(id, 1, 0));
+		return assign(gs, current);
 	}
 }

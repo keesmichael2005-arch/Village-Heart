@@ -9,6 +9,8 @@ public final class GuardCodecs {
 	private GuardCodecs() {}
 
 	public static final Codec<GuardData> GUARD_DATA = RecordCodecBuilder.create(i -> i.group(
-			Codec.BOOL.optionalFieldOf("wounded", false).forGetter(GuardData::wounded)
+			Codec.BOOL.optionalFieldOf("wounded", false).forGetter(GuardData::wounded),
+			Codec.LONG.optionalFieldOf("training_until", 0L).forGetter(GuardData::trainingUntil),
+			Codec.INT.optionalFieldOf("ration", 0).forGetter(GuardData::ration)
 	).apply(i, GuardData::new));
 }

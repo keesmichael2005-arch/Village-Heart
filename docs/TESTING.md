@@ -371,7 +371,18 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   `hireGuard(h, spawn, pin)`; recorders for damage and villager deaths; `zombie(h, rel)` = an adult that does not burn) and `GateGameTests`. Each test
   has its own environment `villageheart-gametest:guards_<name>` / `gates_<name>` (natural spawning off, so no mob joins a test that did not spawn it)
   and the `yard` structure. Filter ids: `villageheart-gametest:guard_game_tests_<method_snake>`, `villageheart-gametest:gate_game_tests_<method_snake>`.
-- **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn).
+- **Qualified or trainee**: `hireGuard` hires through the real path and then clears the training day (so the shift tests are about shifts); `hireTrainee`
+  keeps it (a hire at night is refused, so the helper puts the clock to morning for the call and back).
+- **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn). A level 1 guard
+  has 20 health, a wooden sword and no armour (`guardBeatsOneZombie` is the duel: at least half the health must be left).
+- **Rules added by the M18 round-1 and -3 reviews** (each has a GameTest and, where it is pure, an L1 test): `alarmWakesSleepingGuardsAndTheyReturn`,
+  `guardSwitchesToTheMobThatHurtsIt`, `barracksBedEvictsHiredWorker`, `brokenGrindstoneKeepsTheGuardOnDuty`, `guardBrainHasNoPanic` (the control villager is
+  penned so it cannot stroll out of the zombie's range), `newGuardTrainsOneDayThenWorksTheNight`, `traineeSparsAtTheYardAndGainsXp`,
+  `guardEatsItsRationToHeal`, `noFoodNoHealingNotEvenInBed`, `offDutyGuardRefillsFromStorageAndHeals`, `guardDeathWakesTheOffDutyGuards`,
+  `noGuardIsHiredAtNight`, `seniorGuardsTakeTheNights`, `hurtGuardFallsBackEatsAndRejoins`, `alarmResetsAndKeepsItsDimension`,
+  `fireAndRehireIsNoFreeHeal`. L1: `ShiftBalancerTest`, `GuardRationTest` (ration, heal, training, night hire), `GuardScheduleTest`, `GuardPerksTest`.
+- **Gate tests are mutation-checked**: `mobsStillCannotPassTheGate` asks for the cell `(16,0,15)` at accuracy 0, which an unhired villager reaches when
+  `GatePaths.isHired` is mutated to "any adult villager" (the earlier target `(15,0,16)` at accuracy 1 never reached, so that mutation stayed green).
 - **Trace**: `-Dvillageheart.guard.trace=true` logs every target, hit and drop of a guard (`[guard] ...`).
 - **Gate scene** (`GateGameTests.ring`): a 31 x 18 cobblestone ring south of the camp with a three-wide gate of closed oak fence gates; the oak is more
   than 8 blocks from any spot outside the wall (the lumberjack chops from the nearest reachable spot within 8, so a smaller ring proves nothing).
@@ -380,6 +391,8 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   are asserted; `heart_villagers_guards.png`: the Villagers tab with a Shift button that is clicked once). `-Dvillageheart.l4.only=guards` runs just these.
 - **Layer 3**: `scripts/simulate.sh defended` (the starter village + a Barracks with two guards + a Training Yard + 27 scripted zombies). New actions
   `tier`, `training_yard`, `night_spawn`; `prefab` words `grindstone` and `target`; two `hire ... replace` actions keep two guards on the roll.
+  The re-hire hook waits for the morning (no guard is hired at night). Per-day numbers worth reading: `deaths.mobs`, `work.guard.kills`, `duty_samples`,
+  `employed`, `ration_items`/`ration_points`/`food_eaten` (food the guards took and ate), `retreats`, `guards_night`/`guards_day` (the shift counts).
 
 ## Tier tests (M14+)
 `TierGameTests` (helpers in `TierTestSupport`): one yard with a Farmhouse (3 composters), a Storage with bread, a Kitchen, a Builder's Hut (a Village building, the "red until the tier-up" control) and six villagers; three of them hired as farmers. Seed the progress (`seedProgress`: a written history, the L1 tests prove the counting) and cross one real dinner (`toDinner`: forward only, waits for M11's record) and one real dawn (`toDawn` = `WageTestSupport.toDawn`). Dinner is switched on with `NeedsOverride.dinnerEnabled = true` (needs stay forced). Note that `nextDinner` jumps over a midnight, so a dawn already runs at the start of `toDinner`. `DawnProbe` is a `test:` dawn listener registered after M14's: it records the tier and `BuildingSystem.priorityQueuedForTests` inside the dawn tick, which proves `Buildings.requestAll` ran (a timing bound cannot: the round-robin might get there by luck). `WageTestSupport.done(h)` drops it.

@@ -442,6 +442,8 @@ public final class StarterActions {
 		for (Map.Entry<String, Standing> e : STANDING.entrySet()) {
 			long staffed = village.get().workers().stream().filter(w -> w.jobId().equals(e.getKey())).count();
 			if (staffed >= e.getValue().want()) continue;
+			// a guard is hired by day (M18 r3): the one that fell at night is replaced the next morning, not before
+			if (e.getKey().equals(JobType.GUARD.id()) && !dev.villageheart.core.guard.GuardTraining.mayHire(ctx.level().getDayTime())) continue;
 			try {
 				hireNow(ctx, JobType.byId(e.getKey()).orElseThrow(), e.getValue().type(), true, false);
 				VillageHeart.LOG.info("[sim] re-hired a {}", e.getKey());

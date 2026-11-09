@@ -70,4 +70,18 @@ class GuardScheduleTest {
 			assertEquals(11000, sleep);
 		}
 	}
+
+	@Test
+	void aTraineeIsNeverOnDutyNorSentToBedByTheClock() {
+		for (Shift sh : Shift.values()) {
+			for (long t = 0; t < 24000; t += 500) {
+				assertEquals(OFF, GuardSchedule.phase(sh, t, false, false, false, true, true), sh + " at " + t);
+				assertEquals(OFF, GuardSchedule.phase(sh, t, true, true, false, true, true), "not even a raid or the alarm calls a trainee: " + sh + " at " + t);
+			}
+		}
+		assertEquals(SLEEP, GuardSchedule.phase(Shift.DAY, 5000, false, false, true, true, true), "wounded still comes first");
+		// a qualified guard follows the clock as before
+		assertEquals(DUTY, GuardSchedule.phase(Shift.NIGHT, 18000, false, false, false, true, false));
+		assertEquals(SLEEP, GuardSchedule.phase(Shift.NIGHT, 5000, false, false, false, true, false));
+	}
 }

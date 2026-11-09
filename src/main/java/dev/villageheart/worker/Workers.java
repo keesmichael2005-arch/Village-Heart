@@ -77,6 +77,8 @@ public final class Workers {
 		if (!ClaimGeometry.inClaim(v.heart(), VillageClaims.locate(level, villager.blockPosition()))) {
 			return new HireResult.Refused(HireRefusal.OUTSIDE_CLAIM);
 		}
+		// a guard is hired by day: one that fell at night is replaced the next morning (M18 r3)
+		if (job == JobType.GUARD && !dev.villageheart.core.guard.GuardTraining.mayHire(level.getDayTime())) return new HireResult.Refused(HireRefusal.GUARD_AT_NIGHT);
 		HireDecision decision = JobSlots.decide(jobSites.sites(server, job), v.workers(), v.tier(), villager.getUUID(), job, preferredBuilding);
 		if (decision instanceof HireDecision.Refused r) return new HireResult.Refused(r.reason());
 		HireDecision.Hired hired = (HireDecision.Hired) decision;

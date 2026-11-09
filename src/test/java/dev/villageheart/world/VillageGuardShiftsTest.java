@@ -130,7 +130,7 @@ class VillageGuardShiftsTest {
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
 		// the names that rebuild the guard map on purpose are tested above
-		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin");
+		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin", "withGuardSeniority");
 		Set<String> found = new HashSet<>();
 		for (Method m : VillageState.class.getDeclaredMethods()) {
 			if (!Modifier.isPublic(m.getModifiers()) || m.getReturnType() != VillageState.class) continue;
@@ -166,11 +166,24 @@ class VillageGuardShiftsTest {
 	}
 
 	@Test
+	void seniorityMovesTheShiftsWithXpAndNothingElse() {
+		VillageState v = withGuards(); // G1 night, G2 day (see withGuards)
+		assertSame(v, v.withGuardSeniority(java.util.Map.of()), "no XP news: nothing moves, same instance");
+		VillageState up = v.withGuardSeniority(java.util.Map.of(G2, 50));
+		assertEquals(Shift.NIGHT, up.guardShift(G2).orElseThrow().shift(), "the guard with the XP takes the night");
+		assertEquals(Shift.DAY, up.guardShift(G1).orElseThrow().shift());
+		assertEquals(v.workers(), up.workers());
+	}
+
+	@Test
 	void guardDataRoundTrip() {
 		for (boolean w : new boolean[] {true, false}) {
-			GuardData d = new GuardData(w);
+			GuardData d = new GuardData(w, w ? 36000L : 0L, w ? 7 : 0);
 			assertEquals(d, GuardCodecs.GUARD_DATA.parse(JsonOps.INSTANCE, GuardCodecs.GUARD_DATA.encodeStart(JsonOps.INSTANCE, d).getOrThrow()).getOrThrow());
 		}
-		assertEquals(new GuardData(false), GuardCodecs.GUARD_DATA.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow(), "absent field is not wounded");
+		assertEquals(GuardData.FRESH, GuardCodecs.GUARD_DATA.parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow(), "absent fields: not wounded, qualified, no ration");
+		JsonObject oldSave = new JsonObject(); // a save from before the ration and training fields
+		oldSave.addProperty("wounded", true);
+		assertEquals(new GuardData(true, 0, 0), GuardCodecs.GUARD_DATA.parse(JsonOps.INSTANCE, oldSave).getOrThrow());
 	}
 }

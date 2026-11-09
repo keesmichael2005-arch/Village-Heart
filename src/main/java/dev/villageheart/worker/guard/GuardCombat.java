@@ -58,7 +58,7 @@ public final class GuardCombat {
 		double bestDist = Double.MAX_VALUE;
 		int shortPaths;
 		final Map<UUID, Long> ignoreUntil = new HashMap<>();
-		boolean navigating;
+		boolean navigating, retreating;
 		int switchedAt = -1;
 	}
 
@@ -94,6 +94,12 @@ public final class GuardCombat {
 	public static boolean engaged(Villager guard) {
 		Fight f = FIGHTS.get(guard.getUUID());
 		return f != null && f.target != null;
+	}
+
+	/** True while this guard is falling back behind a healthier one (tests, status). */
+	public static boolean retreating(UUID guard) {
+		Fight f = FIGHTS.get(guard);
+		return f != null && f.retreating;
 	}
 
 	/** The target's UUID, if any (tests). */
@@ -176,6 +182,7 @@ public final class GuardCombat {
 		if (TRACE) dev.villageheart.VillageHeart.LOG.info("[guard] {} @{} drops its target (ignore {})", guard.getId(), now, ignore);
 		if (ignore && target != null) f.ignoreUntil.put(target.getUUID(), now + IGNORE_TICKS);
 		f.target = null;
+		f.retreating = false;
 		f.bestDist = Double.MAX_VALUE;
 		f.shortPaths = 0;
 		if (f.navigating) {
@@ -220,19 +227,36 @@ public final class GuardCombat {
 		if (guard.isSleeping()) guard.stopSleeping();
 		guard.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(target, true));
 		PathNavigation nav = guard.getNavigation();
-		// below half health a guard falls back toward another healthy guard (the zombie follows into two swords); it fights again once it is there
-		if (guard.getHealth() < guard.getMaxHealth() * 0.5F) {
+		// below half health a guard falls back behind another healthy guard (the zombie follows into two swords), eats there and heals, and
+		// fights again once it is back to GUARD_HEALED_AT (M18 r3). With nobody to fall back to it fights on.
+		double frac = guard.getHealth() / guard.getMaxHealth();
+		if (f.retreating && frac >= Balance.GUARD_HEALED_AT) f.retreating = false;
+		if (!f.retreating && frac < Balance.GUARD_RETREAT_BELOW) {
+			f.retreating = true;
+			if (healthyAlly(level, guard) != null) WorkStats.add("guard", "retreats", 1);
+		}
+		boolean inReach = guard.isWithinMeleeAttackRange(target);
+		if (f.retreating) {
 			Villager ally = healthyAlly(level, guard);
-			if (ally != null && guard.distanceToSqr(ally) > 25.0) {
+			if (ally == null) {
+				f.retreating = false;
+			} else if (guard.distanceToSqr(ally) > 25.0) {
 				if (now - f.lastPathAt >= REPATH_TICKS) {
 					f.lastPathAt = now;
 					nav.moveTo(ally, Balance.GUARD_CHASE_SPEED);
 					f.navigating = true;
 				}
 				return;
+			} else {
+				GuardRations.bite(level, guard);
+				if (!(inReach && guard.getSensing().hasLineOfSight(target))) {
+					nav.stop();
+					f.navigating = false;
+					f.bestAt = now; // holding the line behind the ally is not a stalled chase
+					return;
+				}
 			}
 		}
-		boolean inReach = guard.isWithinMeleeAttackRange(target);
 		if (inReach && guard.getSensing().hasLineOfSight(target)) {
 			nav.stop();
 			f.navigating = false;
@@ -264,7 +288,7 @@ public final class GuardCombat {
 	private static Villager healthyAlly(ServerLevel level, Villager guard) {
 		Villager best = null;
 		for (Villager v : level.getEntitiesOfClass(Villager.class, guard.getBoundingBox().inflate(32.0), o -> o != guard && o.isAlive() && Guards.isGuard(o)
-				&& !o.isSleeping() && o.getHealth() >= o.getMaxHealth() * 0.7F)) {
+				&& !o.isSleeping() && o.getHealth() >= o.getMaxHealth() * Balance.GUARD_ALLY_HEALTHY_AT)) {
 			if (best == null || v.distanceToSqr(guard) < best.distanceToSqr(guard)) best = v;
 		}
 		return best;
