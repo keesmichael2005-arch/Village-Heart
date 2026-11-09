@@ -45,6 +45,8 @@ public final class Guards {
 	public static void register() {
 		GuardActivities.register();
 		GuardAttachments.register();
+		// the finished Lamp Posts and Watchtowers of M21 are patrol points (BACKLOG M21, blocking for M18)
+		PatrolPoints.register(dev.villageheart.defence.Defences::patrolPoints);
 		FabricDefaultAttributeRegistry.register(EntityType.VILLAGER,
 				Villager.createAttributes().add(Attributes.ATTACK_DAMAGE, Balance.GUARD_BASE_DAMAGE));
 		// Villager.die releases HOME, which would free the Barracks bed's ticket the mod holds: erase the memory first (it fires before die)

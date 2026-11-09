@@ -129,6 +129,69 @@ public class GateGameTests {
 		});
 	}
 
+	// ---- a guard patrols to a point behind a closed gate (replaces the plan's closedGateSkipsPoint) -----
+
+	/**
+	 * A Lamp Post stands inside the closed ring: the guard opens the gate, reaches the post's patrol point, the gate is closed behind it, and the
+	 * guard walks out again (opening the gate again) and keeps patrolling.
+	 */
+	@GameTest(environment = "villageheart-gametest:guards_gate_patrol", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void closedGateIsOpenedByGuard(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		BlockPos[] point = new BlockPos[1];
+		boolean[] sawOpenNear = new boolean[1], closedWhileInside = new boolean[1];
+		int[] arrivalsAtLamp = new int[1];
+		long[] openSince = new long[1];
+		String[] failure = new String[1];
+		h.onEachTick(() -> {
+			if (g[0] == null || point[0] == null) return;
+			boolean open = anyOpen(h);
+			double d = Math.min(dist(h, g[0], gate(0)), Math.min(dist(h, g[0], gate(1)), dist(h, g[0], gate(2))));
+			if (open && d <= 3.5) sawOpenNear[0] = true;
+			if (insideRing(h, g[0]) && !open && sawOpenNear[0]) closedWhileInside[0] = true;
+			if (open && d > 6) {
+				if (openSince[0] == 0) openSince[0] = h.getTick();
+				if (h.getTick() - openSince[0] > 30 && failure[0] == null) failure[0] = "a gate stayed open for 30 ticks with the guard " + d + " blocks away, tick " + h.getTick();
+			} else {
+				openSince[0] = 0;
+			}
+		});
+		GameTestSequence seq = GuardTestSupport.scene(h, 1).thenExecute(() -> {
+			ring(h);
+			GuardGameTests.placeLampPost(h, new BlockPos(15, -1, 21));
+			GuardTestSupport.setTime(h, 2000);
+			g[0] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot(), java.util.Optional.of(dev.villageheart.core.guard.Shift.DAY));
+			var points = dev.villageheart.defence.Defences.patrolPoints(h.getLevel().getServer());
+			h.assertTrue(points.size() == 1, "one defence point: " + points);
+			point[0] = points.get(0);
+			h.assertTrue(insideRing(h, g[0]) == false, "the guard starts outside the ring");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1800, "the guard reaches the Lamp Post inside the ring", () -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			h.assertTrue(dev.villageheart.worker.guard.GuardRuntime.lastArrival(g[0].getUUID()).filter(point[0]::equals).isPresent(),
+					"guard at " + g[0].blockPosition() + " mode " + dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID()) + ", point " + point[0]
+							+ ", target " + dev.villageheart.worker.guard.GuardRuntime.patrolTarget(g[0].getUUID()) + ", unreachable "
+							+ dev.villageheart.worker.guard.GuardRuntime.isUnreachable(g[0].getUUID(), point[0], h.getLevel().getGameTime()));
+		});
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(insideRing(h, g[0]), "the guard stands inside the ring at the post");
+			h.assertTrue(sawOpenNear[0], "the gate was open while the guard passed");
+			h.assertTrue(closedWhileInside[0], "the gate was closed behind the guard");
+			arrivalsAtLamp[0] = dev.villageheart.worker.guard.GuardRuntime.arrivals(g[0].getUUID());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "the guard walks out and reaches two more points", () -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			h.assertTrue(dev.villageheart.worker.guard.GuardRuntime.arrivals(g[0].getUUID()) >= arrivalsAtLamp[0] + 2, "arrivals "
+					+ dev.villageheart.worker.guard.GuardRuntime.arrivals(g[0].getUUID()) + " at " + g[0].blockPosition());
+		});
+		seq.thenExecute(() -> {
+			h.assertTrue(failure[0] == null, String.valueOf(failure[0]));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- mobs still cannot -------------------------------------------------------------------------
 
 	/** A hired worker can plan a path to a cell inside the ring, a zombie and an unemployed villager cannot; and not while a zombie stands near the gate. */

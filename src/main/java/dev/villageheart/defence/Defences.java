@@ -23,7 +23,7 @@ public final class Defences {
 	private Defences() {}
 
 	/** Feet cell and head cell hold no collision and no fluid, the cell below is solid. A cell in an unloaded chunk is assumed fine. */
-	static boolean walkable(ServerLevel level, Pos feet) {
+	public static boolean walkable(ServerLevel level, Pos feet) {
 		BlockPos p = new BlockPos(feet.x(), feet.y(), feet.z());
 		if (level.getChunkSource().getChunkNow(p.getX() >> 4, p.getZ() >> 4) == null) return true;
 		BlockState below = level.getBlockState(p.below()), at = level.getBlockState(p), head = level.getBlockState(p.above());
