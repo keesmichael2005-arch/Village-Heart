@@ -167,6 +167,7 @@ from there instead of hard-coding them.
 - **L4**: Villagers tab row "Making a stone pickaxe" (screenshot looked at)
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
+- Status (builder, 2026-11-09): built on branch `m18` incl. fence-gate opening for hired workers and guards (not ticked: the verifier ticks). See docs/plans/M18.md section 8 and docs/PROGRESS.md.
 - Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health 20/30/40). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
