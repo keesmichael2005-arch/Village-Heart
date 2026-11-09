@@ -316,6 +316,15 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
 
+## 2026-11-07: M18 plan (guards), branch m18-plan
+- Plan: docs/plans/M18.md, 13 steps. Guard brain without panic/bell/raid hiding. Combat is a mod behaviour plus vanilla `doHurtTarget` after registering `ATTACK_DAMAGE` on villagers (`FabricDefaultAttributeRegistry`), because villager brains lack the attack memories.
+- Day sleep uses vanilla `SleepInBed` (no time check), with REST driven by a pure `GuardSchedule` (night shift: sleep 0-11000, duty 12000-24000).
+- Barracks beds are reserved through the M7 POI pass (HOME eviction). Gear is worn (sword visible, armour invisible) and handed back to the Barracks chest off shift.
+- Level perks are permanent attribute modifiers. Guards heal while asleep, and a wounded guard retreats to its bed.
+- Shift pins are saved in `VillageState`; the Heart screen gets a `SetGuardShift` action gated by `SET_GUARD_SHIFT`. L3 `defended` sits on M11's `starter`.
+- Assumes M9 (WalkTo, without relying on its give-up timings), M11, M15 (else a minimal Leveling) and M12 (strike = no duty).
+- Critique: my session never answered; the orchestrator ran a fresh critic (1 BLOCKER, 10 MAJOR, 9 MINOR), all 20 taken (plan section 7): combat in CORE with a DEFEND override, night OFF after duty, auto shifts stored, real-raid L2, HOME/ticket fixes, scripted threat in `defended`.
+- Top risk: L3 `defended` (≤ 1 mob death in 10 unseeded days) depends on the unbuilt M11 harness and on vanilla villager night behaviour.
 ### M9 review r1 fixes (builder)
 Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `treeTasks` as its last component next to M24's `known`; codec and fabric.mod.json merged).
 1. **False "cannot reach the tree" (roots found, three of them, none was the bound):**
@@ -660,3 +669,6 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
 - `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
 - Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.
+
+## 2026-11-09: M18 plan refreshed against dev (planner)
+- docs/plans/M18.md section 9: every assumption row checked on dev (M9-M12, M15-M17, M20, M21 built; M13, M14, M19a not). Real signatures (WalkTo with `now`, M15 `WorkXp.award`: 5 XP a kill), M12 strikes and a 64-emerald treasury for `defended`. Fold-ins: register `Defences::patrolPoints` in step 6 (BLOCKING M21 item, T-L2-17); closed fence gates skip a point (T-L2-18); door points keep a guard (a hired worker, never nudged by backlog-2) out of doorways; the `starter` flake (M11-r5) is a step-12 precondition; RAW reaches 16 fields with M13+M19a+M14 (split with `Codec.mapPair`). Guard design unchanged.
