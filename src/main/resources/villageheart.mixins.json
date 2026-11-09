@@ -6,7 +6,9 @@
 	"mixins": [
 		"VillagerBrainMixin",
 		"AbstractFurnaceBlockEntityAccessor",
-		"VillagerMakeLoveMixin"
+		"VillagerMakeLoveMixin",
+		"VillagerBreedingGateMixin",
+		"VillagerFoodAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1

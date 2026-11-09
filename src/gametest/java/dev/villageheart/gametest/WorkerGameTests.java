@@ -1001,8 +1001,13 @@ public class WorkerGameTests {
 		});
 	}
 
-	/** T-L2-14: hired workers can still breed (the IDLE package keeps VillagerMakeLove), in the wake-up hours. */
-	@GameTest(environment = "villageheart-gametest:workers_breed", structure = YARD, skyAccess = true, maxTicks = 3200)
+	/**
+	 * T-L2-14 (rewritten for M23): hired workers can still breed once the village licenses them: the worker IDLE package keeps
+	 * VillagerMakeLove, in the wake-up hours (0 to 1000). The pair is licensed by the test hook (a House bed reserved, as the dawn would),
+	 * nobody seeds BREED_TARGET by hand, and there is ONE window: the abort the old three-window retry hid is fixed (plan 3.5) and measured
+	 * by the breedingAbortProbe.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_breed", structure = YARD, skyAccess = true, maxTicks = 1800)
 	public void workersCanBreed(GameTestHelper h) {
 		begin(h);
 		BlockPos farmMarker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
@@ -1012,7 +1017,7 @@ public class WorkerGameTests {
 		Villager[] v = new Villager[2];
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			farmhouse(h, ORIGIN_A, 2);
-			house(h, ORIGIN_B, 3); // two beds for the workers' homes and free ones for the baby
+			house(h, ORIGIN_B, 3); // free beds for the licence to reserve
 			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker, Direction.NORTH);
 			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, Direction.NORTH);
 		});
@@ -1022,47 +1027,25 @@ public class WorkerGameTests {
 			h.assertTrue(poiPresent(h, bed3), "the bed POIs exist");
 		});
 		seq = seq.thenExecute(() -> {
-			h.getLevel().setDayTime(100);
+			h.getLevel().setDayTime(10);
 			for (int i = 0; i < 2; i++) {
 				v[i] = spawnVillager(h, spot);
 				v[i].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 4));
 				v[i].setAge(0);
 				h.assertTrue(hire(h, v[i], JobType.FARMER) instanceof HireResult.Hired, "worker " + i + " hired");
 			}
-			h.assertTrue(v[0].canBreed() && v[1].canBreed(), "both can breed");
+			GrowthTestSupport.license(h, v[0], v[1]);
 		});
-		// Finding each other is vanilla's InteractWith (random, and only in the 900 wake-up ticks) and vanilla's gate can lose its
-		// target when the pair drifts apart. Seed the pair again every 50 ticks while they are in IDLE, so the test measures the part
-		// M7 owns: the worker IDLE package still runs VillagerMakeLove for a BREED_TARGET.
-		// Vanilla's breeding sometimes aborts for reasons outside M7 (the pair drifts apart, no reachable bed at that moment), so the
-		// test gets up to three wake-up windows: each one starts by setting the clock back to dawn, unless a baby is already there.
-		for (int w = 0; w < 3; w++) {
-			seq = seq.thenExecute(() -> {
-				if (h.getEntities(EntityType.VILLAGER).stream().noneMatch(Villager::isBaby)) h.getLevel().setDayTime(100);
-			});
-			for (int i = 0; i < 16; i++) {
-				seq = seq.thenExecuteAfter(50, () -> {
-					if (h.getEntities(EntityType.VILLAGER).stream().anyMatch(Villager::isBaby)) return;
-					for (int k = 0; k < 2; k++) {
-						if (v[k].isAlive() && !v[k].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET) && v[k].canBreed()) {
-							v[k].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1 - k]);
-						}
-					}
-				});
-			}
-		}
 		seq = seq.thenWaitUntil(() -> {
-			boolean baby = h.getEntities(EntityType.VILLAGER).stream().anyMatch(Villager::isBaby);
-			StringBuilder d = new StringBuilder();
+			StringBuilder d = new StringBuilder(GrowthTestSupport.describe(h));
 			for (Villager x : v) d.append(" [").append(x.getBrain().getActiveActivities()).append(" bt=").append(x.getBrain().getMemory(MemoryModuleType.BREED_TARGET).isPresent())
-					.append(" can=").append(x.canBreed()).append(" age=").append(x.getAge()).append(" home=").append(x.getBrain().getMemory(MemoryModuleType.HOME).isPresent())
-					.append(" sleeping=").append(x.isSleeping()).append(" dist=").append(x.distanceTo(v[0] == x ? v[1] : v[0])).append("]");
-			for (int i = 0; i < 3; i++) d.append(" bed").append(i).append("space=").append(poiHasSpace(h, BuildingTestSupport.inside(ORIGIN_B, i * 2, 0, 2)));
-			h.assertTrue(baby, "no baby yet, day time " + h.getLevel().getDayTime() + d);
+					.append(" can=").append(x.canBreed()).append(" age=").append(x.getAge()).append(" sleeping=").append(x.isSleeping()).append("]");
+			h.assertTrue(GrowthTestSupport.babies(h).size() == 1, "no baby yet" + d);
 		});
 		seq.thenExecute(() -> {
-			for (Villager b : h.getEntities(EntityType.VILLAGER)) if (b.isBaby()) b.discard();
-			VillageTestSupport.done(h);
+			h.assertTrue(h.getLevel().getDayTime() < 1000, "the baby came inside the wake-up window: day time " + h.getLevel().getDayTime());
+			h.assertTrue(GrowthTestSupport.licence(h).orElseThrow().state() == dev.villageheart.core.growth.LicenceState.BORN, "the licence is BORN");
+			GrowthTestSupport.end(h);
 			end(h);
 		});
 	}

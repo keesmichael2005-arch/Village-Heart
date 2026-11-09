@@ -1,11 +1,16 @@
 package dev.villageheart.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.villageheart.growth.BreedTrace;
+import dev.villageheart.growth.BreedingGate;
 import dev.villageheart.growth.Growth;
+import dev.villageheart.needs.BedPoi;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -34,15 +39,51 @@ abstract class VillagerMakeLoveMixin {
 	/** The birth tick found no bed in this run. */
 	@Unique private boolean villageheart$noBed;
 
-	@Inject(method = TAKE_BED, at = @At("RETURN"))
+	private static final String LOCK_GAZE = "Lnet/minecraft/world/entity/ai/behavior/BehaviorUtils;lockGazeAndWalkToEachOther"
+			+ "(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/LivingEntity;FI)V";
+
+	/** Fix (a), plan 3.5: a licensed pair walks to within 1 (Manhattan) of each other, which on flat ground is always inside the birth tick's sqrt(5). */
+	@WrapOperation(method = {START, TICK}, at = @At(value = "INVOKE", target = LOCK_GAZE))
+	private void villageheart$closeEnough(LivingEntity self, LivingEntity partner, float speed, int closeEnough, Operation<Void> original) {
+		boolean licensed = self instanceof Villager v && BreedingGate.licenceOf(v).isPresent();
+		original.call(self, partner, speed, licensed ? 1 : closeEnough);
+	}
+
+	/** Fix (b), plan 3.5: vanilla does nothing when the pair stands farther apart than sqrt(5); a licensed pair walks together again. */
+	@Inject(method = TICK, at = @At("HEAD"))
+	private void villageheart$closeTheGap(ServerLevel level, Villager self, long time, CallbackInfo ci) {
+		if (BreedingGate.licenceOf(self).isEmpty()) return;
+		self.getBrain().getMemory(MemoryModuleType.BREED_TARGET).ifPresent(p -> {
+			if (self.distanceToSqr(p) > 5.0) BehaviorUtils.lockGazeAndWalkToEachOther(self, p, 0.5F, 1);
+		});
+	}
+
+	/** A licensed initiator takes the House bed reserved at dawn instead of the first free HOME POI in range (plan 3.2 #6). */
+	@Inject(method = TAKE_BED, at = @At("HEAD"), cancellable = true)
+	private void villageheart$reservedBed(ServerLevel level, Villager villager, CallbackInfoReturnable<Optional<BlockPos>> cir) {
+		Optional<Optional<BlockPos>> bed = Growth.bedForBirth(level, villager);
+		if (bed.isPresent()) {
+			if (bed.get().isEmpty()) villageheart$noBed = true;
+			cir.setReturnValue(bed.get());
+		}
+	}
+
+	@Inject(method = TAKE_BED, at = @At("RETURN"), cancellable = true)
 	private void villageheart$noBed(ServerLevel level, Villager villager, CallbackInfoReturnable<Optional<BlockPos>> cir) {
-		if (cir.getReturnValue().isEmpty()) villageheart$noBed = true;
+		Optional<BlockPos> bed = cir.getReturnValue();
+		if (bed.isPresent() && Growth.mustDropBed(level, villager, bed.get())) {
+			BedPoi.release(level, bed.get());
+			cir.setReturnValue(Optional.empty());
+			bed = Optional.empty();
+		}
+		if (bed.isEmpty()) villageheart$noBed = true;
 	}
 
 	@Inject(method = GIVE_BED, at = @At("HEAD"))
 	private void villageheart$born(ServerLevel level, Villager child, BlockPos bed, CallbackInfo ci) {
 		villageheart$born = true;
 		BreedTrace.birth();
+		Growth.onBirth(level, child, bed);
 	}
 
 	@Inject(method = STOP, at = @At("HEAD"))

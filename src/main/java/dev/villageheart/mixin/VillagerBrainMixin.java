@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The mod's only mixin: a hired (adult) villager gets the mod-built worker brain instead of the vanilla one. Both
+ * A hired (adult) villager gets the mod-built worker brain instead of the vanilla one. Both
  * {@code makeBrain} (construction) and {@code refreshBrain} (profession change, age boundary, load) end in this private method.
- * Unhired villagers fall through to vanilla untouched.
+ * Unhired villagers fall through to vanilla untouched. (Other mixins: the breeding gate and the make-love hooks of M23, the furnace accessor of M13.)
  */
 @Mixin(Villager.class)
 abstract class VillagerBrainMixin {

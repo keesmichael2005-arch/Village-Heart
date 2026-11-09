@@ -11,6 +11,8 @@ public final class NeedsOverride {
 	public static volatile boolean wagesEnabled = true;
 	/** False: the dinner system does nothing. */
 	public static volatile boolean dinnerEnabled = true;
+	/** False: the dawn does not license a baby (M23); the breeding gate stays on. The GameTest reset turns it off, the growth_ tests turn it on. */
+	public static volatile boolean growthEnabled = true;
 
 	private NeedsOverride() {}
 
@@ -18,5 +20,6 @@ public final class NeedsOverride {
 		forceDefaultNeeds = false;
 		dinnerEnabled = true;
 		wagesEnabled = true;
+		growthEnabled = true;
 	}
 }

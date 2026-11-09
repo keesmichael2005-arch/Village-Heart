@@ -54,9 +54,11 @@ public record License(long day, BreedingPair pair, LicenceState state, int seeds
 	}
 
 	/** One tick of approach time (window time spent walking towards each other). */
-	public License tickApproach() {
+	public License tickApproach() { return tickApproach(1); }
+
+	public License tickApproach(int n) {
 		requireActive("tick");
-		return with(state, seeds, aborts, bed, handedOver, priorFoodA, priorFoodB, approachTicks + 1, child, lapse);
+		return with(state, seeds, aborts, bed, handedOver, priorFoodA, priorFoodB, approachTicks + n, child, lapse);
 	}
 
 	/** Seeds the initiator; only from WAITING or APPROACHING and only with a bed. The first seed remembers the parents' food level. */
