@@ -210,7 +210,8 @@ public class GuardGameTests {
 		String[] failure = new String[1];
 		h.onEachTick(() -> {
 			if (z[0] == null || !z[0].isAlive()) return;
-			if (g[0].isSleeping()) slept[0] = true;
+			// only after the guard has fought back: it may already lie down before the zombie arrives, and the first hit wakes it
+			if (damaged(z[0], g[0]) && g[0].isSleeping()) slept[0] = true;
 		});
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
 			setTime(h, 2000);
