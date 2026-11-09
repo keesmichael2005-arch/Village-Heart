@@ -123,7 +123,8 @@ public final class HeartFacts {
 				// a striker is on strike wherever it stands; its paid flag comes from the payroll, so it is right while it is unloaded
 				boolean striker = status == WorkerStatus.ON_STRIKE;
 				villagers.add(new VillagerFact(rec.villager(), "", index++, rec.jobId(), "", rec.level(), 0, striker ? NeedsFlags.of(true, true, false) : NeedsFlags.UNKNOWN,
-						striker ? ActivityKind.ON_STRIKE : ActivityKind.AWAY, status == WorkerStatus.WORKPLACE_INVALID, false, false, false));
+						striker ? ActivityKind.ON_STRIKE : ActivityKind.AWAY, status == WorkerStatus.WORKPLACE_INVALID, false, false, false,
+						dev.villageheart.core.heart.GuardShiftView.of(state.guardShift(rec.villager()))));
 				if (!loaded.containsKey(rec.villager())) adults++;
 				continue;
 			}
@@ -152,7 +153,8 @@ public final class HeartFacts {
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
-					status == WorkerStatus.WORKPLACE_INVALID, false, false, true));
+					status == WorkerStatus.WORKPLACE_INVALID, false, false, true,
+					dev.villageheart.core.heart.GuardShiftView.of(state.guardShift(rec.villager()))));
 			if (!v.isBaby()) adults++;
 		}
 		for (Villager v : census) {
@@ -262,6 +264,21 @@ public final class HeartFacts {
 	}
 
 	static ActivityKind activityOf(Villager v) {
+		if (dev.villageheart.worker.guard.Guards.isGuard(v)) {
+			if (dev.villageheart.worker.guard.GuardCombat.engaged(v)) return ActivityKind.FIGHTING;
+			var mode = dev.villageheart.worker.guard.GuardRuntime.modeOf(v.getUUID());
+			if (v.getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY)) {
+				return switch (mode) {
+					case EQUIP -> ActivityKind.EQUIPPING;
+					case FIGHT -> ActivityKind.FIGHTING;
+					default -> ActivityKind.PATROLLING;
+				};
+			}
+			if (v.getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.OFF)) {
+				return mode == dev.villageheart.worker.guard.GuardRuntime.Mode.SPAR ? ActivityKind.TRAINING : ActivityKind.IDLE;
+			}
+			if (v.getBrain().isActive(Activity.REST) && dev.villageheart.worker.guard.GuardAttachments.get(v).wounded()) return ActivityKind.WOUNDED;
+		}
 		Optional<Activity> act = v.getBrain().getActiveNonCoreActivity();
 		if (act.isEmpty()) return ActivityKind.OTHER;
 		Activity a = act.get();

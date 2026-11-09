@@ -676,4 +676,43 @@ public class GuardGameTests {
 			end(h);
 		});
 	}
+
+	// ---- the Heart screen action (T-L2-15) ---------------------------------------------------------
+
+	/** A Steward pins a guard to a shift through the payload; a Resident is refused; a farmer's id is not a guard; choice 7 is a bad shift. */
+	@GameTest(environment = "villageheart-gametest:guards_shift_packet", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void setGuardShiftPacket(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		net.minecraft.server.level.ServerPlayer[] p = new net.minecraft.server.level.ServerPlayer[2];
+		java.util.List<HeartTestSupport.Sent>[] sent = new java.util.List[1];
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			sent[0] = HeartTestSupport.recorder();
+			g[0] = hireGuard(h, spawnSpot(), Optional.empty());
+			p[0] = HeartTestSupport.player(h, "stew", dev.villageheart.core.Rank.STEWARD);
+			p[1] = HeartTestSupport.player(h, "res", dev.villageheart.core.Rank.RESIDENT);
+			int c0 = HeartTestSupport.open(h, p[0]).containerId, c1 = HeartTestSupport.open(h, p[1]).containerId;
+			var before = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow();
+			h.assertTrue(!before.pinned(), "auto at the start");
+			send(p[0], c0, g[0].getUUID(), 2);
+			h.assertTrue(HeartTestSupport.lastResult(sent[0], p[0]).ok(), "Steward ok: " + HeartTestSupport.lastResult(sent[0], p[0]));
+			var after = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow();
+			h.assertValueEqual(new dev.villageheart.core.guard.GuardShift(Shift.NIGHT, true), after, "pinned NIGHT");
+			send(p[1], c1, g[0].getUUID(), 1);
+			h.assertValueEqual(dev.villageheart.core.heart.Rejection.NO_PERMISSION.langKey(), HeartTestSupport.lastResult(sent[0], p[1]).key(), "Resident refused");
+			h.assertValueEqual(after, dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow(), "no change");
+			send(p[0], c0, java.util.UUID.randomUUID(), 1);
+			h.assertValueEqual(dev.villageheart.core.heart.Rejection.NOT_A_GUARD.langKey(), HeartTestSupport.lastResult(sent[0], p[0]).key(), "not a guard");
+			send(p[0], c0, g[0].getUUID(), 7);
+			h.assertValueEqual(dev.villageheart.core.heart.Rejection.BAD_SHIFT.langKey(), HeartTestSupport.lastResult(sent[0], p[0]).key(), "bad shift");
+			send(p[0], c0, g[0].getUUID(), 0);
+			h.assertTrue(!dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow().pinned(), "back to auto");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	private static void send(net.minecraft.server.level.ServerPlayer p, int container, java.util.UUID villager, int choice) {
+		HeartTestSupport.send(p, dev.villageheart.heart.net.SetGuardShiftPayload.CODEC, new dev.villageheart.heart.net.SetGuardShiftPayload(container, villager, choice));
+	}
 }

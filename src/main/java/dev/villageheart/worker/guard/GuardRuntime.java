@@ -33,7 +33,7 @@ import net.minecraft.world.entity.npc.villager.Villager;
  */
 public final class GuardRuntime {
 	/** What the guard does now on duty (for tests and the Villagers tab). */
-	public enum Mode { PATROL, FIGHT, EQUIP }
+	public enum Mode { PATROL, FIGHT, EQUIP, SPAR }
 
 	/** One guard's runtime state. */
 	static final class State {
@@ -131,7 +131,10 @@ public final class GuardRuntime {
 			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, GuardGear.wearsAnything(guard), yard.isPresent(), canWork));
 			if (off == GuardPlanner.OffMode.RETURN_GEAR) returnGear(level, guard, s, now);
 			else if (off == GuardPlanner.OffMode.SPAR) spar(level, guard, s, data, yard.get(), now);
-			else s.walk.release(guard);
+			else {
+				s.mode = Mode.PATROL;
+				s.walk.release(guard);
+			}
 		}
 	}
 
@@ -147,7 +150,7 @@ public final class GuardRuntime {
 
 	/** Sparring at the yard: the work clock at the guard's pace, one SPAR unit (1 XP) per SPAR_TICKS_PER_XP ticks; no damage to anything. */
 	private static void spar(ServerLevel level, Villager guard, State s, WorkerData data, BlockPos yard, long now) {
-		s.mode = Mode.PATROL;
+		s.mode = Mode.SPAR;
 		if (!s.walk.active() || !s.walk.target().equals(yard)) s.walk.begin(yard, 3.5, 6.0, now);
 		WalkTo.State st = s.walk.tick(guard, now);
 		if (st == WalkTo.State.WALKING) return;

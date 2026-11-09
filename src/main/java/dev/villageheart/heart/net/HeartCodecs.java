@@ -75,6 +75,7 @@ public final class HeartCodecs {
 	private static final StreamCodec<ByteBuf, Severity> SEVERITY = enumCodec(Severity.class);
 	private static final StreamCodec<ByteBuf, AlertCode> ALERT_CODE = enumCodec(AlertCode.class);
 	private static final StreamCodec<ByteBuf, ActivityKind> ACTIVITY = enumCodec(ActivityKind.class);
+	private static final StreamCodec<ByteBuf, dev.villageheart.core.heart.GuardShiftView> SHIFT = enumCodec(dev.villageheart.core.heart.GuardShiftView.class);
 	private static final StreamCodec<ByteBuf, RowStatus> ROW_STATUS = enumCodec(RowStatus.class);
 	private static final StreamCodec<ByteBuf, DetailKind> DETAIL = enumCodec(DetailKind.class);
 	private static final StreamCodec<ByteBuf, StorageAlert> STORAGE_ALERT = enumCodec(StorageAlert.class);
@@ -154,7 +155,7 @@ public final class HeartCodecs {
 	public static final StreamCodec<ByteBuf, VillagerRow> VILLAGER_ROW = codec(
 			buf -> new VillagerRow(UUIDUtil.STREAM_CODEC.decode(buf), NAME.decode(buf), ID.decode(buf), ID.decode(buf),
 					INT.decode(buf), INT.decode(buf), INT.decode(buf), NEEDS.decode(buf), ACTIVITY.decode(buf), BOOL.decode(buf),
-					BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf)),
+					BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf), BOOL.decode(buf), SHIFT.decode(buf)),
 			(buf, v) -> {
 				UUIDUtil.STREAM_CODEC.encode(buf, v.id());
 				NAME.encode(buf, v.name());
@@ -170,6 +171,7 @@ public final class HeartCodecs {
 				BOOL.encode(buf, v.hasTraded());
 				BOOL.encode(buf, v.loaded());
 				BOOL.encode(buf, v.levelCapped());
+				SHIFT.encode(buf, v.shift());
 			});
 
 	private static final StreamCodec<ByteBuf, JobChoice> JOB_CHOICE = codec(

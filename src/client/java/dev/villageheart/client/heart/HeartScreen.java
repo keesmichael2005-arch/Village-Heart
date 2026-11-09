@@ -424,6 +424,12 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			VillagerRow r = selectedRow();
 			if (r == null) return;
 			if (r.isWorker()) {
+				if (r.shift().isGuard() && allows(Permission.SET_GUARD_SHIFT)) {
+					UUID sid = r.id();
+					int next = r.shift().nextChoice();
+					addAction(Button.builder(Component.translatable(HeartTexts.key("shift.button"), Component.translatable(HeartTexts.key("shift.choice." + (r.shift().pinned() ? (r.shift() == dev.villageheart.core.heart.GuardShiftView.DAY_PINNED ? 1 : 2) : 0)))),
+							b -> ClientPlayNetworking.send(new dev.villageheart.heart.net.SetGuardShiftPayload(menu.containerId, sid, next))).bounds(MARGIN + 76, y, 110, 20).build());
+				}
 				if (allows(Permission.FIRE)) {
 					UUID id = r.id();
 					addAction(Button.builder(Component.translatable(HeartTexts.key("fire")),
@@ -843,6 +849,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 		}
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
+				: v.shift().isGuard() ? Component.translatable(HeartTexts.key("shift." + v.shift().langId())).append(" - ").append(Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId())))
 				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
 		boolean warn = v.workplaceInvalid() && v.isWorker() || dev.villageheart.core.heart.ActivityWarnings.isWarning(v.activity());
 		int actColor = warn ? RED : GREY;

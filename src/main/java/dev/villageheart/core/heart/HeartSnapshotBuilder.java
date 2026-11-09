@@ -151,7 +151,7 @@ public final class HeartSnapshotBuilder {
 					HeartLimits.cut(v.vanillaProfession(), HeartLimits.MAX_ID), level, worker ? v.xp() : 0,
 					worker ? JobLevels.xpForNext(level) : 0, worker ? v.needs() : NeedsFlags.UNKNOWN, v.activity(),
 					v.workplaceInvalid(), v.nitwit(), v.hasTraded(), v.loaded(),
-					worker && Leveling.capped(new Progress(Math.min(3, level), v.xp()), tier)));
+					worker && Leveling.capped(new Progress(Math.min(3, level), v.xp()), tier), worker ? v.shift() : GuardShiftView.NONE));
 		}
 		return rows;
 	}

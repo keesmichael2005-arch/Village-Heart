@@ -90,6 +90,7 @@ public final class HeartActions {
 			case HeartAction.Transfer t -> transfer(player, containerId, server, t);
 			case HeartAction.Deposit d -> deposit(player, containerId);
 			case HeartAction.Withdraw w -> withdraw(player, containerId, w);
+			case HeartAction.SetGuardShift g -> setGuardShift(player, containerId, server, state, g);
 		};
 		if (ok) {
 			HeartFacts.invalidate();
@@ -173,6 +174,19 @@ public final class HeartActions {
 			reply(player, containerId, true, "message.villageheart.treasury.deposited", "Deposited %s emeralds. Treasury: %s",
 					List.of(Integer.toString(r.accepted()), Integer.toString(r.treasuryAfter())));
 		}
+		return true;
+	}
+
+	private static boolean setGuardShift(ServerPlayer player, int containerId, MinecraftServer server, VillageState state, HeartAction.SetGuardShift g) {
+		boolean guard = state.worker(g.villager()).filter(r -> r.jobId().equals(JobType.GUARD.id())).isPresent();
+		if (!guard) return reject(player, containerId, Rejection.NOT_A_GUARD, server.getTickCount());
+		Optional<dev.villageheart.core.guard.Shift> pin = switch (g.choice()) {
+			case 1 -> Optional.of(dev.villageheart.core.guard.Shift.DAY);
+			case 2 -> Optional.of(dev.villageheart.core.guard.Shift.NIGHT);
+			default -> Optional.empty();
+		};
+		VillageClaims.data(server).update(s -> s.withGuardPin(g.villager(), pin));
+		reply(player, containerId, true, "message.villageheart.heart.shift_set", "Shift set.", List.of());
 		return true;
 	}
 
