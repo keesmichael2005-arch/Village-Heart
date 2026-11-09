@@ -12,5 +12,7 @@ public enum ActivityKind {
 	/** M12: unpaid, the worker stops working until the treasury pays it. */
 	ON_STRIKE,
 	/** M19a: a worker making its own tool (fetching the materials or working on it), and a required tool that cannot be made. Appended. */
-	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE
+	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE,
+	/** M22: the merchant sold today's limit / the treasury is full. Appended. */
+	DAILY_LIMIT, TREASURY_FULL
 }

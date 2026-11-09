@@ -139,6 +139,10 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.no_work.hunter", "No valid Hunting Ground");
 		EN.put(PREFIX + "activity.away_working.hunter", "Away (hunting)");
 		EN.put(PREFIX + "activity.site_unreachable.hunter", "Can't reach the Hunting Ground");
+		EN.put(PREFIX + "activity.no_work.merchant", "Nothing to sell (all stock is within the reserve)");
+		EN.put(PREFIX + "activity.site_unreachable.merchant", "Can't reach its stall");
+		EN.put(PREFIX + "activity.daily_limit", "Sold today's limit");
+		EN.put(PREFIX + "activity.treasury_full", "Treasury full");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

@@ -149,6 +149,8 @@ public final class HeartFacts {
 				case ON_STRIKE -> ActivityKind.ON_STRIKE;
 				case MAKING_WOODEN_TOOL -> ActivityKind.MAKING_WOODEN_TOOL;
 				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
+				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
+				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
