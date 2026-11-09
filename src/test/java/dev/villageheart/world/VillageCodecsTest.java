@@ -266,6 +266,60 @@ class VillageCodecsTest {
 		assertEquals(Set.of(W1), p.paidToday());
 	}
 
+	// ---- M22: market ------------------------------------------------------------------------------------------------
+
+	private static dev.villageheart.core.market.MarketState sampleMarket() {
+		dev.villageheart.core.market.SalesLedger l = dev.villageheart.core.market.SalesLedger.empty(7).record(W1, M1, 3).record(W2, J1, 2);
+		return new dev.villageheart.core.market.MarketState(new dev.villageheart.core.market.Reserves(5, 128), l);
+	}
+
+	@Test void marketRoundTripsWithPinnedKeys() {
+		dev.villageheart.core.market.MarketState m = sampleMarket();
+		WorldClaim w = new WorldClaim(java.util.Optional.of(full()), Set.of(), Set.of(), java.util.OptionalLong.empty(), java.util.Optional.empty(), m);
+		JsonObject o = enc(VillageCodecs.WORLD_CLAIM, w).getAsJsonObject();
+		JsonObject mj = o.getAsJsonObject("market");
+		assertEquals(Set.of("food_reserve_days", "item_reserve", "ledger"), mj.keySet());
+		JsonObject lj = mj.getAsJsonObject("ledger");
+		assertEquals(Set.of("day", "by_merchant", "by_stall"), lj.keySet());
+		assertEquals(Set.of("villager", "sold"), lj.getAsJsonArray("by_merchant").get(0).getAsJsonObject().keySet());
+		assertEquals(Set.of("stall", "sold"), lj.getAsJsonArray("by_stall").get(0).getAsJsonObject().keySet());
+		assertEquals(2, lj.getAsJsonArray("by_merchant").size());
+		assertEquals(2, lj.getAsJsonArray("by_stall").size());
+		WorldClaim back = dec(VillageCodecs.WORLD_CLAIM, o);
+		assertEquals(w, back);
+		assertEquals(m, back.market());
+	}
+
+	@Test void aPreM22SaveHasDefaultMarketAndDefaultsAreNotWritten() {
+		assertEquals(dev.villageheart.core.market.MarketState.initial(), dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1}")).market());
+		assertFalse(enc(VillageCodecs.WORLD_CLAIM, new WorldClaim(java.util.Optional.of(full()))).getAsJsonObject().has("market"));
+	}
+
+	@Test void marketReservesOutOfRangeAreClamped() {
+		String claim = "{\"schema\":1,\"village\":{" + BASE + "},\"market\":{\"food_reserve_days\":99,\"item_reserve\":9999}}";
+		WorldClaim w = dec(VillageCodecs.WORLD_CLAIM, json(claim));
+		assertTrue(w.village().isPresent());
+		assertEquals(new dev.villageheart.core.market.Reserves(30, 1024), w.market().reserves());
+	}
+
+	@Test void oneBadLedgerEntryDropsThatEntryOnly() {
+		String claim = "{\"schema\":1,\"village\":{" + BASE + "},\"market\":{\"ledger\":{\"day\":4,\"by_merchant\":[{\"villager\":\"" + W1 + "\",\"sold\":3},"
+				+ "{\"villager\":\"not-a-uuid\",\"sold\":1},{\"villager\":\"" + W2 + "\",\"sold\":-1}]}}}";
+		WorldClaim w = dec(VillageCodecs.WORLD_CLAIM, json(claim));
+		assertTrue(w.village().isPresent());
+		assertEquals(Map.of(W1, 3), w.market().ledger().byMerchant());
+		assertEquals(4, w.market().ledger().day());
+	}
+
+	@Test void aBrokenMarketReadsAsAbsentAndNeverLosesTheClaim() {
+		String claim = "{\"schema\":1,\"village\":{" + BASE + "},\"market\":{\"ledger\":{\"day\":\"x\"}}}";
+		WorldClaim w = dec(VillageCodecs.WORLD_CLAIM, json(claim));
+		assertTrue(w.village().isPresent());
+		assertEquals(dev.villageheart.core.market.MarketState.initial(), w.market());
+		WorldClaim w2 = dec(VillageCodecs.WORLD_CLAIM, json("{\"schema\":1,\"village\":{" + BASE + "},\"market\":5}"));
+		assertTrue(w2.village().isPresent());
+	}
+
 	// ---- self-crafts (M19a) ----------------------------------------------------------------------------------------------
 
 	static final String CRAFT_BUILDING = "{\"dim\":\"minecraft:overworld\",\"x\":1,\"y\":2,\"z\":3}";

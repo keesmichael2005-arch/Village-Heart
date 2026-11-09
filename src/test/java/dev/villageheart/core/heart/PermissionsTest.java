@@ -35,6 +35,7 @@ class PermissionsTest {
 		row(BREAK_HEART, true, false, false, false);
 		row(DEPOSIT_TREASURY, true, true, true, false);
 		row(WITHDRAW_TREASURY, true, false, false, false); // a Steward may not take emeralds out (M12, T-L1-10)
+		row(SET_RESERVES, true, true, false, false); // Owner and Steward set what the market keeps (M22, T-L1-8)
 	}
 
 	@Test void rankOrderIsPinned() {

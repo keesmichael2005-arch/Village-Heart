@@ -24,6 +24,9 @@ public final class WorldClaim {
 	/** Who is paid and who strikes today (M12); absent for a new claim or an old save, initialised on the first tick. Belongs to the village. */
 	private dev.villageheart.core.economy.Payroll payroll;
 
+	/** The market's reserve settings and today's sales (M22); belongs to the village, so a new claim starts with the defaults. */
+	private dev.villageheart.core.market.MarketState market = dev.villageheart.core.market.MarketState.initial();
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -51,6 +54,16 @@ public final class WorldClaim {
 		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay);
 		this.payroll = payroll.orElse(null);
 	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
+			java.util.OptionalLong lastDinnerDay, Optional<dev.villageheart.core.economy.Payroll> payroll, dev.villageheart.core.market.MarketState market) {
+		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay, payroll);
+		this.market = Objects.requireNonNull(market, "market");
+	}
+
+	public dev.villageheart.core.market.MarketState market() { return market; }
+
+	public void setMarket(dev.villageheart.core.market.MarketState m) { market = Objects.requireNonNull(m, "market"); }
 
 	public Optional<dev.villageheart.core.economy.Payroll> payroll() { return Optional.ofNullable(payroll); }
 
@@ -90,6 +103,7 @@ public final class WorldClaim {
 			village = VillageState.founded(at, owner, ownerName, gameTime);
 			lastDinnerDay = null;
 			payroll = null;
+			market = dev.villageheart.core.market.MarketState.initial();
 		}
 		return r;
 	}
@@ -101,6 +115,7 @@ public final class WorldClaim {
 		reservedJobBlocks.clear();
 		lastDinnerDay = null;
 		payroll = null;
+		market = dev.villageheart.core.market.MarketState.initial();
 		return Optional.of(released);
 	}
 
@@ -121,12 +136,13 @@ public final class WorldClaim {
 		reservedJobBlocks.clear();
 		lastDinnerDay = null;
 		payroll = null;
+		market = dev.villageheart.core.market.MarketState.initial();
 	}
 
 	@Override public boolean equals(Object o) {
 		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
 				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay)
-				&& Objects.equals(payroll, w.payroll);
+				&& Objects.equals(payroll, w.payroll) && market.equals(w.market);
 	}
 
 	@Override public int hashCode() {

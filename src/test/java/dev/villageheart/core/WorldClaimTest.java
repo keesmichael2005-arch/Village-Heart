@@ -108,4 +108,22 @@ class WorldClaimTest {
 		assertEquals(Result.CLAIMED, w.claim(B, bob, "bob", 3, 300));
 		assertTrue(w.payroll().isEmpty(), "a new village starts without strikers and with a fresh clock");
 	}
+
+	@Test void releaseAndClearForgetTheMarket() {
+		dev.villageheart.core.market.MarketState custom = new dev.villageheart.core.market.MarketState(new dev.villageheart.core.market.Reserves(1, 16),
+				dev.villageheart.core.market.SalesLedger.empty(3).record(java.util.UUID.randomUUID(), A, 2));
+		WorldClaim w = claimedByAlice();
+		w.setMarket(custom);
+		w.releaseAt(A);
+		assertEquals(dev.villageheart.core.market.MarketState.initial(), w.market());
+		w = claimedByAlice();
+		w.setMarket(custom);
+		w.clear();
+		assertEquals(dev.villageheart.core.market.MarketState.initial(), w.market());
+		w = claimedByAlice();
+		w.setMarket(custom);
+		w.releaseAt(A);
+		assertEquals(Result.CLAIMED, w.claim(B, bob, "bob", 3, 300));
+		assertEquals(dev.villageheart.core.market.MarketState.initial(), w.market(), "a new village starts with default reserves and no sales");
+	}
 }

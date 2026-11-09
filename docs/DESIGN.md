@@ -416,6 +416,30 @@ It sells stockpile **surplus** for emeralds that go into the treasury. Surplus m
 (e.g. 16 logs, 20 wheat, 32 cobblestone, 4 iron ingots or 10 cooked meat = 1 emerald). The daily cap is 8 / 12 / 16
 emeralds by level. Unemployed villagers keep their vanilla trades.
 
+Rules as built (M22, `docs/plans/M22.md`):
+- **At the stall, in work hours.** The merchant walks to its Market Stall like any worker and sells while it stands within 1.5 blocks of it in the WORK phase
+  (day time 1000-11000). About every 30 seconds (600 work units at level 1; 480 at level 2, 400 at level 3) it sells **one lot** for 1 emerald, which goes
+  straight into the treasury (`Treasury.deposit`: it pays strikers at once). The goods are taken from the stockpile in the same tick as the sale (nearest
+  Storage first); nothing is carried. A stall that is not reached for 600 WORK ticks shows "Can't reach its stall". An invalid Market, a strike or
+  hunger stops it (the work clock is `needs.speed()`, and `WorkGate.mayWork` is checked too).
+- **Surplus.** Only plain stacks of priced items are ever sold (a renamed, enchanted or damaged item is the player's). Non-food: the count above the
+  claims of other systems (builds, cooks) and the **item reserve** (64). Food (any item with village nutrition; crops and cooked meat are priced,
+  bread and raw meat are not): the whole village keeps **3 days** of nutrition (`days x (adults x 10 + babies x 5)`, the Overview's numbers), and what is
+  above that is for sale, whichever food it is; food is not held to the item reserve. With nobody to feed the food reserve is 0.
+- **Prices** (one lot = 1 emerald; `core.market.PriceTable`): 16 of any natural log, 20 wheat, 22 carrots, 26 potatoes, 15 beetroot, 32 cobblestone or
+  cobbled deepslate, 15 coal, 8 raw iron, 20 raw copper, 4 iron ingots, 6 leather, 10 of any cooked meat or fish. Not bought: bread, raw meat and fish,
+  gold, diamonds, redstone, lapis, saplings, seeds, tools, anything with components.
+- **What is sold next**: the item with the most whole lots of surplus (ties: price-table order). Stop reasons, in this order: daily limit, treasury full,
+  nothing above the reserves; they show as "Sold today's limit", "Treasury full", "Nothing to sell (all stock is within the reserve)".
+- **Caps per day** (day index of the overworld clock, `!=` so `/time set` back also starts a new day; with `advance_time` off the cap never resets):
+  a merchant sells at most 8 / 12 / 16 emeralds at level 1 / 2 / 3 (the current level, so a level-up raises the cap at once), a stall at most the same
+  (so firing and re-hiring, or swapping villagers, does not reset it), and the **whole village at most 32 emeralds** (`Balance.MARKET_VILLAGE_DAILY_CAP`),
+  so many stalls and a cobblestone generator are not an unbounded emerald farm. Each sale gives 2 XP (`WorkUnit.TRADE_MADE`) and counts in
+  `work.merchant.sales` / `work.merchant.emeralds`.
+- **Settings and saved state**: the two reserves (food days 0..30, items 0..1024) and today's ledger are saved on the claim (`WorldClaim.market`, key `market`,
+  clamped on read, a broken entry drops that entry only) and reset when the village is released. The Owner and Stewards change the reserves on the Stockpile
+  tab (`SetReserves`, `Permission.SET_RESERVES`); `/villageheart market reserves <days> <items>` and `market status` (op) do the same.
+
 ## 6. Economy
 
 - **Stockpile** = the combined contents of every chest and barrel inside valid **Storage** buildings.
@@ -524,6 +548,10 @@ At every tier, tool workers make their own wooden and stone tools (§4.1); the S
   As built in M20: a "Builds" section under the buildings lists each build in progress (blueprint, where, "Building: 50%", what it is short of, the builder's name); Residents and above see it (at most 8 rows).
   The Builder's Table has its own screen (blueprints with their material list and what Storage could still give, Take, the builds with Cancel).
 - **Stockpile**: item totals across Storage, food nutrition total, and surplus reserve settings.
+  As built in M22: a third header line shows "Market: sold N emeralds today" (or "No merchant: nothing is sold" while the storage alert is not showing); an item
+  count is green when the market may sell some of it (tooltip "Up to N for sale above the reserve"; for food the numbers share one spare, so it is not a
+  sum); the bar at the bottom reads `Keep: food [-] 3 days [+]   other items [-16] 64 each [+16]` (buttons for a Steward or Owner, the values for
+  Residents). The buttons send the absolute new pair, so a double click cannot drift.
 - **Ranks** (Owner only): players and their ranks.
 
 As built in M24: the fifth tab lists the Owner and every player the village has seen (online ones with a green dot), with their rank; the Owner picks a row, then

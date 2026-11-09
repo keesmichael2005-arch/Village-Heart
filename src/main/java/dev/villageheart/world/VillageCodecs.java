@@ -362,6 +362,52 @@ public final class VillageCodecs {
 
 	private record Raw3(long day, java.util.List<UUID> paid, java.util.List<dev.villageheart.core.economy.Payee> unpaid) {}
 
+	private record SoldBy(UUID villager, int sold) {}
+
+	private record SoldAt(HeartLocation stall, int sold) {}
+
+	private record RawLedger(long day, java.util.List<SoldBy> byMerchant, java.util.List<SoldAt> byStall) {}
+
+	/** Today's sales (M22). Each list drops an unreadable entry; a repeated key keeps its first. */
+	public static final Codec<dev.villageheart.core.market.SalesLedger> SALES_LEDGER = RecordCodecBuilder.<RawLedger>create(i -> i.group(
+			Codec.LONG.fieldOf("day").forGetter(RawLedger::day),
+			lenientList(RecordCodecBuilder.<SoldBy>create(j -> j.group(
+					UUID_STRING.fieldOf("villager").forGetter(SoldBy::villager),
+					Codec.intRange(0, 1_000_000).fieldOf("sold").forGetter(SoldBy::sold)).apply(j, SoldBy::new)))
+					.optionalFieldOf("by_merchant", java.util.List.of()).forGetter(RawLedger::byMerchant),
+			lenientList(RecordCodecBuilder.<SoldAt>create(j -> j.group(
+					HEART_LOCATION.fieldOf("stall").forGetter(SoldAt::stall),
+					Codec.intRange(0, 1_000_000).fieldOf("sold").forGetter(SoldAt::sold)).apply(j, SoldAt::new)))
+					.optionalFieldOf("by_stall", java.util.List.of()).forGetter(RawLedger::byStall)
+	).apply(i, RawLedger::new)).xmap(r -> {
+		java.util.Map<UUID, Integer> m = new java.util.LinkedHashMap<>();
+		for (SoldBy e : r.byMerchant()) m.putIfAbsent(e.villager(), e.sold());
+		java.util.Map<HeartLocation, Integer> s = new java.util.LinkedHashMap<>();
+		for (SoldAt e : r.byStall()) s.putIfAbsent(e.stall(), e.sold());
+		return new dev.villageheart.core.market.SalesLedger(r.day(), m, s);
+	}, l -> {
+		java.util.List<SoldBy> m = new ArrayList<>();
+		l.byMerchant().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).forEach(e -> m.add(new SoldBy(e.getKey(), e.getValue())));
+		java.util.List<SoldAt> s = new ArrayList<>();
+		l.byStall().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey(VillageState.locationOrder())).forEach(e -> s.add(new SoldAt(e.getKey(), e.getValue())));
+		return new RawLedger(l.day(), m, s);
+	});
+
+	private record RawMarket(int foodDays, int itemReserve, dev.villageheart.core.market.SalesLedger ledger) {}
+
+	/**
+	 * The market (M22): reserves and ledger. Reserves out of range are clamped into range on read (one WARN), never rejected; the field is read
+	 * leniently by {@link #WORLD_CLAIM}, so a broken market reads as absent and the claim survives.
+	 */
+	public static final Codec<dev.villageheart.core.market.MarketState> MARKET = RecordCodecBuilder.<RawMarket>create(i -> i.group(
+			Codec.INT.optionalFieldOf("food_reserve_days", dev.villageheart.core.Balance.FOOD_RESERVE_DAYS).forGetter(RawMarket::foodDays),
+			Codec.INT.optionalFieldOf("item_reserve", dev.villageheart.core.Balance.ITEM_RESERVE).forGetter(RawMarket::itemReserve),
+			SALES_LEDGER.optionalFieldOf("ledger", dev.villageheart.core.market.SalesLedger.empty(-1)).forGetter(RawMarket::ledger)
+	).apply(i, RawMarket::new)).xmap(r -> {
+		if (!dev.villageheart.core.market.Reserves.valid(r.foodDays(), r.itemReserve())) LOG.warn("Village save: market reserves {}/{} out of range, clamped", r.foodDays(), r.itemReserve());
+		return new dev.villageheart.core.market.MarketState(dev.villageheart.core.market.Reserves.clamped(r.foodDays(), r.itemReserve()), r.ledger());
+	}, m -> new RawMarket(m.reserves().foodDays(), m.reserves().itemReserve(), m.ledger()));
+
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
 	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {
 		java.util.List<HeartLocation> l = new java.util.ArrayList<>(w.reservedJobBlocks());
@@ -382,7 +428,10 @@ public final class VillageCodecs {
 			HEART_LOCATION.listOf().optionalFieldOf("pending_ticket_releases", java.util.List.of()).forGetter(VillageCodecs::sortedPending),
 			Codec.LONG.optionalFieldOf("last_dinner_day").forGetter(w -> w.lastDinnerDay().isPresent()
 					? Optional.of(w.lastDinnerDay().getAsLong()) : Optional.empty()),
-			PAYROLL.lenientOptionalFieldOf("payroll").forGetter(WorldClaim::payroll)
-	).apply(i, (schema, village, reserved, pending, dinner, payroll) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
-			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty(), payroll)));
+			PAYROLL.lenientOptionalFieldOf("payroll").forGetter(WorldClaim::payroll),
+			// written only when it differs from the defaults, so a save of a village with no market activity reads as before M22
+			MARKET.lenientOptionalFieldOf("market").forGetter(w -> w.market().equals(dev.villageheart.core.market.MarketState.initial()) ? Optional.empty() : Optional.of(w.market()))
+	).apply(i, (schema, village, reserved, pending, dinner, payroll, market) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty(), payroll,
+			market.orElse(dev.villageheart.core.market.MarketState.initial()))));
 }

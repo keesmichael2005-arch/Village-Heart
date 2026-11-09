@@ -782,6 +782,20 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Full `scripts/verify.sh` exit 0 at 7d1a91c: L1 ok; "All 309 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; L4 ok (lost wakeups rescued 1, leaks 0); perf ok. L4 timed out loading the world twice under machine load (load avg 10), then passed. No L3 sim run (M14 has no scenario).
 - Next: verifier. Blockers: none. M13 will take RAW field 16; M18 must split with `Codec.mapPair`.
 
+## 2026-11-09: M22 merchant and market (builder)
+- Built on branch m22 (from dev c581834 + m22-plan). Core `core.market` (price table, surplus, planner, ledger, caps, reserves, saved state), `WorldClaim.market` + lenient `market` save key (WORLD_CLAIM 7 of 16 fields; `VillageState` untouched, so M13/M18 keep their field), glue `market.Markets` (view, `trySell` the only writer of sales), `MerchantJob`/`MerchantWork` in the MERCHANT behaviour list, `VillageCensus.headcount`, `Permission.SET_RESERVES`, `HeartAction.SetReserves` + `SetReservesPayload` + `Rejection.BAD_RESERVE`, `StockLine.forSale` and the market figures on `Stock`, the Stockpile tab's market line, green counts and reserve bar, `/villageheart market`.
+- Orchestrator decision applied: a village-wide cap of 32 emeralds a day on top of 8 / 12 / 16 per merchant (and per stall).
+- Deviations (plan section 8): no `GatedWork` on dev (M12 gates by `needs.speed()`; the merchant also checks `WorkGate.mayWork`), no `VillageCensus.population` (added `headcount`, same rules as `HeartFacts.collect`), `MerchantJob` also stops on `WORKPLACE_INVALID`.
+- Tests: L1 `core/market/*Test` (price table, surplus incl. agreement with `FoodMath`, planner with an independent 2000-stock oracle, caps, ledger, reserves), `VillageCodecsTest` + `WorldClaimTest` (market key, clamp, bad entry, release), `MarketHeartTest`, `MarketCodecsTest`, `PermissionsTest` row; L2 `MarketGameTests` x15 (roadmap case: first sale at tick 605, 4th at day time 3400, cobblestone never below 64 on any tick); L4 `MarketClientTests.stockpileReserves`.
+- Gotcha: Fabric's `clickScreenButton(key)` clicked the wrong "+" when two buttons had the same text: the item buttons read "-16" / "+16" now (also more informative).
+- Next: verifier. Blockers: none. Flaky under machine load (not M22): `tier_game_tests_village_goals_tier_up_at_dawn` once ("Expected one dinner to be 1: was 2"), `level_game_tests_iron_axe_out_fells_stone_side_by_side` once; L4 "Timeout loading world" at load average 10 (retry passes).
+
+## M22 r1 fix (builder, 2026-11-09)
+- Merged origin/dev (M13 cook): only `docs/BACKLOG.md` conflicted (kept both sides). No code conflict: M22's state is on `WorldClaim.market`, and M13 appended no values to `WorkerStatus`/`ActivityKind`, so `DAILY_LIMIT`, `TREASURY_FULL` stay last.
+- Fix 1 (review `docs/reviews/M22-r1.md`): `ledgerSurvivesReload` and the reload part of `reserveSettingsOnTheScreen` now assert on `VillageTestSupport.reload(server).market()` (the copy read from disk), not the live state. `ledgerSurvivesReload` uses reserves `(5, 96)`, which are not `Reserves.DEFAULT`.
+- Proof: with the `VillageCodecs.MARKET` encoder writing default reserves and an empty ledger, both tests go red; restored, both are green.
+- Next: verifier round 2. Blockers: none. L4 hit "Timeout loading world" once at load 13 (known flake); rerun was green.
+
 ## 2026-11-09: M13 review round 1 fixes (builder)
 - Merged origin/dev twice (M19a + sim-area, then M14): `VillageState` and `VillageCodecs` were taken from dev and `smokerHeat` re-added as the last component, `smoker_heat` is the 16th field of the codec's `Raw`. Enums: dev's values first, then `NEEDS_FUEL` last; `ActivityWarnings` (dev's exhaustive switch) lists `NEEDS_FUEL` as a warning, `VillageStateTierTest` got a `Predicate` fixture for `withoutSmokerHeat`. Dev changed `starter.json` (heart-distance assertion): `starter_cook` mirrors it and `sim/baselines/starter.json` was re-captured (B = 3.1394, 788 / 251; the first re-capture run failed the logs-rise assertion on day 10 with no cook involved, the second passed).
 - Item 1: `noFuelNothingCooked` samples every 20 ticks in an `h.onEachTick` that records findings, asserts the list empty after 3000 ticks. Probe `PROBE = true` (an always-failing finding): red ("the no-fuel watch saw: [probe, ...]"), reset to false.
@@ -796,3 +810,11 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Mutations: no reservations / striker works / XP removed (red: peak claim 0, sampler + later bound, XP 0); hunger dropped / reservations ignore the other cook / probe (red: gap 167, claimed 16 of 12, probe); plan a batch without fuel (red at L1 `row8NoFuelIsNeedsFuel` and L2 no-fuel watch); recipe, heat and pace constants (L1 red, L2 roadmap red); `smoker_heat` made required (L1 red). All restored.
 - L3: `starter_cook 10` PASS (4.60 vs B 3.1394, 80 cook items); `starter 10` PASS (3.15, the baseline reproduces). The re-capture was forced by dev's `starter.json` change (hash guard) and is legitimate.
 - Next: merge m13 into dev. Blockers: none.
+
+## 2026-11-09: M22 review round 2 (verifier)
+- Verdict PASS, 0 must-fix, 4 BACKLOG items ("From M22-r2"); M22 ticked. Review: `docs/reviews/M22-r2.md`. Head: merge `e6fbbf5` (origin/m22 `0d48acc` + origin/dev `f6fbf1d`).
+- Correction: the builder's "merge M13" `8f97020` merged dev before M13 landed, so M13 met M22 only now. Code conflicts (Workers.forget, Balance, ActivityKind/WorkerStatus, gametest fabric.mod.json) were resolved by keeping both sides, with M13's `NEEDS_FUEL` before M22's `DAILY_LIMIT`/`TREASURY_FULL`.
+- Fix 1 is real: the `MARKET` encoder writing default reserves and an empty ledger turns both reload tests red, and so does an empty ledger alone. A missing `setDirty()` in `setMarket` still passes (BACKLOG).
+- verify.sh: L1 and L2 each "All 341 required tests passed"; L4 timed out loading a world at load 5-10 (known flake), then was green at load 3.7 (39 screenshots, all gates 0). `two_hunters_one_ground` failed once in a standalone build (load flake candidate, BACKLOG).
+- No GameTest discards the result of `VillageTestSupport.reload(server)`.
+- Next: merge m22 into dev. Blockers: none.
