@@ -269,3 +269,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The Town goals have no L2 test that reaches Town through real guards and a 32-emerald dawn (T-L1-3 covers the rule, T-L2-5 the treasury number); a later scenario can add `village.tier` / `tier.fed_streak` L3 metrics and `/villageheart tier set`
 - [ ] The L4 test cannot assert the drawn goal rows (the layout recorder is private to `HeartScreen`): it checks the snapshot, `assertClean` and the screenshot
 - [ ] `VillageCodecs.RAW` is at 15 of 16 fields (M13 `smoker_heat` takes the last one); M18's `guard_shifts` must split it with `Codec.mapPair` keeping keys flat
+
+## From M13-r1
+- [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
+- [ ] Cook reservations stay held while the cook is unloaded (dinner can't see that food meanwhile)
+- [ ] After a crash, cook inventory and heat bank can disagree by one unit
+- [ ] Heat banks of smokers in no Kitchen are kept (not tied to a specific Kitchen)
+- [ ] `completeUnit` ignores the `addItem` remainder when putting inputs back
+- [ ] Cook keep rules count renamed stacks with plain ones
+- [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
+- [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
