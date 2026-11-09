@@ -22,7 +22,15 @@ import dev.villageheart.core.defence.DefenceSite;
  */
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
-		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
+		List<dev.villageheart.core.gear.SelfCraft> selfCrafts) {
+
+	/** Without self-crafts (the shape before M19a). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, List.of());
+	}
 
 	/** Without defence sites (the shape before M21). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
@@ -64,6 +72,12 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		treeTasks = List.copyOf(treeTasks);
 		builds = List.copyOf(builds);
 		defences = List.copyOf(defences);
+		Objects.requireNonNull(selfCrafts, "selfCrafts");
+		selfCrafts = List.copyOf(selfCrafts);
+		Set<UUID> seenCrafters = new HashSet<>();
+		for (dev.villageheart.core.gear.SelfCraft c : selfCrafts) {
+			if (!seenCrafters.add(c.worker())) throw new IllegalArgumentException("two self-crafts for worker " + c.worker());
+		}
 		Set<UUID> seenDefences = new HashSet<>();
 		for (DefenceSite d : defences) {
 			if (!seenDefences.add(d.id())) throw new IllegalArgumentException("two defence sites share the id " + d.id());
@@ -135,7 +149,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences);
+				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -329,7 +343,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -337,7 +351,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -380,7 +394,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts);
 	}
 
 	// ---- defence sites (M21) ----
@@ -408,7 +422,32 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts);
+	}
+
+	// ---- self-made tools (M19a) --------------------------------------------------------------------------------------------
+
+	public Optional<dev.villageheart.core.gear.SelfCraft> selfCraft(UUID worker) {
+		for (dev.villageheart.core.gear.SelfCraft c : selfCrafts) if (c.worker().equals(worker)) return Optional.of(c);
+		return Optional.empty();
+	}
+
+	/** Replaces the worker's record or adds it (at most one per worker). */
+	public VillageState withSelfCraft(dev.villageheart.core.gear.SelfCraft craft) {
+		List<dev.villageheart.core.gear.SelfCraft> next = new ArrayList<>(selfCrafts);
+		next.removeIf(c -> c.worker().equals(craft.worker()));
+		next.add(craft);
+		return withSelfCrafts(next);
+	}
+
+	public VillageState withoutSelfCraft(UUID worker) {
+		List<dev.villageheart.core.gear.SelfCraft> next = new ArrayList<>(selfCrafts);
+		if (!next.removeIf(c -> c.worker().equals(worker))) return this;
+		return withSelfCrafts(next);
+	}
+
+	private VillageState withSelfCrafts(List<dev.villageheart.core.gear.SelfCraft> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

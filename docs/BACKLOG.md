@@ -240,6 +240,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `minerComesUpAtDayEnd` second assertion is consistently 19 ticks off against a ±20 bound (pre-existing)
 - [ ] `AwayCheckTest` renamed hunter-vs-miner test: `at3000` inputs identical to `at2980` (redundant case)
 - [ ] `NO_TOOL_SPEED` (0.5) not rescaled: a future optional-tool job would work at 0.25× stone instead of 0.4×
+
+## From M19a (builder)
+- [ ] Out of scope by plan: copper or better tools (M19), shovels/spears, bows (string), a crafting-table station or held-item animation, repairing tools, XP for crafting, a Heart UI for craft times
+- [ ] M26 tuning: `SELF_TOOL_TICKS` (wooden 2400, stone 4800) and `GEAR_MIN_DURABILITY`; in a dense forest a lumberjack spends about 45 % of its time on axes (plan 3.7)
+- [ ] Wooden pickaxes mine iron (M16 rule as built): self-made wooden pickaxes make this common (plan risk 6)
+- [ ] L3 by hand when M11's `starter` scenario exists: `starter` + Mine with a miner and no tools, 10 oak logs in Storage, 5 days; report `work.<job>.tools_made.<tier>` per day (expected wooden day 1, stone from day 2)
+- [ ] M19 r3 note: the census uses lead 0 whatever `SmithService` says (the plan's 3.8 #4 gives the smith's lead when one serves); M19 passes its lead when it registers the service
+- [ ] `ToolAllocation` still ranks by tier enum order (gold below iron); unchanged here, see the tool-speed item above
 ## From M11-r5
 - [x] (done on branch `sim-area`: Heart-centred square + follow tickets around hired workers, `work.workers.max_heart_distance < 150` asserted; 8/8 `starter 10` green, and green at a ±3 square too) (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
 - [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`
@@ -252,3 +260,4 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+- [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning

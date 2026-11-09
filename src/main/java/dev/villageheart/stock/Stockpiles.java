@@ -101,6 +101,12 @@ public final class Stockpiles {
 		return snapshot(server).totalsBy(StackKey::id);
 	}
 
+	/** M19a: the level the Storage buildings are in, or empty when there is none (a refund needs it to deposit). */
+	public static Optional<ServerLevel> storageLevel(MinecraftServer server) {
+		requireServerThread(server);
+		return Optional.ofNullable(StorageSites.collect(server).level());
+	}
+
 	/** M7+: the "stop gathering" check. */
 	public static boolean hasSpaceFor(ServerLevel level, ItemStack stack) {
 		MinecraftServer server = level.getServer();

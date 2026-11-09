@@ -151,6 +151,8 @@ final class LumberClientTests {
 			String hired = srv.computeOnServer(server -> dev.villageheart.worker.Workers.hire(server.overworld(),
 					server.overworld().getEntity(worker), JobType.LUMBERJACK, java.util.Optional.empty()).toString());
 			if (!hired.startsWith("Hired")) throw new AssertionError("the hire failed: " + hired);
+			// M19a: this shot is about the old "Needs axe" words; with nothing to make an axe from the row now reads differently (SelfCraftClientTests shows that)
+			dev.villageheart.worker.gear.SelfCraftSwitch.off();
 			double eyeY = y + 1.62, targetY = y + 0.5, pz = 3.5;
 			float pitch = (float) -Math.toDegrees(Math.atan2(targetY - eyeY, pz - 0.5));
 			srv.runCommand("tp @a -1.5 " + y + " " + pz + " 180 " + pitch);
@@ -170,6 +172,7 @@ final class LumberClientTests {
 			if (!"Needs axe".equals(text)) throw new AssertionError("the row reads " + text);
 			context.takeScreenshot("villagers_tab_needs_axe");
 			HeartScreenClientTests.assertClean(context, "villagers tab with a status");
+			dev.villageheart.worker.gear.SelfCraftSwitch.reset();
 			srv.runCommand("gamerule advance_time true");
 			srv.runCommand("kill @e[type=minecraft:villager]");
 		}

@@ -60,6 +60,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		LevelClientTests.levelBadges(context);
 		LevelClientTests.villagersTabLevels(context);
 		MinerClientTests.villagersTabAwayMining(context);
+		SelfCraftClientTests.villagersTabMakingTool(context);
 		HunterClientTests.villagersTabAwayHunting(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);

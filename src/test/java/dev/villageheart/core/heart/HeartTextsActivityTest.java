@@ -9,6 +9,19 @@ class HeartTextsActivityTest {
 	private static String text(ActivityKind a, String job) { return HeartTexts.EN.get(HeartTexts.activityKey(a, job)); }
 
 	@Test
+	void makingYourOwnToolNamesTheToolOfTheJob() {
+		assertEquals("Making a stone pickaxe", text(ActivityKind.MAKING_STONE_TOOL, "miner"));
+		assertEquals("Making a stone sword", text(ActivityKind.MAKING_STONE_TOOL, "hunter"));
+		assertEquals("Making a wooden axe", text(ActivityKind.MAKING_WOODEN_TOOL, "lumberjack"));
+		assertEquals("Making a wooden hoe", text(ActivityKind.MAKING_WOODEN_TOOL, "farmer"));
+		assertEquals("Making a wooden tool", text(ActivityKind.MAKING_WOODEN_TOOL, "unlisted_job"));
+		assertEquals("Needs axe (no wood)", text(ActivityKind.TOOL_NO_MATERIALS, "lumberjack"));
+		assertEquals("Needs sword (no wood)", text(ActivityKind.TOOL_NO_MATERIALS, "hunter"));
+		assertEquals("Needs axe (no room)", text(ActivityKind.TOOL_NO_SPACE, "lumberjack"));
+		assertEquals("Needs a tool (no room)", text(ActivityKind.TOOL_NO_SPACE, "unlisted_job"));
+	}
+
+	@Test
 	void minerAwayWorkingSaysAwayMining() {
 		assertEquals(HeartTexts.key("activity.away_working.miner"), HeartTexts.activityKey(ActivityKind.AWAY_WORKING, "miner"));
 		assertEquals("Away (mining)", text(ActivityKind.AWAY_WORKING, "miner"));

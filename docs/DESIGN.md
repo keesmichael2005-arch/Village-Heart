@@ -184,6 +184,37 @@ building behaves exactly as in vanilla.
     are not carried over.
 - **Work speed** = tool × level × needs multipliers. All of this rate math is in `core/` and unit-tested.
 
+### 4.1 Where tools come from: self-made wooden and stone tools (M19a)
+**Decision (owner, 2026-11-09):** "I like that smithy unlocks at tier three but before then villagers can make wooden and stone tools
+themselves, just slowly, and then the smithy unlocks better tools." Clarified the same day: "They start with wood and as the miners bring
+in stone they can start making stone etc." Plan: `docs/plans/M19a.md`.
+- **Who**: a hired lumberjack (axe), miner (pickaxe), hunter (sword) or farmer (hoe) whose job chest holds no usable tool for it, or whose
+  tool is about to wear out (below 10 % or two work units left), makes its **own** replacement, at every tier from Hamlet up. Demand is
+  counted per camp: the worker without a tool makes the missing one; a worker with a working tool never crafts.
+- **What**: **stone** (cobblestone, blackstone or cobbled deepslate, and sticks or planks) when the stockpile can afford it, otherwise
+  **wooden** (planks, sticks, or logs turned into planks); never copper or better: those are the Smithy's (§5.7, Town). Vanilla recipe
+  counts (axe and pickaxe 3 + 2 sticks, hoe 2 + 2, sword 2 + 1; 2 planks make 4 sticks; 1 log makes 4 planks). A usable tool already in
+  Storage is fetched instead.
+- **Slowly**: at its job block, in its own work time (so it costs that worker's output), wooden **2400** and stone **4800** ticks at level 1
+  *(tunable)*, four times the smith's. Saved; pauses overnight and continues. The farmer, whose hoe is only a bonus, makes it only when it
+  has nothing else to do.
+- **Demand only**: a working tool is never replaced because better material appeared; tools improve as they wear out. A worn tool of the
+  same tier is used up before the new one. A usable tool the player puts in the chest always counts and cancels a craft in progress; the
+  materials go back to Storage.
+- **Progression**: a new village makes wooden tools; a miner's first haul brings enough cobblestone for several stone tools, so from about
+  the second day every replacement is stone (with vanilla tool speeds a wooden tool works at half a stone tool's pace and lasts 59 uses
+  against 131).
+- **Hand-off to the smith (M19)**: once the village has a hired blacksmith at a valid Smithy, new tool demands go to the smith (faster,
+  better tiers); a self-craft already started finishes. A worker whose required tool has been missing for 3000 work ticks with no order
+  may still make its own.
+
+#### Rules as built (M19a)
+- Pure core in `core.gear` (demand per camp and need, the worn line `ToolWear.worn`, `TierChoice.selfMade`, the cancel hysteresis, `SupplyRule`, `SelfCraftPlanner`); glue in `worker.gear` (`SelfCraftJob` is called at the top of each tool job's tick and owns the tick while it fetches or crafts; `SelfCraftSystem` checks every saved craft every 100 ticks).
+- **Worn line** (self-craft, lead 0): below the larger of 10 % of the durability, two work units, so a stone axe (131) is replaced at 13 left, a wooden pickaxe (59, 10 per haul) at 19. Within a tier the tool with less left is used first.
+- **Fetch and commit**: the worker reserves the planned items, walks to the Storage holding them and withdraws exactly those into its saved record (never into its inventory, so a death or a deposit trip cannot touch them); a withdraw that comes up short puts everything back. Then it works at its job block. A cancel (a fresh tool now covers the slot, the worker was fired or died, the building went) needs two checks 100 ticks apart and refunds the committed items to Storage.
+- **Status**: "Making a wooden/stone <tool>"; "Needs axe (no wood)" when it cannot start for lack of material, "Needs axe (no room)" when the chest has no free slot.
+- **Not here**: a crafting-table station, bows, shovels and spears, XP for crafting, copper or better (M19).
+
 ## 5. Jobs in detail
 
 The work style is **hybrid**. Lumberjacks, farmers, cooks, builders, guards and blacksmiths act in the
@@ -329,6 +360,8 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   villagers. Vanilla villager golem spawning is **disabled inside the claim**, so golems come from the Smithy.
 - **Repairs golems**: golems below 50% health walk to the Smithy, and the Blacksmith uses ingots to heal them
   (25 HP per ingot, as in vanilla).
+- Before the Smithy (and whenever no smith is hired), workers make their own wooden and stone tools (§4.1, M19a); a hired smith takes
+  over new tool demands.
 
 ### 5.8 Builder (Builder's Hut, Builder's Table)
 - At the Builder's Table, a Steward+ picks a **blueprint** and receives a **Blueprint item**. Using it on the
@@ -468,6 +501,7 @@ Babies are normal vanilla villagers and can be hired as adults.
 | **Town** | population ≥12, ≥8 workers, ≥2 guards, fed 7 days in a row, treasury ≥32 at some dawn | Smithy (golems, gear), Watchtower. Level cap 3 |
 
 The tier never goes down in v1. The Overview tab shows each goal's progress.
+At every tier, tool workers make their own wooden and stone tools (§4.1); the Smithy (Town) adds better tools.
 
 ## 10. UI
 

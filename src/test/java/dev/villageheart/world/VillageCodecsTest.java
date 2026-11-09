@@ -265,4 +265,58 @@ class VillageCodecsTest {
 		assertTrue(p.unpaid().isEmpty(), "a villager both paid and unpaid counts as paid");
 		assertEquals(Set.of(W1), p.paidToday());
 	}
+
+	// ---- self-crafts (M19a) ----------------------------------------------------------------------------------------------
+
+	static final String CRAFT_BUILDING = "{\"dim\":\"minecraft:overworld\",\"x\":1,\"y\":2,\"z\":3}";
+
+	static String craft(String recipe, String need, int progress) {
+		return "{\"worker\":\"22222222-2222-2222-2222-222222222222\",\"recipe\":\"" + recipe + "\",\"building\":" + CRAFT_BUILDING
+				+ ",\"need\":\"" + need + "\",\"slot\":1,\"progress\":" + progress + ",\"committed\":[{\"id\":\"minecraft:cobblestone\",\"count\":3},"
+				+ "{\"id\":\"minecraft:stick\",\"count\":2}]}";
+	}
+
+	static dev.villageheart.core.gear.SelfCraft loadCraft(String json) {
+		return dec(VillageCodecs.SELF_CRAFT, json(json));
+	}
+
+	@Test void selfCraftsRoundTripWithNamesNotOrdinals() {
+		VillageState v = full().withSelfCraft(loadCraft(craft("minecraft:stone_pickaxe", "pickaxe", 1000)));
+		assertEquals(v, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v)));
+		JsonObject c = enc(VillageCodecs.SELF_CRAFT, v.selfCrafts().get(0)).getAsJsonObject();
+		assertEquals("pickaxe", c.get("need").getAsString());
+		assertEquals("minecraft:stone_pickaxe", c.get("recipe").getAsString());
+		assertEquals(1000, c.get("progress").getAsInt());
+		assertEquals(1, c.get("slot").getAsInt());
+		assertEquals(2, c.get("committed").getAsJsonArray().size());
+		assertTrue(keys(enc(VillageCodecs.VILLAGE_STATE, v)).contains("self_crafts"));
+	}
+
+	@Test void progressAboveTheRecipeIsClamped() {
+		dev.villageheart.core.gear.SelfCraft s = loadCraft(craft("minecraft:stone_pickaxe", "pickaxe", 99_999));
+		assertEquals(4800, s.craft().progress());
+		assertFalse(s.refundPending());
+	}
+
+	@Test void negativeProgressOrAnUnknownRecipeIsRefundedNotDropped() {
+		dev.villageheart.core.gear.SelfCraft neg = loadCraft(craft("minecraft:stone_pickaxe", "pickaxe", -1));
+		assertTrue(neg.refundPending());
+		assertEquals(0, neg.craft().progress());
+		assertEquals(2, neg.craft().committed().size());
+		dev.villageheart.core.gear.SelfCraft unknown = loadCraft(craft("minecraft:netherite_axe", "axe", 10));
+		assertTrue(unknown.refundPending());
+		assertEquals(3, unknown.craft().committed().get(0).count());
+		assertTrue(loadCraft(craft("minecraft:stone_pickaxe", "banana", 10)).refundPending());
+	}
+
+	@Test void oldSavesWithoutSelfCraftsLoadEmpty() {
+		assertTrue(dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}")).selfCrafts().isEmpty());
+	}
+
+	@Test void twoRecordsForOneWorkerKeepTheFirst() {
+		VillageState v = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"self_crafts\":[" + craft("minecraft:stone_axe", "axe", 5) + ","
+				+ craft("minecraft:wooden_axe", "axe", 9) + "]}"));
+		assertEquals(1, v.selfCrafts().size());
+		assertEquals("minecraft:stone_axe", v.selfCrafts().get(0).craft().recipeId());
+	}
 }

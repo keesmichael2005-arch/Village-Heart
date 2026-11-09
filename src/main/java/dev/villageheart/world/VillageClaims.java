@@ -80,6 +80,8 @@ public final class VillageClaims {
 	/** Releases the claim if pos is the claimed Heart; drops the treasury there and tells the owner. */
 	public static Optional<VillageState> releaseAt(ServerLevel level, BlockPos pos) {
 		java.util.Set<HeartLocation> held = data(level.getServer()).reservedJobBlocks();
+		// M19a: committed self-crafts are refunded before the claim (and its records) goes
+		current(level.getServer()).filter(v -> v.isHeartAt(locate(level, pos))).ifPresent(v -> dev.villageheart.worker.gear.SelfCrafts.refundAll(level.getServer()));
 		Optional<VillageState> released = data(level.getServer()).releaseAt(locate(level, pos));
 		released.ifPresent(v -> {
 			dev.villageheart.worker.JobSiteReservations.releaseAll(level.getServer(), held);

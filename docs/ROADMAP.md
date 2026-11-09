@@ -145,6 +145,27 @@ from there instead of hard-coding them.
 - **L1**: trip yield table with and without a bow
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
+## M19a: Self-made basic tools ✅
+- Status (verifier, 2026-11-09): PASS in round 2 (`docs/reviews/M19a-r2.md`). Built on branch `m19a`. Unit tests, 23 GameTests (`SelfCraft*GameTests`) and the L4 shot `villagers_tab_making_tool.png` are in; deviations in the plan's section 8.
+- Depends on M15 (tools) and the tool jobs M9, M10, M16, M17. Not on M11, M18 or M19 (M19 later extends the same core). Plan: `docs/plans/M19a.md`.
+- [x] (owner 2026-11-09) §4.1: a hired lumberjack, miner, hunter or farmer with no usable tool in its job chest, or one about to wear out
+      (the M19 worn line), makes its **own** wooden or stone tool from Storage materials at its job block, at any tier, slowly and in its own
+      work time (wooden 2400, stone 4800 ticks at level 1, *tunable*; the smith's are 600 / 1200). Stone (`#stone_tool_materials`) when
+      affordable, else wooden (planks, sticks or logs); never copper or better (Smithy, M19). Vanilla recipe counts. Demand only: no upgrade
+      of a working tool; a tool the player puts in the chest always counts and cancels a craft with a refund; a usable tool in Storage is
+      fetched instead of crafting. The farmer makes its hoe only in idle time. The craft is saved and pauses overnight. Status "Making a
+      stone pickaxe". When a hired smith exists (M19) it takes over new demands (the hand-off rule is pure and tested now)
+- **L1**: recipe counts (axe and pickaxe 3 + 2 sticks, hoe 2 + 2, sword 2 + 1; 2 planks → 4 sticks; 1 log → 4 planks). Tier choice: stone
+      over wooden, nothing above stone even with iron in Storage, others' reservations respected. Worn line. Demand per camp: none with a
+      working tool, two workers and one tool → one craft by the toolless one. Cancel only on two checks in a row, never while the chest is
+      unreadable. Hand-off: no new self-craft while a smith serves, except a required tool missing for 3000 work ticks
+- **L2**: a miner with no pickaxe and planks + cobblestone in Storage → makes a stone pickaxe in about the stone self-craft time, puts it in
+      the Mine chest and then mines. With only planks → a wooden pickaxe in about the wooden time
+- **L2**: a miner with a working stone pickaxe, and planks, cobblestone and iron in Storage → nothing is crafted over a work day
+- **L2**: a player's pickaxe put in the Mine chest mid-craft → the craft is cancelled and Storage gets exactly the materials back
+- **L2**: progression: planks only → a wooden pickaxe; once the miner's cobblestone is in Storage, its next replacement is stone
+- **L4**: Villagers tab row "Making a stone pickaxe" (screenshot looked at)
+
 ## M18: Guards: Barracks, shifts, sleep, training, combat
 - Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health 20/30/40). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).

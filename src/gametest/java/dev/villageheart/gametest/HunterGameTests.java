@@ -68,6 +68,8 @@ public class HunterGameTests {
 		long[] t0 = new long[1];
 		GameTestSequence seq = scene(h, false).thenExecute(() -> {
 			lightYard(h);
+			// M19a: this test is about the old "Needs <tool>" row (no tool, nothing to make one from is a *different* row now); self-crafting is not its subject
+			dev.villageheart.worker.gear.SelfCraftSwitch.off();
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h);
 			tr.start();
