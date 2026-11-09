@@ -126,6 +126,7 @@ class VillageGuardShiftsTest {
 		calls.put("withoutSelfCraft", s -> s.withoutSelfCraft(G1));
 		calls.put("withSelfCraft", s -> s.withoutSelfCraft(G1)); // a craft record is heavy to build; both rebuild through withSelfCrafts
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
+		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
 		// the names that rebuild the guard map on purpose are tested above
 		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin");
 		Set<String> found = new HashSet<>();
