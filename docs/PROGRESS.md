@@ -668,3 +668,6 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
 - `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
 - Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.
+
+## 2026-11-09: M14 plan refreshed against dev (planner)
+- docs/plans/M14.md section 8: assumptions re-checked on dev (M11, M12, M15 built). The wages-off dawn is done by M12; the dinner hook moves into `Dinner.serve` (real fed count); hooks and helpers follow dev; new 3.6a folds in BACKLOG M15-r1 ("needs a Town" after a tier-up). No design change. Ready to build; top risk is the VillageState/RAW merge with M13 and M19a (RAW reaches 16 fields).
