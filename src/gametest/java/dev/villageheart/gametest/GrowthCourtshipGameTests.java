@@ -303,7 +303,7 @@ public class GrowthCourtshipGameTests {
 	/** A pair that cannot reach each other lapses CANNOT_MEET and is skipped for the next days; growth is not blocked for ever. */
 	@GameTest(environment = "villageheart-gametest:growth_cannot_meet", structure = YARD, skyAccess = true, maxTicks = 4500)
 	public void cannotMeetLapsesAndIsSkipped(GameTestHelper h) {
-		BlockPos house2 = new BlockPos(16, 0, 14); // next to House 1: A and B stand 4.0 apart, a wall between them
+		BlockPos house2 = new BlockPos(15, 0, 14); // right next to House 1: A and B stand 3.0 apart, two walls between them
 		Villager[] v = new Villager[3]; // A, B, C
 		BreedingPair[] ab = new BreedingPair[1];
 		GameTestSequence seq = scene(h, 4, 0, 32).thenExecute(() -> {
@@ -319,9 +319,9 @@ public class GrowthCourtshipGameTests {
 			home(h, v[0], bedHead(HOUSE1, 3));
 			home(h, v[1], bedHead(house2, 2));
 			home(h, v[2], bedHead(HOUSE1, 0));
-			placeAt(h, v[0], 13.5, 1, 18.5);
-			placeAt(h, v[1], 17.5, 1, 18.5);
-			placeAt(h, v[2], 9.5, 1, 16.5);
+			placeAt(h, v[0], 13.5, 1, 18.5); // A: east end of House 1
+			placeAt(h, v[1], 16.5, 1, 18.5); // B: west end of House 2, 3.0 from A through two walls
+			placeAt(h, v[2], 9.5, 1, 16.5); // C: west end of House 1, 4.5 from A
 			ab[0] = BreedingPair.of(v[0].getUUID(), v[1].getUUID());
 			// seal both doors from outside: nobody can leave either room
 			for (BlockPos o : new BlockPos[] {HOUSE1, house2}) {

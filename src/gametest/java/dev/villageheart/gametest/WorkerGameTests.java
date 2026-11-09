@@ -1027,7 +1027,8 @@ public class WorkerGameTests {
 			h.assertTrue(poiPresent(h, bed3), "the bed POIs exist");
 		});
 		seq = seq.thenExecute(() -> {
-			h.getLevel().setDayTime(10);
+			// the start of TODAY, not of day 0: a jump back over a day boundary is a dawn (the wage system fires it) and ends the licence
+			h.getLevel().setDayTime(dev.villageheart.core.time.DailyClock.dayIndex(h.getLevel().getDayTime()) * 24000L + 10);
 			for (int i = 0; i < 2; i++) {
 				v[i] = spawnVillager(h, spot);
 				v[i].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 4));
