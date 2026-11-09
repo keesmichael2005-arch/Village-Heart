@@ -680,3 +680,12 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
 - `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
 - Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.
+
+## 2026-11-09: M19a review round 1 (verifier): FAIL, 2 must-fix
+- Merged origin/dev (bf326a9) into m19a (ecf3935): no conflicts (m19a already had M11 and M12).
+- Full `scripts/verify.sh` exit 0. L2 was 300/300 in 4 of 4 runs. `starter 10` passed 2 of 2: the farmer makes a wooden hoe every 2-3 days in idle time, and harvests match the M11 baseline.
+- Mutation checks (demand, cancel, refund loss and duplication, worn-out replacement) all turned the tests red, so item conservation holds.
+- Must-fix:
+  1. The "Needs axe (no wood/room)" rows are grey, not red (`HeartScreen` warn colour).
+  2. No L1 test fails if `TierChoice` prefers wooden over stone.
+- 10 BACKLOG items, among them: a WORN lumberjack should defer its craft to the afternoon (`LUMBER_LAST_FELL`; the cost is about 25-30 % of felling, not 45 %). Notes: `docs/reviews/M19a-r1.md`.
