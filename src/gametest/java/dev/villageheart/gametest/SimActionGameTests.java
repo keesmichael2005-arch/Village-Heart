@@ -317,4 +317,45 @@ public class SimActionGameTests {
 			h.succeed();
 		});
 	}
+
+	// ---- M13 T-L2-11 -----------------------------------------------------------------------------
+
+	/** The wheat field and the Kitchen of {@code starter_cook}: 80 mature wheat on farmland, the Kitchen valid with 32 coal beside the bread. */
+	@GameTest(environment = "villageheart-gametest:cook_prefabs", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void starterCookPrefabs(GameTestHelper h) {
+		WorkerTestSupport.begin(h);
+		List<ScenarioAction> all;
+		try {
+			Path p = Path.of("sim/scenarios/starter_cook.json");
+			if (!Files.exists(p)) p = Path.of("../../../sim/scenarios/starter_cook.json");
+			all = ScenarioParser.parse("starter_cook", Files.readString(p)).actions();
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+		List<ScenarioAction> scenario = all;
+		BuildingTestSupport.begin(h).thenExecute(() -> {
+			sweepVillagers(h);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			Host host = host(h);
+			for (ScenarioAction a : scenario) {
+				if (a.type().equals("prefab") && List.of("storage", "kitchen").contains(a.fields().get("building"))) StarterActions.prefab(host, a);
+				if (a.type().equals("field") && "wheat".equals(a.fields().get("crop"))) StarterActions.field(host, a);
+			}
+		}).thenWaitUntil(() -> {
+			h.assertValueEqual(1, valid(h, BuildingType.STORAGE), "valid Storage");
+			h.assertValueEqual(1, valid(h, BuildingType.KITCHEN), "valid Kitchen");
+		}).thenExecute(() -> {
+			int wheat = 0;
+			for (int x = 0; x < 32; x++) for (int z = 0; z < 32; z++) {
+				BlockPos abs = h.absolutePos(new BlockPos(x, 0, z));
+				BlockState s = h.getLevel().getBlockState(abs);
+				if (s.is(Blocks.WHEAT) && s.getValue(CropBlock.AGE) == 7 && h.getLevel().getBlockState(abs.below()).is(Blocks.FARMLAND)) wheat++;
+			}
+			h.assertValueEqual(80, wheat, "mature wheat on farmland");
+			h.assertValueEqual(32L, Stockpiles.count(h.getLevel().getServer(), Items.COAL), "coal in the Storage");
+			h.assertValueEqual(40L, Stockpiles.count(h.getLevel().getServer(), Items.BREAD), "bread in the Storage");
+			VillageTestSupport.done(h);
+			WorkerTestSupport.end(h);
+		});
+	}
 }
