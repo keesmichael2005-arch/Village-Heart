@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 ~188. Run 2 (to the weekly limit, hit ~23:20Z 8 Nov): session cost_usd 871 - 188 = ~683 for 34%->100% weekly (~$10.3 per 1%). Run 3 starts at the 03:05Z 9 Nov weekly reset, from cost_usd 871"
-current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 BUILD (m18, + gate opening) | M13 r1 FAIL (4 vacuous/missing tests; cook works) -> builder fixing | M14 MERGED (r1 PASS, 56c136e) | plans ready: M19 (r3, needs M13+M18), M22, M23, M25 (r2 siege), M26"
+current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 VERIFY r1 (m18 @fcec51d; L3 defended failing -> alarm fix required) | M13 r1 FAIL (4 vacuous/missing tests; cook works) -> builder fixing | M14 MERGED (r1 PASS, 56c136e) | M22 BUILD (m22) | plans ready: M19 (r3, needs M13+M18), M23, M25 (r2 siege), M26"
 blocked: []
 decisions_by_human:
   - "2026-11-09: v1.0 gate '2 players' = M24's 1 real client + 1 server-side FakePlayer test. ACCEPTED"
@@ -15,6 +15,7 @@ decisions_by_human:
   - "2026-11-09: mob motive (M25): only ZOMBIES are lured to the claimed village at night/sieges (path toward villagers without line of sight, attack defence blocks in the way); CREEPERS seek and breach walls; skeletons and all other hostiles stay vanilla; raiders keep vanilla raid targeting + siege rules"
   - "2026-11-09 orchestrator defaults for M25 r2 §7.3 (human may override): moats/outer skin protect walls (keep); gate HP raised so a vindicator needs 2 hits (gate 8); no sieges for Hamlets; M26 full runs with raids+sieges ON; any player nearby can trigger a postponed raid; rewards only for random raids. M18 builder must add fence-gate opening for hired workers + guards (M18 plan still says out of scope)"
 open_questions_for_human:
+  - "Decided by the orchestrator, FYI (M18 r1): the `defended` sim lost villagers because one level-1 night guard met 3 zombies while the day guard slept. Fix: an ALARM - when a hostile attacks anyone inside the claim, off-duty/sleeping guards wake and join until the threat is gone. The assertion stays deaths.mobs <= 1"
   - "M26 (balance, runs last; not urgent) D-M26-1: may the `full` 30-day sim use one-shot standing orders (e.g. hire a miner when Village unlocks) and still count as no player input? Fallback: a variant that sets the tier at setup. D-M26-3: approve the test audit and tunable bounds file before the first baseline run (orchestrator will review if unanswered)"
   - "Decided by the orchestrator, FYI: the M22 plan adds a village-wide cap of 32 emeralds/day on merchant sales (not in DESIGN), so many stalls plus a cobblestone generator cannot become an unlimited emerald farm. Tunable in M26"
   - "Decided by the orchestrator, FYI: M23 blocks all vanilla villager breeding inside the claim (DESIGN §7: growth only via the dawn trigger), so feeding villagers bread does nothing there. M23 T-L2-2 (no baby in 3 days) watches days 1-2 only to dawn+1500 ticks, since births can only be licensed at dawn; the verifier must confirm no other birth path exists"
