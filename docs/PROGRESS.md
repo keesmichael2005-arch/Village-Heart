@@ -849,3 +849,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - verify.sh: L1 and L2 each "All 341 required tests passed"; L4 timed out loading a world at load 5-10 (known flake), then was green at load 3.7 (39 screenshots, all gates 0). `two_hunters_one_ground` failed once in a standalone build (load flake candidate, BACKLOG).
 - No GameTest discards the result of `VillageTestSupport.reload(server)`.
 - Next: merge m22 into dev. Blockers: none.
+
+## 2026-11-09: M18 r1, `defended` (orchestrator-directed diagnosis and levers)
+- Diagnosis: `guardBeatsOneZombie` (level-1 guard, iron sword, iron helmet, one helmeted zombie, flat ground, daylight) logs 4 hits of 6.0 at 21-27 ticks (cooldown 20), and the zombie lands 3-4 hits of ~2.9: the guard wins in ~96 ticks and loses 8-12 of 20 health. Damage, rate and reach are vanilla's, so it is not a bug: a 20-health guard dies to the third zombie (about 9 health each, no regeneration awake). Scripted threat: 3 zombies per night (27 in all); natural spawns are not counted separately (kills >= 15 counts any hostile).
+- Per-lever `defended` runs (unseeded, 3 each, assertions unchanged): alarm only 0/3 (deaths.mobs 6/6/7, kills 3/3/3); + a (armour kit: 2 iron chestplates, 2 iron helmets) 0/3 (deaths 2/0/4, kills 12/9/17); + b (gather at the alarm spot, fall back toward a healthy guard below half health) 2/3 (the third: deaths 8, kills 4); + c (guard max health 30/40/50) 3/3 (deaths 1/1/0, kills 17/23/15, duty_samples always >= 100).
+- Verify at 4dfa87d (includes the M22 merge): L1, L2 (369 tests), L3 self-test, perf green; L4 timed out loading the first world at machine load 6-12 in 4 tries and passed (41 screenshots) at load < 4.
