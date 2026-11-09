@@ -286,3 +286,15 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+
+## From M18-r1
+- [ ] `GateKeeper` is a `VillageSystem`, so it only ticks while a village is claimed. A fence gate that a worker opened stays open if the Heart is removed meanwhile. Fix: close the ledger's gates on unclaim, or tick the keeper without a village
+- [ ] Gate "reload" is proven only with `GateKeeper.forgetAgesForTests` and the L1 `GateLedgerTest` codec. No L2 does a real save/reload of `villageheart_gates` while a gate is open
+- [ ] Two gate cases have no test: the keeper closing an open gate when a zombie comes near while a worker passes (the hostile branch of `GateRules.shouldClose`, at L2), and a zombie failing to walk through a gate that a worker holds open
+- [ ] Static per-guard maps are never cleared: `GuardRuntime.STATES` (no `forget` on fire or unload), `GateKeeper.OPENED_AT` and `GuardSystem.BEDS` survive `SERVER_STOPPING` and a singleplayer world switch. This leaks memory and leaves stale trip/claim state for a re-hired guard
+- [ ] `ShiftBalancer` min-move rule: when the night guard dies, the one remaining (unpinned) day guard stays on DAY and nobody guards at night, because 1 against 0 counts as balanced. Consider: an empty night shift takes an unpinned day guard
+- [ ] A freshly hired and pinned guard can start in the wrong activity for up to 20 ticks. `GuardBrain.install` picks the activity before `withGuardPin` runs (trace: a DAY-pinned guard in `[core, rest]` at time 2000)
+- [ ] `VillageCodecs.RAW` is now at 16 of 16 fields (M14 `tier_progress` + M18 `guard_shifts`). M13's `smoker_heat` must do the `Codec.mapPair` split: keep the keys flat and test that a pre-split save decodes. This replaces the "From M14" line that put the split on M18
+- [ ] (carried from M14-r1) No test exercises the guard count in `TierFacts.inputs`. With M18 merged, an L2 can hire 2 guards and check the Town guard goal
+- [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload` failed once in 3 L2 runs during M18-r1 ("progress after the evening: 4004.0", bound >= 4100). Nothing in M18 touches the self-craft path by inspection, so check it on dev for a timing flake
+- [ ] `JobSiteReservations.evictHomeClaimants` scans the villagers within 64 blocks of every held Barracks bed on every reservation pass. Fine at v1 sizes; batch per Barracks if beds grow

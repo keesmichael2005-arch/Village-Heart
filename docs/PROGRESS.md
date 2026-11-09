@@ -736,3 +736,10 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - Tests: L1 `core/tier/*Test`, `VillageStateTierTest`, `HeartSnapshotGoalsTest`; L2 `TierGameTests` x6 + 2 new `LevelGameTests`; L4 `heartTabs` extended. Screenshots looked at: `heart_overview` (checklist: two green boxes, four grey frames, alerts below, nothing overlapping) and `treasury_overview` (Workers 3 / 3 green).
 - Full `scripts/verify.sh` exit 0 at 7d1a91c: L1 ok; "All 309 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; L4 ok (lost wakeups rescued 1, leaks 0); perf ok. L4 timed out loading the world twice under machine load (load avg 10), then passed. No L3 sim run (M14 has no scenario).
 - Next: verifier. Blockers: none. M13 will take RAW field 16; M18 must split with `Codec.mapPair`.
+
+## 2026-11-09: M18 review r1 (verifier): FAIL
+- Merged origin/dev (M14) into m18. There were code conflicts in `VillageState` and `VillageCodecs` (tierProgress + guardShifts; RAW is now 16/16) and in `fabric.mod.json`. Fix-up `3c2ae4a` adds the two reflection-sweep entries the merge needed.
+- `verify.sh` exit 1. The L1 failures were the merge sweeps, now fixed. L2: `guardBrainHasNoPanic` failed (guard slain). Every other step was green. L2 reruns: 1 pass, and 1 failure in an M19a test (BACKLOG).
+- `defended` 10 days: 0/2 clean (deaths.mobs 7 and 5, kills 2 and 3).
+- 6 fix items: the alarm for `defended`; re-targeting an attacker while engaged; the `guardBrainHasNoPanic` fixture; unhired villagers vacuous in the gate test; no test for Barracks-bed eviction of hired workers; the night guard missing from its bed in `guard_on_duty.png`.
+- 10 BACKLOG items. Notes: `docs/reviews/M18-r1.md`.
