@@ -36,10 +36,10 @@ public final class GuardAlarm {
 
 	public static void resetForTests() { until = Long.MIN_VALUE; }
 
-	/** Keeps the alarm up while some hostile that hunts a villager is within 16 blocks of a loaded villager of the village. */
+	/** Raises and keeps up the alarm while some hostile that hunts a villager is within 16 blocks of a loaded villager of the village. */
 	static void refresh(MinecraftServer server, VillageState village) {
 		ServerLevel level = Workers.levelOf(server, village.heart());
-		if (level == null || !active(level)) return;
+		if (level == null) return;
 		for (UUID id : village.guardIds()) {
 			Villager g = Workers.findLoaded(server, id).orElse(null);
 			if (g == null || g.level() != level) continue;
