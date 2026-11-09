@@ -52,6 +52,8 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		WorkerClientTests.workersAtJobBlocks(context);
 		LumberClientTests.lumberjackFelling(context);
 		FarmerClientTests.farmerField(context);
+		CookClientTests.cookAtSmoker(context);
+		CookClientTests.villagersTabNeedsFuel(context);
 		HeartScreenClientTests.heartTabs(context);
 		TreasuryClientTests.overviewStrike(context);
 		BuildClientTests.builderFlow(context);

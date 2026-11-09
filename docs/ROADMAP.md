@@ -114,6 +114,7 @@ from there instead of hard-coding them.
 - Built (M12 builder, branch `m12`; boxes left for the verifier): `WageGameTests` (12 tests incl. the roadmap case `threeWorkersTwoEmeraldsOneStrikes`, M24's `onlyOwnerCanWithdraw`, M15's `workerComesBackAtItsLevel`), L1 `PayRunTest`/`PayrollTest`/`WageRulesTest`/`StrikersProduceNothingTest`/`DailyClockTest`/..., L4 `TreasuryClientTests` (`treasury_overview.png`, `treasury_villagers.png`), L3 `starter` seeded and asserted. See PROGRESS for deviations.
 
 ## M13: Cook / Kitchen
+- Built (M13 builder, branch `m13`; boxes left for the verifier): `CookGameTests` (cooksBeefAndBread, noFuelNothingCooked and 12 more), L1 `core/cook/*`, `@base` baseline assertions, `starter_cook` (baseline `sim/baselines/starter.json`), L4 `cook_at_smoker.png` and `villagers_tab_needs_fuel.png`. See PROGRESS and the plan's section 8 for deviations.
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_COOKED, n)` next to the cook counter (one per output item).
 - [ ] §5.5 recipes, fuel use, rates
 - **L2**: 10 raw beef, 9 wheat and coal in Storage + cook → within 1 day, 10 cooked beef and 3 bread, and the raw beef is gone

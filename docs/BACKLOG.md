@@ -263,3 +263,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+
+## From M13 (builder notes)
+- [ ] Cook: `KitchenSystem` drops a heat bank only when the smoker block is gone or the village has no Kitchen at all; a bank whose Kitchen was removed while another stands stays (harmless, one int)
+- [ ] Cook: `JobBehaviours.keep` is by item, so a renamed beef in the cook's pockets is counted with the plain beef of the batch (a player would have to hand it to the cook)
+- [ ] Cook: hunger pace (x0.5) is proven by L1 `CookPaceTest` and the `data.needs()` pass-through only; no L2 test drives a hungry cook's gaps
+- [ ] Cook: T-L2-6 and T-L2-7 differ from the plan (no dinner, runtime reset instead of entity reload), see the plan's section 8
+- [ ] No "baseline more than 50 commits old" warning in `simulate.sh`; only the scenario-hash guard
