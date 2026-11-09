@@ -220,10 +220,12 @@ public class GateGameTests {
 			h.assertTrue(hired == null || !hired.canReach(), "a hired worker does not plan through a gate with a hostile next to it");
 			z[0].discard();
 		});
-		seq = seq.thenIdle(2);
-		seq.thenExecute(() -> {
+		// the discarded zombie leaves the entity list at the end of the tick: ask again until the path is found
+		seq = seq.thenWaitUntil(() -> {
 			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 1);
 			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
+		});
+		seq.thenExecute(() -> {
 			h.assertTrue(!anyOpen(h), "planning does not open a gate");
 			VillageTestSupport.done(h);
 			end(h);
