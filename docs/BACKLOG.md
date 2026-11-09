@@ -294,3 +294,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] "Market: sold 1 emeralds today": singular/plural
 - [ ] The "Up to N for sale above the reserve" tooltip is never captured in a screenshot
 - [ ] Load flake candidate (not M22): `sim_action_game_tests_forced_chunk_grows_without_player` timed out waiting for the forced chunk to be entity-ticking (tick 2202 of 2200, load ~8 on 4 cores); passed alone and in the next full run
+## Flakes on dev (orchestrator, 2026-11-09, from the M22 builder's runs) — next free slot: a flake-fix agent
+- [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).
+- [ ] `level_game_tests_iron_axe_out_fells_stone_side_by_side`: "axe wear 112 but 110 logs felled".
+- [ ] `tier_game_tests_village_goals_tier_up_at_dawn`: "Expected one dinner to be 1: was 2".
+- [ ] L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
+Fix root causes; never loosen a bound without a written reason.
