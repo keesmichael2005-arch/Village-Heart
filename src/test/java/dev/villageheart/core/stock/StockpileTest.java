@@ -241,12 +241,11 @@ class StockpileTest {
 		assertTrue(s.nearestHolding(ORIGIN, "iron_chest", guard).isPresent(), "reserved by me");
 	}
 
-	@Test void withdrawAtTakesFromThatSiteOnly() {
+	@Test void withdrawFromTakesFromThatSiteOnly() {
 		FakeInventory a = new FakeInventory().set(0, "x", 5), b = new FakeInventory().set(0, "x", 5);
 		Stockpile<String> s = new Stockpile<>(List.of(site(1, 1, a), site(2, 9, b)));
-		assertEquals(3, s.withdrawAt(new Pos(9, 0, 0), "x", 3, null));
+		assertEquals(3, s.withdrawFrom(s.sites().get(1), "x", 3, null));
 		assertEquals(5, a.total("x"));
 		assertEquals(2, b.total("x"));
-		assertEquals(0, s.withdrawAt(new Pos(4, 0, 0), "x", 3, null), "no such site");
 	}
 }

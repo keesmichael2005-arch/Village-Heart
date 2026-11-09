@@ -108,6 +108,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("food.hungry", (double) needs.hungry());
 		m.put("food.eaten_nutrition", (double) needs.eatenNutrition());
 		m.put("food.eaten_items", (double) needs.eatenItems());
+		m.put("food.eaten_per_item", needs.eatenItems() == 0 ? Double.NaN : (double) needs.eatenNutrition() / needs.eatenItems()); // for reading; assertions use the sums
 		m.put("food.max_hungry_days", (double) needs.maxHungryDays());
 		m.put("housing.housed", (double) needs.housed());
 		m.put("housing.house_beds", (double) needs.houseBeds());

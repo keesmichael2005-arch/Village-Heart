@@ -223,8 +223,13 @@ public final class Assertion {
 						return new Func(t.s(), arg);
 					}
 					if (!MetricNames.isKnown(t.s())) throw err("unknown metric '" + t.s() + "'");
+					if (peek().t() == T.AT && toks.get(p + 1).t() == T.ID && toks.get(p + 1).s().equals("base")) {
+						if (!inFunc) throw err("'@base' is only allowed inside a function (sum(x@base), mean(x@base) ...)");
+						p += 2;
+						return new Ref(t.s(), "base", 0);
+					}
 					if (peek().t() == T.AT) {
-						if (inFunc) throw err("'@' references are not allowed inside a function");
+						if (inFunc) throw err("'@' references are not allowed inside a function (except @base)");
 						p++;
 						return dayRef(t.s());
 					}
@@ -257,7 +262,10 @@ public final class Assertion {
 		EvalFail(String m) { super(m, null, false, false); }
 	}
 
-	public AssertionResult evaluate(MetricsTable table) {
+	public AssertionResult evaluate(MetricsTable table) { return evaluate(table, null); }
+
+	/** @param base the baseline run that {@code x@base} reads (M13), or null: a reference to it is then a FAIL with a reason. */
+	public AssertionResult evaluate(MetricsTable table, MetricsTable base) {
 		int last = table.lastDay();
 		int from, to;
 		switch (scope.kind()) {
@@ -273,14 +281,14 @@ public final class Assertion {
 		try {
 			if (!hasFunc) {
 				for (int d = from; d <= to; d++) {
-					double a = eval(lhs, table, d, d, d);
-					double b = eval(rhs, table, d, d, d);
+					double a = eval(lhs, table, base, d, d, d);
+					double b = eval(rhs, table, base, d, d, d);
 					if (!holds(a, b)) return new AssertionResult(text, false, "day " + d + ": " + describe(a, b));
 				}
 				return new AssertionResult(text, true, (to - from + 1) + "/" + (to - from + 1) + " days");
 			}
-			double a = eval(lhs, table, to, from, to);
-			double b = eval(rhs, table, to, from, to);
+			double a = eval(lhs, table, base, to, from, to);
+			double b = eval(rhs, table, base, to, from, to);
 			if (!holds(a, b)) return new AssertionResult(text, false, describe(a, b));
 			return new AssertionResult(text, true, fmt(lhsText, a) + " " + cmp + " " + fmt(rhsText, b));
 		} catch (EvalFail f) {
@@ -311,17 +319,17 @@ public final class Assertion {
 	 * @param day the day a bare ref reads (outside a function); @prev is day-1
 	 * @param from, to the scope (used by functions)
 	 */
-	private double eval(Expr e, MetricsTable t, int day, int from, int to) {
-		double v = evalInner(e, t, day, from, to);
+	private double eval(Expr e, MetricsTable t, MetricsTable base, int day, int from, int to) {
+		double v = evalInner(e, t, base, day, from, to);
 		if (Double.isNaN(v) || Double.isInfinite(v)) throw new EvalFail("not a finite number (" + v + ") in " + text);
 		return v;
 	}
 
-	private double evalInner(Expr e, MetricsTable t, int day, int from, int to) {
+	private double evalInner(Expr e, MetricsTable t, MetricsTable base, int day, int from, int to) {
 		if (e instanceof Num n) return n.v();
-		if (e instanceof Neg n) return -eval(n.e(), t, day, from, to);
+		if (e instanceof Neg n) return -eval(n.e(), t, base, day, from, to);
 		if (e instanceof Bin b) {
-			double l = eval(b.l(), t, day, from, to), r = eval(b.r(), t, day, from, to);
+			double l = eval(b.l(), t, base, day, from, to), r = eval(b.r(), t, base, day, from, to);
 			return switch (b.op()) {
 				case '+' -> l + r;
 				case '-' -> l - r;
@@ -331,6 +339,12 @@ public final class Assertion {
 					yield l / r;
 				}
 			};
+		}
+		if (e instanceof Ref r && "base".equals(r.dayref())) {
+			if (base == null) throw new EvalFail("no baseline: the scenario names none, so " + r.path() + "@base cannot be read");
+			OptionalDouble v = base.value(r.path(), day);
+			if (v.isEmpty()) throw new EvalFail("baseline has days 0.." + base.lastDay() + ", no data for " + r.path() + " on day " + day);
+			return v.getAsDouble();
 		}
 		if (e instanceof Ref r) {
 			int d = switch (r.dayref() == null ? "" : r.dayref()) {
@@ -346,7 +360,7 @@ public final class Assertion {
 		}
 		Func f = (Func) e;
 		double[] vals = new double[to - from + 1];
-		for (int d = from; d <= to; d++) vals[d - from] = eval(f.arg(), t, d, from, to);
+		for (int d = from; d <= to; d++) vals[d - from] = eval(f.arg(), t, base, d, from, to);
 		return AssertionFunctions.apply(f.name(), vals);
 	}
 }

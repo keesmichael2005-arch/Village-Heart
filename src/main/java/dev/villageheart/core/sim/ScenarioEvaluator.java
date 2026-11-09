@@ -18,7 +18,10 @@ public final class ScenarioEvaluator {
 		return evaluate(parseAll(scenario, extra), table);
 	}
 
-	public static ScenarioResult evaluate(List<Assertion> assertions, MetricsTable table) {
+	public static ScenarioResult evaluate(List<Assertion> assertions, MetricsTable table) { return evaluate(assertions, table, null); }
+
+	/** @param base the baseline run for {@code x@base} references (M13), or null */
+	public static ScenarioResult evaluate(List<Assertion> assertions, MetricsTable table, MetricsTable base) {
 		if (table.lastDay() == 0) {
 			return new ScenarioResult(SimStatus.FAIL,
 					List.of(new AssertionResult("run produced day records", false, "no day records")));
@@ -26,7 +29,7 @@ public final class ScenarioEvaluator {
 		List<AssertionResult> results = new ArrayList<>();
 		boolean ok = true;
 		for (Assertion a : assertions) {
-			AssertionResult r = a.evaluate(table);
+			AssertionResult r = a.evaluate(table, base);
 			ok &= r.passed();
 			results.add(r);
 		}

@@ -151,6 +151,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.site_unreachable", "Can't reach its site");
 		EN.put(PREFIX + "activity.site_unreachable.miner", "Can't reach the Mineshaft");
 		EN.put(PREFIX + "activity.no_work.hunter", "No valid Hunting Ground");
+		EN.put(PREFIX + "activity.needs_fuel", "Needs fuel");
+		EN.put(PREFIX + "activity.no_work.cook", "Nothing to cook");
 		EN.put(PREFIX + "activity.away_working.hunter", "Away (hunting)");
 		EN.put(PREFIX + "activity.site_unreachable.hunter", "Can't reach the Hunting Ground");
 		EN.put(PREFIX + "rank.owner", "Owner");

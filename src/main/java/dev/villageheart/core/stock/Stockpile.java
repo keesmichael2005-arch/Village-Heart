@@ -101,26 +101,13 @@ public final class Stockpile<K> {
 		return Optional.ofNullable(best);
 	}
 
-	/** M13/M18: the nearest site (by anchor) holding {@code key} that {@code holder} may take (the stock minus what others reserved). */
+	/**
+	 * The nearest site that holds {@code key} when the holder may take some of it (what others reserved is not the holder's, M13); empty when the
+	 * holder may take none anywhere.
+	 */
 	public Optional<StorageSite<K>> nearestHolding(Pos from, K key, @Nullable UUID holder) {
 		if (available(key, holder) <= 0) return Optional.empty();
 		return nearestHolding(from, k -> k.equals(key));
-	}
-
-	/** M13/M18: takes up to {@code n} of {@code key} from the one site whose anchor is {@code anchor}; never what others reserved. */
-	public int withdrawAt(Pos anchor, K key, int n, @Nullable UUID holder) {
-		checkAmount(n);
-		if (n == 0) return 0;
-		StorageSite<K> site = null;
-		for (StorageSite<K> s : sites) if (s.anchor().equals(anchor)) site = s;
-		if (site == null) return 0;
-		int want = (int) Math.min(n, available(key, holder));
-		if (want == 0) return 0;
-		Set<Inventory<K>> touched = newTouched();
-		int taken = take(site, key, want, touched);
-		finish(touched);
-		if (holder != null && taken > 0) reservations.consume(holder, key, taken);
-		return taken;
 	}
 
 	private static <K> boolean holds(StorageSite<K> s, Predicate<? super K> match) {
@@ -177,6 +164,19 @@ public final class Stockpile<K> {
 		}
 		finish(touched);
 		int taken = want - left;
+		if (holder != null && taken > 0) reservations.consume(holder, key, taken);
+		return taken;
+	}
+
+	/** Takes up to {@code n} from one site only; never takes what others reserved. Returns how many were taken. */
+	public int withdrawFrom(StorageSite<K> site, K key, int n, @Nullable UUID holder) {
+		checkAmount(n);
+		if (n == 0) return 0;
+		int want = (int) Math.min(n, available(key, holder));
+		if (want == 0) return 0;
+		Set<Inventory<K>> touched = newTouched();
+		int taken = take(site, key, want, touched);
+		finish(touched);
 		if (holder != null && taken > 0) reservations.consume(holder, key, taken);
 		return taken;
 	}

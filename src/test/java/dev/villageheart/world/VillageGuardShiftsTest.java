@@ -125,6 +125,8 @@ class VillageGuardShiftsTest {
 		calls.put("withoutDefence", s -> s.withDefence(lamp).withoutDefence(lamp.id()));
 		calls.put("withoutSelfCraft", s -> s.withoutSelfCraft(G1));
 		calls.put("withSelfCraft", s -> s.withoutSelfCraft(G1)); // a craft record is heavy to build; both rebuild through withSelfCrafts
+		calls.put("withSmokerHeat", s -> s.withSmokerHeat(BARRACKS, 3));
+		calls.put("withoutSmokerHeat", s -> s.withSmokerHeat(BARRACKS, 3).withoutSmokerHeat(BARRACKS::equals));
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
 		// the names that rebuild the guard map on purpose are tested above
@@ -142,6 +144,25 @@ class VillageGuardShiftsTest {
 		for (var e : calls.entrySet()) {
 			assertEquals(v.guardShifts(), e.getValue().apply(c).guardShifts(), e.getKey() + " dropped the guard shifts");
 		}
+	}
+
+	@Test
+	void splitCodecKeepsEveryKeyFlatAndReadsOldSaves() {
+		// a state with every optional key non-default: all keys are top level (the split into two map codecs does not nest or rename anything)
+		VillageState v = withGuards().withTier(Tier.VILLAGE).withTreasury(5).withSmokerHeat(BARRACKS, 4)
+				.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 7L, 9));
+		JsonObject json = VillageCodecs.VILLAGE_STATE.encodeStart(JsonOps.INSTANCE, v).getOrThrow().getAsJsonObject();
+		for (String key : List.of("heart", "owner", "owner_name", "claimed_at", "treasury", "tier", "workers", "tier_progress", "smoker_heat", "guard_shifts")) {
+			assertTrue(json.has(key), "top-level key " + key + " in " + json.keySet());
+		}
+		assertEquals(v, VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json).getOrThrow(), "a save with all keys loads field for field");
+		// a save written before M14, M13 and M18: only the four required keys
+		JsonObject old = new JsonObject();
+		for (String key : List.of("heart", "owner", "owner_name", "claimed_at")) old.add(key, json.get(key));
+		VillageState loaded = VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, old).getOrThrow();
+		assertTrue(loaded.workers().isEmpty() && loaded.guardShifts().isEmpty());
+		assertEquals(dev.villageheart.core.tier.TierProgress.INITIAL, loaded.tierProgress());
+		assertEquals(0, loaded.smokerHeat(BARRACKS));
 	}
 
 	@Test

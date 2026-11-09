@@ -25,5 +25,7 @@ public enum WorkerStatus {
 	ON_STRIKE,
 	/** The worker is making its own tool (M19a): fetching the materials, or working on it at its job block. */
 	MAKING_WOODEN_TOOL,
-	MAKING_STONE_TOOL
+	MAKING_STONE_TOOL,
+	/** The cook has food to cook but nothing to burn (M13): "Needs fuel". */
+	NEEDS_FUEL
 }
