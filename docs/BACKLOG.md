@@ -270,6 +270,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The L4 test cannot assert the drawn goal rows (the layout recorder is private to `HeartScreen`): it checks the snapshot, `assertClean` and the screenshot
 - [ ] `VillageCodecs.RAW` is at 15 of 16 fields (M13 `smoker_heat` takes the last one); M18's `guard_shifts` must split it with `Codec.mapPair` keeping keys flat
 
+## From M14-r1
+- [ ] `TierFacts.inputs` guard count (`jobId == guard`) is not exercised by any test (every L2 test has 0 guards; L1 feeds the number in). M18 (guards) should add an L2 or glue check that 2 hired guards meet the Town guard goal
+- [ ] Make the verifier's Mine probe permanent: a Hamlet Mine + Mineshaft (MineTestSupport) turns VALID after the real dawn tier-up (the roadmap's literal Mine wording; T-L2-1 uses a Builder's Hut). Probe source: Mine/Mineshaft built at Hamlet, `setTier(VILLAGE)` + `Buildings.requestAll`, both VALID within `bound(1, 2)`; it passed
+- [ ] "Needs a Town" lines beyond 3 per tick are dropped with no "and N more" summary (`LevelUpFeedback.claimCapped`); fine at today's village sizes
+- [ ] The L3 report has no tier field: the `starter` run's tier (Hamlet, 2 workers < 3) can only be read from the absence of `[tiers]` log lines
+- [ ] `treasury_overview.png` has a vanilla "New Recipe(s) Unlocked" toast over the Stockpile/Ranks tabs; client tests could clear toasts before screenshots
+
 ## From M13-r1
 - [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
 - [ ] Cook reservations stay held while the cook is unloaded (dinner can't see that food meanwhile)
