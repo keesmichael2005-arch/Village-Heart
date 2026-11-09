@@ -710,3 +710,10 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
   1. The "Needs axe (no wood/room)" rows are grey, not red (`HeartScreen` warn colour).
   2. No L1 test fails if `TierChoice` prefers wooden over stone.
 - 10 BACKLOG items, among them: a WORN lumberjack should defer its craft to the afternoon (`LUMBER_LAST_FELL`; the cost is about 25-30 % of felling, not 45 %). Notes: `docs/reviews/M19a-r1.md`.
+
+## 2026-11-09: M18 build (guards) incl. fence-gate opening
+- Branch `m18`, steps 1-13 of docs/plans/M18.md plus the human-decided gate opening (plan section 8 lists every deviation; DESIGN 5.6 "Rules as built (M18)" and section 12 "Gate opening").
+- Full `scripts/verify.sh` exit 0 at d4294a5: L1 build+unit green; L2 "All 324 required tests passed"; L3 script self-test, model-log and 2-player gates green; L4 green (screenshots `guard_on_duty.png`, `heart_villagers_guards.png` looked at); perfTest green (idle village tick mean ~0.0015 ms).
+- L3 `defended` (10 days, unseeded) does NOT pass reliably: runs gave deaths.mobs 5 / kills 1 (guards all slain on night 1, no free villager to re-hire), deaths 2 / kills 15 (one assertion failed), deaths 5 / kills 3. 0 of 3 clean passes. Guards (20 HP, one on night duty) lose to 3 zombies at once; see the report for the options (third guard, armour in the kit, both shifts called when a villager is attacked). The assertions were not loosened.
+- Flakes seen: `guardBrainHasNoPanic` once (guard in guard_off, cause unknown; the failure message now prints phase/needs/hp), L4 "Timeout loading world" under machine load.
+- Next: orchestrator decision on the `defended` balance; M25 plugs into `RaidCheck.setSource` and `PatrolPoints`.
