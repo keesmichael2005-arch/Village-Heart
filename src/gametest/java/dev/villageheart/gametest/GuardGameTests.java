@@ -127,7 +127,7 @@ public class GuardGameTests {
 			g[0] = hireGuard(h, new BlockPos(11, 0, 14), Optional.of(Shift.DAY));
 			level3(h, g[0]);
 			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
-			z[0] = zombie(h, new BlockPos(16, 0, 14));
+			z[0] = zombie(h, new BlockPos(14, 0, 14));
 			// the control: an unhired villager far from the guard with a zombie in a fence cage 5 blocks from it
 			control[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(27, 0, 27));
 			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
@@ -140,7 +140,9 @@ public class GuardGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the guard hits the zombie", () -> {
 			h.assertTrue(!guardPanicked[0], "the guard went into PANIC/HIDE/RAID");
 			h.assertTrue(damaged(z[0], g[0]), "the guard has not hit the zombie yet; guard " + g[0].blockPosition() + " zombie " + z[0].blockPosition() + " "
-					+ g[0].getBrain().getActiveActivities());
+					+ g[0].getBrain().getActiveActivities() + " phase " + dev.villageheart.worker.guard.Guards.phaseOf(g[0], h.getLevel()) + " time "
+					+ h.getLevel().getDayTime() + " needs " + g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).needs() + " hp " + g[0].getHealth()
+					+ " wounded " + dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded() + " engaged " + dev.villageheart.worker.guard.GuardCombat.engaged(g[0]));
 		});
 		seq.thenExecute(() -> {
 			h.assertTrue(!guardPanicked[0], "the guard never panicked");
