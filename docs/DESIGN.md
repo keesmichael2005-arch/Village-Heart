@@ -508,6 +508,8 @@ Babies are normal vanilla villagers and can be hired as adults.
 | **Town** | population ≥12, ≥8 workers, ≥2 guards, fed 7 days in a row, treasury ≥32 at some dawn | Smithy (golems, gear), Watchtower. Level cap 3 |
 
 The tier never goes down in v1. The Overview tab shows each goal's progress.
+
+As built (M14): the check runs once at every dawn, after wages, and the tier goes up at most one step per dawn. Population is the Overview's number (loaded villagers in the claim, babies included, plus registered workers that are not loaded there). Workers are all registered workers, strikers included. A fed day is a dinner where every diner was fed (children included); a hungry dinner resets the streak to 0, a day without a dinner leaves it alone. The treasury goal counts the purse after wages at a dawn and is sticky ("at some dawn"). On a tier-up members get a chat line and a sound, and every building is re-checked at once.
 At every tier, tool workers make their own wooden and stone tools (§4.1); the Smithy (Town) adds better tools.
 
 ## 10. UI

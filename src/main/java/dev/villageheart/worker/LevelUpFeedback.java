@@ -37,6 +37,8 @@ public final class LevelUpFeedback implements WorkerLevels.LevelListener {
 
 	private static Consumer<FeedbackEvent> sink;
 	private static int linesThisTick;
+	/** "Needs a Town" lines have their own budget, so they never take the level-up lines' places (M14). Beyond it they are dropped: the Heart shows the cap. */
+	private static int cappedThisTick;
 	private static int overflow;
 	private static long tick = Long.MIN_VALUE;
 
@@ -54,6 +56,7 @@ public final class LevelUpFeedback implements WorkerLevels.LevelListener {
 	public static void resetForTests() {
 		sink = null;
 		linesThisTick = 0;
+		cappedThisTick = 0;
 		overflow = 0;
 		tick = Long.MIN_VALUE;
 	}
@@ -78,7 +81,7 @@ public final class LevelUpFeedback implements WorkerLevels.LevelListener {
 		if (sink != null) sink.accept(new FeedbackEvent(villager.getUUID(), change.after().level(), change.after().level() + 1, Kind.CAPPED));
 		MinecraftServer server = level.getServer();
 		Optional<dev.villageheart.core.Tier> needed = Leveling.tierForNext(change.after());
-		if (needed.isEmpty() || !claim(server)) return;
+		if (needed.isEmpty() || !claimCapped(server)) return;
 		tell(server, Component.translatable("message.villageheart.worker_level_capped", nameOf(villager), change.after().level() + 1,
 				needed.get().displayName()));
 	}
@@ -90,6 +93,7 @@ public final class LevelUpFeedback implements WorkerLevels.LevelListener {
 			flush(server);
 			tick = now;
 			linesThisTick = 0;
+			cappedThisTick = 0;
 		}
 		if (linesThisTick >= MAX_LINES_PER_TICK) return false;
 		linesThisTick++;
@@ -104,7 +108,17 @@ public final class LevelUpFeedback implements WorkerLevels.LevelListener {
 			tell(server, Component.translatable("message.villageheart.workers_level_up_more", n));
 		}
 		linesThisTick = 0;
+		cappedThisTick = 0;
 		tick = Long.MIN_VALUE;
+	}
+
+	private static boolean claimCapped(MinecraftServer server) {
+		long now = server.getTickCount();
+		if (now != tick) {
+			flush(server);
+			tick = now;
+		}
+		return cappedThisTick++ < MAX_LINES_PER_TICK;
 	}
 
 	private static String nameOf(Villager v) {

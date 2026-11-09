@@ -316,6 +316,14 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
 
+## 2026-11-07: M14 plan (tiers and unlocks), branch m14-plan
+- Plan: docs/plans/M14.md, 6 steps. Pure `core.tier` (`TierGoals.evaluate(tier, inputs, progress)`, `TierProgress` fed streak / last counted dinner / best dawn treasury, `TierDawn.run`, `TierRules.levelCap/levelFor`, `Population.count`).
+- `VillageState.tierProgress` (saved as lenient `tier_progress`); fed streak updated at M11's dinner (`Tiers.onDinner`, everyone fed = fed day, anything else resets); tier checked at M12's dawn (`VillageDawn` listener, after wages, one step per dawn, never down).
+- Tier-up effects: `Buildings.requestAll`, `HeartFacts.invalidate`, chat to Residents+ and a level-up sound. Hiring and blueprint unlocks need no code; level caps are a pure rule for M15.
+- Overview checklist fills M8's existing `GoalLine` list (0 new bytes, at most 6 of the 8 budgeted). The screen gets 10 px rows with boxes and alerts below them.
+- Required M12 change: fire dawn listeners on the wages-off branch too (`PayResult.none`).
+- L2 setup is cheap: a seeded streak of 2, one real dinner, one real dawn. A probe dawn listener proves `requestAll` deterministically. The L4 extends `heartTabs` (`heart_overview.png`).
+- Critique: 22 findings, 18 taken, 4 refuted (section 7). Build after M11 and M12 are on dev. Top risk: M11/M12 seam names and the wages-off dawn.
 ### M9 review r1 fixes (builder)
 Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `treeTasks` as its last component next to M24's `known`; codec and fabric.mod.json merged).
 1. **False "cannot reach the tree" (roots found, three of them, none was the bound):**
@@ -764,3 +772,12 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
   1. The "Needs axe (no wood/room)" rows are grey, not red (`HeartScreen` warn colour).
   2. No L1 test fails if `TierChoice` prefers wooden over stone.
 - 10 BACKLOG items, among them: a WORN lumberjack should defer its craft to the afternoon (`LUMBER_LAST_FELL`; the cost is about 25-30 % of felling, not 45 %). Notes: `docs/reviews/M19a-r1.md`.
+## 2026-11-09: M14 plan refreshed against dev (planner)
+- docs/plans/M14.md section 8: assumptions re-checked on dev (M11, M12, M15 built). The wages-off dawn is done by M12; the dinner hook moves into `Dinner.serve` (real fed count); hooks and helpers follow dev; new 3.6a folds in BACKLOG M15-r1 ("needs a Town" after a tier-up). No design change. Ready to build; top risk is the VillageState/RAW merge with M13 and M19a (RAW reaches 16 fields).
+
+## 2026-11-09: M14 tiers and unlocks (builder)
+- Built on branch m14 (from dev bf326a9 + m14-plan). Core `core.tier` (goals, progress, dawn rule, population), `VillageState.tierProgress` + lenient `tier_progress` save key (RAW 15 of 16 fields, no split), glue `tier.Tiers` (dinner hook inside `Dinner.serve`, `VillageDawn` listener, tier-up: `Buildings.requestAll`, Heart cache drop, chat + sound), Overview checklist (boxes, 10 px rows, ready line), "needs a Town" notice after a tier-up (`WorkXp.pass`).
+- Deviations (plan section 9): Builder's Hut as the red-until-Village control instead of a Mine; capped notices got their own 3-per-tick budget (the shared one broke `tierUpFloodIsSummarised`); L4 asserts snapshot + assertClean + screenshot, not recorder rectangles.
+- Tests: L1 `core/tier/*Test`, `VillageStateTierTest`, `HeartSnapshotGoalsTest`; L2 `TierGameTests` x6 + 2 new `LevelGameTests`; L4 `heartTabs` extended. Screenshots looked at: `heart_overview` (checklist: two green boxes, four grey frames, alerts below, nothing overlapping) and `treasury_overview` (Workers 3 / 3 green).
+- Full `scripts/verify.sh` exit 0 at 7d1a91c: L1 ok; "All 309 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; L4 ok (lost wakeups rescued 1, leaks 0); perf ok. L4 timed out loading the world twice under machine load (load avg 10), then passed. No L3 sim run (M14 has no scenario).
+- Next: verifier. Blockers: none. M13 will take RAW field 16; M18 must split with `Codec.mapPair`.

@@ -11,6 +11,12 @@ import dev.villageheart.core.heart.JobLevels;
 public final class TierRules {
 	private TierRules() {}
 
+	/** The tier after this one; empty at Town. */
+	public static java.util.Optional<Tier> next(Tier tier) {
+		Tier[] all = Tier.values();
+		return tier.ordinal() + 1 < all.length ? java.util.Optional.of(all[tier.ordinal() + 1]) : java.util.Optional.empty();
+	}
+
 	/** The highest job level an earned level may reach at this tier: Hamlet 1, Village 2, Town 3. */
 	public static int levelCap(Tier tier) { return Balance.LEVEL_CAPS[tier.ordinal()]; }
 

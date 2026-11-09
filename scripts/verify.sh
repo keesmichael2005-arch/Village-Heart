@@ -34,7 +34,9 @@ step "2-player session log gate self-test" mp-log-selftest.log scripts/test-chec
 
 if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: client GameTests + screenshots (virtual display)" clienttest.log \
-    xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
+    flock /tmp/villageheart-l4.lock xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew --no-daemon runClientGameTest
+  # flock: only one worktree on this machine runs the client tests at a time. Several parallel Minecraft clients at load
+  # 10+ made the first client world time out ("Timeout loading world", BACKLOG M13-r1), so they queue instead.
   # Our gametest mixin fixes a lost-wakeup race in Fabric's NetworkSynchronizer (docs/TESTING.md). Fail if it was not
   # installed, and report how often it saved the run (each rescue would have been a 10 s stall and likely a crash).
   step "Layer 4: NetworkSynchronizer lost-wakeup fix installed" lost-wakeup-fix.log \

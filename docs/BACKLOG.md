@@ -180,8 +180,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] The once-seen stray item in `minerHaulsFortyCobblestone` is still unexplained (0 of 8 in M16-r1); keep the diagnostic
 
 ## From M15-r1
-- [ ] "needs a Town" never fires for a worker that reached level 2 through a tier-up with 300 XP banked (XP clamps at 300, so no threshold is crossed again; the gold bar shows it)
-- [ ] `LevelUpFeedback.onCapped` lines beyond the 3-per-tick budget are dropped, not counted in the "and N more" summary
+- [x] (M14) "needs a Town" never fires for a worker that reached level 2 through a tier-up with 300 XP banked (XP clamps at 300, so no threshold is crossed again; the gold bar shows it)
+- [ ] (M14: capped lines now have their own 3-per-tick budget, still dropped beyond it) `LevelUpFeedback.onCapped` lines beyond the 3-per-tick budget are dropped, not counted in the "and N more" summary
 - [ ] `ironAxeOutFellsStoneSideBySide` clears its upper platforms only on success; a failed run leaves glass, dark oaks and villagers above its slot
 - [ ] T-L2-11 starts the cure by reflection (`ZombieVillager.startConverting`); the public path (Weakness + golden apple via `mobInteract`) would survive a rename
 - [ ] M16's stray item in `minerHaulsFortyCobblestone` seen again once (a stone_pickaxe at age 0, tick 11007) in an M15-r1 mutated run unrelated to mining
@@ -283,6 +283,18 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From M19a-r2
 - [ ] Under heavy CPU load (load ~14) the first L4 client-test world can stall at "Preparing spawn area" until "Timeout loading world"; passed on rerun. Longer world-load timeout, or one full verify.sh at a time across worktrees
 
+## From M14
+- [ ] The Town goals have no L2 test that reaches Town through real guards and a 32-emerald dawn (T-L1-3 covers the rule, T-L2-5 the treasury number); a later scenario can add `village.tier` / `tier.fed_streak` L3 metrics and `/villageheart tier set`
+- [ ] The L4 test cannot assert the drawn goal rows (the layout recorder is private to `HeartScreen`): it checks the snapshot, `assertClean` and the screenshot
+- [ ] `VillageCodecs.RAW` is at 15 of 16 fields (M13 `smoker_heat` takes the last one); M18's `guard_shifts` must split it with `Codec.mapPair` keeping keys flat
+
+## From M14-r1
+- [ ] `TierFacts.inputs` guard count (`jobId == guard`) is not exercised by any test (every L2 test has 0 guards; L1 feeds the number in). M18 (guards) should add an L2 or glue check that 2 hired guards meet the Town guard goal
+- [ ] Make the verifier's Mine probe permanent: a Hamlet Mine + Mineshaft (MineTestSupport) turns VALID after the real dawn tier-up (the roadmap's literal Mine wording; T-L2-1 uses a Builder's Hut). Probe source: Mine/Mineshaft built at Hamlet, `setTier(VILLAGE)` + `Buildings.requestAll`, both VALID within `bound(1, 2)`; it passed
+- [ ] "Needs a Town" lines beyond 3 per tick are dropped with no "and N more" summary (`LevelUpFeedback.claimCapped`); fine at today's village sizes
+- [ ] The L3 report has no tier field: the `starter` run's tier (Hamlet, 2 workers < 3) can only be read from the absence of `[tiers]` log lines
+- [ ] `treasury_overview.png` has a vanilla "New Recipe(s) Unlocked" toast over the Stockpile/Ranks tabs; client tests could clear toasts before screenshots
+
 ## From M13-r1
 - [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
 - [ ] Cook reservations stay held while the cook is unloaded (dinner can't see that food meanwhile)
@@ -291,4 +303,4 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `completeUnit` ignores the `addItem` remainder when putting inputs back
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
-- [ ] PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+- [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees

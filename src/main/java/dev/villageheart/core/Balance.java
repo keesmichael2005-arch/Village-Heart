@@ -113,6 +113,11 @@ public final class Balance {
 	// ---- levels (M15) ----
 	/** The highest job level an earned level may reach per tier (indexed by {@code Tier.ordinal()}): Hamlet 1, Village 2, Town 3. */
 	public static final int[] LEVEL_CAPS = {1, 2, 3};
+	// ---- tiers (M14) ----
+	public static final int VILLAGE_POPULATION = 6, VILLAGE_WORKERS = 3, VILLAGE_FED_DAYS = 3;
+	public static final int TOWN_POPULATION = 12, TOWN_WORKERS = 8, TOWN_GUARDS = 2, TOWN_FED_DAYS = 7, TOWN_DAWN_TREASURY = 32;
+	/** The fed-days streak saturates here (it is shown as a text argument). */
+	public static final int MAX_FED_STREAK = 9999;
 	/** XP beyond level 3 has no use; XP below a capped level is banked up to here and turns into levels when the village grows. */
 	public static final int MAX_BANKED_XP = LEVEL_3_XP;
 	/** Thousandths of an XP per unit of work, indexed by {@code WorkUnit.ordinal()} (integers, so 0.2 never drifts). Tunable in M26. */
