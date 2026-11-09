@@ -135,6 +135,35 @@ public final class Stockpiles {
 		return view(server, c).nearestHolding(RoomScans.pos(from), match).map(s -> RoomScans.blockPos(s.anchor()));
 	}
 
+	/** M13: the anchor of the nearest Storage holding {@code key} that {@code holder} may take from (what others reserved is not its). */
+	public static Optional<BlockPos> nearestHolding(ServerLevel level, BlockPos from, StackKey key, @Nullable UUID holder) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (c.level() != level) return Optional.empty();
+		return view(server, c).nearestHolding(RoomScans.pos(from), key, holder).map(s -> RoomScans.blockPos(s.anchor()));
+	}
+
+	/** M13: up to {@code n} of {@code key} (capped at one stack) from the Storage whose anchor is {@code anchor} only, consuming the holder's reservation. */
+	public static ItemStack withdrawAt(ServerLevel level, BlockPos anchor, StackKey key, int n, @Nullable UUID holder) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (c.level() != level) return ItemStack.EMPTY;
+		Stockpile<StackKey> sp = view(server, c);
+		Pos p = RoomScans.pos(anchor);
+		StorageSite<StackKey> site = sp.sites().stream().filter(s -> s.anchor().equals(p)).findFirst().orElse(null);
+		if (site == null) return ItemStack.EMPTY;
+		int taken = sp.withdrawFrom(site, key, Math.min(n, key.maxStackSize()), holder);
+		return taken == 0 ? ItemStack.EMPTY : key.toStack(taken);
+	}
+
+	/** M13: what {@code holder} may take of {@code key}: the stock minus what others reserved. */
+	public static long available(MinecraftServer server, StackKey key, @Nullable UUID holder) {
+		requireServerThread(server);
+		return view(server, StorageSites.collect(server)).available(key, holder);
+	}
+
 	// ---- writing ---------------------------------------------------------------------------------
 
 	/** Moves as much of {@code stack} as fits (nearest first, spilling); shrinks the stack by that amount; returns it. */

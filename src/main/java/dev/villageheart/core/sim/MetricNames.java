@@ -12,7 +12,7 @@ public final class MetricNames {
 			"buildings.valid", "buildings.invalid",
 			"stockpile.total", "stockpile.distinct",
 			"food.nutrition", "food.days_left", "treasury",
-			"food.dinners", "food.diners", "food.fed", "food.hungry", "food.eaten_nutrition", "food.eaten_items", "food.max_hungry_days",
+			"food.dinners", "food.diners", "food.fed", "food.hungry", "food.eaten_nutrition", "food.eaten_items", "food.eaten_per_item", "food.max_hungry_days",
 			"housing.housed", "housing.house_beds",
 			"wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers",
 			"deaths.total", "deaths.mobs",

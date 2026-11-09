@@ -99,6 +99,14 @@ A separate tick listener, or behaviour code outside a section, escapes the budge
 - **L3** `starter` seeds the treasury with `villageheart treasury add 32` and asserts `max(wages.strikers) == 0 from day 1`, `sum(wages.runs) >= 8 from day 1`
   and `treasury <= treasury@prev - 2 from day 3`. Metrics: `wages.runs|bill|paid|spent|strikers`.
 
+## Cook GameTests (M13)
+`CookGameTests` (helpers in `CookTestSupport`; environments `villageheart-gametest:cook_<name>`, one per test; the file `cook_prefabs` belongs to `SimActionGameTests.starterCookPrefabs`).
+- **Scene:** `CookTestSupport.scene(h)`: a valid Kitchen at `WorkerTestSupport.ORIGIN_A` (smoker in the first column, crafting table and chest in the far corners, the door cell kept free: a table in front of the door shuts the cook in) and a Storage at `ORIGIN_B`, 8 blocks apart. Work tests set the day time to 1000 (or 9800 for the dinner cutoff) after the scene is valid. Needs, dinner and wages are off as in every non-`needs_` test.
+- **Counts are exact** (`BatchMath.simulate` is the oracle: the roadmap case is 10 beef + 9 wheat + 4 coal = 10 cooked beef, 3 bread, 2 coal, bank 600); only walking time varies, so time limits are measured bounds, `cookBound(items, batches) = items * 125 + batches * 360 + 400`. Roadmap tests log their ticks (`[m13] ...`).
+- `restartMidBatchResumes` drops the cook runtime (`CookRuntime.resetForTests`) instead of reloading the entity: the inventory is the state, and the saved heat bank must not be charged twice. `tablesMatchVanilla` compares the core tables with the game's food components, `minecraft:smoking` recipes, furnace burn times and the `#logs_that_burn` tag.
+- **Layer 4** `CookClientTests` (`cook_at_smoker.png`: the smoker `LIT` on the client and the cook's profession asserted; `villagers_tab_needs_fuel.png`: the row reads "Needs fuel").
+- **Layer 3 baseline.** `starter_cook` compares nutrition per eaten item with the committed run `sim/baselines/starter.json` through `x@base` (only inside a function: `sum(food.eaten_nutrition@base) / sum(food.eaten_items@base)`; no baseline or a scope the baseline does not cover is a FAIL with a reason). The report carries `scenario_sha256` (SHA-256 of the scenario's canonical JSON) and `git_commit`; `StarterCookFilesTest` fails when `sim/scenarios/starter.json` changed since the baseline was captured. **Rule:** a change to `starter.json`, `DinnerPlanner`, `FoodRules` or the farmer's harvest rules re-captures the baseline in the same commit: `scripts/simulate.sh starter`, then `cp reports/sim/starter.json sim/baselines/starter.json`.
+
 ## Layer 3: simulations
 `scripts/simulate.sh <scenario> [days] [--assert "<expr>"]... [--reload-at <day>]` (`--list` shows the scenarios). It boots a real headless
 dedicated server (`./gradlew runSimulation`, a Loom run config over the `gametest` source set, run dir `build/run/sim`) on seed 1, finds the plains

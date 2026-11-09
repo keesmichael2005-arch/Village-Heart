@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.worker.cook.CookJob;
+import dev.villageheart.worker.cook.CookWork;
 import dev.villageheart.worker.build.BuilderKeep;
 import dev.villageheart.worker.build.BuilderWork;
 import dev.villageheart.worker.farm.FarmJob;
@@ -55,6 +57,13 @@ final class JobBehaviours {
 					Pair.of(3, new MinerWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
+		if (jobOf(villager) == JobType.COOK) {
+			// the cook walks to its Storage, crafting table and smoker itself: no GoToJobBlock
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(3, new CookWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
 		if (jobOf(villager) == JobType.HUNTER) {
 			// the hunter walks to its Hunting Ground: no GoToJobBlock either
 			return ImmutableList.of(
@@ -76,6 +85,9 @@ final class JobBehaviours {
 				Pair.of(4, new StandAtJobBlock()));
 	}
 
+	/** The shared food top-up (FoodKeep) does not apply to a cook: its food is its product (M13). */
+	static boolean foodKeepApplies(Villager villager) { return jobOf(villager) != JobType.COOK; }
+
 	private static JobType jobOf(Villager villager) {
 		return WorkerAttachments.get(villager).map(WorkerData::job).orElse(null);
 	}
@@ -88,6 +100,7 @@ final class JobBehaviours {
 		if (jobOf(villager) == JobType.LUMBERJACK) return LumberKeep.keep(villager, item);
 		if (jobOf(villager) == JobType.BUILDER) return BuilderKeep.keep(villager, item);
 		if (jobOf(villager) == JobType.FARMER) return FarmJob.keep(villager, item);
+		if (jobOf(villager) == JobType.COOK) return CookJob.keep(villager, item);
 		return 0;
 	}
 
@@ -97,6 +110,7 @@ final class JobBehaviours {
 	 */
 	static boolean depositNow(Villager villager) {
 		JobType job = jobOf(villager);
+		if (job == JobType.COOK) return CookJob.depositNow(villager);
 		if (job == JobType.MINER) return MinerKeep.carriesNonFood(villager);
 		// the hunter's rule is by item id, not by the food component: raw meat has one, and it is handed in (M17)
 		return job == JobType.HUNTER && HuntGear.carriesYield(villager);

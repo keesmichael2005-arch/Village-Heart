@@ -688,6 +688,71 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
 - `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
 - Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.
+## 2026-11-08: M11 review round 4 (verifier): FAIL
+- Merged origin/dev (M21) into m11. Round-3 items 1 and 3 fixed (both new tests red under mutation).
+- Cause of the "silent stall" found: the sim force-loads only 9x9 chunks around the village start chunk (south edge z = 895, 15 blocks past the site). Morning strolls take workers up the hill to z = 896, where the chunk is not entity-ticking and they freeze for good. `starter` failed 2 of 4 runs, each with the farmer frozen at z = 896. Net (b) cannot see it (the job never ticks), and net (c) needs > 40 blocks (the farmer is 31-34).
+- The `[far-worker]` rescue teleports a builder working at a far site and a sleeper in a far House (probes). verify.sh exit 0, L2 3/3 green.
+- Next: notes in `docs/reviews/M11-r4.md` (sim forced area plus a not-ticking metric; remove or narrow net (c); drop net (b)'s teleport).
+
+## 2026-11-08: M11 round-4 fixes (builder, finisher)
+- Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
+- Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
+
+## 2026-11-08: backlog-2 review round 2 (verifier): FAIL
+- `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
+- Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
+- Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.
+## 2026-11-09: tool-speed (builder)
+- Human decision: tool work speed follows vanilla mining speeds. `Balance.TOOL_SPEED` is now derived from `VANILLA_TOOL_SPEED` {wood 2, stone 4, copper 5, gold 12, iron 6, diamond 8, netherite 9} / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5 (gold was 1.0, a deliberate change).
+- Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
+- ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
+- Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.
+## 2026-11-07: M13 plan written (docs/plans/M13.md)
+12-step plan for the Cook / Kitchen, revised after a fresh critique (24 findings: 22 taken, 2 refuted against dev code). Decisions: a mod-side
+timed conversion (125 ticks per output, M9 `WorkClock`) at the cook's own smoker instead of the vanilla smoker block entity (the smoker only
+takes smoking recipes, its pace is fixed, its slots are open to players); visuals by setting `LIT` (vanilla `animateTick` adds smoke and sound,
+`serverTick` leaves an external `LIT` alone, verified in bytecode) plus a clean-up sweep through an accessor mixin. Every recipe needs fuel;
+fuel = heat (coal/charcoal 1600, logs 300, 200 per item) in a saved per-smoker bank. Inputs and fuel are reserved under the cook's UUID and
+fetched from the Storage that holds them; outputs are kept until the batch ends, then deposited; no new work after 10500 so food is in Storage
+before dinner. L3: `starter_cook` = `starter` + a wheat field + a cook + 32 coal, compared with a committed `sim/baselines/starter.json`
+through a new `@base` assertion ref (staleness guarded by a canonical scenario hash).
+Next: BUILD M13 after M9, M10 and M11 are merged (steps 1-3 are pure core and can start once M9 step 1 and M11 step 1 are on dev).
+Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Blockers: none.
+
+## 2026-11-09: M13 built (branch m13, builder)
+- Built on `origin/m12` + `origin/m11` (final) + `origin/dev` (merged again at 4684393 level) + `m13-plan`. Pure core `core.cook` (`CookRecipes`, `Ingredient`, `FuelTable`, `BatchMath`, `CookPlanner`, `CookKeep`); `VillageState.smokerHeat` (key `smoker_heat`, a per-smoker heat bank); holder-aware `Stockpile.nearestHolding`/`withdrawFrom` + `Stockpiles.nearestHolding`/`withdrawAt`/`available`.
+- Glue `worker.cook`: `CookJob` (FETCH with reservations, PREP at the crafting table, COOK on a `WorkClock` at `WorkSpeed.untooled(level, needs)`, so a too-hungry or striking cook does nothing), `CookWork`, `CookRuntime`, `KitchenVisuals` (smoker `LIT`), `KitchenSystem` (light sweep, heat bank drop), accessor mixin `AbstractFurnaceBlockEntityAccessor`; `WorkerStatus`/`ActivityKind.NEEDS_FUEL` ("Needs fuel", "Nothing to cook"); `JobBehaviours` COOK branch (keep, depositNow, no FoodKeep top-up); `WorkXp.award(ITEM_COOKED)` per output item; counters `work.cook.items|batches|fuel_heat|prep_skipped|<output>`.
+- Sim: `@base` baseline refs (inside a function only), `Scenario.baseline`, `BaselineLoader`, report `baseline_file`/`scenario_sha256`/`git_commit`, metric `food.eaten_per_item`, `sim/baselines/starter.json` (captured from a PASS `starter 10` run), `sim/scenarios/starter_cook.json`, guard `StarterCookFilesTest`.
+- Tests: L1 `core/cook/*` (recipes, pace, batch math, planner rows, keep), `VillageStateSmokerHeatTest`, `StockpileHolderTest`, `BaselineAssertionTest`, `BaselineFilesTest`, `StarterCookFilesTest`; L2 `CookGameTests` (14: roadmap `cooksBeefAndBread` 13 items in 2331-2382 ticks, `noFuelNothingCooked` "Needs fuel" at once and first beef 345 ticks after one coal, fuel kinds, pace 125/100, keep, tables vs vanilla, soup, renamed, light, two cooks, dinner cutoff, restart), `SimActionGameTests.starterCookPrefabs`; L4 `CookClientTests` (`cook_at_smoker.png`, `villagers_tab_needs_fuel.png`, both looked at: cook beside a lit smoker with flames and a smoke particle; red "Needs fuel" on the Cook L1 row).
+- Bug found by the tests: a crafting table in front of the Kitchen door shut the cook in (test layout); and an idle or working cook standing two blocks from its smoker could stand in the doorway and block the second cook's deposit trip (`twoCooksShareReservations` failed 1 in 4): the cook now stands next to its smoker (reach 1.6).
+- L3: B (nutrition per eaten item, `starter`, days 3-10) = 3.1395 (675 / 215). `starter_cook` PASS at the final scenario: ratio 4.53 vs 3.14, 78 items cooked (about 5-20 a day, all bread: the wheat field is the only raw food), 0 strikers, not_ticking 0, treasury 58 to 31. Earlier runs: run 1 4.54 (FAIL only on the known `not_ticking` harness flake, 283, with the farmer frozen outside the forced chunks), run 3 4.84 PASS, run 5 FAIL `wages.strikers` (the scenario's 32 emeralds were one short for 3 workers over 10 dawns: `starter_cook` now seeds 64, `StarterCookFilesTest` pins it), one harness ERROR at claim (a start-up flake, re-run).
+- Deviations: docs/plans/M13.md section 8 (no dinner in the cutoff test, runtime reset instead of entity reload, no hunger L2, `Report.provenance`, no 50-commit WARN, `gui.villageheart.heart.activity.*` keys).
+- `scripts/verify.sh` at `8440884` (the last main-code commit; after it only the `starter_cook` scenario seed and its L1 test changed, L1 re-run green): Layer 1 ok; Layer 2 "All 292 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok (village ticker idle tick 8.7E-4 ms).
+- Next: M13 review. Blockers: none. ROADMAP not ticked.
+
+## 2026-11-09: M13 review round 1 (verifier): FAIL
+- Head `9e19d5e` (m13 `3c94e96` + origin/dev, clean merge: only LOOP_STATE). verify.sh: L1, L2 (292 x2), gates, perf green; L4 red on `Timeout loading world` in an early non-cook test while other agents' Minecraft runs loaded the 4 cores (3 full and 2 cook-only re-runs died the same way); L4 and the two cook screenshots are not checked in this round.
+- 6 more full L2 runs: 8/8 green overall, `twoCooksShareReservations` 8/8. L3: `starter_cook 10` PASS twice (4.57, 4.81 vs B 3.14; 81/86 items cooked from day 2), `starter 10` PASS (3.12, the baseline reproduces).
+- Mutations: input dupe and fuel-free cooking are red; no reservations, ignoring hunger/strike, no cook XP all green; an always-false probe in `noFuelNothingCooked`'s 3000-tick sample stays green (`thenWaitUntil` swallows assertion failures).
+- Next: 4 must-fix items and 7 BACKLOG items in `docs/reviews/M13-r1.md`; one green L4 run with the screenshots looked at.
 
 ## 2026-11-09: sim-area (builder): the L3 sim models a player's ticking area
 - Problem (M11-r5 BACKLOG 1): the sim force-loaded only ±6 chunks around the village START chunk; a worker that strolled or fled past the edge froze for good (r5 run 1: farmer at x 752, `not_ticking` 530), so `starter 10` failed ~1 in 4.
@@ -730,3 +795,18 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - Fix 1 (review `docs/reviews/M22-r1.md`): `ledgerSurvivesReload` and the reload part of `reserveSettingsOnTheScreen` now assert on `VillageTestSupport.reload(server).market()` (the copy read from disk), not the live state. `ledgerSurvivesReload` uses reserves `(5, 96)`, which are not `Reserves.DEFAULT`.
 - Proof: with the `VillageCodecs.MARKET` encoder writing default reserves and an empty ledger, both tests go red; restored, both are green.
 - Next: verifier round 2. Blockers: none. L4 hit "Timeout loading world" once at load 13 (known flake); rerun was green.
+
+## 2026-11-09: M13 review round 1 fixes (builder)
+- Merged origin/dev twice (M19a + sim-area, then M14): `VillageState` and `VillageCodecs` were taken from dev and `smokerHeat` re-added as the last component, `smoker_heat` is the 16th field of the codec's `Raw`. Enums: dev's values first, then `NEEDS_FUEL` last; `ActivityWarnings` (dev's exhaustive switch) lists `NEEDS_FUEL` as a warning, `VillageStateTierTest` got a `Predicate` fixture for `withoutSmokerHeat`. Dev changed `starter.json` (heart-distance assertion): `starter_cook` mirrors it and `sim/baselines/starter.json` was re-captured (B = 3.1394, 788 / 251; the first re-capture run failed the logs-rise assertion on day 10 with no cook involved, the second passed).
+- Item 1: `noFuelNothingCooked` samples every 20 ticks in an `h.onEachTick` that records findings, asserts the list empty after 3000 ticks. Probe `PROBE = true` (an always-failing finding): red ("the no-fuel watch saw: [probe, ...]"), reset to false.
+- Item 2: `twoCooksShareReservations` samples every tick (beef accounted = 12, claimed <= 12 and <= stock, peak claim >= 8) and asserts each cook's units are at its own job block. Mutation "the cook never reserves" (`res.set` removed): red, "peak claim 0".
+- Item 3: new `strikingCookMakesNothing` (wages on, treasury 0: nothing cooked or moved, no reservation, status ON_STRIKE for 1200 ticks, then one emerald and it cooks) and `hungryCookIsSlower` (1 missed dinner, unhoused: speed 0.375, gaps 333 +- 1.5). Mutation "`Needs.DEFAULT` in both `WorkSpeed.untooled` calls": both red ("gap 1 is 125, expected 333"; the strike test failed on its later bound).
+- Item 4: `cooksBeefAndBread` asserts XP = 13 x `milliXpPerUnit(ITEM_COOKED)` / 1000. Mutation "award removed": red ("expected 13, was 0").
+- Every mutation was restored (`git checkout`) before the green runs. `scripts/verify.sh` at d6c363f exit 0 (one earlier run at the same head failed only the unrelated M15 `ironAxeOutFellsStoneSideBySide` under machine load 9-10, green alone twice and in this run): Layer 1 ok; Layer 2 "All 326 required tests passed"; gates ok; Layer 4 ok, run at 1-minute load 2.5; perf ok. `cook_at_smoker.png` (cook beside the lit smoker, flames and a smoke particle) and `villagers_tab_needs_fuel.png` (red "Needs fuel" on the Cook L1 row) looked at. `starter_cook` PASS at this head: 4.58 vs 3.14, 0 strikers, not_ticking 0.
+
+## 2026-11-09: M13 review round 2 (verifier)
+- Verdict PASS, 0 must-fix, 5 BACKLOG items ("From M13-r2"). Head `1e6c8a1` (origin/m13 `c2a2372` + origin/dev, clean merge).
+- Full `scripts/verify.sh` exit 0: L2 "All 326 required tests passed", L4 ok (0 rescues, 0 leaks), perf ok. Screenshots `cook_at_smoker` (cook at the lit smoker; framing poor) and `villagers_tab_needs_fuel` (red "Needs fuel" on the Cook L1 row) looked at.
+- Mutations: no reservations / striker works / XP removed (red: peak claim 0, sampler + later bound, XP 0); hunger dropped / reservations ignore the other cook / probe (red: gap 167, claimed 16 of 12, probe); plan a batch without fuel (red at L1 `row8NoFuelIsNeedsFuel` and L2 no-fuel watch); recipe, heat and pace constants (L1 red, L2 roadmap red); `smoker_heat` made required (L1 red). All restored.
+- L3: `starter_cook 10` PASS (4.60 vs B 3.1394, 80 cook items); `starter 10` PASS (3.15, the baseline reproduces). The re-capture was forced by dev's `starter.json` change (hash guard) and is legitimate.
+- Next: merge m13 into dev. Blockers: none.

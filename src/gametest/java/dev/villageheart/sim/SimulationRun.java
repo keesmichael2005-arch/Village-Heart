@@ -107,6 +107,9 @@ public final class SimulationRun implements Host {
 
 	// ---- startup (onInitialize): never throws ----
 
+	private dev.villageheart.core.sim.MetricsTable baselineTable;
+	private MetricsJson.Provenance provenance;
+
 	static SimulationRun start(Path requestPath) {
 		SimulationRun r = new SimulationRun();
 		r.fallbackPath = requestPath.toAbsolutePath().resolveSibling("sim-error.json");
@@ -121,6 +124,15 @@ public final class SimulationRun implements Host {
 			String file = Path.of(r.request.scenarioFile()).getFileName().toString();
 			r.scenario = ScenarioParser.parse(file.replaceAll("\\.json$", ""), Files.readString(Path.of(r.request.scenarioFile())));
 			r.assertions = ScenarioEvaluator.parseAll(r.scenario, r.request.extraAssertions());
+			// M13: a scenario may compare with a stored report (x@base); a missing or unreadable baseline is an error at start, never a silent pass
+			String scenarioText = Files.readString(Path.of(r.request.scenarioFile()));
+			String baselineName = null;
+			if (r.scenario.baseline() != null) {
+				Path bp = Path.of(r.request.scenarioFile()).toAbsolutePath().resolveSibling(r.scenario.baseline()).normalize();
+				r.baselineTable = dev.villageheart.core.sim.BaselineLoader.load(Files.readString(bp));
+				baselineName = r.scenario.baseline();
+			}
+			r.provenance = new MetricsJson.Provenance(baselineName, MetricsJson.scenarioSha256(scenarioText), System.getenv("SIM_GIT_COMMIT"));
 			r.schedule = new ActionSchedule(r.scenario.actions());
 			if (r.scenario.seed() != null) r.seed = r.scenario.seed();
 			for (ScenarioAction a : r.scenario.actions()) {
@@ -381,7 +393,7 @@ public final class SimulationRun implements Host {
 			if (forced != null) {
 				status = forced;
 			} else {
-				ScenarioResult r = ScenarioEvaluator.evaluate(assertions, new MetricsTable(baseline, days));
+				ScenarioResult r = ScenarioEvaluator.evaluate(assertions, new MetricsTable(baseline, days), baselineTable);
 				status = r.status();
 				assertionResults = r.results();
 			}
@@ -434,7 +446,7 @@ public final class SimulationRun implements Host {
 				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
 		return new Report(scenario != null ? scenario.name() : request.scenario(), status, error, cleanShutdown, heartbeat,
 				schedule != null ? schedule.actionsDone() : 0, stoppedAfterDay, seed, difficulty, request.days(), mc,
-				new VillagePositions(fromPos(structure), fromPos(bell), fromPos(heart), fromPos(site)), g0, reloads, baseline, days, assertionResults);
+				new VillagePositions(fromPos(structure), fromPos(bell), fromPos(heart), fromPos(site)), g0, reloads, baseline, days, assertionResults, provenance);
 	}
 
 	private void writeReport() {

@@ -13,6 +13,8 @@ public enum ActivityKind {
 	ON_STRIKE,
 	/** M19a: a worker making its own tool (fetching the materials or working on it), and a required tool that cannot be made. Appended. */
 	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE,
+	/** M13: a cook with food to cook and no fuel in the stockpile. */
+	NEEDS_FUEL,
 	/** M22: the merchant sold today's limit / the treasury is full. Appended. */
 	DAILY_LIMIT, TREASURY_FULL
 }
