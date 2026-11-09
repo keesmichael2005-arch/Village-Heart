@@ -19,3 +19,5 @@ Finish with the verdict line and the number of fix items.
 
 - The scratchpad is SHARED between agents. Put any helper scripts or logs in your own subfolder named after your role and milestone (e.g. `scratchpad/m11-builder/`); never run or overwrite a script you did not write.
 - DISK: the session disk allowance is shared and limited. Between repeated full runs, delete `build/run/gameTest/world`, `build/run/clientGameTest` and old sim run dirs in YOUR worktree. Never delete other worktrees.
+
+**Never edit `docs/LOOP_STATE.md`**: it belongs to the orchestrator (a stale copy merged from a worker branch overwrites its decisions).
