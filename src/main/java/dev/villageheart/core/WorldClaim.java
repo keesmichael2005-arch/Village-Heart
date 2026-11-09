@@ -21,6 +21,9 @@ public final class WorldClaim {
 	/** The day index of the last dinner (M11); belongs to the village, so a new claim starts without one. */
 	private Long lastDinnerDay;
 
+	/** Who is paid and who strikes today (M12); absent for a new claim or an old save, initialised on the first tick. Belongs to the village. */
+	private dev.villageheart.core.economy.Payroll payroll;
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -42,6 +45,16 @@ public final class WorldClaim {
 		this(village, reservedJobBlocks, pendingTicketReleases);
 		this.lastDinnerDay = lastDinnerDay.isPresent() ? lastDinnerDay.getAsLong() : null;
 	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
+			java.util.OptionalLong lastDinnerDay, Optional<dev.villageheart.core.economy.Payroll> payroll) {
+		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay);
+		this.payroll = payroll.orElse(null);
+	}
+
+	public Optional<dev.villageheart.core.economy.Payroll> payroll() { return Optional.ofNullable(payroll); }
+
+	public void setPayroll(dev.villageheart.core.economy.Payroll p) { payroll = Objects.requireNonNull(p, "payroll"); }
 
 	public java.util.OptionalLong lastDinnerDay() { return lastDinnerDay == null ? java.util.OptionalLong.empty() : java.util.OptionalLong.of(lastDinnerDay); }
 
@@ -76,6 +89,7 @@ public final class WorldClaim {
 		if (r == ClaimRules.Result.CLAIMED) {
 			village = VillageState.founded(at, owner, ownerName, gameTime);
 			lastDinnerDay = null;
+			payroll = null;
 		}
 		return r;
 	}
@@ -86,6 +100,7 @@ public final class WorldClaim {
 		village = null;
 		reservedJobBlocks.clear();
 		lastDinnerDay = null;
+		payroll = null;
 		return Optional.of(released);
 	}
 
@@ -105,11 +120,13 @@ public final class WorldClaim {
 		village = null;
 		reservedJobBlocks.clear();
 		lastDinnerDay = null;
+		payroll = null;
 	}
 
 	@Override public boolean equals(Object o) {
 		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
-				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay);
+				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay)
+				&& Objects.equals(payroll, w.payroll);
 	}
 
 	@Override public int hashCode() {

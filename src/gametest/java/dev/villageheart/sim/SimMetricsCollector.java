@@ -145,7 +145,13 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village));
+				needsDay(server, village), wageDay());
+	}
+
+	/** The wage runs of the day (reset here, M12). */
+	private static DayMetrics.WageDay wageDay() {
+		dev.villageheart.economy.WageStats.Counts c = dev.villageheart.economy.WageStats.snapshotAndReset();
+		return new DayMetrics.WageDay(c.runs(), c.bill(), c.paid(), c.spent(), c.strikers());
 	}
 
 	/** The dinner totals of the day (reset here), the hungriest villager now, and who sleeps in a valid House (M11). */

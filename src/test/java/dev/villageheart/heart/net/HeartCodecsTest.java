@@ -258,4 +258,28 @@ class HeartCodecsTest {
 		assertEquals(HeartLimits.MAX_ARG, t.args().get(0).length());
 		assertEquals(t, roundTrip(HeartCodecs.TEXT_LINE, t));
 	}
+
+	@Test void treasuryPayloadRoundTripsAndEveryIntDecodes() {
+		TreasuryActionPayload dep = new TreasuryActionPayload(3, false, 0);
+		assertEquals(dep, roundTrip(TreasuryActionPayload.CODEC, dep));
+		assertEquals(new dev.villageheart.core.heart.HeartAction.Deposit(), dep.action());
+		for (int amount : new int[] {1, 64, 0, -1, 65, Integer.MAX_VALUE, Integer.MIN_VALUE}) {
+			TreasuryActionPayload w = new TreasuryActionPayload(9, true, amount);
+			assertEquals(w, roundTrip(TreasuryActionPayload.CODEC, w), "amount " + amount);
+			assertEquals(new dev.villageheart.core.heart.HeartAction.Withdraw(amount), w.action());
+		}
+	}
+
+	@Test void newEnumValuesEncodeInASnapshot() {
+		Overview o = new Overview("O", Tier.HAMLET, Optional.empty(), List.of(), 1, 1, 0, 1, 1, 1, 10, 7, 3,
+				List.of(new AlertLine(AlertCode.STRIKE, Severity.DANGER, new TextLine("k", "f")),
+						new AlertLine(AlertCode.TREASURY_SHORT, Severity.WARNING, new TextLine("k", "f"))), 0);
+		VillagerRow striker = new VillagerRow(id(1), "A", "farmer", "x", 1, 0, 20, NeedsFlags.of(true, true, false), ActivityKind.ON_STRIKE,
+				false, false, false, true, false);
+		HeartSnapshot s = new HeartSnapshot(Rank.OWNER, o, List.of(striker), 0, List.of(), List.of(), 0, Stock.EMPTY, List.of(), 0, List.of());
+		HeartSnapshot back = roundTrip(HeartSnapshotPayload.CODEC, new HeartSnapshotPayload(1, s)).snapshot();
+		assertEquals(s, back);
+		assertEquals(3, back.overview().wageBill());
+		assertEquals(ActivityKind.ON_STRIKE, back.villagers().get(0).activity());
+	}
 }

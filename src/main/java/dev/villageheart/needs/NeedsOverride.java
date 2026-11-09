@@ -5,8 +5,10 @@ package dev.villageheart.needs;
  * off, so the worker tests of earlier milestones keep their pace; only the {@code needs_} tests switch them back.
  */
 public final class NeedsOverride {
-	/** True: {@link NeedsSystem} writes {@code Needs.DEFAULT} for every worker (no hunger, always housed, paid). */
+	/** True: {@link NeedsSystem} forces {@code fed} and {@code housed} (no hunger, always housed). {@code paid} is never forced: it always comes from the payroll (M12). */
 	public static volatile boolean forceDefaultNeeds;
+	/** False: the wage system does nothing but consume the day (M12: no older GameTest ever strikes or loses treasury). Hires are not charged either. */
+	public static volatile boolean wagesEnabled = true;
 	/** False: the dinner system does nothing. */
 	public static volatile boolean dinnerEnabled = true;
 
@@ -15,5 +17,6 @@ public final class NeedsOverride {
 	public static void production() {
 		forceDefaultNeeds = false;
 		dinnerEnabled = true;
+		wagesEnabled = true;
 	}
 }

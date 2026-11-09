@@ -91,4 +91,21 @@ class WorldClaimTest {
 	@Test void updateWithoutVillageThrows() {
 		assertThrows(IllegalStateException.class, () -> new WorldClaim().update(v -> v));
 	}
+
+	@Test void releaseAndClearForgetThePayroll() {
+		WorldClaim w = claimedByAlice();
+		w.setPayroll(dev.villageheart.core.economy.Payroll.initial(4));
+		assertTrue(w.payroll().isPresent());
+		w.releaseAt(A);
+		assertTrue(w.payroll().isEmpty());
+		w = claimedByAlice();
+		w.setPayroll(dev.villageheart.core.economy.Payroll.initial(4));
+		w.clear();
+		assertTrue(w.payroll().isEmpty());
+		w = claimedByAlice();
+		w.setPayroll(dev.villageheart.core.economy.Payroll.initial(4));
+		w.releaseAt(A);
+		assertEquals(Result.CLAIMED, w.claim(B, bob, "bob", 3, 300));
+		assertTrue(w.payroll().isEmpty(), "a new village starts without strikers and with a fresh clock");
+	}
 }

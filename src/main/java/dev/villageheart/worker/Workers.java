@@ -60,6 +60,7 @@ public final class Workers {
 	/** Sets the level of a worker (XP unchanged) and its badge; no listeners. For tests and admin writes: levels are earned through {@link #addXp}. */
 	public static void setLevel(MinecraftServer server, Villager villager, int level) { WorkXp.setLevel(villager, level); }
 
+
 	/**
 	 * Hires {@code entity} (a command can name anything) for {@code job}. Refusals in order: no village, not a villager (or dead),
 	 * baby, nitwit, outside the claim sphere, then {@link JobSlots#decide} (already employed, tier, preferred building, no free slot).
@@ -81,10 +82,12 @@ public final class Workers {
 		HireDecision.Hired hired = (HireDecision.Hired) decision;
 		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock());
 		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock());
+		VillageClaims.data(server).update(s -> s.withWorker(record));
+		// the first day is paid at once or the worker strikes from its first tick (M12), so the needs below already know
+		dev.villageheart.economy.Wages.onHired(server, record);
 		// a hungry villager stays hungry when hired, and an unhoused one starts unhoused (M11)
 		data = data.withNeeds(dev.villageheart.needs.NeedsSystem.needsFor(server, v, villager, data, record));
 		install(level, villager, data);
-		VillageClaims.data(server).update(s -> s.withWorker(record));
 		return new HireResult.Hired(record);
 	}
 
@@ -166,6 +169,7 @@ public final class Workers {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
 		if (slot != WorkerStatus.OK) return slot;
+		if (dev.villageheart.economy.Wages.onStrike(server, record.villager())) return WorkerStatus.ON_STRIKE;
 		if (tooHungry(server, record)) return WorkerStatus.TOO_HUNGRY;
 		if (trip != null) return trip;
 		WorkerStatus job = dev.villageheart.worker.job.WorkerStatuses.get(record.villager());

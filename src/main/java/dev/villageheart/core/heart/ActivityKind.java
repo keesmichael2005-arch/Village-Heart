@@ -8,5 +8,7 @@ public enum ActivityKind {
 	/** A loaded worker inside its work site (the miner in the Mineshaft, M16), and a site it cannot reach; appended so old values keep their codec index. */
 	AWAY_WORKING, SITE_UNREACHABLE,
 	/** M11: missed two dinners or more. */
-	TOO_HUNGRY
+	TOO_HUNGRY,
+	/** M12: unpaid, the worker stops working until the treasury pays it. */
+	ON_STRIKE
 }

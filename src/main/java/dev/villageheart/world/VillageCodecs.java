@@ -112,8 +112,10 @@ public final class VillageCodecs {
 			UUID_STRING.fieldOf("villager").forGetter(WorkerRecord::villager),
 			Codec.STRING.fieldOf("job").forGetter(WorkerRecord::jobId),
 			HEART_LOCATION.fieldOf("building").forGetter(WorkerRecord::building),
-			HEART_LOCATION.fieldOf("job_block").forGetter(WorkerRecord::jobBlock)
-	).apply(i, WorkerRecord::new));
+			HEART_LOCATION.fieldOf("job_block").forGetter(WorkerRecord::jobBlock),
+			// M12: the mirror of the worker's level; an older save has none and reads as level 1, a bad value (< 1) as 1
+			Codec.INT.optionalFieldOf("level", 1).forGetter(WorkerRecord::level)
+	).apply(i, (villager, job, building, jobBlock, level) -> new WorkerRecord(villager, job, building, jobBlock, Math.max(1, level))));
 
 	public static final Codec<KnownPlayer> KNOWN_PLAYER = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("id").forGetter(KnownPlayer::id),
@@ -249,6 +251,34 @@ public final class VillageCodecs {
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
 			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences())));
 
+	/** A striker and the wage it was charged at dawn (M12). */
+	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(
+			UUID_STRING.fieldOf("villager").forGetter(dev.villageheart.core.economy.Payee::villager),
+			Codec.INT.fieldOf("wage").forGetter(dev.villageheart.core.economy.Payee::wage)
+	).apply(i, dev.villageheart.core.economy.Payee::new));
+
+	/**
+	 * The payroll (M12). Each list drops an unreadable entry (one WARN); a payroll that is still invalid (a villager both paid and unpaid, a
+	 * duplicate) is read as absent by the lenient field below, so a broken payroll is re-initialised and never loses the claim.
+	 */
+	public static final Codec<dev.villageheart.core.economy.Payroll> PAYROLL = RecordCodecBuilder.<Raw3>create(i -> i.group(
+			Codec.LONG.fieldOf("last_wage_day").forGetter(Raw3::day),
+			lenientList(UUID_STRING).optionalFieldOf("paid_today", java.util.List.of()).forGetter(Raw3::paid),
+			lenientList(PAYEE).optionalFieldOf("unpaid", java.util.List.of()).forGetter(Raw3::unpaid)
+	).apply(i, Raw3::new)).flatXmap(r -> {
+		try {
+			// a repeated entry keeps its first place; a striker also listed as paid counts as paid
+			java.util.Set<UUID> paid = new java.util.LinkedHashSet<>(r.paid());
+			java.util.Map<UUID, dev.villageheart.core.economy.Payee> unpaid = new java.util.LinkedHashMap<>();
+			for (dev.villageheart.core.economy.Payee p : r.unpaid()) if (!paid.contains(p.villager())) unpaid.putIfAbsent(p.villager(), p);
+			return DataResult.success(new dev.villageheart.core.economy.Payroll(r.day(), paid, new ArrayList<>(unpaid.values())));
+		} catch (IllegalArgumentException e) {
+			return DataResult.error(() -> "Invalid payroll: " + e.getMessage());
+		}
+	}, p -> DataResult.success(new Raw3(p.lastWageDay(), java.util.List.copyOf(p.paidToday()), p.unpaid())));
+
+	private record Raw3(long day, java.util.List<UUID> paid, java.util.List<dev.villageheart.core.economy.Payee> unpaid) {}
+
 	/** Job blocks the mod holds the POI ticket of (M7), sorted so the saved list is stable. */
 	private static java.util.List<HeartLocation> sortedReserved(WorldClaim w) {
 		java.util.List<HeartLocation> l = new java.util.ArrayList<>(w.reservedJobBlocks());
@@ -268,7 +298,8 @@ public final class VillageCodecs {
 			HEART_LOCATION.listOf().optionalFieldOf("reserved_job_blocks", java.util.List.of()).forGetter(VillageCodecs::sortedReserved),
 			HEART_LOCATION.listOf().optionalFieldOf("pending_ticket_releases", java.util.List.of()).forGetter(VillageCodecs::sortedPending),
 			Codec.LONG.optionalFieldOf("last_dinner_day").forGetter(w -> w.lastDinnerDay().isPresent()
-					? Optional.of(w.lastDinnerDay().getAsLong()) : Optional.empty())
-	).apply(i, (schema, village, reserved, pending, dinner) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
-			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty())));
+					? Optional.of(w.lastDinnerDay().getAsLong()) : Optional.empty()),
+			PAYROLL.lenientOptionalFieldOf("payroll").forGetter(WorldClaim::payroll)
+	).apply(i, (schema, village, reserved, pending, dinner, payroll) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty(), payroll)));
 }

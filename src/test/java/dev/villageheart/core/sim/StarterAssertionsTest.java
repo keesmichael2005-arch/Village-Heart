@@ -56,6 +56,36 @@ class StarterAssertionsTest {
 		assertFalse(run("sum(deaths.cause.minecraft:starve) == 0 from day 1", new MetricsTable(day(0, 0, 0, 0, 0, 0, List.of()), days)).passed());
 	}
 
+	private static DayMetrics wageDay(int d, int treasury, long runs, long strikers) {
+		DayMetrics b = day(d, 1, 10, 9, 0, d, List.of());
+		return new DayMetrics(b.day(), b.gameTime(), true, 8, 8, 0, 2, 6, 0, Map.of(), 100, 2.0, treasury, List.of(), b.villageMs(),
+				1.5, 470.0, 50.0, 900, 41_000_000L, Map.of(), Map.of(), Map.of("minecraft:logs", (long) d), b.needs(),
+				new DayMetrics.WageDay(runs, 2 * runs, 2 * runs - strikers, 2 * runs - strikers, strikers));
+	}
+
+	private static MetricsTable wages(int[] treasury, long[] runs, long[] strikers) {
+		List<DayMetrics> days = new ArrayList<>();
+		for (int i = 0; i < treasury.length; i++) days.add(wageDay(i + 1, treasury[i], runs[i], strikers[i]));
+		return new MetricsTable(wageDay(0, 30, 0, 0), days);
+	}
+
+	/** M12 (T-L3-1): the starter scenario's wage assertions are live: an unfunded village fails them. */
+	@Test void wageAssertionsOfTheStarterScenario() {
+		String none = "max(wages.strikers) == 0 from day 1";
+		String ran = "sum(wages.runs) >= 8 from day 1";
+		String falling = "treasury <= treasury@prev - 2 from day 3";
+		// day 1 has no wage run (the clock is reset at day 0), the dawns of days 2..5 pay 2 each
+		MetricsTable ok = wages(new int[] {28, 26, 24, 22, 20}, new long[] {0, 1, 1, 1, 1}, new long[] {0, 0, 0, 0, 0});
+		assertTrue(run(none, ok).passed());
+		assertTrue(run(falling, ok).passed());
+		assertTrue(run("sum(wages.runs) >= 4 from day 1", ok).passed());
+		assertFalse(run(ran, ok).passed(), "only 4 runs in 5 days");
+		// an unfunded village: the treasury stays at 0, so both workers strike from day 2
+		MetricsTable poor = wages(new int[] {0, 0, 0, 0, 0}, new long[] {0, 1, 1, 1, 1}, new long[] {0, 2, 2, 2, 2});
+		assertFalse(run(none, poor).passed(), "the metric is live: strikers fail the assertion");
+		assertFalse(run(falling, poor).passed(), "a treasury that never falls fails: wages are not being charged");
+	}
+
 	@Test void maxHungryDaysBelowThree() {
 		String a = "max(food.max_hungry_days) < 3 from day 3";
 		List<DayMetrics> days = new ArrayList<>();

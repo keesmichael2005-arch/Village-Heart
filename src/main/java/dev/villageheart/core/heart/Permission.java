@@ -16,7 +16,11 @@ public enum Permission {
 	/** Open and break containers inside the village's buildings (the Visitor rule). */
 	OPEN_CONTAINERS(RESIDENT), MANAGE_RANKS(OWNER), TRANSFER_OWNERSHIP(OWNER), BREAK_HEART(OWNER),
 	/** Defined now, enforced when M20 adds the action: gate the action with this permission. */
-	START_BLUEPRINT(STEWARD);
+	START_BLUEPRINT(STEWARD),
+	/** Put emeralds into the treasury (M12): right-click the Heart with emeralds, or "Deposit all" on the Overview. */
+	DEPOSIT_TREASURY(RESIDENT),
+	/** Take emeralds out of the treasury (M12): the Owner only, a Steward may not. */
+	WITHDRAW_TREASURY(OWNER);
 
 	private final Rank minimum;
 

@@ -488,6 +488,7 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - Found by the 3rd sim run (1 of 6 failed): an idle lumberjack had drifted 45 blocks from camp and could not path back (range 48). `LumberJob.idle` walks back in legs of 24 blocks (D17). Farmer has the same gap (BACKLOG).
 - Follow-up: `WorkerUnstick` (all jobs, via WorkerSystem) and farmer idle legs. A single-cell trunk is already resolved by vanilla push-out, so the run-7 trip flake cause stays unconfirmed.
 - Next: round 3 review.
+
 ## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
 - Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
 - Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
@@ -624,3 +625,38 @@ Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metri
 - All four round-4 must-fix items are done. A mutation check of the new `not_ticking` assertion: red at radius 3, green at radius 4 by chance, and red naturally in one run at radius 6.
 - `starter 10`: passed 3 of 4 runs. The roadmap L3 criteria held in all 4. Run 1 failed because a farmer fled 111 blocks east at night and froze outside the forced area. That is a fixture problem, now in BACKLOG as high priority.
 - L2: 3 runs, 257/257 each. Full `verify.sh`: exit 0. The needs and overview screenshots were checked by eye. M11 is ticked in the ROADMAP. Notes: `docs/reviews/M11-r5.md`.
+## 2026-11-07: M12 plan written (docs/plans/M12.md, branch m12-plan)
+8-step plan for the treasury and wages. APIs checked with javap against the 1.21.11 jar (no Gradle run).
+- Deposit: right-click the Heart with emeralds in the main hand (`useItemOn`; other items `TRY_WITH_EMPTY_HAND` → M8's screen) plus "Deposit all" on the Overview;
+  Owner-only "Withdraw 1/64" buttons through M8's validated action path. New permissions DEPOSIT_TREASURY (Resident+) / WITHDRAW_TREASURY (Owner only; M8's Steward-gets-all case rewritten).
+- Dawn: shared pure `DailyClock` (M11's dinner clock delegates); wages when the day index changes, Heart chunk loaded, once per day, no catch-up; dawn listeners for M14/M23.
+- Pay rule (core `PayRun`): hiring order, skip on when a wage does not fit; `Payroll(lastWageDay, paidToday, unpaid with stored wages)` saved in the claim.
+  Strike = in today's unpaid list; any treasury increase settles strikers at once; hires are charged at once (closes the fire/rehire free-day exploit).
+- Strike → `needs.paid` false → speed 0, enforced by one `GatedWork` wrapper in `JobBehaviours.work` (deposit trips still run); status ON_STRIKE.
+- `WorkerRecord.level` mirror so unloaded workers are paid and the wage bill is known. Overview: wage bill, STRIKE (danger) and TREASURY_SHORT alerts, severity-first alert order.
+- Cross-milestone catch: M11's `starter` L3 scenario would strike from day 2 with treasury 0: M12 adds `villageheart treasury add 32` and wage assertions, re-run by hand.
+Revised after a fresh critique (25 findings; 22 taken, 2 partly, 1 refuted).
+Assumptions: built after M8, M9, M11 are merged on dev (names from their plans/branches, plan 3.1); steps 1-2 only need M7.
+Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: three unmerged dependencies' APIs.
+
+## 2026-11-08: M12 built (branch m12, builder)
+- Built on `origin/m11` + `dev` (M15/16/17/20/21/24) + `m12-plan`. Pure core: `DailyClock` (dinner delegates), `WageRules`, `PayRun`, `Payroll`, `TreasuryMath`, `WageAlerts`, `WorkGate`; `WorkerRecord.level` mirror; `WorldClaim.payroll` (lenient codec, reset on release).
+- Glue: `economy.WageSystem` (after needs), `VillageDawn` (fires on both branches), `Treasury` (deposit/settle/withdraw), `Wages`; right-click deposit in `VillageHeartBlock.useItemOn`; `TreasuryActionPayload`, `Deposit`/`Withdraw` actions, `BAD_AMOUNT`; `/villageheart treasury get|add|set`; severity-first alerts; Overview treasury bar and red wage line.
+- Tests: 12 `WageGameTests` (roadmap case, right-click matrix, screen actions, strike ends on deposit, one pay/day, frozen when unloaded, reload, hire charge exploit, levels, release, claim, M24 `onlyOwnerCanWithdraw`, M15 re-install level), many L1, L4 `TreasuryClientTests` (looked at `treasury_overview.png`, `treasury_villagers.png`: red wage line, red strike line, yellow short line, 3 buttons clear of the alerts, "On strike" with slashed emerald), multiplayer step 5.
+- L3 `starter 10` PASS by hand with the seeded treasury. Daily treasury: 30, 28, 26, 24, 22, 20, 18, 16, 14, 12 (2 hires charged on day 1; 9 runs; a dawn lands in the record of the day that ends at it, so day 1 has runs 0). The poor variant was not run (10 min): `StarterAssertionsTest.wageAssertionsOfTheStarterScenario` proves the assertions fail for an unfunded village.
+- Deviations: docs/plans/M12.md section 8 (no GatedWork wrapper, Permissions already min-rank, `toDawn(h, seq, out)` is sequence-style). Bug found by L4: `Treasury.refreshInventory`.
+- Next: M12 review. Blockers: none. ROADMAP not ticked.
+
+## 2026-11-08: M12 review round 1 (verifier): FAIL, 2 fix items
+- L1 red at `69321c9`: `ScenarioFilesTest.starterHasItsActionsAndAssertions` still expects M11's starter counts (12 actions, 7+1 assertions); M12's starter has 13 / 11.
+- `Treasury.depositInventory`/`depositFromHand`: a throw after the treasury write puts the emeralds back (or skips the shrink): duplication. Put back only when the write did not happen; test it.
+- Otherwise sound: 6 mutations all red (strike gate, Owner-only withdraw, deposit-all removal, hire charge, unloaded freeze, pay order). L2 4 full runs: 3 green, 1 known M9 `six_oaks_two_days` flake. L4 screenshots show treasury, red wage bill, strike and short alerts, "On strike". L3 skipped (another agent's sim was running).
+- Merge with newer origin/m11 (`27e087d`): 7 trivial conflicts, merged tree compiles, 271 L2 green; ScenarioFilesTest then needs 13 / 11 / 12. Details: docs/reviews/M12-r1.md.
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.
+
+## 2026-11-08: M12 review round 1 fixes (builder)
+- Merged origin/m11 (27e087d); 7 textual conflicts kept both sides. `ScenarioFilesTest.starterHasItsActionsAndAssertions` now matches the real starter file (13 actions, 11 on day 0, 12 assertions, `command` at index 1): a genuine scenario change by M12 (`villageheart treasury add 32` + 3 wage assertions), not a weakened test.
+- `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
+- `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
+- Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.

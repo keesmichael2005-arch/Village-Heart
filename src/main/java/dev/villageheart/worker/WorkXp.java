@@ -43,7 +43,10 @@ public final class WorkXp {
 		// a level above the 1..3 table (written directly) is kept as it is
 		int level1 = Math.max(change.after().level(), data.level());
 		villager.setAttached(WorkerAttachments.WORKER, data.withProgress(level1, change.after().xp()));
-		if (level1 != data.level()) syncBadge(villager, level1);
+		if (level1 != data.level()) {
+			syncBadge(villager, level1);
+			dev.villageheart.economy.Wages.mirrorLevel(level.getServer(), villager.getUUID(), level1);
+		}
 		if (change.levelledUp()) WorkerLevels.fireLevelChanged(level, villager, change);
 		if (change.reachedCap()) WorkerLevels.fireCapped(level, villager, change);
 		return Optional.of(change);
@@ -59,6 +62,7 @@ public final class WorkXp {
 		if (data == null) return;
 		if (data.level() != newLevel) villager.setAttached(WorkerAttachments.WORKER, data.withProgress(newLevel, data.xp()));
 		syncBadge(villager, newLevel);
+		if (villager.level() instanceof ServerLevel level) dev.villageheart.economy.Wages.mirrorLevel(level.getServer(), villager.getUUID(), newLevel);
 	}
 
 	/**
@@ -73,6 +77,7 @@ public final class WorkXp {
 		if (now > data.level()) {
 			villager.setAttached(WorkerAttachments.WORKER, data.withProgress(now, data.xp()));
 			syncBadge(villager, now);
+			dev.villageheart.economy.Wages.mirrorLevel(level.getServer(), villager.getUUID(), now);
 			WorkerLevels.fireLevelChanged(level, villager, new XpChange(before, new Progress(now, before.xp()), true, false));
 		} else if (villager.getVillagerData().level() != data.level()) {
 			syncBadge(villager, data.level());

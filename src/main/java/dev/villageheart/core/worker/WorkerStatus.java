@@ -20,5 +20,7 @@ public enum WorkerStatus {
 	/** The job's site (the Mineshaft) could not be reached: it retries after a while (M16). */
 	SITE_UNREACHABLE,
 	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
-	TOO_HUNGRY
+	TOO_HUNGRY,
+	/** Unpaid: the worker stops working until the treasury pays it (M12). */
+	ON_STRIKE
 }
