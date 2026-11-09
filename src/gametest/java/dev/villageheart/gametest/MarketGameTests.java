@@ -428,17 +428,19 @@ public class MarketGameTests {
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, 0);
 			LevelTestSupport.put(v[0], 1, 0);
-			Markets.setReserves(h.getLevel().getServer(), new Reserves(3, 64));
+			Markets.setReserves(h.getLevel().getServer(), new Reserves(5, 96)); // not Reserves.DEFAULT, so the round trip proves them
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= 8, "8 sales"));
 		seq = seq.thenExecute(() -> {
 			before[0] = Markets.state(h.getLevel().getServer());
+			dev.villageheart.core.market.MarketState read;
 			try {
-				VillageTestSupport.reload(h.getLevel().getServer());
+				read = VillageTestSupport.reload(h.getLevel().getServer()).market(); // the copy read back from disk, not the live state
 			} catch (java.io.IOException e) {
 				throw new AssertionError(e);
 			}
-			h.assertValueEqual(before[0], Markets.state(h.getLevel().getServer()), "ledger and reserves after a reload");
+			h.assertValueEqual(new Reserves(5, 96), read.reserves(), "reserves after a reload");
+			h.assertValueEqual(before[0], read, "ledger and reserves after a reload");
 		});
 		seq = seq.thenIdle(1200).thenExecute(() -> {
 			h.assertValueEqual(8, treasury(h), "the cap holds after a reload");
@@ -585,12 +587,13 @@ public class MarketGameTests {
 		seq = seq.thenIdle(700).thenExecute(() -> {
 			h.assertValueEqual(2, treasury(h), "200 - 128 = 72: two lots");
 			h.assertValueEqual(136L, count(h, Items.COBBLESTONE), "cobblestone");
+			dev.villageheart.core.market.MarketState read;
 			try {
-				VillageTestSupport.reload(h.getLevel().getServer());
+				read = VillageTestSupport.reload(h.getLevel().getServer()).market(); // the copy read back from disk
 			} catch (java.io.IOException e) {
 				throw new AssertionError(e);
 			}
-			h.assertValueEqual(new Reserves(3, 128), Markets.state(h.getLevel().getServer()).reserves(), "after a reload");
+			h.assertValueEqual(new Reserves(3, 128), read.reserves(), "reserves after a reload");
 			HeartTestSupport.done(h);
 		});
 	}

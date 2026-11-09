@@ -724,3 +724,9 @@ Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: t
 - Tests: L1 `core/market/*Test` (price table, surplus incl. agreement with `FoodMath`, planner with an independent 2000-stock oracle, caps, ledger, reserves), `VillageCodecsTest` + `WorldClaimTest` (market key, clamp, bad entry, release), `MarketHeartTest`, `MarketCodecsTest`, `PermissionsTest` row; L2 `MarketGameTests` x15 (roadmap case: first sale at tick 605, 4th at day time 3400, cobblestone never below 64 on any tick); L4 `MarketClientTests.stockpileReserves`.
 - Gotcha: Fabric's `clickScreenButton(key)` clicked the wrong "+" when two buttons had the same text: the item buttons read "-16" / "+16" now (also more informative).
 - Next: verifier. Blockers: none. Flaky under machine load (not M22): `tier_game_tests_village_goals_tier_up_at_dawn` once ("Expected one dinner to be 1: was 2"), `level_game_tests_iron_axe_out_fells_stone_side_by_side` once; L4 "Timeout loading world" at load average 10 (retry passes).
+
+## M22 r1 fix (builder, 2026-11-09)
+- Merged origin/dev (M13 cook): only `docs/BACKLOG.md` conflicted (kept both sides). No code conflict: M22's state is on `WorldClaim.market`, and M13 appended no values to `WorkerStatus`/`ActivityKind`, so `DAILY_LIMIT`, `TREASURY_FULL` stay last.
+- Fix 1 (review `docs/reviews/M22-r1.md`): `ledgerSurvivesReload` and the reload part of `reserveSettingsOnTheScreen` now assert on `VillageTestSupport.reload(server).market()` (the copy read from disk), not the live state. `ledgerSurvivesReload` uses reserves `(5, 96)`, which are not `Reserves.DEFAULT`.
+- Proof: with the `VillageCodecs.MARKET` encoder writing default reserves and an empty ledger, both tests go red; restored, both are green.
+- Next: verifier round 2. Blockers: none. L4 hit "Timeout loading world" once at load 13 (known flake); rerun was green.
