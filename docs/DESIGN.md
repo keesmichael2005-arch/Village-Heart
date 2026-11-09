@@ -340,6 +340,13 @@ It takes raw food from the stockpile, processes it at the Kitchen's smoker and c
 raw meat → cooked; potato → baked potato; 3 wheat → bread; 6 beetroot + bowl → beetroot soup.
 Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or logs) from the stockpile.
 
+**Rules as built (M13).**
+- **Mod-side conversion, not the vanilla smoker.** The cook converts the items it carries on a work clock while it stands at its smoker (125 ticks per item at speed 1.0, times level and needs; speed 0 cooks nothing). The smoker only shows it: its `LIT` state is set while the cook works, so the vanilla smoke and crackle play. Items are never parked in the smoker's slots and nothing is ever dropped into the world.
+- **Recipes** (a fixed table, `CookRecipes`; component-free stacks only, a renamed beef is a player's item): beef, porkchop, chicken, mutton, rabbit, cod, salmon and potato at the smoker (the village's raw list); 3 wheat to bread and 6 beetroot + a bowl to beetroot soup after a stop at the crafting table. Every recipe costs fuel. Recipes are tried by gain (output nutrition minus input nutrition): beef, porkchop, bread (5), chicken, mutton, salmon, baked potato (4), cod, rabbit, soup.
+- **Fuel is heat.** Coal and charcoal are worth 1600, a log 300 (vanilla's furnace burn times); one output item costs 200. Each smoker keeps a saved heat bank, so half a coal is never lost. Fuel is taken from the Storage only (not the Kitchen chest), charcoal and coal before logs. With raw food in stock and no fuel the Villagers tab says "Needs fuel"; with nothing to cook it says "Nothing to cook".
+- **Batches.** The cook plans one recipe at a time: at most 8 items, by the inputs, the fuel, the free inventory slots (soup does not stack: at most 5 with an empty inventory) and the time. It reserves the inputs and fuel under its id first, so a second cook or the dinner cannot count on them, withdraws them at the nearest Storage that holds each, cooks, keeps the outputs until the batch is done and then hands everything in. No batch starts that cannot end by 10500 (the food must be in Storage before dinner at 11000); at the end of the work day the cook keeps nothing.
+- **Overall rate.** 8 per hour is the rate at the smoker; with the fetch and deposit walks a cook makes about 4 to 5 items an hour.
+
 ### 5.6 Guard (Barracks, Grindstone)
 - **Shifts**: each guard is on **day** or **night** shift. The default auto-balances 50/50, and
   Stewards can change it per guard. A guard sleeps in a Barracks bed during its off shift, so night-shift guards sleep in the day.

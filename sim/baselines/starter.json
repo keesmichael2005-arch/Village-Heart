@@ -1,0 +1,1066 @@
+{
+  "schema": 1,
+  "scenario": "starter",
+  "status": "PASS",
+  "error": null,
+  "clean_shutdown": true,
+  "heartbeat": 240020,
+  "actions_done": 13,
+  "stopped_after_day": null,
+  "seed": 1,
+  "difficulty": "normal",
+  "days_requested": 10,
+  "minecraft": "1.21.11",
+  "village": {
+    "structure": [
+      640,
+      0,
+      816
+    ],
+    "bell": [
+      639,
+      66,
+      821
+    ],
+    "heart": [
+      641,
+      64,
+      821
+    ],
+    "site": [
+      638,
+      69,
+      848
+    ]
+  },
+  "g0": 20,
+  "reloads": [],
+  "baseline": {
+    "day": 0,
+    "game_time": 20,
+    "claimed": true,
+    "population": 8,
+    "adults": 8,
+    "babies": 0,
+    "employed": 0,
+    "buildings": {
+      "valid": 0,
+      "invalid": 0
+    },
+    "stockpile": {
+      "total": 0,
+      "distinct": 0,
+      "items": {}
+    },
+    "food": {
+      "nutrition": 0,
+      "days_left": 0.0,
+      "dinners": 0,
+      "diners": 0,
+      "fed": 0,
+      "hungry": 0,
+      "eaten_nutrition": 0,
+      "eaten_items": 0,
+      "max_hungry_days": 0
+    },
+    "housing": {
+      "housed": 0,
+      "house_beds": 0
+    },
+    "treasury": 32,
+    "wages": {
+      "runs": 0,
+      "bill": 0,
+      "paid": 0,
+      "spent": 0,
+      "strikers": 0
+    },
+    "deaths": {
+      "total": 0,
+      "mobs": 0,
+      "by_cause": {},
+      "list": []
+    },
+    "village_ms": {
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0,
+      "samples": 0
+    },
+    "server": {
+      "mspt": 156.294166,
+      "tps": 0.0,
+      "heap_used_mb": 570
+    },
+    "world": {
+      "save_bytes": 1467
+    },
+    "wall_seconds": 0.0,
+    "work": {},
+    "worker_status": {},
+    "stockpile_tags": {
+      "minecraft:logs": 0,
+      "minecraft:saplings": 0
+    }
+  },
+  "days": [
+    {
+      "day": 1,
+      "game_time": 24020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 338,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 204,
+          "minecraft:oak_log": 62,
+          "minecraft:bread": 24,
+          "minecraft:oak_sapling": 24,
+          "minecraft:stick": 14,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 3
+        }
+      },
+      "food": {
+        "nutrition": 744,
+        "days_left": 9.3,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 80,
+        "eaten_items": 16,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 30,
+      "wages": {
+        "runs": 0,
+        "bill": 0,
+        "paid": 0,
+        "spent": 0,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.15292344275,
+        "p95": 0.448243,
+        "max": 81.153259,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.490118,
+        "tps": 226.91815793601862,
+        "heap_used_mb": 685
+      },
+      "world": {
+        "save_bytes": 4896304
+      },
+      "wall_seconds": 105.765004521,
+      "work": {
+        "farmer.carrot": 220,
+        "farmer.harvested": 80,
+        "farmer.replanted": 80,
+        "farmer.seeds": 0,
+        "farmer.tools_made.wooden": 1,
+        "lumberjack.cuttings": 1,
+        "lumberjack.logs": 63,
+        "lumberjack.saplings_planted": 9,
+        "lumberjack.trees": 9,
+        "workers.max_heart_distance": 67
+      },
+      "worker_status": {
+        "ok": 2
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 62,
+        "minecraft:saplings": 24
+      }
+    },
+    {
+      "day": 2,
+      "game_time": 48020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 367,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 221,
+          "minecraft:oak_log": 78,
+          "minecraft:oak_sapling": 27,
+          "minecraft:stick": 21,
+          "minecraft:bread": 8,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 5
+        }
+      },
+      "food": {
+        "nutrition": 723,
+        "days_left": 9.0375,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 80,
+        "eaten_items": 16,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 28,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.09126239679166667,
+        "p95": 0.270551,
+        "max": 21.18412,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.29181,
+        "tps": 308.90880315309886,
+        "heap_used_mb": 616
+      },
+      "world": {
+        "save_bytes": 5009898
+      },
+      "wall_seconds": 77.69283282,
+      "work": {
+        "farmer.carrot": 17,
+        "farmer.harvested": 7,
+        "farmer.replanted": 7,
+        "farmer.seeds": 0,
+        "lumberjack.logs": 16,
+        "lumberjack.saplings_planted": 3,
+        "lumberjack.trees": 3,
+        "workers.max_heart_distance": 71
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 78,
+        "minecraft:saplings": 27
+      }
+    },
+    {
+      "day": 3,
+      "game_time": 72020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 477,
+        "distinct": 6,
+        "items": {
+          "minecraft:carrot": 281,
+          "minecraft:oak_log": 115,
+          "minecraft:oak_sapling": 41,
+          "minecraft:stick": 28,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 5
+        }
+      },
+      "food": {
+        "nutrition": 863,
+        "days_left": 10.7875,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 87,
+        "eaten_items": 22,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 26,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.07226310475,
+        "p95": 0.242733,
+        "max": 62.662983,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 1.963671,
+        "tps": 327.7533937008936,
+        "heap_used_mb": 685
+      },
+      "world": {
+        "save_bytes": 5009898
+      },
+      "wall_seconds": 73.225786403,
+      "work": {
+        "farmer.carrot": 69,
+        "farmer.harvested": 23,
+        "farmer.replanted": 23,
+        "farmer.seeds": 0,
+        "lumberjack.cuttings": 2,
+        "lumberjack.logs": 37,
+        "lumberjack.saplings_planted": 7,
+        "lumberjack.trees": 7,
+        "workers.max_heart_distance": 67
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 115,
+        "minecraft:saplings": 41
+      }
+    },
+    {
+      "day": 4,
+      "game_time": 96020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 576,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 353,
+          "minecraft:oak_log": 138,
+          "minecraft:oak_sapling": 46,
+          "minecraft:stick": 29,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:oak_planks": 2,
+          "minecraft:apple": 1
+        }
+      },
+      "food": {
+        "nutrition": 1063,
+        "days_left": 13.2875,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 95,
+        "eaten_items": 30,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 24,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.06793654008333334,
+        "p95": 0.220942,
+        "max": 40.902126,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.575131,
+        "tps": 280.59764930074806,
+        "heap_used_mb": 471
+      },
+      "world": {
+        "save_bytes": 5009898
+      },
+      "wall_seconds": 85.531721523,
+      "work": {
+        "farmer.carrot": 97,
+        "farmer.harvested": 36,
+        "farmer.replanted": 36,
+        "farmer.seeds": 0,
+        "farmer.tools_made.wooden": 1,
+        "lumberjack.logs": 24,
+        "lumberjack.saplings_planted": 4,
+        "lumberjack.trees": 4,
+        "workers.max_heart_distance": 66
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 138,
+        "minecraft:saplings": 46
+      }
+    },
+    {
+      "day": 5,
+      "game_time": 120020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 695,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 400,
+          "minecraft:oak_log": 178,
+          "minecraft:oak_sapling": 67,
+          "minecraft:stick": 40,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:oak_planks": 2,
+          "minecraft:apple": 1
+        }
+      },
+      "food": {
+        "nutrition": 1204,
+        "days_left": 15.05,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 96,
+        "eaten_items": 31,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 22,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.062056366125,
+        "p95": 0.203928,
+        "max": 20.609708,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.55436,
+        "tps": 278.47289144725164,
+        "heap_used_mb": 716
+      },
+      "world": {
+        "save_bytes": 5009898
+      },
+      "wall_seconds": 86.184331535,
+      "work": {
+        "farmer.carrot": 75,
+        "farmer.harvested": 26,
+        "farmer.replanted": 26,
+        "farmer.seeds": 0,
+        "lumberjack.cuttings": 4,
+        "lumberjack.logs": 40,
+        "lumberjack.saplings_planted": 8,
+        "lumberjack.trees": 8,
+        "workers.max_heart_distance": 66
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 178,
+        "minecraft:saplings": 67
+      }
+    },
+    {
+      "day": 6,
+      "game_time": 144020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 789,
+        "distinct": 5,
+        "items": {
+          "minecraft:carrot": 466,
+          "minecraft:oak_log": 203,
+          "minecraft:oak_sapling": 71,
+          "minecraft:stick": 42,
+          "minecraft:wheat_seeds": 7
+        }
+      },
+      "food": {
+        "nutrition": 1398,
+        "days_left": 17.475,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 94,
+        "eaten_items": 31,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 20,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.07685264900000001,
+        "p95": 0.199448,
+        "max": 33.906578,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 1.963716,
+        "tps": 343.226519196836,
+        "heap_used_mb": 652
+      },
+      "world": {
+        "save_bytes": 5009898
+      },
+      "wall_seconds": 69.924666824,
+      "work": {
+        "farmer.carrot": 96,
+        "farmer.harvested": 37,
+        "farmer.replanted": 37,
+        "farmer.seeds": 0,
+        "farmer.tools_made.wooden": 1,
+        "lumberjack.logs": 25,
+        "lumberjack.saplings_planted": 5,
+        "lumberjack.trees": 5,
+        "workers.max_heart_distance": 62
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 203,
+        "minecraft:saplings": 71
+      }
+    },
+    {
+      "day": 7,
+      "game_time": 168020,
+      "claimed": true,
+      "population": 8,
+      "adults": 8,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 842,
+        "distinct": 6,
+        "items": {
+          "minecraft:carrot": 478,
+          "minecraft:oak_log": 229,
+          "minecraft:oak_sapling": 78,
+          "minecraft:stick": 49,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 1
+        }
+      },
+      "food": {
+        "nutrition": 1438,
+        "days_left": 17.975,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 96,
+        "eaten_items": 32,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 18,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.083426336125,
+        "p95": 0.1869,
+        "max": 74.649798,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.204987,
+        "tps": 323.86865401284876,
+        "heap_used_mb": 640
+      },
+      "world": {
+        "save_bytes": 5035904
+      },
+      "wall_seconds": 74.104115056,
+      "work": {
+        "farmer.carrot": 44,
+        "farmer.harvested": 16,
+        "farmer.replanted": 16,
+        "farmer.seeds": 0,
+        "lumberjack.logs": 26,
+        "lumberjack.saplings_planted": 5,
+        "lumberjack.trees": 5,
+        "workers.max_heart_distance": 65
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 229,
+        "minecraft:saplings": 78
+      }
+    },
+    {
+      "day": 8,
+      "game_time": 192020,
+      "claimed": true,
+      "population": 9,
+      "adults": 8,
+      "babies": 1,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 993,
+        "distinct": 6,
+        "items": {
+          "minecraft:carrot": 563,
+          "minecraft:oak_log": 266,
+          "minecraft:oak_sapling": 92,
+          "minecraft:stick": 64,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 1
+        }
+      },
+      "food": {
+        "nutrition": 1693,
+        "days_left": 19.91764705882353,
+        "dinners": 1,
+        "diners": 8,
+        "fed": 8,
+        "hungry": 0,
+        "eaten_nutrition": 95,
+        "eaten_items": 31,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 3,
+        "house_beds": 4
+      },
+      "treasury": 16,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.067247898875,
+        "p95": 0.200946,
+        "max": 17.229735,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 2.042124,
+        "tps": 332.1279903590272,
+        "heap_used_mb": 638
+      },
+      "world": {
+        "save_bytes": 5035904
+      },
+      "wall_seconds": 72.261298947,
+      "work": {
+        "farmer.carrot": 114,
+        "farmer.harvested": 38,
+        "farmer.replanted": 38,
+        "farmer.seeds": 0,
+        "lumberjack.cuttings": 3,
+        "lumberjack.logs": 38,
+        "lumberjack.saplings_planted": 7,
+        "lumberjack.trees": 7,
+        "workers.max_heart_distance": 66
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 266,
+        "minecraft:saplings": 92
+      }
+    },
+    {
+      "day": 9,
+      "game_time": 216020,
+      "claimed": true,
+      "population": 10,
+      "adults": 9,
+      "babies": 1,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 1134,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 599,
+          "minecraft:oak_log": 326,
+          "minecraft:oak_sapling": 115,
+          "minecraft:stick": 83,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:apple": 2,
+          "minecraft:oak_planks": 2
+        }
+      },
+      "food": {
+        "nutrition": 1805,
+        "days_left": 19.0,
+        "dinners": 1,
+        "diners": 10,
+        "fed": 10,
+        "hungry": 0,
+        "eaten_nutrition": 106,
+        "eaten_items": 35,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 4,
+        "house_beds": 4
+      },
+      "treasury": 14,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.08463172741666666,
+        "p95": 0.199059,
+        "max": 39.689429,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 1.968923,
+        "tps": 320.5012640196602,
+        "heap_used_mb": 566
+      },
+      "world": {
+        "save_bytes": 5035904
+      },
+      "wall_seconds": 74.88269999,
+      "work": {
+        "farmer.carrot": 82,
+        "farmer.harvested": 30,
+        "farmer.replanted": 30,
+        "farmer.seeds": 0,
+        "farmer.tools_made.wooden": 1,
+        "lumberjack.cuttings": 4,
+        "lumberjack.logs": 60,
+        "lumberjack.saplings_planted": 8,
+        "lumberjack.trees": 8,
+        "workers.max_heart_distance": 65
+      },
+      "worker_status": {
+        "ok": 2
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 326,
+        "minecraft:saplings": 115
+      }
+    },
+    {
+      "day": 10,
+      "game_time": 240020,
+      "claimed": true,
+      "population": 10,
+      "adults": 10,
+      "babies": 0,
+      "employed": 2,
+      "buildings": {
+        "valid": 6,
+        "invalid": 0
+      },
+      "stockpile": {
+        "total": 1183,
+        "distinct": 7,
+        "items": {
+          "minecraft:carrot": 609,
+          "minecraft:oak_log": 350,
+          "minecraft:oak_sapling": 127,
+          "minecraft:stick": 87,
+          "minecraft:wheat_seeds": 7,
+          "minecraft:oak_planks": 2,
+          "minecraft:apple": 1
+        }
+      },
+      "food": {
+        "nutrition": 1831,
+        "days_left": 18.31,
+        "dinners": 1,
+        "diners": 10,
+        "fed": 10,
+        "hungry": 0,
+        "eaten_nutrition": 119,
+        "eaten_items": 39,
+        "max_hungry_days": 0
+      },
+      "housing": {
+        "housed": 4,
+        "house_beds": 4
+      },
+      "treasury": 12,
+      "wages": {
+        "runs": 1,
+        "bill": 2,
+        "paid": 2,
+        "spent": 2,
+        "strikers": 0
+      },
+      "deaths": {
+        "total": 0,
+        "mobs": 0,
+        "by_cause": {},
+        "list": []
+      },
+      "village_ms": {
+        "mean": 0.05612657820833333,
+        "p95": 0.174342,
+        "max": 20.227883,
+        "samples": 24000
+      },
+      "server": {
+        "mspt": 1.912374,
+        "tps": 309.6136138097684,
+        "heap_used_mb": 526
+      },
+      "world": {
+        "save_bytes": 5035904
+      },
+      "wall_seconds": 77.515971293,
+      "work": {
+        "farmer.carrot": 47,
+        "farmer.harvested": 18,
+        "farmer.replanted": 18,
+        "farmer.seeds": 0,
+        "lumberjack.cuttings": 1,
+        "lumberjack.logs": 24,
+        "lumberjack.saplings_planted": 5,
+        "lumberjack.trees": 5,
+        "workers.max_heart_distance": 66
+      },
+      "worker_status": {
+        "no_work": 1,
+        "ok": 1
+      },
+      "stockpile_tags": {
+        "minecraft:logs": 350,
+        "minecraft:saplings": 127
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "text": "claimed == 1 on every day",
+      "passed": true,
+      "detail": "10/10 days"
+    },
+    {
+      "text": "employed == 2 on day 1",
+      "passed": true,
+      "detail": "1/1 days"
+    },
+    {
+      "text": "food.dinners == 1 on every day",
+      "passed": true,
+      "detail": "10/10 days"
+    },
+    {
+      "text": "sum(deaths.cause.minecraft:starve) == 0 from day 1",
+      "passed": true,
+      "detail": "sum(deaths.cause.minecraft:starve)=0.0 == 0=0.0"
+    },
+    {
+      "text": "sum(food.fed) >= 0.9 * sum(food.diners) from day 3",
+      "passed": true,
+      "detail": "sum(food.fed)=68.0 >= 0.9 * sum(food.diners)=61.2"
+    },
+    {
+      "text": "max(food.max_hungry_days) < 3 from day 3",
+      "passed": true,
+      "detail": "max(food.max_hungry_days)=0.0 < 3=3.0"
+    },
+    {
+      "text": "stockpile.tag.minecraft:logs > stockpile.tag.minecraft:logs@prev on every day",
+      "passed": true,
+      "detail": "10/10 days"
+    },
+    {
+      "text": "max(wages.strikers) == 0 from day 1",
+      "passed": true,
+      "detail": "max(wages.strikers)=0.0 == 0=0.0"
+    },
+    {
+      "text": "sum(wages.runs) >= 8 from day 1",
+      "passed": true,
+      "detail": "sum(wages.runs)=9.0 >= 8=8.0"
+    },
+    {
+      "text": "treasury <= treasury@prev - 2 from day 3",
+      "passed": true,
+      "detail": "8/8 days"
+    },
+    {
+      "text": "min(work.farmer.harvested) > 0 from day 3",
+      "passed": true,
+      "detail": "min(work.farmer.harvested)=16.0 > 0=0.0"
+    },
+    {
+      "text": "sum(work.workers.not_ticking) == 0 from day 1",
+      "passed": true,
+      "detail": "sum(work.workers.not_ticking)=0.0 == 0=0.0"
+    },
+    {
+      "text": "max(work.workers.max_heart_distance) < 150 from day 1",
+      "passed": true,
+      "detail": "max(work.workers.max_heart_distance)=71.0 < 150=150.0"
+    },
+    {
+      "text": "village_ms.mean < 1 on every day",
+      "passed": true,
+      "detail": "10/10 days"
+    }
+  ],
+  "baseline_file": null,
+  "scenario_sha256": "5c6682f66ea12804b13e7b6a30ee5942a778833a61ff79bbbf9b748b9f1f2843",
+  "git_commit": "edce18d"
+}

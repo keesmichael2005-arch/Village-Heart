@@ -114,9 +114,11 @@ from there instead of hard-coding them.
 - Note (M24 review): M12 also owes M24's "only the Owner can withdraw" GameTest (docs/plans/M24.md T-L2-6) and the two treasury rows in `PermissionsTest`.
 - Built (M12 builder, branch `m12`; boxes left for the verifier): `WageGameTests` (12 tests incl. the roadmap case `threeWorkersTwoEmeraldsOneStrikes`, M24's `onlyOwnerCanWithdraw`, M15's `workerComesBackAtItsLevel`), L1 `PayRunTest`/`PayrollTest`/`WageRulesTest`/`StrikersProduceNothingTest`/`DailyClockTest`/..., L4 `TreasuryClientTests` (`treasury_overview.png`, `treasury_villagers.png`), L3 `starter` seeded and asserted. See PROGRESS for deviations.
 
-## M13: Cook / Kitchen
+## M13: Cook / Kitchen ✅
+- Built (M13 builder, branch `m13`; boxes left for the verifier): `CookGameTests` (cooksBeefAndBread, noFuelNothingCooked and 12 more), L1 `core/cook/*`, `@base` baseline assertions, `starter_cook` (baseline `sim/baselines/starter.json`), L4 `cook_at_smoker.png` and `villagers_tab_needs_fuel.png`. See PROGRESS and the plan's section 8 for deviations.
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.ITEM_COOKED, n)` next to the cook counter (one per output item).
-- [ ] §5.5 recipes, fuel use, rates
+- [x] §5.5 recipes, fuel use, rates (verified: docs/reviews/M13-r2.md)
+- Status: verified PASS round 2 (2026-11-09, `docs/reviews/M13-r2.md`). r1's four test gaps fixed and mutation-checked; L3 `starter_cook 10` 4.60 vs B 3.14.
 - **L2**: 10 raw beef, 9 wheat and coal in Storage + cook → within 1 day, 10 cooked beef and 3 bread, and the raw beef is gone
 - **L2**: with no fuel → nothing is cooked and the reason is "Needs fuel"
 - **L3**: `starter` + cook, 10 days: average nutrition per eaten item rises compared with the M11 baseline (reported in the JSON)

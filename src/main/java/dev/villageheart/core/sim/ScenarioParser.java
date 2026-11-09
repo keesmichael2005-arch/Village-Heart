@@ -78,7 +78,14 @@ public final class ScenarioParser {
 			}
 			assertions.add(a);
 		}
-		return new Scenario(name, description, dd.intValue(), seed, actions, assertions);
+		String baseline = null;
+		if (m.containsKey("baseline")) {
+			if (!(m.get("baseline") instanceof String b) || b.isBlank()) throw new ScenarioParseException(where + "baseline must be a file path");
+			baseline = b;
+		}
+		boolean usesBase = assertions.stream().anyMatch(a -> a.contains("@base"));
+		if (usesBase && baseline == null) throw new ScenarioParseException(where + "an assertion uses @base but the scenario has no \"baseline\"");
+		return new Scenario(name, description, dd.intValue(), seed, actions, assertions, baseline);
 	}
 
 	private static int intField(Map<?, ?> m, String k, int dflt, String at) {

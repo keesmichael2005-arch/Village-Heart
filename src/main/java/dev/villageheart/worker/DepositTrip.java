@@ -67,7 +67,7 @@ public final class DepositTrip extends Behavior<Villager> {
 			byId.put(id, e.getValue());
 			jobKept.put(id, k);
 		}
-		for (var e : FoodKeep.topUp(byId, jobKept).entrySet()) {
+		for (var e : (JobBehaviours.foodKeepApplies(v) ? FoodKeep.topUp(byId, jobKept) : java.util.Map.<String, Integer>of()).entrySet()) {
 			net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(e.getKey()));
 			keep.merge(item, e.getValue(), Integer::sum);
 		}

@@ -23,7 +23,16 @@ import dev.villageheart.core.defence.DefenceSite;
 public record VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime,
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
 		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
-		List<dev.villageheart.core.gear.SelfCraft> selfCrafts, dev.villageheart.core.tier.TierProgress tierProgress) {
+		List<dev.villageheart.core.gear.SelfCraft> selfCrafts, dev.villageheart.core.tier.TierProgress tierProgress,
+		Map<HeartLocation, Integer> smokerHeat) {
+
+	/** Without smoker heat (the shape before M13). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences, List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
+			dev.villageheart.core.tier.TierProgress tierProgress) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, Map.of());
+	}
 
 	/** Without tier progress (the shape before M14). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
@@ -82,6 +91,12 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		defences = List.copyOf(defences);
 		Objects.requireNonNull(selfCrafts, "selfCrafts");
 		Objects.requireNonNull(tierProgress, "tierProgress");
+		Objects.requireNonNull(smokerHeat, "smokerHeat");
+		for (var e : smokerHeat.entrySet()) {
+			Objects.requireNonNull(e.getKey(), "smoker");
+			if (e.getValue() == null || e.getValue() < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + e);
+		}
+		smokerHeat = Map.copyOf(smokerHeat);
 		selfCrafts = List.copyOf(selfCrafts);
 		Set<UUID> seenCrafters = new HashSet<>();
 		for (dev.villageheart.core.gear.SelfCraft c : selfCrafts) {
@@ -158,7 +173,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress);
+				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -362,7 +377,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -370,7 +385,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -413,7 +428,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress, smokerHeat);
 	}
 
 	// ---- defence sites (M21) ----
@@ -441,7 +456,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress, smokerHeat);
 	}
 
 	// ---- self-made tools (M19a) --------------------------------------------------------------------------------------------
@@ -466,7 +481,33 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withSelfCrafts(List<dev.villageheart.core.gear.SelfCraft> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress, smokerHeat);
+	}
+
+	// ---- smoker heat (M13) ----
+
+	/** The heat banked at a smoker (a Cook's partly used fuel); 0 when none. */
+	public int smokerHeat(HeartLocation smoker) { return smokerHeat.getOrDefault(smoker, 0); }
+
+	/** Sets the heat at a smoker; 0 removes the entry. */
+	public VillageState withSmokerHeat(HeartLocation smoker, int heat) {
+		Objects.requireNonNull(smoker, "smoker");
+		if (heat < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + heat);
+		if (smokerHeat(smoker) == heat) return this;
+		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
+		if (heat == 0) next.remove(smoker); else next.put(smoker, heat);
+		return withSmokerHeat(next);
+	}
+
+	/** Drops the heat of every smoker for which {@code gone} is true. */
+	public VillageState withoutSmokerHeat(java.util.function.Predicate<HeartLocation> gone) {
+		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
+		if (!next.keySet().removeIf(gone)) return this;
+		return withSmokerHeat(next);
+	}
+
+	private VillageState withSmokerHeat(Map<HeartLocation, Integer> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, next);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

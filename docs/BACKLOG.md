@@ -220,6 +220,17 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
 - [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+
+## From M12 (builder notes)
+- [ ] **No `GatedWork` wrapper** (plan 3.2 #7): a striker stops through M11's per-job speed-0 handling (planner rows and `WorkSpeed`), which every current job already honours; `core.worker.WorkGate.mayWork` exists and `StrikersProduceNothingTest` pins speed 0 for every `JobType`. A wrapper around `JobBehaviours.work` would also stop the idle walk-back of a hungry or unpaid lumberjack/farmer (M11 r2 legs), so it was left out. M13+ jobs must read `needs.speed()` themselves (or call `WorkGate.mayWork`).
+- [ ] `NeedsOverride.forceDefaultNeeds` keeps its name (plan: `forceFedAndHoused`) to keep M11's tests untouched; its Javadoc says `paid` is never forced
+- [ ] `frozenWhileHeartUnloaded` has no workers in the far village (building one 100 000 blocks away is heavy): it proves `lastWageDay` and the dawn counter do not move while unloaded and that exactly one run happens on load, not that a treasury figure stays put
+- [ ] `threeWorkersTwoEmeraldsOneStrikes` uses two farmers and one lumberjack (C, the striker, is the only chopper, so any fallen log is C's; no per-villager log watcher exists) and watches the working day's first 2 500 ticks, not all 11 000
+- [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
+- [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
+- [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+- [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
+- [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
 - [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
 - [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
 
@@ -260,6 +271,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+
+## From M13 (builder notes)
+- [ ] Cook: `KitchenSystem` drops a heat bank only when the smoker block is gone or the village has no Kitchen at all; a bank whose Kitchen was removed while another stands stays (harmless, one int)
+- [ ] Cook: `JobBehaviours.keep` is by item, so a renamed beef in the cook's pockets is counted with the plain beef of the batch (a player would have to hand it to the cook)
+- [x] (M13-r1 fix: L2 `hungryCookIsSlower`, red when hunger is dropped; see M13-r2) Cook: hunger pace (x0.5) is proven by L1 `CookPaceTest` and the `data.needs()` pass-through only; no L2 test drives a hungry cook's gaps
+- [ ] Cook: T-L2-6 and T-L2-7 differ from the plan (no dinner, runtime reset instead of entity reload), see the plan's section 8
+- [ ] No "baseline more than 50 commits old" warning in `simulate.sh`; only the scenario-hash guard
 - [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning
 
 ## From M19a-r2
@@ -286,6 +304,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+
+## From M13-r2
+- [ ] `strikingCookMakesNothing` (and any test asserting a sampler list in a `thenExecute` followed by more steps): when the list assertion fails, `GameTestSequence` carries on and a later step's message is logged ("first item after the pay ... 1200"), hiding the real finding. Stop with the list's message (e.g. `h.fail` and return, or guard the follow-up steps)
+- [ ] `hungryCookIsSlower` shows hunger only in product with the unhoused factor (0.5 x 0.75 = gap 333; red at 167 when hunger is dropped). Add a housed hungry cook: gap 250 +- 1
+- [ ] `starter` (no cook) failed "logs rise every day" on day 10 once during the M13 builder's baseline re-capture; not reproduced in M13-r2's `starter 10`. Track with the dev sim flakes
+- [ ] `cook_at_smoker.png` framing: camera too high (half the frame is ceiling) and the cook hides half the smoker; aim from the side so the lit front and the cook are both in frame
+- [ ] `VillageCodecs.RAW` is now 16 of 16 fields (M13 `smoker_heat` last): the next top-level village key must split the codec (see "From M14")
 
 ## Flakes on dev (orchestrator, 2026-11-09, from the M22 builder's runs) — next free slot: a flake-fix agent
 - [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).

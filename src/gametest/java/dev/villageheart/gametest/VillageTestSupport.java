@@ -51,6 +51,7 @@ public final class VillageTestSupport {
 		dev.villageheart.build.BuildRuntime.resetForTests();
 		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();
+		dev.villageheart.worker.cook.CookRuntime.resetForTests();
 		dev.villageheart.worker.farm.FarmJob.setStallTicksForTest(-1);
 		dev.villageheart.worker.farm.FarmJob.setAllCellsTakenForTest(false);
 		dev.villageheart.worker.farm.FarmJob.testKeepAll = i -> false;
