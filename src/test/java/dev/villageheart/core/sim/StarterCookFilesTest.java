@@ -34,7 +34,10 @@ class StarterCookFilesTest {
 		for (int i = 0; i < rest.size(); i++) {
 			ScenarioAction a = starter.actions().get(i), b = rest.get(i);
 			assertEquals(a.type(), b.type(), "action " + i);
-			if (a.type().equals("prefab") && "storage".equals(a.fields().get("building"))) {
+			if (a.type().equals("command")) {
+				assertEquals("villageheart treasury add 32", a.fields().get("command"));
+				assertEquals("villageheart treasury add 64", b.fields().get("command"), "three wages need more emeralds than two");
+			} else if (a.type().equals("prefab") && "storage".equals(a.fields().get("building"))) {
 				Map<String, Object> fa = new java.util.TreeMap<>(a.fields()), fb = new java.util.TreeMap<>(b.fields());
 				@SuppressWarnings("unchecked") Map<String, Object> ia = new java.util.TreeMap<>((Map<String, Object>) fa.remove("chest_items"));
 				@SuppressWarnings("unchecked") Map<String, Object> ib = new java.util.TreeMap<>((Map<String, Object>) fb.remove("chest_items"));
