@@ -220,6 +220,18 @@ public final class GuardCombat {
 		if (guard.isSleeping()) guard.stopSleeping();
 		guard.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(target, true));
 		PathNavigation nav = guard.getNavigation();
+		// below half health a guard falls back toward another healthy guard (the zombie follows into two swords); it fights again once it is there
+		if (guard.getHealth() < guard.getMaxHealth() * 0.5F) {
+			Villager ally = healthyAlly(level, guard);
+			if (ally != null && guard.distanceToSqr(ally) > 25.0) {
+				if (now - f.lastPathAt >= REPATH_TICKS) {
+					f.lastPathAt = now;
+					nav.moveTo(ally, Balance.GUARD_CHASE_SPEED);
+					f.navigating = true;
+				}
+				return;
+			}
+		}
 		boolean inReach = guard.isWithinMeleeAttackRange(target);
 		if (inReach && guard.getSensing().hasLineOfSight(target)) {
 			nav.stop();
@@ -246,6 +258,16 @@ public final class GuardCombat {
 			}
 			else if (path == null && nav.moveTo(target, Balance.GUARD_CHASE_SPEED)) f.navigating = true; // no planned path: close in directly (the give-up rule still ends a hopeless chase)
 		}
+	}
+
+	/** The nearest other guard within 32 blocks with at least 70 % health, awake. */
+	private static Villager healthyAlly(ServerLevel level, Villager guard) {
+		Villager best = null;
+		for (Villager v : level.getEntitiesOfClass(Villager.class, guard.getBoundingBox().inflate(32.0), o -> o != guard && o.isAlive() && Guards.isGuard(o)
+				&& !o.isSleeping() && o.getHealth() >= o.getMaxHealth() * 0.7F)) {
+			if (best == null || v.distanceToSqr(guard) < best.distanceToSqr(guard)) best = v;
+		}
+		return best;
 	}
 
 	private static void hit(ServerLevel level, Villager guard, Fight f, Mob target, long now) {

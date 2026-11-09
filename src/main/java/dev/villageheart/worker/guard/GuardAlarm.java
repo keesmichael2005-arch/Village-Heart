@@ -21,16 +21,25 @@ import net.minecraft.world.entity.npc.villager.Villager;
  */
 public final class GuardAlarm {
 	private static long until = Long.MIN_VALUE;
+	private static net.minecraft.core.BlockPos spot;
 
 	private GuardAlarm() {}
 
 	public static void register() {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
-			if (entity instanceof Villager v && source.getEntity() instanceof Enemy && v.level() instanceof ServerLevel level && GuardCombat.inClaim(level, v)) raise(level);
+			if (entity instanceof Villager v && source.getEntity() instanceof Enemy && v.level() instanceof ServerLevel level && GuardCombat.inClaim(level, v)) raise(level, v.blockPosition());
 		});
 	}
 
-	public static void raise(ServerLevel level) { until = level.getGameTime() + Balance.GUARD_ALARM_HOLD_TICKS; }
+	public static void raise(ServerLevel level, net.minecraft.core.BlockPos where) {
+		until = level.getGameTime() + Balance.GUARD_ALARM_HOLD_TICKS;
+		spot = where;
+	}
+
+	/** Where the trouble is (the attacked villager, or the hostile that hunts one): the guards gather there. */
+	public static java.util.Optional<net.minecraft.core.BlockPos> spot(ServerLevel level) {
+		return active(level) ? java.util.Optional.ofNullable(spot) : java.util.Optional.empty();
+	}
 
 	public static boolean active(ServerLevel level) { return level.getGameTime() < until; }
 
@@ -43,10 +52,10 @@ public final class GuardAlarm {
 		for (UUID id : village.guardIds()) {
 			Villager g = Workers.findLoaded(server, id).orElse(null);
 			if (g == null || g.level() != level) continue;
-			boolean threat = !level.getEntitiesOfClass(Mob.class, g.getBoundingBox().inflate(24.0),
-					m -> m.isAlive() && m instanceof Enemy && m.getTarget() instanceof Villager && GuardCombat.inClaim(level, m)).isEmpty();
-			if (threat) {
-				raise(level);
+			var threats = level.getEntitiesOfClass(Mob.class, g.getBoundingBox().inflate(24.0),
+					m -> m.isAlive() && m instanceof Enemy && m.getTarget() instanceof Villager && GuardCombat.inClaim(level, m));
+			if (!threats.isEmpty()) {
+				raise(level, threats.get(0).blockPosition());
 				return;
 			}
 		}

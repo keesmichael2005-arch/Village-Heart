@@ -265,6 +265,14 @@ public final class GuardRuntime {
 	private static Pos pos(BlockPos p) { return new Pos(p.getX(), p.getY(), p.getZ()); }
 
 	private static void patrol(ServerLevel level, Villager guard, State s, long now) {
+		// the alarm: gather at the trouble together instead of patrolling the rounds
+		var alarm = GuardAlarm.spot(level);
+		if (alarm.isPresent() && guard.blockPosition().distSqr(alarm.get()) > 36) {
+			if (!s.walk.active() || s.walk.target().distSqr(alarm.get()) > 16) s.walk.begin(alarm.get(), 4.0, 8.0, now);
+			s.walk.tick(guard, now);
+			s.point = null;
+			return;
+		}
 		List<BlockPos> points = PatrolPoints.of(level.getServer());
 		if (points.isEmpty()) return;
 		List<Pos> route = new ArrayList<>();
