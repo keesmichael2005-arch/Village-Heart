@@ -210,7 +210,7 @@ from there instead of hard-coding them.
 
 ## M22: Merchant / Market
 - Note (M15): award XP with `WorkXp.award(villager, WorkUnit.TRADE_MADE, 1)` per sale.
-- [ ] §5.9: surplus selling, price table, daily cap, reserve settings on the Stockpile tab
+- [x] §5.9: surplus selling, price table, daily cap, reserve settings on the Stockpile tab
 - **L1**: surplus calculation respects the food and item reserves. Price table. Daily caps by level
 - **L2**: 200 cobblestone in Storage + merchant → treasury +≥4 emeralds within 1 day, and cobblestone never drops below 64
 - Built in M22 (branch m22, deviations in docs/plans/M22.md section 8; the boxes are ticked by the orchestrator, not the builder). Adds the village-wide cap of 32 emeralds a day (orchestrator decision) to the per-merchant 8 / 12 / 16. L1 `core/market/*Test`, `MarketHeartTest`, `MarketCodecsTest`; L2 `MarketGameTests` (15 tests, `twoHundredCobblestoneFourEmeralds` is the roadmap case); L4 `MarketClientTests.stockpileReserves` (`market_stockpile.png`).

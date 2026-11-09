@@ -810,3 +810,11 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Mutations: no reservations / striker works / XP removed (red: peak claim 0, sampler + later bound, XP 0); hunger dropped / reservations ignore the other cook / probe (red: gap 167, claimed 16 of 12, probe); plan a batch without fuel (red at L1 `row8NoFuelIsNeedsFuel` and L2 no-fuel watch); recipe, heat and pace constants (L1 red, L2 roadmap red); `smoker_heat` made required (L1 red). All restored.
 - L3: `starter_cook 10` PASS (4.60 vs B 3.1394, 80 cook items); `starter 10` PASS (3.15, the baseline reproduces). The re-capture was forced by dev's `starter.json` change (hash guard) and is legitimate.
 - Next: merge m13 into dev. Blockers: none.
+
+## 2026-11-09: M22 review round 2 (verifier)
+- Verdict PASS, 0 must-fix, 4 BACKLOG items ("From M22-r2"); M22 ticked. Review: `docs/reviews/M22-r2.md`. Head: merge `e6fbbf5` (origin/m22 `0d48acc` + origin/dev `f6fbf1d`).
+- Correction: the builder's "merge M13" `8f97020` merged dev before M13 landed, so M13 met M22 only now. Code conflicts (Workers.forget, Balance, ActivityKind/WorkerStatus, gametest fabric.mod.json) were resolved by keeping both sides, with M13's `NEEDS_FUEL` before M22's `DAILY_LIMIT`/`TREASURY_FULL`.
+- Fix 1 is real: the `MARKET` encoder writing default reserves and an empty ledger turns both reload tests red, and so does an empty ledger alone. A missing `setDirty()` in `setMarket` still passes (BACKLOG).
+- verify.sh: L1 and L2 each "All 341 required tests passed"; L4 timed out loading a world at load 5-10 (known flake), then was green at load 3.7 (39 screenshots, all gates 0). `two_hunters_one_ground` failed once in a standalone build (load flake candidate, BACKLOG).
+- No GameTest discards the result of `VillageTestSupport.reload(server)`.
+- Next: merge m22 into dev. Blockers: none.
