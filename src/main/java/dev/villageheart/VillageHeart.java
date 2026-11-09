@@ -21,6 +21,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerAttachments.register();
 		dev.villageheart.food.DietAttachments.register();
 		dev.villageheart.worker.WorkerBrain.register();
+		dev.villageheart.worker.guard.Guards.register();
 		dev.villageheart.worker.WorkerCommands.register();
 		dev.villageheart.room.RoomCells.register();
 		dev.villageheart.heart.ModMenus.register();
@@ -45,6 +46,8 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:needs", dev.villageheart.needs.NeedsSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:wages", dev.villageheart.economy.WageSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:guards", dev.villageheart.worker.guard.GuardSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:gates", dev.villageheart.defence.GateKeeper.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }

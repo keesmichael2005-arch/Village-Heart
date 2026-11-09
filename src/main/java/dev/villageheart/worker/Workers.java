@@ -222,11 +222,13 @@ public final class Workers {
 		villager.setVillagerData(villager.getVillagerData().withProfession(ModProfessions.holder(data.job())).withLevel(Math.max(1, data.level())));
 		villager.setVillagerXp(0);
 		villager.refreshBrain(level);
+		if (data.job() == JobType.GUARD) dev.villageheart.worker.guard.Guards.onHired(level, villager);
 	}
 
 	/** Turns a worker back into an ordinary unemployed vanilla villager (no profession, no attachment, vanilla brain). */
 	public static void restoreVanilla(ServerLevel level, Villager villager) {
 		dev.villageheart.worker.job.AwayTrips.release(level, villager); // a hidden miner comes up first (M16)
+		if (dev.villageheart.worker.guard.Guards.isGuard(villager)) dev.villageheart.worker.guard.Guards.strip(level, villager);
 		villager.removeAttached(WorkerAttachments.WORKER);
 		villager.setVillagerData(villager.getVillagerData()
 				.withProfession(level.registryAccess(), VillagerProfession.NONE).withLevel(1));

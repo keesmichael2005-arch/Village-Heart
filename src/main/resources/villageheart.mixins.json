@@ -4,7 +4,9 @@
 	"package": "dev.villageheart.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"VillagerBrainMixin"
+		"NodeEvaluatorAccess",
+		"VillagerBrainMixin",
+		"WalkNodeEvaluatorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

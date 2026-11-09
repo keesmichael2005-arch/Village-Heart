@@ -154,6 +154,15 @@ public final class Balance {
 	public static final int PATROL_DWELL_TICKS = 100;
 	public static final int PATROL_SKIP_TICKS = 1200;
 
+	// ---- gates (M18) ----
+	/** A hostile mob within this many blocks of a closed gate keeps workers from opening it (an engaged guard may). */
+	public static final int GATE_HOSTILE_RANGE = 8;
+	/** A gate a villager opened stays open at least this long, and is closed at the latest after the longer limit (a safety net). */
+	public static final int GATE_MIN_OPEN_TICKS = 5;
+	public static final int GATE_MAX_OPEN_TICKS = 400;
+	/** The keeper looks at the gates it opened every this many ticks. */
+	public static final int GATE_KEEPER_TICKS = 5;
+
 	// ---- builder and blueprints (M20) ----
 	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
 	public static final double BUILD_TICKS_PER_BLOCK = 20;

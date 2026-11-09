@@ -69,6 +69,7 @@ public final class JobSiteReservations implements VillageSystem {
 				continue;
 			}
 			PoiManager poi = level.getPoiManager();
+			boolean bed = state.is(net.minecraft.tags.BlockTags.BEDS);
 			if (held.contains(p)) {
 				if (poi.getType(bp).isEmpty()) { // block replaced: the old POI is gone, the new one is not there yet
 					held.remove(p);
@@ -76,10 +77,13 @@ public final class JobSiteReservations implements VillageSystem {
 				} else if (hasFreeTicket(poi, bp)) { // the record was re-created with a free ticket
 					poi.take(h -> true, (h, b) -> b.equals(bp), bp, 1);
 				}
+				// a Barracks bed: whoever else has it as HOME (workers too) loses it; the ticket is the mod's, so it is not released (M18 3.5)
+				if (bed) evictHomeClaimants(level, bp, false);
 				continue;
 			}
 			if (poi.getType(bp).isEmpty()) continue; // POI add still pending: retry next pass
 			evictVanillaClaimants(level, bp);
+			if (bed) evictHomeClaimants(level, bp, true);
 			if (poi.take(h -> true, (h, b) -> b.equals(bp), bp, 1).isPresent()) {
 				held.add(p);
 				failedTakes.remove(p);
@@ -116,6 +120,24 @@ public final class JobSiteReservations implements VillageSystem {
 		AABB box = new AABB(bp).inflate(EVICT_RADIUS);
 		for (Villager v : level.getEntitiesOfClass(Villager.class, box, x -> !WorkerAttachments.isWorker(x))) {
 			if (evictFrom(v, target) && poi.getType(bp).isPresent()) poi.release(bp);
+		}
+	}
+
+	/**
+	 * Villagers (hired workers too, except the guard the bed was assigned to) whose HOME is the Barracks bed at {@code bp} lose it.
+	 * {@code release}: the ticket was theirs (the bed was not held yet), so it is released once per evicted villager.
+	 */
+	static void evictHomeClaimants(ServerLevel level, BlockPos bp, boolean release) {
+		GlobalPos target = GlobalPos.of(level.dimension(), bp);
+		PoiManager poi = level.getPoiManager();
+		java.util.Optional<java.util.UUID> owner = dev.villageheart.worker.guard.GuardSystem.guardAt(bp);
+		AABB box = new AABB(bp).inflate(EVICT_RADIUS);
+		for (Villager v : level.getEntitiesOfClass(Villager.class, box)) {
+			if (owner.isPresent() && owner.get().equals(v.getUUID())) continue;
+			if (v.getBrain().getMemory(MemoryModuleType.HOME).filter(target::equals).isPresent()) {
+				v.getBrain().eraseMemory(MemoryModuleType.HOME);
+				if (release && poi.getType(bp).isPresent() && !hasFreeTicket(poi, bp)) poi.release(bp);
+			}
 		}
 	}
 
