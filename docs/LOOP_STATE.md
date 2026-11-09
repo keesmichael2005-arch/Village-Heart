@@ -3,7 +3,7 @@ budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 ~188. Run 2 (to the weekly limit, hit ~23:20Z 8 Nov): session cost_usd 871 - 188 = ~683 for 34%->100% weekly (~$10.3 per 1%). Run 3 starts at the 03:05Z 9 Nov weekly reset, from cost_usd 871"
-current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 BUILD (m18, + gate opening) | M13 VERIFY r1 (m13 @3c94e96) | M14 BUILD (m14) | plans ready: M19 (r3, needs M13+M18), M22, M23, M25 (r2 siege), M26"
+current: "run 3 | MERGED this run: M11, M12, sim-area, M19a | M18 BUILD (m18, + gate opening) | M13 r1 FAIL (4 vacuous/missing tests; cook works) -> builder fixing | M14 VERIFY r1 (m14 @78b293b) | plans ready: M19 (r3, needs M13+M18), M22, M23, M25 (r2 siege), M26"
 blocked: []
 decisions_by_human:
   - "2026-11-09: v1.0 gate '2 players' = M24's 1 real client + 1 server-side FakePlayer test. ACCEPTED"
