@@ -69,6 +69,8 @@ public final class CookJob {
 	private static final int PLAN_INTERVAL = 20;
 	private static final int VALID_INTERVAL = 20;
 	private static final double ARRIVE = Balance.COOK_REACH;
+	/** The cook stands next to its smoker, not two blocks off: a cook that idles in the Kitchen doorway blocks the other one (two-cook flake). */
+	private static final double SMOKER_REACH = 1.6;
 	private static final double CLOSEST = 3.0;
 	private static final boolean TRACE = Boolean.getBoolean("villageheart.cook.trace");
 
@@ -486,7 +488,7 @@ public final class CookJob {
 
 	private static void idleTick(ServerLevel level, Villager v, CookState st, BlockPos smoker, long now) {
 		unlight(level, st);
-		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, ARRIVE, CLOSEST, now);
+		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, SMOKER_REACH, CLOSEST, now);
 		WalkTo.State ws = st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) st.walk.clear();
 		if ((now + v.getId()) % 20 == 0 && WalkTo.distance(v, smoker) <= Balance.JOB_BLOCK_REACH + 1.0) {
@@ -548,7 +550,7 @@ public final class CookJob {
 			finishBatch(level, v, st, false);
 			return;
 		}
-		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, ARRIVE, CLOSEST, now);
+		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, SMOKER_REACH, CLOSEST, now);
 		WalkTo.State ws = st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) {
 			trace("{} cannot reach its smoker: {}", v.getId(), st.walk.reason());
