@@ -262,6 +262,47 @@ public class StockpileFacadeGameTests {
 		}).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
+	// ---- M6-r1: a readable full Storage plus an unknown one (glue half of the L1 alert case) ------
+
+	/**
+	 * After a restart the registry has no scans; they come back one building per round-robin turn. In the window where one Storage is
+	 * scanned (readable, full) and the other is not (unknown), the glue must report {@code unknownSites == 1} next to {@code sites == 1},
+	 * and the alert is FULL by design (the Heart says "(1 Storage not checked yet)"). A glue that passes 0 for the unknown count, or
+	 * drops unscanned Storages, fails here; the L1 test of the alert tracker cannot see that.
+	 */
+	@GameTest(environment = "villageheart-gametest:stockpile_full_unknown", structure = Y, skyAccess = true, maxTicks = 800)
+	public void readableFullPlusUnknownStorageIsFullWithOneUnknown(GameTestHelper h) {
+		BlockPos ma = markerPos(A, 5), mb = markerPos(B, 5);
+		GameTestSequence seq = begin(h).thenExecute(() -> {
+			storageRoom(h, A, Blocks.CHEST, Blocks.CHEST);
+			storageRoom(h, B, Blocks.CHEST, Blocks.CHEST);
+			for (BlockPos c : new BlockPos[] {c1(A), c2(A), c1(B), c2(B)}) fillAll(h, c, stack(Items.DIRT, 64));
+			placeMarker(h, BuildingType.STORAGE, ma, Direction.NORTH);
+			placeMarker(h, BuildingType.STORAGE, mb, Direction.NORTH);
+		});
+		seq = awaitWithin(h, seq, bound(2, 0), "both Storages counted", () -> {
+			assertSites(h, 2);
+			h.assertValueEqual(0, Stockpiles.snapshot(server(h)).freeSlots(), "all full");
+		});
+		seq = seq.thenExecute(() -> {
+			dev.villageheart.building.BuildingSystem.resetRuntimeForTests(); // as after a restart: no scans yet
+			Stockpiles.resetRuntimeForTests();
+			StockSnapshot<StackKey> s = Stockpiles.snapshot(server(h));
+			h.assertValueEqual(0, s.sites(), "no readable Storage right after the reset");
+			h.assertValueEqual(2, s.unknownSites(), "both unknown");
+		});
+		seq = awaitWithin(h, seq, bound(2, 0), "one Storage rescanned, the other not yet", () -> {
+			StockSnapshot<StackKey> s = Stockpiles.snapshot(server(h));
+			h.assertValueEqual(1, s.sites(), "one readable Storage");
+			h.assertValueEqual(1, s.unknownSites(), "one unknown Storage");
+			h.assertValueEqual(0, s.freeSlots(), "the readable one is full");
+			Stockpiles.refreshAlert(server(h));
+			h.assertValueEqual(StorageAlert.FULL, Stockpiles.alert(server(h)), "readable full + unknown reads FULL by design");
+		});
+		awaitWithin(h, seq, bound(2, 0), "both rescanned: nothing unknown", () -> assertSites(h, 2))
+				.thenExecute(() -> VillageTestSupport.done(h));
+	}
+
 	// ---- T-L2-8 ----------------------------------------------------------------------------------
 
 	@GameTest(environment = GLUE_ENV, maxTicks = 100)

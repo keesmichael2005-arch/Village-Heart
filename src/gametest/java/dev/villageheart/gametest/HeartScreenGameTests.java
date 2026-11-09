@@ -204,7 +204,10 @@ public class HeartScreenGameTests {
 			h.assertValueEqual(1, s.overview().workerSlots(), "worker slots");
 			h.assertValueEqual(33, s.overview().foodDaysTenths(), "food days (20 bread x 5 = 100 / 30)");
 			h.assertValueEqual(0, s.overview().treasury(), "treasury");
-			h.assertTrue(s.overview().alerts().isEmpty(), "no alerts: " + s.overview().alerts());
+			h.assertValueEqual(1, s.overview().wageBill(), "wage bill: one level 1 worker (M12)");
+			// M12: the one worker costs 1 emerald a day and the treasury is empty, so the only alert is the short-treasury warning
+			h.assertValueEqual(java.util.List.of(dev.villageheart.core.heart.AlertCode.TREASURY_SHORT),
+					s.overview().alerts().stream().map(dev.villageheart.core.heart.AlertLine::code).toList(), "alerts: " + s.overview().alerts());
 
 			h.assertValueEqual(3, s.villagers().size(), "villager rows");
 			VillagerRow w = s.villagers().get(0);

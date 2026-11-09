@@ -9,6 +9,9 @@ public final class HeartLimits {
 	/** Rows of the Ranks tab. */
 	public static final int MAX_MEMBERS = 100;
 	public static final int MAX_REASONS = 4;
+	/** Builds shown on the Buildings tab (M20: one per active build, Balance.MAX_ACTIVE_BUILDS) and the missing-material lines of each. */
+	public static final int MAX_BUILDS = 8;
+	public static final int MAX_BUILD_MISSING = 2;
 	public static final int MAX_STOCK_KINDS = 256;
 	public static final int MAX_JOB_CHOICES = 9;
 	public static final int MAX_ALERTS = 5;
@@ -20,6 +23,8 @@ public final class HeartLimits {
 	/** Format args of a {@link TextLine}: counts and short names only (kept small so 512 reason lines stay under the size cap). */
 	public static final int MAX_TEXT_ARGS = 2;
 	public static final int MAX_ARG = 16;
+	/** Format args of the build texts (M20): a position such as "(-30000000, 319, -30000000)" is 27 characters. Only lines whose key starts with "build.villageheart.". */
+	public static final int MAX_BUILD_ARG = 32;
 	/** Longest job id a client may send. */
 	public static final int MAX_JOB_ID = 32;
 

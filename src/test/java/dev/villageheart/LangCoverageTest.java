@@ -41,6 +41,10 @@ class LangCoverageTest {
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace")};
 		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
+		// the wage alerts (M12): the very lines WageAlerts builds
+		for (int strikers : new int[] {1, 3}) {
+			for (var a : dev.villageheart.core.economy.WageAlerts.of(0, 5, strikers)) assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());
+		}
 	}
 
 	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */
@@ -95,5 +99,49 @@ class LangCoverageTest {
 				"message.villageheart.heart.released"}) {
 			assertTrue(lang.containsKey(k), k);
 		}
+	}
+
+	@Test
+	void everyWorkerStatusHasWordsForEveryJob() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.worker.WorkerStatus st : dev.villageheart.core.worker.WorkerStatus.values()) {
+			for (JobType j : JobType.values()) {
+				String key = dev.villageheart.worker.job.WorkerStatusText.key(st, j);
+				assertTrue(lang.containsKey(key), st + " for " + j.id() + " needs " + key);
+				assertTrue(key.startsWith("gui.villageheart.heart.activity."), "one set of words: " + key);
+			}
+		}
+		for (dev.villageheart.core.job.ToolKind k : dev.villageheart.core.job.ToolKind.values()) {
+			assertTrue(lang.containsKey("gui.villageheart.heart.activity.needs_tool." + k.id()), k.id());
+		}
+		assertEquals("Needs axe", lang.get("gui.villageheart.heart.activity.needs_tool.axe"));
+		assertEquals("No trees within 32 blocks", lang.get("gui.villageheart.heart.activity.no_work.lumberjack"));
+		assertEquals("No farmland within 24 blocks", lang.get("gui.villageheart.heart.activity.no_work.farmer"));
+		assertTrue(lang.keySet().stream().noneMatch(k -> k.startsWith("status.villageheart.")), "M9's separate status keys are gone");
+	}
+
+	/** The level-up chat lines (M15): the keys LevelUpFeedback sends exist with the English the plan promises. */
+	@Test
+	void levelUpMessages() throws Exception {
+		Map<String, Object> lang = lang();
+		assertEquals("%s the %s reached level %s", lang.get("message.villageheart.worker_level_up"));
+		assertEquals("...and %s more workers levelled up", lang.get("message.villageheart.workers_level_up_more"));
+		assertEquals("%s has the experience for level %s. It needs a %s.", lang.get("message.villageheart.worker_level_capped"));
+		assertTrue(lang.containsKey("gui.villageheart.heart.villagers.level_capped"), "the Heart screen's capped-bar note");
+	}
+
+	/** The treasury chat and action-bar lines (M12): every key the glue sends exists with the English the plan promises. */
+	@Test
+	void treasuryMessages() throws Exception {
+		Map<String, Object> lang = lang();
+		assertEquals("Deposited %s emeralds. Treasury: %s", lang.get("message.villageheart.treasury.deposited"));
+		assertEquals("Deposited %s emeralds. Paid %s striking workers. Treasury: %s", lang.get("message.villageheart.treasury.deposited_settled"));
+		assertEquals("Only Residents and above can deposit emeralds", lang.get("message.villageheart.treasury.not_allowed"));
+		assertEquals("Withdrew %s emeralds. Treasury: %s", lang.get("message.villageheart.treasury.withdrawn"));
+		for (String k : new String[] {"no_emeralds", "full", "empty", "strike_notice", "strike_notice_one", "get", "set", "add"}) {
+			assertTrue(lang.containsKey("message.villageheart.treasury." + k), k);
+		}
+		assertEquals("On strike", lang.get("gui.villageheart.heart.activity.on_strike"));
+		for (String k : new String[] {"deposit_all", "withdraw_one", "withdraw_stack"}) assertTrue(lang.containsKey("gui.villageheart.heart." + k), k);
 	}
 }

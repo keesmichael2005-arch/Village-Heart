@@ -2,7 +2,9 @@ package dev.villageheart.client.heart;
 
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.heart.AlertLine;
+import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.BuildingRow;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.HeartSnapshot;
@@ -24,6 +26,7 @@ import dev.villageheart.heart.net.FireWorkerPayload;
 import dev.villageheart.heart.net.HeartActionResultPayload;
 import dev.villageheart.heart.net.RecheckBuildingPayload;
 import dev.villageheart.heart.net.SetRankPayload;
+import dev.villageheart.heart.net.TreasuryActionPayload;
 import dev.villageheart.heart.net.TransferOwnershipPayload;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +70,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int ROW_H = 22;
 	static final int MEMBER_ROW_H = 16;
 	static final int RANKS_HEADER_H = 14;
+	static final int BUILDS_HEADER_H = 14;
 	public static final int TAB_RANKS = 4;
 	static final int STOCK_ROW_H = 18;
 	static final int MARGIN = 8;
@@ -76,6 +80,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	static final int GREY = 0xFFAAAAAA;
 	static final int DARK_GREY = 0xFF808080;
 	static final int GREEN = 0xFF55FF55;
+	/** The XP bar of a worker whose next level waits for a bigger village (M15). */
+	static final int LEVEL_CAPPED_GOLD = 0xFFE0B040;
 	static final int RED = 0xFFFF5555;
 	static final int YELLOW = 0xFFFFD45A;
 	static final int GOLD = 0xFFFFAA00;
@@ -158,6 +164,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			onSnapshot();
 		}
 		if (actionsDirty) rebuildActions();
+		if (tab == 0) refreshTreasuryButtons();
 	}
 
 	private HeartSnapshot snap() { return menu.snapshot(); }
@@ -301,7 +308,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		HeartSnapshot s = snap();
 		return switch (tab) {
 			case 1 -> (s.villagers().size() + (s.moreVillagers() > 0 ? 1 : 0)) * ROW_H;
-			case 2 -> (s.buildings().size() + (s.moreBuildings() > 0 ? 1 : 0)) * ROW_H;
+			case 2 -> (s.buildings().size() + (s.moreBuildings() > 0 ? 1 : 0)) * ROW_H + (s.builds().isEmpty() ? 0 : BUILDS_HEADER_H + s.builds().size() * ROW_H);
 			case 3 -> ((s.stock().items().size() + 1) / 2 + (s.stock().moreKinds() > 0 ? 1 : 0)) * STOCK_ROW_H;
 			case TAB_RANKS -> (s.members().size() + (s.moreMembers() > 0 ? 1 : 0)) * MEMBER_ROW_H;
 			default -> 0;
@@ -347,6 +354,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (actionWidgets.isEmpty()) return null;
 		AbstractWidget w = actionWidgets.get(actionWidgets.size() - 1);
 		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
+	}
+
+	/** The labels of the buttons of the action bar, left to right (for tests: the Overview's treasury bar). */
+	public List<String> actionLabels() {
+		List<String> out = new ArrayList<>();
+		for (AbstractWidget w : actionWidgets) out.add(w.getMessage().getString());
+		return out;
 	}
 
 	/** True while the Transfer button asks for its second click. */
@@ -404,7 +418,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		for (AbstractWidget w : actionWidgets) removeWidget(w);
 		actionWidgets.clear();
 		int y = bodyBottom() - 24;
-		if (tab == 1) {
+		if (tab == 0) {
+			treasuryBar(y);
+		} else if (tab == 1) {
 			VillagerRow r = selectedRow();
 			if (r == null) return;
 			if (r.isWorker()) {
@@ -471,6 +487,39 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			addAction(Button.builder(t("check_now"), b -> ClientPlayNetworking.send(new RecheckBuildingPayload(menu.containerId, p)))
 					.bounds(MARGIN, y, 100, 20).build());
 		}
+	}
+
+	private Button depositButton, withdrawOneButton, withdrawStackButton;
+
+	/** The treasury bar of the Overview (M12): Deposit all for Residents and above, Withdraw 1 and 64 for the Owner. */
+	private void treasuryBar(int y) {
+		depositButton = withdrawOneButton = withdrawStackButton = null;
+		int x = MARGIN;
+		if (allows(Permission.DEPOSIT_TREASURY)) {
+			depositButton = Button.builder(t("deposit_all"), b -> ClientPlayNetworking.send(new TreasuryActionPayload(menu.containerId, false, 0)))
+					.bounds(x, y, 100, 20).tooltip(Tooltip.create(t("deposit_all.tip"))).build();
+			addAction(depositButton);
+			x += 106;
+		}
+		if (allows(Permission.WITHDRAW_TREASURY)) {
+			withdrawOneButton = Button.builder(t("withdraw_one"), b -> ClientPlayNetworking.send(new TreasuryActionPayload(menu.containerId, true, 1)))
+					.bounds(x, y, 80, 20).build();
+			addAction(withdrawOneButton);
+			withdrawStackButton = Button.builder(t("withdraw_stack"), b -> ClientPlayNetworking.send(new TreasuryActionPayload(menu.containerId, true, Balance.MAX_WITHDRAW)))
+					.bounds(x + 84, y, 86, 20).build();
+			addAction(withdrawStackButton);
+		}
+		refreshTreasuryButtons();
+	}
+
+	/** Deposit needs an emerald in the client's inventory; Withdraw needs something in the treasury. Run every tick (the inventory changes). */
+	private void refreshTreasuryButtons() {
+		if (depositButton != null) {
+			depositButton.active = minecraft != null && minecraft.player != null && minecraft.player.getInventory().countItem(Items.EMERALD) > 0;
+		}
+		boolean stocked = snap().overview().treasury() > 0;
+		if (withdrawOneButton != null) withdrawOneButton.active = stocked;
+		if (withdrawStackButton != null) withdrawStackButton.active = stocked;
 	}
 
 	/** One of the three "make them ..." buttons; returns the x where the next one starts. */
@@ -645,19 +694,28 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		text(g, o.foodDaysTenths() < 0 ? t("overview.food_none") : t("overview.food", days(o.foodDaysTenths())), rx, y + 24, colW,
 				WHITE, AREA_BODY, grp2);
 		text(g, t("overview.treasury", o.treasury()), rx, y + 36, colW, WHITE, AREA_BODY, grp2);
-		text(g, t("overview.wages"), rx, y + 48, colW, GREY, AREA_BODY, grp2);
+		if (o.wageBill() < 0) text(g, t("overview.wages_none"), rx, y + 48, colW, GREY, AREA_BODY, grp2);
+		else text(g, t("overview.wages", o.wageBill()), rx, y + 48, colW, o.treasury() < o.wageBill() ? RED : GREY, AREA_BODY, grp2);
 
 		int ay = y + 66;
 		int grp3 = groupCounter++;
+		// the treasury bar (M12) takes the bottom 24 px of the body: the alert list gives way to it
+		boolean bar = !actionWidgets.isEmpty();
+		int fit = bar ? Math.max(1, (bodyBottom() - 24 - 2 - ay) / 12) : Integer.MAX_VALUE;
 		if (o.alerts().isEmpty()) {
 			text(g, t("overview.no_alerts"), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
 		} else {
-			for (AlertLine a : o.alerts()) {
+			int lines = o.alerts().size() + (o.moreAlerts() > 0 ? 1 : 0);
+			int shown = lines <= fit ? o.alerts().size() : Math.max(0, fit - 1);
+			for (int i = 0; i < shown; i++) {
+				AlertLine a = o.alerts().get(i);
 				text(g, text(a.text()), lx, ay, width - 2 * MARGIN, severityColor(a.severity()), AREA_BODY, grp3);
 				ay += 12;
 			}
-			if (o.moreAlerts() > 0) text(g, t("overview.more_alerts", o.moreAlerts()), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
+			int hidden = o.moreAlerts() + (o.alerts().size() - shown);
+			if (hidden > 0) text(g, t("overview.more_alerts", hidden), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
 		}
+		for (AbstractWidget w : actionWidgets) note(AREA_BODY, grp3, w.getX(), w.getY(), w.getWidth(), w.getHeight());
 	}
 
 	static String days(int tenths) { return (tenths / 10) + "." + (tenths % 10); }
@@ -753,17 +811,25 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (selected) g.fill(x, y, x + w, y + ROW_H - 1, 0x66FFFFFF);
 		else if (hover) g.fill(x, y, x + w, y + ROW_H - 1, 0x33FFFFFF);
 		int ty = y + 7;
-		text(g, Component.literal(v.name()), x + 4, ty, 72, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
+		text(g, Component.literal(v.name()), x + 4, ty, 56, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
 		Component job;
 		if (v.isWorker()) job = t("villagers.level", jobName(v.jobId()), v.level());
 		else if (v.nitwit()) job = t("villagers.nitwit");
 		else if (v.vanillaProfession().isEmpty() || v.vanillaProfession().equals("minecraft:none")) job = t("villagers.unemployed");
 		else job = Component.translatable("entity.minecraft.villager." + Identifier.parse(v.vanillaProfession()).getPath());
-		text(g, job, x + 80, ty, 68, v.isWorker() ? WHITE : GREY, AREA_BODY, grp);
+		text(g, job, x + 62, ty, 88, v.isWorker() ? WHITE : GREY, AREA_BODY, grp);
 		if (v.isWorker()) {
 			int bx = x + 152, by = y + 8;
 			g.fill(bx, by, bx + 40, by + 5, 0xFF404040);
-			if (v.xpForNext() > 0) {
+			if (v.levelCapped()) {
+				// the XP for the next level is banked, the village tier holds the level back (M15): a full gold bar
+				g.fill(bx, by, bx + 40, by + 5, LEVEL_CAPPED_GOLD);
+				if (mx >= bx && mx < bx + 40 && my >= by - 2 && my < by + 7) {
+					String need = dev.villageheart.core.job.Leveling.tierForNext(new dev.villageheart.core.job.Progress(Math.min(3, v.level()), v.xp()))
+							.map(dev.villageheart.core.Tier::displayName).orElse("");
+					g.setTooltipForNextFrame(font, t("villagers.level_capped", need, v.level() + 1), mx, my);
+				}
+			} else if (v.xpForNext() > 0) {
 				int fill = Math.max(0, Math.min(40, 40 * v.xp() / v.xpForNext()));
 				if (fill > 0) g.fill(bx, by, bx + fill, by + 5, 0xFF55CC55);
 			} else {
@@ -777,8 +843,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 		}
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
-				: Component.translatable(HeartTexts.key("activity." + v.activity().name().toLowerCase(Locale.ROOT)));
-		int actColor = v.workplaceInvalid() && v.isWorker() ? RED : GREY;
+				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
+		boolean warn = v.workplaceInvalid() && v.isWorker() || v.activity() == dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL
+				|| v.activity() == dev.villageheart.core.heart.ActivityKind.ON_STRIKE;
+		int actColor = warn ? RED : GREY;
 		text(g, act, x + 258, ty, w - 258 - 4, actColor, AREA_BODY, grp);
 	}
 
@@ -817,13 +885,43 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 			y += ROW_H;
 		}
-		if (s.moreBuildings() > 0 && y + ROW_H > r[1] && y < r[1] + r[3]) {
-			text(g, t("buildings.more", s.moreBuildings()), r[0] + 4, y + 7, rowW - 8, GREY, AREA_BODY, groupCounter++);
+		if (s.moreBuildings() > 0) {
+			if (y + ROW_H > r[1] && y < r[1] + r[3]) text(g, t("buildings.more", s.moreBuildings()), r[0] + 4, y + 7, rowW - 8, GREY, AREA_BODY, groupCounter++);
+			y += ROW_H;
+		}
+		if (!s.builds().isEmpty()) {
+			if (y + BUILDS_HEADER_H > r[1] && y < r[1] + r[3]) text(g, t("buildings.builds"), r[0] + 4, y + 3, rowW - 8, GREY, AREA_BODY, groupCounter++);
+			y += BUILDS_HEADER_H;
+			for (BuildRow b : s.builds()) {
+				if (y + ROW_H > r[1] && y < r[1] + r[3]) drawBuildRow(g, b, r[0], y, rowW);
+				y += ROW_H;
+			}
 		}
 		g.disableScissor();
 		clip = new int[] {0, bodyTop(), width, bodyBottom()};
-		scrollbar(g, r, s.buildings().size() * ROW_H);
+		scrollbar(g, r, contentHeight());
 		if (hoverTip != null) g.setTooltipForNextFrame(font, hoverTip, mx, my);
+	}
+
+	/** A build of the Buildings tab: blueprint, where, its status line (what it needs, what is in the way) and the builder; two lines like a building. */
+	private void drawBuildRow(GuiGraphics g, BuildRow b, int x, int y, int w) {
+		int grp = groupCounter++;
+		Component name = Component.translatableWithFallback("build.villageheart.blueprint." + b.blueprintId(), b.blueprintId());
+		int nameW = text(g, name, x + 4, y + 2, 110, WHITE, AREA_BODY, grp);
+		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 4 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
+		int color = switch (b.state()) {
+			case WAITING_FOR_BUILDER -> GREY;
+			case CLEARING, BUILDING, CHECKING -> GREEN;
+			default -> YELLOW;
+		};
+		text(g, text(b.status()), x + 250, y + 2, w - 254, color, AREA_BODY, grp);
+		if (!b.missing().isEmpty()) {
+			Component first = text(b.missing().get(0));
+			Component line = b.missing().size() > 1 ? Component.empty().append(first).append(" ").append(t("reasons.more", b.missing().size() - 1)) : first;
+			text(g, line, x + 4, y + 12, w - 8, YELLOW, AREA_BODY, grp);
+		} else if (!b.builderName().isEmpty()) {
+			text(g, t("builds.builder", b.builderName()), x + 4, y + 12, w - 8, DARK_GREY, AREA_BODY, grp);
+		}
 	}
 
 	private void drawBuildingRow(GuiGraphics g, BuildingRow b, int x, int y, int w, int mx, int my) {
@@ -847,6 +945,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case WORKER_SLOTS -> t("detail.slots", b.workersHere(), b.detailCount());
 			case HOMES -> t("detail.homes", b.detailCount());
 			case CONTAINERS -> t("detail.containers", b.detailCount());
+			case NONE -> Component.empty();
 		};
 		textRight(g, detail, x + w - 4, y + 2, 70, WHITE, AREA_BODY, grp);
 		if (!b.reasons().isEmpty()) {

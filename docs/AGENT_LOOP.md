@@ -33,6 +33,11 @@ VERIFY  verifier (Opus)   fresh every round: full verify.sh + adversarial review
     Plans are docs only.
   - **Parallel builds:** at most **2** build/verify tracks at once (the container has 4 CPUs and 15 GB;
     each track runs its own Minecraft). Only milestones whose ROADMAP dependencies have all passed can run.
+  - **Machine load guard:** before starting any new Minecraft-running worker, the orchestrator checks `uptime`.
+    If the 15-minute load average is above **8** (2× the 4 cores), it waits for a running worker to finish
+    instead of starting another. Max 3 Minecraft-heavy workers at once; planners (docs only) don't count.
+    Free memory must stay above ~4 GB. Overload makes runs slower and timing tests flaky, which costs more than it saves.
+  - **Disk guard:** after a milestone merges, the orchestrator deletes `build/ .gradle/ run/ reports/` in the finished workers' worktrees (regenerable). Check `df` at each silence check; keep >10 GB free.
   - **Isolation:** every parallel worker runs in its **own git worktree** on a branch `mNN`, created from
     `dev`. When its review passes, the orchestrator merges `mNN` into `dev` (rebasing first) and re-runs
     `verify.sh --fast` on dev. A worker never shares a working directory with another worker.

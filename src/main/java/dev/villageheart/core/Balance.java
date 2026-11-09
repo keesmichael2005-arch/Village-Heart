@@ -55,18 +55,224 @@ public final class Balance {
 	/** A Storage is "unknown" while a room building within this many blocks has no cached scan yet (after a restart). */
 	public static final int STOCKPILE_NEIGHBOUR_RANGE = 32;
 
+	// ---- jobs (M9) ----
+	/** Vanilla 1.21.11 mining speed per tool tier ({@code ToolMaterial}), indexed by {@code ToolTier.ordinal()}: wood, stone, copper, gold, iron, diamond, netherite. */
+	public static final double[] VANILLA_TOOL_SPEED = {2, 4, 5, 12, 6, 8, 9};
+	/** Vanilla speed is divided by this to get the work multiplier (wood 1.0, stone 2.0, ...): the ratios between tiers are vanilla's. */
+	public static final double TOOL_SPEED_DIVISOR = 2.0;
+	/** Work speed multiplier per tool tier = vanilla speed / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5. */
+	public static final double[] TOOL_SPEED = toolSpeeds();
+
+	private static double[] toolSpeeds() {
+		double[] m = new double[VANILLA_TOOL_SPEED.length];
+		for (int i = 0; i < m.length; i++) m[i] = VANILLA_TOOL_SPEED[i] / TOOL_SPEED_DIVISOR;
+		return m;
+	}
+	/** Work speed multiplier per worker level 1..3 (M15 raises levels). */
+	public static final double[] LEVEL_SPEED = {1.0, 1.25, 1.5};
+	/** Speed of a job whose tool is optional and missing. */
+	public static final double NO_TOOL_SPEED = 0.5;
+	/** Work units (ticks at multiplier 1.0) per felled log: a stone axe (x2.0) fells a log in 40 ticks (anchored on stone; wood 80). */
+	public static final double BASE_TICKS_PER_LOG = 80;
+	/** A tree counts only with this many face contacts with natural (non-persistent) leaves. */
+	public static final int TREE_MIN_LEAF_CONTACTS = 3;
+	public static final int MAX_TREE_LOGS = 192;
+	public static final int MAX_TREE_WIDTH = 17;
+	public static final int MAX_TREE_HEIGHT = 48;
+	/** Trees within this many blocks (xz) of the Chopping Block, and within +-LUMBER_DY in y. */
+	public static final int LUMBER_RADIUS = 32;
+	public static final int LUMBER_DY = 16;
+	/** The lumberjack stands within this many blocks of the tree base to chop (3D). */
+	public static final double CHOP_REACH = 3.0;
+	/** A tree behind its own leaves (the canopy blocks the ground up to the trunk) is chopped from the nearest spot a path leads to, within this. */
+	public static final double CHOP_CLOSEST = 8.0;
+	/** No new tree is started after this day time (drops would despawn before they are collected). */
+	public static final int LUMBER_LAST_FELL = 5000;
+	public static final int REPLANT_FALLBACK_TICKS = 6000;
+	public static final int REPLANT_EXPIRY_DAYS = 3;
+	/** Saplings a lumberjack keeps besides the ones the open replant spots need. */
+	public static final int SAPLING_RESERVE = 4;
+	/** Cell reads a tree search may spend per worker tick. */
+	public static final int TREE_SEARCH_READS_PER_TICK = 2048;
+	/** A swept tree list is reused for this many ticks. */
+	public static final int TREE_INDEX_TTL = 1200;
+	/** A tree the worker could not reach is skipped for this many ticks. */
+	public static final int TREE_BLACKLIST_TICKS = 6000;
+	/** Unreachable: the best distance did not improve by 1 block in this many ticks, or this many ticks in total. */
+	public static final int WALK_STALL_TICKS = 200;
+	public static final int WALK_TOTAL_TICKS = 800;
 	/** An open Heart screen sends a fresh snapshot at most this often (and only when it changed). */
 	public static final int HEART_REFRESH_TICKS = 20;
 	/** Heart screen actions per player: token bucket capacity and ticks per refilled token. */
 	public static final int HEART_RATE_CAPACITY = 8;
 	public static final int HEART_RATE_REFILL_TICKS = 5;
-	/** Total XP at which a worker reaches level 2 and 3 (display only until M15 owns levelling, DESIGN section 4). */
+	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;
+
+	// ---- levels (M15) ----
+	/** The highest job level an earned level may reach per tier (indexed by {@code Tier.ordinal()}): Hamlet 1, Village 2, Town 3. */
+	public static final int[] LEVEL_CAPS = {1, 2, 3};
+	/** XP beyond level 3 has no use; XP below a capped level is banked up to here and turns into levels when the village grows. */
+	public static final int MAX_BANKED_XP = LEVEL_3_XP;
+	/** Thousandths of an XP per unit of work, indexed by {@code WorkUnit.ordinal()} (integers, so 0.2 never drifts). Tunable in M26. */
+	private static final int[] MILLI_XP_PER_UNIT = {1000, 1000, 1000, 1000, 5000, 5000, 1000, 2000, 200, 2000};
+
+	public static int milliXpPerUnit(dev.villageheart.core.job.WorkUnit unit) { return MILLI_XP_PER_UNIT[unit.ordinal()]; }
+
+	public static int workUnitXpEntries() { return MILLI_XP_PER_UNIT.length; }
 
 	/** The village's name book (M24): players it remembers by name. Ranked players are never evicted, so at most one less can be ranked. */
 	public static final int MAX_KNOWN_PLAYERS = 64;
 	public static final int MAX_PLAYER_NAME = 32;
 	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
 	public static final int GUARD_FALLBACK_RADIUS = 16;
+
+	// ---- builder and blueprints (M20) ----
+	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
+	public static final double BUILD_TICKS_PER_BLOCK = 20;
+	/** The builder acts on a cell within this distance (3D, feet to cell centre, no line of sight). */
+	public static final double BUILD_REACH = 7.0;
+	/** A fetch trip takes one stack's worth of materials ... */
+	public static final double BUILDER_FETCH_LOAD = 1.0;
+	/** ... or fills this many inventory slots. */
+	public static final int BUILDER_FETCH_SLOTS = 4;
+	/** The build system re-works the reservations this often. */
+	public static final int BUILD_REFRESH_TICKS = 100;
+	public static final int MAX_ACTIVE_BUILDS = 8;
+	/** Ticks a player waits between two blueprints taken from a Builder's Table. */
+	public static final int BLUEPRINT_TAKE_COOLDOWN = 10;
+	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
+	public static final int BUILD_IN_THE_WAY_TICKS = 100;
+	public static final int BUILD_UNREACHABLE_RETRY_TICKS = 600;
+	// ---- defence blueprints (M21) ----
+	/** The longest wall or gate line in one blueprint, in blocks. */
+	public static final int MAX_WALL_LENGTH = 32;
+	/** The shortest gate: a 3-wide opening needs a post on each side. */
+	public static final int GATE_MIN_LENGTH = 5;
+	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
+	public static final int DEFENCE_REFRESH_TICKS = 200;
+	/** Recorded defence sites (patrol points) per village. */
+	public static final int MAX_DEFENCE_SITES = 64;
+	// ---- farmer (M10) ----
+	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
+	public static final int FARM_RADIUS = 24;
+	public static final int FARM_DY = 8;
+	/** The farmer works a cell from this close (3D, to the bottom centre of the crop cell). */
+	public static final double FARM_REACH = 3.0;
+	/** Work units (ticks at multiplier 1.0) per action. */
+	public static final double FARM_TICKS_HARVEST = 20;
+	public static final double FARM_TICKS_PLANT = 10;
+	public static final double FARM_TICKS_BONEMEAL = 20;
+	public static final double FARM_TICKS_COMPOST = 10;
+	/** Seeds (and carrots, potatoes) of each kind the farmer keeps for replanting; seeds above this are composted. */
+	public static final int SEED_RESERVE = 16;
+	/** The farmer walks to the composter once this many seeds are surplus. */
+	public static final int COMPOST_BATCH = 8;
+	/** Work speed with a hoe in the Farmhouse chest (any tier); without one it is 1.0. */
+	public static final double HOE_BONUS = 1.25;
+	/** Food points every worker keeps for itself (bread 4, potato/carrot/beetroot 1): vanilla's breeding threshold. */
+	public static final int WORKER_FOOD_KEEP = 12;
+	/** Block reads per server tick for discovering farmland, and for re-reading indexed cells. */
+	public static final int FIELD_SWEEP_READS_PER_TICK = 2048;
+	public static final int FIELD_REFRESH_READS_PER_TICK = 512;
+	/** A complete field sweep is repeated after this many ticks (new farmland). */
+	public static final int FIELD_INDEX_TTL = 1200;
+	/** Farm cells beyond this many per Farmhouse are ignored (nearest first). */
+	public static final int MAX_FIELD_CELLS = 2048;
+	/** At most one stack of each seed is kept, so seeds can never fill the inventory. */
+	public static final int SEED_KEEP_MAX = 64;
+	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
+	public static final int SLOT_PRESSURE_FREE_SLOTS = 2;
+
+	// ---- food, dinner and needs (M11) ----
+	/** The whole village eats at this day time (DESIGN section 6). */
+	public static final int DINNER_TICK = 11000;
+	/** Nutrition a villager needs at dinner to count as fed: an adult 10, a baby half. */
+	public static final int ADULT_NUTRITION = 10;
+	public static final int CHILD_NUTRITION = 5;
+	/** Work speed after 0, 1 and 2+ missed dinners (index = min(hungryDays, 2)). */
+	public static final double[] HUNGER_SPEED = {1.0, 0.5, 0.0};
+	/** Work speed of a worker without a bed in a valid House. */
+	public static final double UNHOUSED_SPEED = 0.75;
+	/** Housing is re-read (and workers re-homed) this often. */
+	public static final int NEEDS_REFRESH_TICKS = 100;
+	/** Items the village never eats (harmful, teleporting, or a player's valuables). Must equal the item tag villageheart:not_village_food (asserted by a test). */
+	public static final java.util.Set<String> FOOD_NEVER_EAT = java.util.Set.of(
+			"minecraft:rotten_flesh", "minecraft:spider_eye", "minecraft:poisonous_potato", "minecraft:pufferfish",
+			"minecraft:suspicious_stew", "minecraft:chorus_fruit", "minecraft:golden_apple", "minecraft:enchanted_golden_apple",
+			"minecraft:golden_carrot");
+	/** Food a Cook (M13) turns into something better: eaten only after every prepared food. */
+	public static final java.util.Set<String> FOOD_RAW = java.util.Set.of(
+			"minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit", "minecraft:cod",
+			"minecraft:salmon", "minecraft:potato");
+
+	// ---- M16: Miner + Mineshaft ---------------------------------------------------------------------
+
+	/** Work units one haul costs; a stone pickaxe at level 1 earns 2.0 per tick, so a haul is 2000 ticks (anchored on stone; wood 4000) (2 in-game hours) underground. */
+	public static final double MINER_HAUL_UNITS = 4000;
+	/** An underground miner is stepped every this many ticks. */
+	public static final int MINER_STEP_TICKS = 20;
+	/** Durability a pickaxe loses per completed haul. */
+	public static final int MINER_WEAR_PER_HAUL = 10;
+	/** No new descent from this day time on (less than 600 work ticks are left). */
+	public static final int MINER_LAST_DESCENT = 10400;
+	/** After a shaft turned out unreachable the miner waits this long before it tries again. */
+	public static final int MINER_RETRY_TICKS = 600;
+	/** Underground steps in a row with an unreadable pickaxe chest (or an unknown depth with a haul due) before the miner comes up. */
+	public static final int MINER_UNKNOWN_LIMIT = 60;
+	/** A miner farther than this from the shaft marker walks to its stonecutter first (WalkTo plans at most 48 blocks). */
+	public static final int MINER_FAR_FROM_SHAFT = 40;
+	/** Arrived at the shaft entrance when this close; also when the pathfinder can get no nearer and the miner is within SHAFT_ENTRY_CLOSEST. */
+	public static final double SHAFT_ENTRY_REACH = 2.5;
+	public static final double SHAFT_ENTRY_CLOSEST = 5.0;
+	/** Depth bands of the haul tables by the shaft's deepest Y: HIGH from 40, MID from 0, DEEP below. */
+	public static final int BAND_HIGH_MIN_Y = 40;
+	public static final int BAND_MID_MIN_Y = 0;
+
+	// ---- M17: Hunter + Hunting Ground ---------------------------------------------------------------
+
+	/** Work units one hunting trip costs; at level 1 (1.0 unit per tick) a trip is 3000 ticks, 3 in-game hours away (DESIGN 5.4). */
+	public static final double HUNTER_TRIP_UNITS = 3000;
+	/** An away hunter is stepped every this many ticks. */
+	public static final int HUNTER_STEP_TICKS = 20;
+	/** Durability the leased weapon loses per completed trip. */
+	public static final int HUNTER_WEAR_PER_TRIP = 5;
+	/** Completed trips per day by level (index level - 1, clamped). */
+	public static final int[] HUNTER_TRIPS_PER_DAY = {2, 3, 3};
+	/** A trip starts only if it can end this many ticks before WORK_END. */
+	public static final int HUNTER_DEPART_MARGIN = 300;
+	/** After the ground turned out unreachable the hunter waits this long before it tries again. */
+	public static final int HUNTER_RETRY_TICKS = 600;
+	/** Away steps in a row with an unreadable weapon chest before the hunter comes back. */
+	public static final int HUNTER_UNKNOWN_LIMIT = 60;
+	/** A hunter farther than this from the ground marker walks to its fletching table first (WalkTo plans at most 48 blocks). */
+	public static final int HUNTER_FAR_FROM_GROUND = 40;
+	/** A Hunting Ground links only to a Hunting Lodge within this many blocks (an M5 rule change, M17). */
+	public static final int HUNTING_GROUND_LINK_RANGE = 40;
+	/** Arrived at the ground marker when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
+	public static final double HUNT_ENTRY_REACH = 3.0;
+	public static final double HUNT_ENTRY_CLOSEST = 6.0;
+	public static final int HUNT_MEAT_MIN = 2, HUNT_MEAT_MAX = 4;
+	public static final int HUNT_LEATHER_MIN = 1, HUNT_LEATHER_MAX = 2;
+	public static final int HUNT_FEATHER_MIN = 1, HUNT_FEATHER_MAX = 2;
+	public static final double HUNT_HIDE_CHANCE = 0.5;
+	/** Extra meat for a trip with a bow or crossbow and an arrow taken from the Lodge chest. */
+	public static final int HUNT_ARROW_BONUS_MEAT = 1;
+	/** Meat-kind draws per trip: always all of them, so an arrow never shifts the random stream. */
+	public static final int HUNT_MAX_MEAT_DRAWS = HUNT_MEAT_MAX + HUNT_ARROW_BONUS_MEAT;
+
+	// ---- M12: treasury and wages ---------------------------------------------------------------------
+
+	/** The wage run happens when the day index changes (day time 0, the first tick of a day). */
+	public static final int WAGE_TICK = 0;
+	/** Emeralds paid per day by worker level 1, 2, 3 (tunable). Read through {@link #wageForLevel}. */
+	private static final int[] WAGES = {1, 1, 2};
+	/** The most emeralds one Withdraw action takes out. */
+	public static final int MAX_WITHDRAW = 64;
+	/** The treasury never holds more than this (a release drops it as item entities, one per 64). */
+	public static final int MAX_TREASURY = 100_000;
+
+	/** The daily wage of a worker of this level; a level below 1 reads as 1 and above 3 as 3. */
+	public static int wageForLevel(int level) { return WAGES[Math.max(1, Math.min(level, WAGES.length)) - 1]; }
 }

@@ -15,6 +15,7 @@ import dev.villageheart.world.VillageClaims;
 import dev.villageheart.worker.HireResult;
 import dev.villageheart.worker.JobSiteSource;
 import dev.villageheart.worker.Workers;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.server.MinecraftServer;
@@ -147,6 +148,15 @@ public class WorkerGameTests {
 		});
 	}
 
+	/** Other living entities within 8 blocks, for walk traces: {@code " zombie@x,y,z"} each. */
+	private static String near(GameTestHelper h, Villager v) {
+		StringBuilder sb = new StringBuilder();
+		for (var e : h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, v.getBoundingBox().inflate(8), e -> e != v)) {
+			sb.append(' ').append(e.getType().toShortString()).append('@').append(h.relativePos(e.blockPosition()).toShortString());
+		}
+		return sb.toString();
+	}
+
 	// ---- T-L2-3 ----------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:workers_door", structure = YARD, maxTicks = 800)
@@ -170,9 +180,24 @@ public class WorkerGameTests {
 			h.assertFalse(h.getBlockState(doorPos).getValue(DoorBlock.OPEN), "the door starts closed");
 			h.assertTrue(distance(h, v[0], block) > 5, "starts inside the cell, far from the block");
 		});
+		// walk-time log (BACKLOG: slow outliers of 301 and 456 ticks): a trace every 20 ticks, printed with the walk time
+		List<String> walkTrace = new ArrayList<>();
+		long[] t0 = {-1};
+		h.onEachTick(() -> {
+			if (v[0] == null || t0[0] < 0 || (h.getTick() - t0[0]) % 20 != 0 || walkTrace.size() > 40) return;
+			var brain = v[0].getBrain();
+			walkTrace.add((h.getTick() - t0[0]) + ":" + h.relativePos(v[0].blockPosition()).toShortString() + (h.getBlockState(doorPos).getValue(DoorBlock.OPEN) ? " open" : " shut")
+					+ " " + brain.getActiveNonCoreActivity().map(Object::toString).orElse("-")
+					+ (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET) ? " wt" : "")
+					+ (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.PATH) ? " path" : "")
+					+ (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE) ? " cantReach" : "")
+					+ near(h, v[0]));
+		});
+		seq = seq.thenExecute(() -> t0[0] = h.getTick());
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "reaching the job block through the closed door",
-				() -> h.assertTrue(distance(h, v[0], block) <= REACH, "distance " + distance(h, v[0], block)));
+				() -> h.assertTrue(distance(h, v[0], block) <= REACH, "distance " + distance(h, v[0], block) + "; trace " + walkTrace));
 		seq.thenExecute(() -> {
+			System.out.println("[m7] workerOpensDoors: at the job block after " + (h.getTick() - t0[0]) + " ticks; trace " + walkTrace);
 			h.assertTrue(h.getLevel().getDayTime() > 2000, "time advanced");
 			end(h);
 			h.succeed();
@@ -849,6 +874,8 @@ public class WorkerGameTests {
 			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
 			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
 			rec[0] = record(h, a[0]).orElseThrow();
+			// a farmer with no farmland in reach is "No work" (M10); the test is about the building, so give it a field
+			FarmTestSupport.emptyFarmland(h, 20, 8);
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status while valid");
 			h.destroyBlock(roof);
 		});
@@ -870,6 +897,7 @@ public class WorkerGameTests {
 		seq.thenExecute(() -> {
 			h.assertValueEqual(java.util.Optional.of(rec[0]), record(h, a[0]), "same record, same slot");
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec[0]), "status after the fix");
+			FarmTestSupport.clearStrayFarmland(h, 40); // the field of this test must not stay for the next one
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -1107,6 +1135,27 @@ public class WorkerGameTests {
 			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "cobblestone still carried");
 		});
 		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * Review of M11 round 3: a trip flag whose behaviour was dropped without its stop (it never ticks again) must expire. Every job returns early
+	 * while a trip "runs", so a flag that stayed set would leave the worker idle at status OK for good.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_deposit_stale", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void deadDepositTripFlagExpires(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = depositSetup(h, false, 3000, v).thenExecute(() -> {
+			Workers.markTripRunningForTest(v[0]);
+			h.assertTrue(Workers.tripRunning(v[0]), "the flag is set");
+		});
+		seq = seq.thenIdle(50).thenExecute(() -> h.assertTrue(Workers.tripRunning(v[0]), "a fresh flag still counts"));
+		seq = seq.thenIdle(120);
+		seq.thenExecute(() -> {
+			h.assertTrue(!Workers.tripRunning(v[0]), "the flag of a trip that no longer ticks has expired");
 			VillageTestSupport.done(h);
 			end(h);
 		});

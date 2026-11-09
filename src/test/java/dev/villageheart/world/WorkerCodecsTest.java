@@ -45,6 +45,32 @@ class WorkerCodecsTest {
 		assertEquals(JobType.FARMER, d.job());
 	}
 
+	/** A contradictory fed flag is repaired (hungry_days wins), never an error: an error would drop the whole attachment. */
+	@Test
+	void contradictoryNeedsDecodeLeniently() {
+		String base = "\"building\":" + LOC + ",\"job_block\":" + LOC;
+		WorkerData d = parse("{\"job\":\"farmer\"," + base + ",\"level\":2,\"needs\":{\"fed\":true,\"hungry_days\":2}}").getOrThrow();
+		assertEquals(new Needs(false, 2, true, true), d.needs());
+		assertEquals(2, d.level());
+		WorkerData e = parse("{\"job\":\"farmer\"," + base + ",\"needs\":{\"fed\":false,\"hungry_days\":0}}").getOrThrow();
+		assertEquals(Needs.DEFAULT, e.needs());
+	}
+
+	@Test
+	void levelAndXpAboveTheTableAreClamped() {
+		String base = "\"building\":" + LOC + ",\"job_block\":" + LOC;
+		WorkerData a = parse("{\"job\":\"farmer\"," + base + ",\"level\":7,\"xp\":10000}").getOrThrow();
+		assertEquals(3, a.level());
+		assertEquals(300, a.xp());
+		WorkerData b = parse("{\"job\":\"farmer\"," + base + ",\"level\":2,\"xp\":150}").getOrThrow();
+		assertEquals(2, b.level());
+		assertEquals(150, b.xp());
+		assertEquals(b, WorkerCodecs.WORKER_DATA.parse(JsonOps.INSTANCE, enc(b)).getOrThrow());
+		WorkerData c = parse("{\"job\":\"farmer\"," + base + "}").getOrThrow();
+		assertEquals(1, c.level());
+		assertEquals(0, c.xp());
+	}
+
 	@Test
 	void badValuesAreErrorsNotExceptions() {
 		String base = "\"building\":" + LOC + ",\"job_block\":" + LOC;

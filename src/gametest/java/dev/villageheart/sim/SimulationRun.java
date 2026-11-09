@@ -45,7 +45,7 @@ import java.util.OptionalInt;
  * Every callback is guarded: a failure becomes status ERROR with the stack trace in the report, then the server halts.
  * The report on disk is the only channel back to scripts/simulate.sh.
  */
-public final class SimulationRun {
+public final class SimulationRun implements Host {
 	private enum State { PRE_START, WAIT_BELL, WAIT_RESUME, RUNNING, DONE }
 
 	private static final int BELL_POLL_TICKS = 20;
@@ -68,7 +68,7 @@ public final class SimulationRun {
 	private Integer stoppedAfterDay;
 	private long seed = SimWorld.SEED;
 	private String difficulty = "normal";
-	private BlockPos structure, bell, heart;
+	private BlockPos structure, bell, heart, site;
 	private long g0;
 	private final List<Integer> reloads = new ArrayList<>();
 	private DayMetrics baseline;
@@ -86,15 +86,18 @@ public final class SimulationRun {
 	private long dayWallStart;
 	private long dayStartTick;
 	private boolean finishing;
+	private long resumeLogAt = -1;
 
 	private SimulationRun() {}
 
 	// ---- accessors for actions ----
-	ServerLevel level() { return level; }
-	MinecraftServer server() { return server; }
+	@Override public ServerLevel level() { return level; }
+	@Override public MinecraftServer server() { return server; }
 	BlockPos bell() { return bell; }
-	BlockPos heart() { return heart; }
+	@Override public BlockPos heart() { return heart; }
 	SimPlayer player() { return player; }
+	@Override public BlockPos site() { return site; }
+	@Override public void setSite(BlockPos site) { this.site = site; }
 
 	void onClaimed(BlockPos heartPos) {
 		this.heart = heartPos;
@@ -146,6 +149,7 @@ public final class SimulationRun {
 		structure = toPos(old.village().structure());
 		bell = toPos(old.village().bell());
 		heart = toPos(old.village().heart());
+		site = toPos(old.village().site());
 		g0 = old.g0();
 		reloads.addAll(old.reloads());
 		reloads.add(old.stoppedAfterDay());
@@ -220,6 +224,10 @@ public final class SimulationRun {
 			if (stateTicks >= BELL_MAX_TICKS) throw new IllegalStateException("no bell near village " + structure.toShortString());
 			return;
 		}
+		if (!SimWorld.forcedChunksTicking(level, structure)) {
+			if (stateTicks >= 4 * BELL_MAX_TICKS) throw new IllegalStateException("the forced chunks around " + structure.toShortString() + " never became entity-ticking");
+			return;
+		}
 		bell = found.get();
 		VillageHeart.LOG.info("[sim] bell at {}", bell.toShortString());
 		setup();
@@ -232,6 +240,11 @@ public final class SimulationRun {
 		for (ScenarioAction a : schedule.setupActions()) runAction(a);
 		schedule.markSetupDone();
 		level.setDayTime(0);
+		// dinner of day index 0 must fire whatever the dinner system did during setup (M11 plan 3.2 #3)
+		if (VillageClaims.current(server).isPresent()) {
+			dev.villageheart.food.Dinner.resetClock(server);
+			dev.villageheart.economy.Wages.resetClock(server); // sim day 1 has no wage run: the first is at the start of sim day 2
+		}
 		g0 = level.getGameTime();
 		clock = new SimClock(g0, request.days());
 		baseline = collector.collect(server, 0, g0, TickStats.EMPTY, 0, 0);
@@ -261,6 +274,11 @@ public final class SimulationRun {
 		}
 		player = SimPlayer.join(server, level, heart.below());
 		collector.setCentre(Vec3.atCenterOf(heart));
+		resumeLogAt = level.getGameTime() + 400; // the entities of the force-loaded chunks are there a moment later
+		StarterActions.resetStanding();
+		for (ScenarioAction a : scenario.actions()) {
+			if (a.type().equals("hire") && a.fields().get("replace") instanceof Boolean b && b) StarterActions.registerStanding(a);
+		}
 		clock = new SimClock(g0, request.days(), done);
 		resetTimers();
 		server.tickRateManager().requestGameToSprint((int) (clock.remainingTicks(level.getGameTime()) + 200));
@@ -279,6 +297,11 @@ public final class SimulationRun {
 	private void running() {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
+		if (now % 100 == 0) StarterActions.maintain(this);
+		if (resumeLogAt >= 0 && now >= resumeLogAt) {
+			resumeLogAt = -1;
+			logNeeds("resume");
+		}
 		// Fixed order (docs/plans/M2.md 3.4): record ended days, run due actions, write the report, then maybe finish.
 		boolean wrote = false;
 		for (OptionalInt d = clock.dayEnded(now); d.isPresent(); d = clock.dayEnded(now)) {
@@ -296,8 +319,24 @@ public final class SimulationRun {
 			finish(null, false);
 		} else if (stopNow) {
 			stoppedAfterDay = request.stopAfterDay();
+			logNeeds("halt");
 			finish(SimStatus.RUNNING, true);
 		}
+	}
+
+	/** Every census villager's diet and bed, and each worker's needs, one line each, sorted: the halt and the resume lists must match (M11 T-L3-2). */
+	private void logNeeds(String when) {
+		var village = VillageClaims.current(server);
+		if (village.isEmpty()) return;
+		List<String> lines = new ArrayList<>();
+		for (var v : dev.villageheart.world.VillageCensus.of(server, village.get())) {
+			String home = dev.villageheart.needs.Housing.home(v).map(g -> g.pos().toShortString()).orElse("-");
+			String needs = dev.villageheart.worker.WorkerAttachments.get(v).map(w -> w.needs().toString()).orElse("-");
+			lines.add(v.getUUID() + " hungry_days=" + dev.villageheart.food.DietAttachments.read(v, village.get().claimedAtGameTime()).hungryDays()
+					+ " home=" + home + " needs=" + needs);
+		}
+		java.util.Collections.sort(lines);
+		for (String l : lines) VillageHeart.LOG.info("[sim-needs] {} {}", when, l);
 	}
 
 	private void recordDay(int day, long now) {
@@ -386,7 +425,7 @@ public final class SimulationRun {
 				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
 		return new Report(scenario != null ? scenario.name() : request.scenario(), status, error, cleanShutdown, heartbeat,
 				schedule != null ? schedule.actionsDone() : 0, stoppedAfterDay, seed, difficulty, request.days(), mc,
-				new VillagePositions(fromPos(structure), fromPos(bell), fromPos(heart)), g0, reloads, baseline, days, assertionResults);
+				new VillagePositions(fromPos(structure), fromPos(bell), fromPos(heart), fromPos(site)), g0, reloads, baseline, days, assertionResults);
 	}
 
 	private void writeReport() {

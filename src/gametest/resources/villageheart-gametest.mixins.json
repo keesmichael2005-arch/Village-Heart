@@ -3,7 +3,9 @@
 	"package": "dev.villageheart.gametest.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"NetworkSynchronizerLostWakeupFix"
+		"NetworkSynchronizerLostWakeupFix",
+		"DisconnectInFlightLeakFix",
+		"NetworkSynchronizerAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

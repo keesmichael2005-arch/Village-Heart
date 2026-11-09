@@ -55,7 +55,10 @@ An operator can take over an abandoned village with `/villageheart owner <player
 jukeboxes, decorated pots, ... but not the personal ender chest) inside a room building (the last enclosed room scan; a 16-block box around the marker
 until the first scan), and cannot break a registered building marker. Sneak-placing a block against a chest still works. **This is not grief
 protection:** a Visitor can still break a wall or floor, put a hopper under a Storage chest, and hoppers, pistons, explosions, copper golems, chest
-minecarts and creative pick-block are not stopped; outdoor sites have no protection. Servers that need more run a claim mod.
+minecarts and creative pick-block are not stopped. Also not stopped, because none of them goes through a player open or break: a Visitor's projectile
+(arrow, snowball, trident, wind charge) breaking a protected decorated pot (vanilla `onProjectileHit` destroys it without the player-break event);
+a button sneak-placed on a protected dispenser, dropper or crafter (sneak-placing against a container is allowed) that fires items out; and lectern
+books, item frames and armor stands (not `Container` block entities, or entities). Outdoor sites have no protection. Servers that need more run a claim mod.
 
 ## 3. Buildings
 
@@ -158,10 +161,21 @@ building behaves exactly as in vanilla.
   it walks to the nearest Storage, deposits, and returns. Inputs (tools, seeds, raw food, ore) are fetched
   the same way.
 - **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
-  wood ×1.0, stone ×1.25, iron ×1.5, diamond ×1.75 *(tunable)*. Tools lose durability as they are used.
+  vanilla mining speed / 2, anchored on stone (wood 2, stone 4, copper 5, iron 6, diamond 8, netherite 9, gold 12 in vanilla): wood ×1.0, stone ×2.0, copper ×2.5, iron ×3.0, diamond ×4.0, netherite ×4.5, gold ×6.0 *(`Balance.VANILLA_TOOL_SPEED`; the base work constants are scaled so a stone tool is as fast as before)*. Tools lose durability as they are used.
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
+  The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
 - **Levels 1–3**: workers gain XP per unit of work. Level 2 at 100 XP and level 3 at 300 XP *(tunable)*. Speed is
   ×1.0 / ×1.25 / ×1.5. Tier caps: Hamlet caps at level 1, Village at 2, Town at 3.
+
+  Rules as built (M15): XP is cumulative and **banked up to 300** even when the tier holds the level back; a worker with 300 XP at Hamlet
+  stays level 1 and becomes level 2 within a second of the Village tier-up and level 3 at Town. Levels are **never lowered** (a level
+  written above the cap, which only tests and admin tools do, is kept and used). XP per unit *(tunable)*: log felled 1, crop harvested 1,
+  cooked item 1, mined item 1, hunting trip 5, kill 5, sparring unit 1, smithed item 2, block placed 0.2, trade 2 (fractions carry per worker;
+  walking, replanting and deposit trips earn nothing). **Firing a worker drops its level and XP**; a rehire starts at level 1 with 0 XP;
+  unloaded workers earn nothing. A level-up shows happy-villager particles and the celebrate sound, tells every online Resident or above
+  in chat (at most 3 lines per tick, then one "and N more" line), and moves the vanilla level badge on the villager's belt (stone, iron, gold).
+  The first time a worker has the XP for a level its tier forbids, the same members hear "needs a Village / a Town"; the Villagers tab shows
+  that worker's XP bar full and gold, with a tooltip.
 - **Needs** (status icons on the Heart screen, not a mood number):
   - **Fed**: ate ≥10 nutrition at the last dinner. Hungry 1 day → work at ×0.5. Hungry 2+ days → stops
     working. **Never dies of hunger.**
@@ -183,10 +197,48 @@ It collects the drops (logs, saplings, sticks, apples) and **replants a sapling*
 Logs that the player placed are never touched: logs in valid rooms and logs without leaves contact are skipped.
 Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
 
+  Rules as built (M9): a **natural tree** is a 26-connected set of natural logs (`#overworld_natural_logs`; no stripped logs, wood blocks or
+  stems) that touches at least 3 non-persistent leaf blocks face to face, whose logs resting on soil (`#dirt`, farmland) all lie inside one
+  2x2 footprint at its lowest y, with no log inside a valid building's room (interior or walls, any building type), at most 192 logs, 17
+  wide and 48 tall. The base rule is what protects log walls and cabins; a lone log post on soil under 3 or more natural leaves is the one
+  documented false positive, and mangroves, trees on sand and trees merged with player logs are skipped. It fells top-down (base last)
+  inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 2.0, copper
+  2.5, iron 3.0, gold 6.0, diamond 4.0, netherite 4.5 (wood 1.0; vanilla speed / 2, anchored on stone: 80 work units per log, so stone fells a log in 40 ticks, wood in 80, iron in 27), times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
+  out there, 1 durability per log (Unbreaking applies); several lumberjacks share the camp's axes best-first in hiring order. Without an
+  axe the status is "Needs axe" (an unreadable chest is unknown, not missing); replanting and collecting still run. No new tree starts after
+  day time 5000 (drops despawn after 6000 ticks); a fell in progress is saved with the village (`tree_tasks`) and any lumberjack of the camp
+  finishes it. Drops (logs, saplings, sticks, apples) in the work area are collected. The base is replanted with the log's species (one sapling per
+  base cell, four for 2x2 trunks) from the worker or the camp chest, after 6000 ticks with any one-cell sapling, and the spot expires after 3 days.
+  **A felled tree gives its lumberjack the saplings its own stump still lacks** (backlog-2): leaf drops are random (and oak leaves draw from
+  a per-world loot sequence), so six small oaks can give fewer than six saplings in a day; the worker counts its own and the camp chests'
+  saplings against the camp's open spots and gets the rest of this stump's cells (none with `block_drops` off). Saplings in Storage and
+  saplings lying on the ground are **not** counted, so the rule is "one guaranteed replant per felled stump" (also for a task tree the player
+  cut down while the task was open). Leaf saplings are an intended small surplus (kept up to the reserve, the rest handed in to Storage).
+  A walker blocked by a plain villager that just stands in its way (on its next path cells or within a block, e.g. an idler in front of a
+  door) asks it to step aside (a vanilla WALK_TARGET a few blocks away). Our own workers are never asked (two walkers settle it by the id
+  step-back rule; a worker standing at its work keeps working), nor trading, sleeping or NoAI villagers.
+  A worker that cannot hand in its load (Storage full or unreachable) stops cutting. Saplings the open spots need, plus 4, are never handed in.
+
 ### 5.2 Farmer (Farmhouse, Composter)
 Works farmland within 24 blocks of the Farmhouse. It harvests **mature** wheat, carrots, potatoes and
 beetroots and replants from the yield. It composts surplus seeds into bone meal and uses the bone meal on
 young crops. It **does not make new fields** in v1: the player or a Builder's Farm Plot does that. No tool is needed (a hoe gives ×1.25).
+
+  Rules as built (M10): the work area is every farmland cell whose crop cell (the block above) lies within 24 blocks (horizontal, Euclidean,
+  inclusive) of the Farmhouse **composter** and within 8 blocks of it in height (the composter anchor and the height limit are additions to the
+  text above; a neighbour's field inside the area is worked too). Exactly four crops, matched by block id: wheat, carrots, potatoes (ripe at age
+  7) and beetroots (ripe at 3); torchflowers, pitcher plants, stems, berries and nether wart are never touched. One unit of work is one atomic
+  change of one cell: **harvest and replant happen in the same tick** (the seed comes out of the drops, so a full inventory cannot cost the
+  replant; the rest of the yield goes to the inventory, what does not fit is dropped and collected later). Units cost 20 ticks (harvest, bone
+  meal), 10 (plant, compost) at speed 1.0. Empty farmland is planted with the crop most common around it (ties: wheat, carrots, potatoes,
+  beetroots) from the worker's seeds or the Farmhouse chest; it never tills. **Composting is deterministic**: the first seed raises the
+  composter to level 1, every further seed adds 3 tenths of a level, so 21 seeds make one bone meal (the mean of vanilla's random composter); the
+  farmer takes the bone meal at READY. Seeds above 16 per kind (wheat and beetroot seeds only) are surplus; a farmer composts a batch of 8, or
+  anything left when there is nothing else to do. Bone meal goes to young crops, non-beetroot first, lowest age first, nearest the composter.
+  The farmer keeps one stack of each seed, 16 carrots and 16 potatoes for replanting, and all its bone meal; the rest of the harvest goes to
+  Storage. A farmer with a full Storage stops harvesting (planting, bone meal and composting go on). A **hoe** in the Farmhouse chest gives a flat
+  ×1.25 (any tier, 1 durability per harvest, wears out in the chest); without one the farmer works at ×1.0 and nothing is reported. Every
+  worker keeps up to 12 food points of bread, potatoes, carrots and beetroots (vanilla's breeding threshold, bread first) and hands in the rest.
 
 ### 5.3 Miner (Mine + Mineshaft, Stonecutter, *requires pickaxe*)
 It walks from the Mine to the Mineshaft and disappears inside. It reappears every **2 in-game hours**
@@ -202,10 +254,55 @@ the rails (cosmetic, post-M-mining polish). The haul comes from a table chosen b
 
 There is no real tunnelling in v1 (post-v1 idea).
 
+  Rules as built (M16): **"disappears inside"** means the villager stays a loaded entity: at the shaft entrance it is moved to the shaft's
+  deepest cell (up the column if that cell is under a fluid or a full block; never the marker cell) and made Invisible, Invulnerable, Silent
+  and NoAI (NoAI freezes the vanilla brain, invulnerable mobs are never targeted). The flags it had are saved in its own persistent
+  attachment and given back when it comes up at the spot it went down from (or, if that is blocked, the nearest free standable cell within
+  2 blocks of the marker; with none it stays hidden and reports "Can't reach the Mineshaft"). `Invisible` is not saved by vanilla, so it is set
+  again when the entity loads. Players cannot trade with or hit a hidden miner; it is re-pinned to its cell every step (pistons). Firing,
+  releasing the village, a conversion or an unreadable trip all bring it up (a villager is never left hidden). **2 in-game hours** means
+  *underground work time*: a haul costs 4000 work units and a stone pickaxe at level 1 earns 2.0 per tick (2000 ticks; wood 4000, copper 1600, iron
+  1333, diamond 1000, netherite 889, gold 667; vanilla speed / 2, anchored on stone), counted in 20-tick steps; the walk to the shaft and the deposit trip are on top, so a real cycle is
+  about 2340 ticks. Progress is kept per shaft (reset when the miner uses another one) and overnight: it comes up at 11000 without a haul,
+  and no new descent starts after 10400. The pickaxe stays in the Mine chest (M9) and loses 10 durability per haul. The band comes from the
+  shaft's deepest Y at its last complete survey (unknown after a restart until the shaft is re-checked: the miner then waits). Diamonds need an iron
+  pickaxe or better and Y < 0; every chance entry draws one number from a generator seeded by (world seed, villager UUID, the miner's haul
+  counter), so a reload never re-rolls a haul. 4 redstone or lapis per hit, 1 gold, 1 diamond (DESIGN gave no counts). A wooden pickaxe uses the stone table,
+  slower. What does not fit into the inventory stays pending and is delivered later (never dropped); the miner hands in everything but food
+  as soon as it is up. A shaft that stops being valid (rails removed) brings the miner up at once with its progress reset; the Mine
+  then turns invalid ("Needs a linked Mineshaft") and its miners report "Workplace invalid" until it is fixed. Statuses: "Needs pickaxe",
+  "No valid Mineshaft", "Can't reach the Mineshaft", and "Away (mining)" on the Heart screen while it is down.
+
 ### 5.4 Hunter (Hunting Lodge + Hunting Ground, Fletching Table, *requires bow or sword*)
 It walks to the Hunting Ground, is gone for **3 in-game hours** per trip, and returns with
 2–4 raw meat (beef, pork, mutton or chicken, weighted by nearby biome), 1–2 leather, 1–2 feathers and 0–1 rabbit hide.
 With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus. There are 2 trips per day at level 1.
+
+  Rules as built (M17): the hunter "goes away" with the miner's machinery (DESIGN 5.3): it stays a loaded entity, hidden (Invisible,
+  Invulnerable, Silent, NoAI) and re-pinned, but where it *stands* when it arrives near the Hunting Ground marker (within 3 blocks of it;
+  there is no hole to hide in), on a free standable cell if another hunter already holds that one. **3 in-game hours** is *time away*: a
+  trip costs 3000 work units at 1.0 per tick at level 1 (2400 ticks at level 2, 2000 at level 3), counted in 20-tick steps; the walk and
+  the deposit trip are on top. The pace does not depend on the weapon's tier (a bow and a diamond sword give the same trips); the tier
+  only decides which weapon is taken. **Weapons** are `#minecraft:swords` (wood, stone, copper, gold, iron, diamond, netherite), bow and
+  crossbow (spears, mace and trident are not hunter weapons). Any bow or crossbow is taken before any sword, then by tier and chest
+  order; the weapon stays in the Lodge chest and loses 5 durability per completed trip. **Arrows** are taken at the return, not at the
+  start: a bow or crossbow takes 1 arrow (plain first, then any other item of the arrows tag) from the Lodge chest and brings 1 more meat;
+  without an arrow it still hunts, with no bonus (Infinity is not modelled). **Trips per day**: 2 at level 1, 3 at levels 2 and 3 (a
+  count saved with the hunter for the day, reset on any other day); a trip only starts if it can end 300 ticks before the work day ends
+  at 11000 (at level 1 the last start is at day time 7700), and the fit is checked again when it arrives. At day end it comes back without
+  a yield and keeps its progress. The yield of a trip is drawn from a generator seeded by (world seed, villager UUID, trip counter), in a
+  pinned order: base meat 2-4, leather 1-2, feathers 1-2, rabbit hide 0-1 (50 percent), then the kind of each piece of meat; the bow's
+  extra piece is one more draw of the same stream, so with and without a bow the same trip is the same plus one meat. **Biome weighting**
+  reads the vanilla creature spawn weights of the biomes at the marker and eight points 12 blocks around it (cow and mooshroom beef, pig
+  porkchop, sheep mutton, chicken; where none of them spawns the vanilla farm-animal weights 8/10/12/10): a plains ground gives 8/10/12/10.
+  Leather, feathers and hide do not depend on the biome. **Which ground**: the nearest VALID Hunting Ground linked to the Lodge. **A rule
+  change from M5**: a Hunting Ground links only to a Hunting Lodge **within 40 blocks** (it was: anywhere in the village); one farther out
+  is invalid ("No Hunting Lodge within 40 blocks"). A hunter more than 40 blocks from the marker first walks to its fletching table. The
+  yield goes into the villager's inventory and the hunter hands in every hunted item at once (raw meat is not a kept food). A hunter that
+  stands in a hidden hunter's way counts as arrived when it touches it near the ground. Statuses: "Needs bow or sword", "No valid Hunting
+  Ground", "Can't reach the Hunting Ground", and "Away (hunting)" on the Heart screen while it is out. If the ground's chunk is not
+  entity-ticking the hunter is not stepped (everything freezes, DESIGN 6). Known gap: a hunter hidden in the open has an invisible hitbox that can catch a player's
+  crosshair (BACKLOG, before v1).
 
 ### 5.5 Cook (Kitchen, Smoker)
 It takes raw food from the stockpile, processes it at the Kitchen's smoker and crafting table, and stores the result:
@@ -255,6 +352,24 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 
   Built rooms include their marker and furniture in the material list, so they become valid on completion.
 
+**Rules as built (M20)** (`docs/plans/M20.md`):
+- "5x5" means a 5x5 floor inside the walls (a 7x7 shell): a 5x5 outside gives 9 floor cells, under the House minimum of 12. Small House: 49 cobblestone, 119 planks, a door, a bed, a torch and the House marker (172 placements, the door and the bed one step each); Storage Shed: the same shell with two chests; Farm Plot: 11x11, 80 farmland (placed moist, moisture 7) around one water source (from a bucket, placed last, the bucket comes back), 39 fences and a gate.
+- A blueprint is data in `core.blueprint` (palette, layers, `base`, anchor, front), parsed once; rotation about the anchor in 90 degree steps (vanilla's position rule, `BlockState.rotate` for the states). An L1 test runs the real `RoomScanner` and `BuildingRules` over both houses in all four rotations.
+- At the Builder's Table (anyone in the claim may read it; Take and Cancel need Steward, `Permission.START_BLUEPRINT`) a Steward takes a Blueprint item. The first click shows the footprint (green dust when the server's site check passes, red when not; the door turns towards the player), a sneak-click turns it, a click inside the outline confirms. The check (`SiteRules`, twelve ordered refusals): rank, tier, dimension and height, inside the claim sphere, at most 8 builds, loaded, no overlap with any registered building's room (interior or shell, valid or not) or marker, no overlap with another build's stand ring, no water or lava in or next to it, no natural tree (fell it first), no block that is not natural, a place to stand within 7 blocks of every cell.
+- "Natural" = in `#villageheart:builder_clearable` (dirt, stone, sand, snow, replaceable plants, flowers, saplings, leaves, coal/iron/copper ore, a few crops of the wild) and, for leaves, not persistent (a player placed it), with no fluid and no block entity. The builder never breaks anything else; it stops on such a block that appears later ("glass in the way at ...", retried every 5 s). Known gap: dirt, stone or sand a player placed outside any marked room cannot be told from terrain and may be cleared (its drops go to Storage). The same holds for a player's pumpkin or melon patch (both are in the tag as crops of the wild).
+- A natural cell is only cleared when nothing of a player rests on it: the site check (rule 11b, `SiteSupport`) refuses a site where a block outside the touched cells would lose its support (a torch, ladder, door, sign, rail or lantern on or against a cell the build clears, found by asking `canSurvive` with the cell as air) or a hanging entity (item frame, painting) is attached to one, naming the thing and its cell ("torch at (x, y, z) would fall: it rests on the site"). The builder asks the same before every clear step; a thing attached after the confirm stops the build with "torch in the way at (x, y, z)" and nothing is broken. Natural neighbours that pop or fall with the cell (flowers, sand) are not protected.
+- The builder reserves the whole build's materials (keyed by the build id, oldest build first, one wood type when possible, transient like all reservations), fetches about a stack at a time, clears (top layer first, drops to Storage), places layer by layer from the bottom in perimeter order, then torches, then water, then a check pass that puts back anything a player removed, and the marker last, so the room is complete when it is first checked. It works only from the ring of columns around the site, never from inside it. 1 action per second at level 1.
+- A pause names the first material in step order that is short ("Needs 12 more planks"); it resumes by itself within a refresh (100 ticks) plus the walk after the planks arrive. Cancelling keeps the placed blocks and loses the blueprint; firing a builder hands the materials it carries back to Storage; a dead builder's carried materials are lost (vanilla villagers drop nothing), the shortfall is reserved again.
+
+**Rules as built (M21)** (`docs/plans/M21.md`):
+- **Two-click lines.** Wall Segment and Gate are LINE blueprints (`mode LINE`). With one in hand: click 1 sets the start (a short grass or snow click means the block below), click 2 sets the end, straight along x or z and at most 32 blocks including both ends (a gate at least 5): a diagonal is "A wall must run straight along x or z (n off the line)", a long one "Too long: 33 blocks (max 32)", a short gate "Too short: 4 blocks (min 5)", and the start is kept so the next click is another end. A good line is checked with the same twelve rules as any site and shown green or red as dust along its outline. A click on the shown line confirms, any other click is a new end (to shorten a line, sneak-click to clear the start and begin again). `/villageheart build line <wall_segment|gate> <from> <to>` is the same for operators.
+- **Level, no terrain following.** The whole line is level at the start's ground height (the ok text says "level at y 65"). Higher ground inside the box is natural and is cleared; a block of a player there refuses as usual. Lower ground is the new rule 11c FOOTING ("No ground under (x, y, z): defences need level ground"): every ground cell under a defence must be solid (a dirt path or farmland counts, short grass and snow layer do not). A sloped wall is several segments.
+- **Defences may touch** each other (wall end to end, a corner, a lamp beside a wall) but never overlap; a House still keeps a block of room from a pending defence. A builder never stands in a column that belongs to another pending build.
+- **Wall:** 3 high cobblestone, 3 per block (a 20-long wall is 60). **Gate:** the same wall with a centred 3-wide opening: closed fence gates at the bottom, one block of air above, a cobblestone lintel on top, so a player passes (2 high) when a gate is opened and a closed gate cannot be jumped. A gate costs 3 per block minus 6 cobblestone and 3 fence gates. Villagers cannot open fence gates (vanilla): a ring of wall with only gates cuts workers off; leave one gate open or a gap.
+- **Lamp Post:** 2 fences and a lantern (it stands on the post). Vanilla refuses a natural monster spawn in a cell with block light above 0 (the overworld's limit), the lantern's 15 falls by one per block along x + z and up: on level ground every cell within 12 steps (a diamond, not a circle) is safe. Not stopped: pillager patrols, slimes, phantoms, drowned, spawners, raids, mobs walking in. Walls and houses shade the light.
+- **Watchtower** (Town): a 3x3 cobblestone shaft 5 high with a ladder inside, an entrance 2 high on the front, a 5x5 plank platform with the ladder's hole and a fence rail round it: 38 cobblestone, 24 planks, 16 fences, 6 ladders. The centre cell above the ladder hole is left as it is (out of the builder's reach from the ring).
+- **Patrol points.** A finished Lamp Post or Watchtower is saved with the village (`VillageState.defences`, at most 64, in finish order). Its patrol point is the first walkable cell next to it (lamp: in front of the post; tower: in front of the entrance), found again at every query. The record goes when its lantern or one of its two ladders is gone (checked every 200 ticks in loaded chunks). `dev.villageheart.defence.Defences.patrolPoints(server)` lists them for the guards (M18).
+
 ### 5.9 Merchant (Market, Market Stall)
 It sells stockpile **surplus** for emeralds that go into the treasury. Surplus means stock above a reserve:
 3 days of food, and 64 of everything else *(tunable, adjustable on the Stockpile tab)*. It sells at fixed prices
@@ -286,9 +401,44 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
   food values (bread 5, baked potato 5, cooked beef 8, carrot 3, apple 4, raw meat counts as its vanilla raw
   value). The best foods are eaten first, cooked before raw. Children need half.
   *Food days left* = stockpile nutrition ÷ (population × 10).
+  Rules as built (M11):
+  - **Abstract dinner.** At 11000 the village system takes every villager's meal straight out of the Storage chests (`Stockpiles.withdraw`),
+    wherever they stand; nobody walks. Eaters = every living, loaded villager in the claim sphere (workers, unemployed, nitwits, children);
+    unloaded ones keep their state (no catch-up). Food in a villager's own inventory is never eaten. Reserved items (M20) are never eaten.
+    A day jump over the whole window (`/time add`) skips that dinner; `/time set` back re-serves it (`last_dinner_day` is compared with `!=`).
+    Sleeping through a thunderstorm before 11000 also skips it. `last_dinner_day` is saved with the claim.
+  - **Need and order.** Adult 10, child (baby) 5. Best food first: prepared before raw (raw = beef, porkchop, chicken, mutton, rabbit, cod,
+    salmon, potato), then nutrition, saturation, item id. Never eaten (= item tag `villageheart:not_village_food`): rotten flesh, spider eye,
+    poisonous potato, pufferfish, suspicious stew, chorus fruit, golden apple, enchanted golden apple, golden carrot. Eaters: the hungriest
+    first, then workers in hiring order, adults before children, UUID. A villager eats until it has 10 (a second beef overshoots) or, when
+    the food left cannot cover its need, nothing at all. Stews leave their bowl in the Storage.
+  - **Hunger** is a per-villager attachment (`villageheart:diet`, saved, claim-scoped). A missed dinner adds a day, a meal resets it.
+    1 missed dinner: work speed x0.5; 2 or more: the worker stops working (status "Too hungry to work"; deposit trips still run).
+    Nobody ever dies of hunger. `WorkerData.needs` is a derived copy written only by the needs system.
+  - **Housing.** A worker is housed when its bed (HOME) is in a valid House (or its own building, M18); unhoused = x0.75. Every 100 ticks an
+    awake unhoused worker moves into the nearest free House bed, else the nearest awake non-worker's; workers never take each other's beds.
+  - *Food days left* uses the real daily need (adults x10 + children x5).
 - **Treasury**: emeralds deposited at the Heart (Resident+). Only the Owner can withdraw.
 - **Wages**: paid at **dawn**: **1 / 1 / 2 emeralds** per day for levels 1 / 2 / 3 *(tunable)*. If the treasury is short,
   workers are paid in hiring order, and the rest strike for the day.
+  Rules as built (M12):
+  - **Deposit** = right-click the Heart with emeralds in the main hand: the whole stack goes in (as much as fits under 100 000), for Owner, Steward
+    and Resident; a Visitor gets a message and the Overview opens instead. Sneaking with an item skips the block (vanilla). "Deposit all" on the
+    Overview takes every emerald in the inventory. **Withdraw 1 / 64** (Overview, Owner only) puts emeralds in the inventory (what does not fit drops at
+    the player). Any emerald counts (a renamed one loses its name). Every deposit and withdraw is one INFO log line with the player's name.
+  - **Dawn** = the first tick of a new day index (`floorDiv(dayTime, 24000)`, also where sleeping lands). It runs once per index change and only while
+    the Heart chunk is loaded: no catch-up for skipped days or unloaded time, `/time set` back pays once. A new claim or an old save starts at today
+    (no instant charge). With `advance_time` off nobody is paid. `VillageDawn.register(id, listener)` lets later milestones react to the same dawn
+    (after wages, with the pre- and post-wage treasury in `PayResult`).
+  - **Pay rule.** Every registered worker, loaded or not (its level is mirrored in `WorkerRecord.level`), in hiring order; a worker whose wage fits what
+    is left is paid, one that does not strikes **and the walk goes on** (a cheaper later worker can still be paid). Owed wages are never carried over.
+  - **Strike** = on today's unpaid list. A striker's work speed is 0 (all jobs, via `needs.paid`; deposit trips still run), its status is "On strike"
+    and it outranks hunger. **Every treasury increase** (deposit, the `treasury add` and `set` commands, a merchant's sale in M22) pays the strikers at
+    their wage as charged at dawn, in hiring order, at once. **A hire is charged at once** (a fresh hire strikes when the treasury cannot pay), so
+    firing at dusk and hiring again at dawn is no free day; a worker already paid today costs nothing to hire again the same day.
+  - **Overview.** Treasury, "Wages tomorrow: N emeralds" (red when the treasury is short), a danger line "N workers are on strike" and a warning "Treasury
+    short: X of Y". Alerts are ordered severity first (danger, then warning), so the five-line cap never hides a strike.
+  - The treasury is capped at 100 000 emeralds (`Balance.MAX_TREASURY`). `/villageheart treasury get|add n|set n` (op) is the admin and test way in.
 - **Simulation is frozen when the village's chunks are unloaded**, as in vanilla. There is no catch-up. Dinner and
   dawn events fire only while the Heart chunk is loaded.
 
@@ -324,6 +474,8 @@ The tier never goes down in v1. The Overview tab shows each goal's progress.
   Actions: assign job, fire, set guard shift.
 - **Buildings**: every marker, with type, position, valid or invalid and the reasons, worker slots used,
   and an active blueprint with its missing materials.
+  As built in M20: a "Builds" section under the buildings lists each build in progress (blueprint, where, "Building: 50%", what it is short of, the builder's name); Residents and above see it (at most 8 rows).
+  The Builder's Table has its own screen (blueprints with their material list and what Storage could still give, Take, the builds with Cancel).
 - **Stockpile**: item totals across Storage, food nutrition total, and surplus reserve settings.
 - **Ranks** (Owner only): players and their ranks.
 

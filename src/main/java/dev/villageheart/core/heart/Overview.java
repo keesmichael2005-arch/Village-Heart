@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * @param foodDaysTenths -1 when there is nobody to feed
- * @param wageBill       -1 until M12
+ * @param wageBill       what the next wage run costs; -1 only when there is no village data
  * @param moreAlerts     alerts beyond the {@link HeartLimits#MAX_ALERTS} shown
  */
 public record Overview(String ownerName, Tier tier, Optional<Tier> nextTier, List<GoalLine> goals, int population, int adults,

@@ -30,13 +30,20 @@ public final class HeartTexts {
 		EN.put(PREFIX + "overview.food", "Food: %s days");
 		EN.put(PREFIX + "overview.food_none", "Food: -");
 		EN.put(PREFIX + "overview.treasury", "Treasury: %s emeralds");
-		EN.put(PREFIX + "overview.wages", "Wages tomorrow: -");
+		EN.put(PREFIX + "overview.wages", "Wages tomorrow: %s emeralds");
+		EN.put(PREFIX + "overview.wages_none", "Wages tomorrow: -");
+		EN.put(PREFIX + "deposit_all", "Deposit all");
+		EN.put(PREFIX + "deposit_all.tip", "Deposit every emerald you carry");
+		EN.put(PREFIX + "withdraw_one", "Withdraw 1");
+		EN.put(PREFIX + "withdraw_stack", "Withdraw 64");
+		EN.put(PREFIX + "withdraw.tip", "Only the Owner can take emeralds out");
 		EN.put(PREFIX + "overview.no_alerts", "No alerts");
 		EN.put(PREFIX + "overview.more_alerts", "(+%s more)");
 		EN.put(PREFIX + "villagers.none", "No villagers nearby.");
 		EN.put(PREFIX + "villagers.more", "+%s more villagers");
 		EN.put(PREFIX + "villagers.unemployed", "Unemployed");
 		EN.put(PREFIX + "villagers.level", "%s L%s");
+		EN.put(PREFIX + "villagers.level_capped", "Needs a %s to reach level %s");
 		EN.put(PREFIX + "villagers.nitwit", "Nitwit");
 		EN.put(PREFIX + "villagers.nitwit_note", "Nitwits cannot work.");
 		EN.put(PREFIX + "villagers.job", "Job: %s (%s free)");
@@ -57,6 +64,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "detail.slots", "Slots %s/%s");
 		EN.put(PREFIX + "detail.homes", "Homes %s");
 		EN.put(PREFIX + "detail.containers", "Containers %s");
+		EN.put(PREFIX + "detail.none", "");
 		EN.put(PREFIX + "reasons.more", "(+%s more)");
 		EN.put(PREFIX + "reasons.none", "No problems found.");
 		EN.put(PREFIX + "stock.none", "Nothing stored.");
@@ -78,6 +86,29 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.storage_full", "Storage full");
 		EN.put(PREFIX + "activity.storage_unreachable", "Storage unreachable");
 		EN.put(PREFIX + "activity.workplace_invalid", "Workplace invalid");
+		EN.put(PREFIX + "activity.needs_tool", "Needs tool");
+		EN.put(PREFIX + "activity.needs_tool.axe", "Needs axe");
+		EN.put(PREFIX + "activity.needs_tool.pickaxe", "Needs pickaxe");
+		EN.put(PREFIX + "activity.needs_tool.hoe", "Needs hoe");
+		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
+		EN.put(PREFIX + "activity.too_hungry", "Too hungry to work");
+		EN.put(PREFIX + "activity.on_strike", "On strike");
+		EN.put(PREFIX + "activity.no_work", "Nothing to do");
+		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
+		EN.put(PREFIX + "activity.no_work.builder", "No blueprint to build");
+		EN.put(PREFIX + "buildings.builds", "Builds");
+		EN.put(PREFIX + "builds.builder", "Builder: %s");
+		EN.put(PREFIX + "activity.needs_materials", "Needs materials");
+		EN.put(PREFIX + "activity.blocked", "Build blocked");
+		EN.put(PREFIX + "activity.no_work.farmer", "No farmland within 24 blocks");
+		EN.put(PREFIX + "activity.no_work.miner", "No valid Mineshaft");
+		EN.put(PREFIX + "activity.away_working", "Away (working)");
+		EN.put(PREFIX + "activity.away_working.miner", "Away (mining)");
+		EN.put(PREFIX + "activity.site_unreachable", "Can't reach its site");
+		EN.put(PREFIX + "activity.site_unreachable.miner", "Can't reach the Mineshaft");
+		EN.put(PREFIX + "activity.no_work.hunter", "No valid Hunting Ground");
+		EN.put(PREFIX + "activity.away_working.hunter", "Away (hunting)");
+		EN.put(PREFIX + "activity.site_unreachable.hunter", "Can't reach the Hunting Ground");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");
@@ -115,4 +146,23 @@ public final class HeartTexts {
 	}
 
 	public static String english(String suffix) { return EN.get(key(suffix)); }
+
+	/**
+	 * The key of what a villager is doing, for the Villagers tab and for every other place that shows a worker's status (one set of words):
+	 * a missing tool names the tool of the job ("Needs axe"), "no work" may have a job-specific reason ("No trees within 32 blocks").
+	 */
+	public static String activityKey(ActivityKind activity, String jobId) {
+		String name = activity.name().toLowerCase(java.util.Locale.ROOT);
+		if (activity == ActivityKind.NEEDS_TOOL) {
+			String tool = dev.villageheart.core.worker.JobType.byId(jobId).flatMap(dev.villageheart.core.worker.JobType::tool)
+					.map(t -> t.kind().id()).orElse("");
+			String specific = "activity.needs_tool." + tool;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity.needs_tool");
+		}
+		if (activity == ActivityKind.NO_WORK || activity == ActivityKind.AWAY_WORKING || activity == ActivityKind.SITE_UNREACHABLE) {
+			String specific = "activity." + name + "." + jobId;
+			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity." + name);
+		}
+		return key("activity." + name);
+	}
 }

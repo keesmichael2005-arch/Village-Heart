@@ -207,6 +207,64 @@ public class HeartActionGameTests {
 		});
 	}
 
+	/**
+	 * M8-r1: the STALE rejection. The menu closes on a later tick (stillValid), so the one-tick window is: break the Heart, place a
+	 * new one at the same spot (new epoch, the player is still in reach), send from the OLD menu before any tick passes.
+	 */
+	@GameTest(environment = "villageheart-gametest:heart_stale_one_tick", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void oldMenuAfterReplaceIsStaleInTheSameTick(GameTestHelper h) {
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = seed(h);
+		seq.thenExecute(() -> {
+			List<Sent> sent = recorder();
+			v[0] = villager(h);
+			ServerPlayer s = player(h, "stew", Rank.STEWARD);
+			var menu = open(h, s);
+			int id = menu.containerId;
+			BlockPos old = heartPos(h);
+			BlockPos relBelow = new BlockPos(3, 0, 1); // where BuildingTestSupport.claim places the Heart
+			h.getLevel().setBlock(old, Blocks.AIR.defaultBlockState(), 3);
+			h.assertTrue(VillageClaims.current(server(h)).isEmpty(), "released by breaking the Heart");
+			VillageTestSupport.place(h, owner(), relBelow);
+			h.assertTrue(VillageClaims.current(server(h)).isPresent(), "claimed again at the same spot");
+			h.assertTrue(s.containerMenu == menu, "the old menu is still open: no tick has passed");
+			h.assertTrue(h.getLevel().getBlockState(old).is(dev.villageheart.block.ModBlocks.VILLAGE_HEART), "new Heart at the old spot, at " + old + " new heart " + heartPos(h));
+			h.assertTrue(menu.nearHeart(s), "the player is in reach of the new Heart, so only the epoch differs");
+			h.assertTrue(!menu.epochCurrent(), "the old menu belongs to the old epoch");
+			send(s, dev.villageheart.heart.net.AssignJobPayload.CODEC,
+					new dev.villageheart.heart.net.AssignJobPayload(id, v[0].getUUID(), "farmer", Optional.empty()));
+			assertRejected(h, sent, s, Rejection.STALE, "old menu, new epoch");
+			assertUnchanged(h, v[0], "after the stale send");
+			done(h);
+		});
+	}
+
+	/** M8-r1: the {@code nearHeart} check. A valid, open menu whose player moved out of reach in the same tick is rejected. */
+	@GameTest(environment = "villageheart-gametest:heart_far", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void actionFromOutOfReachRejectedInTheSameTick(GameTestHelper h) {
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = seed(h);
+		seq.thenExecute(() -> {
+			List<Sent> sent = recorder();
+			v[0] = villager(h);
+			ServerPlayer s = player(h, "stew", Rank.STEWARD);
+			var menu = open(h, s);
+			BlockPos hp = heartPos(h);
+			s.setPos(hp.getX() + 0.5, hp.getY(), hp.getZ() + 30.5);
+			h.assertTrue(s.containerMenu == menu, "the menu is still open: no tick has passed");
+			h.assertTrue(menu.epochCurrent(), "same village");
+			h.assertTrue(!menu.nearHeart(s), "out of reach");
+			send(s, dev.villageheart.heart.net.AssignJobPayload.CODEC,
+					new dev.villageheart.heart.net.AssignJobPayload(menu.containerId, v[0].getUUID(), "farmer", Optional.empty()));
+			assertRejected(h, sent, s, Rejection.NOT_OPEN, "player out of reach");
+			assertUnchanged(h, v[0], "after the far send");
+			// back in reach: the same menu works again, so the rejection was the distance and nothing else
+			standNearHeart(h, s);
+			h.assertTrue(menu.nearHeart(s), "back in reach");
+			done(h);
+		});
+	}
+
 	// ---- T-L2-9 ---------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:heart_bad", structure = YARD, skyAccess = true, maxTicks = 700)

@@ -56,12 +56,16 @@ public final class BuildingTestSupport {
 	// ---- claim -----------------------------------------------------------------------------------
 
 	/** Reset, then (after the bell's POI exists) claim a village with a survival owner. The owner is in {@link #owner}. */
-	public static GameTestSequence begin(GameTestHelper h) {
+	public static GameTestSequence begin(GameTestHelper h) { return begin(h, 0); }
+
+	/** Same, with the bell and the Heart {@code dy} blocks higher (M16's high scene: a platform in the air, where the Mineshaft is in the HIGH band). */
+	public static GameTestSequence begin(GameTestHelper h, int dy) {
 		VillageTestSupport.reset(h);
 		BuildingSystem.resetRuntimeForTests();
 		sweepStrayMarkers(h);
-		h.setBlock(BELL, Blocks.BELL);
-		return h.startSequence().thenIdle(3).thenExecute(() -> claim(h));
+		FarmTestSupport.clearStrayFarmland(h, 40);
+		h.setBlock(BELL.above(dy), Blocks.BELL);
+		return h.startSequence().thenIdle(3).thenExecute(() -> claim(h, dy));
 	}
 
 	/**
@@ -71,6 +75,7 @@ public final class BuildingTestSupport {
 	 * can be hit; only call it with no claim active.
 	 */
 	public static void sweepStrayMarkers(GameTestHelper h) {
+		assertOwnEnvironment(h);
 		ServerLevel level = h.getLevel();
 		BlockPos centre = h.absolutePos(BlockPos.ZERO);
 		for (int cx = (centre.getX() - 160) >> 4; cx <= (centre.getX() + 160) >> 4; cx++) {
@@ -91,14 +96,48 @@ public final class BuildingTestSupport {
 		}
 	}
 
+	/** environment key -> the one test that has swept in it (see {@link #assertOwnEnvironment}). */
+	private static final java.util.Map<String, String> SWEEPERS = new java.util.HashMap<>();
+
+	/**
+	 * Runtime guard for the TESTING.md rule: a test that calls {@code sweepStrayMarkers} runs in its own environment. Same-environment
+	 * tests run at the same time and would sweep each other's markers. Fails if the environment is the default one or if a different
+	 * test already swept in the same environment during this run.
+	 */
+	static void assertOwnEnvironment(GameTestHelper h) {
+		String env;
+		String test;
+		try {
+			var f = GameTestHelper.class.getDeclaredField("testInfo");
+			f.setAccessible(true);
+			var info = (net.minecraft.gametest.framework.GameTestInfo) f.get(h);
+			env = info.getTest().batch().unwrapKey().map(k -> k.identifier().toString()).orElse("<unregistered>");
+			test = info.getTestHolder().key().identifier().toString();
+		} catch (ReflectiveOperationException e) {
+			throw h.assertionException("cannot read the test's environment to check the sweepStrayMarkers rule: " + e);
+		}
+		if (env.equals("minecraft:default") || env.equals("<unregistered>")) {
+			throw h.assertionException("sweepStrayMarkers needs the test to declare its own environment, got " + env + " (docs/TESTING.md)");
+		}
+		synchronized (SWEEPERS) {
+			String other = SWEEPERS.putIfAbsent(env, test);
+			if (other != null && !other.equals(test)) {
+				throw h.assertionException("sweepStrayMarkers: environment " + env + " is shared by " + other + " and " + test
+						+ "; each sweeping test needs its own environment (docs/TESTING.md)");
+			}
+		}
+	}
+
 	private static ServerPlayer owner;
 
 	public static ServerPlayer owner() { return owner; }
 
 	/** Place the Heart next to the bell (the bell must be placed 3 ticks earlier). */
-	public static void claim(GameTestHelper h) {
+	public static void claim(GameTestHelper h) { claim(h, 0); }
+
+	public static void claim(GameTestHelper h, int dy) {
 		owner = VillageTestSupport.player(h, "owner", GameType.SURVIVAL);
-		VillageTestSupport.place(h, owner, new BlockPos(3, 0, 1));
+		VillageTestSupport.place(h, owner, new BlockPos(3, dy, 1));
 		h.assertTrue(VillageClaims.current(h.getLevel().getServer()).isPresent(), "the Heart claimed the village");
 	}
 
@@ -209,6 +248,15 @@ public final class BuildingTestSupport {
 
 		@Override
 		public void sendSystemMessage(Component message) { messages.add(message); }
+
+		/** Action-bar messages ({@code displayClientMessage(msg, true)}), for example claim refusals. */
+		public final List<Component> overlays = new ArrayList<>();
+
+		@Override
+		public void displayClientMessage(Component message, boolean overlay) {
+			if (overlay) overlays.add(message);
+			else messages.add(message);
+		}
 	}
 
 	public static RecordingPlayer recordingPlayer(GameTestHelper h, String name) {
