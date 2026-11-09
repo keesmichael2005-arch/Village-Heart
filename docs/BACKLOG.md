@@ -275,7 +275,7 @@ when it's fixed. Source reviews: docs/reviews/.
 ## From M13 (builder notes)
 - [ ] Cook: `KitchenSystem` drops a heat bank only when the smoker block is gone or the village has no Kitchen at all; a bank whose Kitchen was removed while another stands stays (harmless, one int)
 - [ ] Cook: `JobBehaviours.keep` is by item, so a renamed beef in the cook's pockets is counted with the plain beef of the batch (a player would have to hand it to the cook)
-- [ ] Cook: hunger pace (x0.5) is proven by L1 `CookPaceTest` and the `data.needs()` pass-through only; no L2 test drives a hungry cook's gaps
+- [x] (M13-r1 fix: L2 `hungryCookIsSlower`, red when hunger is dropped; see M13-r2) Cook: hunger pace (x0.5) is proven by L1 `CookPaceTest` and the `data.needs()` pass-through only; no L2 test drives a hungry cook's gaps
 - [ ] Cook: T-L2-6 and T-L2-7 differ from the plan (no dinner, runtime reset instead of entity reload), see the plan's section 8
 - [ ] No "baseline more than 50 commits old" warning in `simulate.sh`; only the scenario-hash guard
 - [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning
@@ -304,6 +304,13 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+
+## From M13-r2
+- [ ] `strikingCookMakesNothing` (and any test asserting a sampler list in a `thenExecute` followed by more steps): when the list assertion fails, `GameTestSequence` carries on and a later step's message is logged ("first item after the pay ... 1200"), hiding the real finding. Stop with the list's message (e.g. `h.fail` and return, or guard the follow-up steps)
+- [ ] `hungryCookIsSlower` shows hunger only in product with the unhoused factor (0.5 x 0.75 = gap 333; red at 167 when hunger is dropped). Add a housed hungry cook: gap 250 +- 1
+- [ ] `starter` (no cook) failed "logs rise every day" on day 10 once during the M13 builder's baseline re-capture; not reproduced in M13-r2's `starter 10`. Track with the dev sim flakes
+- [ ] `cook_at_smoker.png` framing: camera too high (half the frame is ceiling) and the cook hides half the smoker; aim from the side so the lit front and the cook are both in frame
+- [ ] `VillageCodecs.RAW` is now 16 of 16 fields (M13 `smoker_heat` last): the next top-level village key must split the codec (see "From M14")
 
 ## Flakes on dev (orchestrator, 2026-11-09, from the M22 builder's runs) — next free slot: a flake-fix agent
 - [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).
