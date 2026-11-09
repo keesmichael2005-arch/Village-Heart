@@ -62,6 +62,14 @@ final class JobBehaviours {
 					Pair.of(3, new HunterWork()),
 					Pair.of(4, new StandAtJobBlock()));
 		}
+		if (jobOf(villager) == JobType.MERCHANT) {
+			// the merchant walks to its stall like the default, and sells while it stands there (M22)
+			return ImmutableList.of(
+					Pair.of(1, new DepositTrip()),
+					Pair.of(2, new GoToJobBlock()),
+					Pair.of(3, new dev.villageheart.market.MerchantWork()),
+					Pair.of(4, new StandAtJobBlock()));
+		}
 		return ImmutableList.of(
 				Pair.of(1, new DepositTrip()),
 				Pair.of(2, new GoToJobBlock()),
