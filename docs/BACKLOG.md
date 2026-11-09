@@ -333,4 +333,5 @@ when it's fixed. Source reviews: docs/reviews/.
 - [x] (flake-fix: WorldLoadTimeoutFix mixin, 1200 -> 6000 ticks; not reproducible here, so unproven by a run) L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
 Fix root causes; never loosen a bound without a written reason.
 - [x] (flake-fix) `sim_action_game_tests_forced_chunk_grows_without_player` timed out at tick 2202 of 2200: async chunk promotion, now pre-generated.
-- [ ] Audit the other jobs' `walk.begin(x, JOB_BLOCK_REACH)` against `WalkTo`'s +0.1 ARRIVED band (MinerJob, HunterJob, LumberJob, FarmJob, BuilderJob).
+- [x] (flake-fix 2) `WalkTo` arrival tolerance removed at the root; all callers audited.
+- [ ] `hunter_game_tests_two_hunters_one_ground` took 970 ticks vs bound 450 at load 8 (M22 review); not reproduced in 6 loaded runs and 2 full runs. Likely mechanism: the second hunter stalls behind the first at the ground (`WalkTo` stall rule -> UNREACHABLE -> `unreachableAt` retry delay), costing one retry of about 500 ticks. If it recurs, the test's +460 diagnostics line shows decisions and positions.

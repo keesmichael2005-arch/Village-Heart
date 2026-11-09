@@ -466,7 +466,7 @@ public final class SelfCraftJob {
 		if (!jbl.dimension().equals(level.dimension().identifier().toString())) return false;
 		BlockPos jb = new BlockPos(jbl.x(), jbl.y(), jbl.z());
 		if (WalkTo.distance(v, jb) > Balance.JOB_BLOCK_REACH) {
-			if (!st.walk.active() || !st.walk.target().equals(jb)) st.walk.begin(jb, Balance.JOB_BLOCK_REACH - 0.2, now); // WalkTo says ARRIVED up to 0.1 beyond its reach: that must still be within ours
+			if (!st.walk.active() || !st.walk.target().equals(jb)) st.walk.begin(jb, Balance.JOB_BLOCK_REACH, now);
 			if (st.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 				st.walk.clear();
 				st.decision = SelfCraftDecision.PAUSE;

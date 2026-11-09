@@ -401,8 +401,10 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Own the clock before switching on a clock-driven system.** The day time is whatever earlier tests left and it advances. `villageGoalsTierUpAtDawn` enabled dinner a few dozen ticks before 11000
   and the village served a natural dinner on top of the forced one ("Expected one dinner to be 1: was 2"; reproduced by starting at 10970). `TierTestSupport.pinClockEarlyInDay` sets
   1000 and counts today's dinner as served; use it before `NeedsOverride.dinnerEnabled = true`. Not a double count in the game: the second dinner was a real, different one.
-- **A walk that "arrives" must arrive where the work starts.** `WalkTo` returns ARRIVED up to 0.1 block beyond the reach it was given; `SelfCraftJob.craftTick` worked only within the
-  reach itself, so a worker 1.5-1.6 blocks from the job block neither walked nor worked (a push from the other miner puts it there): `craftPausesOvernightAndSurvivesReload`
-  "progress after the evening: 4003.0". `craftWorksFromJustOutsideTheReach` puts the worker at 1.55 and fails without the fix (progress 4003.0). The craft now asks for `JOB_BLOCK_REACH - 0.2`.
-  The same 0.1 band exists in the other jobs' `walk.begin(..., JOB_BLOCK_REACH)` calls (see BACKLOG); they do not stall in the one place checked, but they were not audited.
+- **A walk that "arrives" must arrive where the work starts.** `WalkTo` returned ARRIVED up to 0.1 block beyond the reach it was given, while every job works only within the reach itself,
+  so a worker 1.5-1.6 blocks from its job block neither walked nor worked, for the rest of the day (a push from the other miner puts it there): `craftPausesOvernightAndSurvivesReload`
+  "progress after the evening: 4003.0". Root fix in `WalkTo`: ARRIVED only when `distance <= reach` (the tolerance is gone; the `-0.2` workaround in `SelfCraftJob` is gone too).
+  Tests: `craftWorksFromJustOutsideTheReach` (1.55 from the job block; progress 4003.0 without the fix) and `WorkerGameTests.walkToNeverArrivesBeyondItsReach` (reach + 0.05 for the reaches 1.5, 2.0, 3.0:
+  not arrived, then walks inside). Every caller (miner, hunter, lumberjack, farmer, builder, cook, deposit trip, self-craft) walks through `WalkTo`, so that test covers them by construction; the full L2 suite is green
+  with the strict rule. Item pickups pass 0.8, which a villager never reaches (it stops at about 0.85): they take by their own `COLLECT_TAKE` distance and ignore ARRIVED, so they are unaffected.
 - A failing `craftPausesOvernight...` prints a 25-tick trace of the worker (position, decision, progress) in its message; a failing side-by-side run lists the ticks where logs and wear disagree.
