@@ -151,6 +151,43 @@ public class SelfCraftLifecycleGameTests {
 		GearOrders.rebuild(h.getLevel().getServer());
 	}
 
+	/**
+	 * The "progress after the evening: 4003.0" flake: {@code WalkTo} reports ARRIVED up to 0.1 block beyond the reach it was given, but
+	 * the craft only works within the reach itself, so a worker standing 1.5-1.6 blocks from its job block neither walked nor worked,
+	 * for ever (a push by the other miner puts it there at random). Here the worker is put at 1.55 blocks and must still craft.
+	 */
+	@GameTest(environment = "villageheart-gametest:selfcraft_dead_band", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void craftWorksFromJustOutsideTheReach(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = scene(h, 0, true, SHAFT1).thenExecute(() -> {
+			lightYard(h, 0);
+			add(h, storeChest1(0), new ItemStack(Items.OAK_PLANKS, 5));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, 0);
+			insertRecord(h, committed(h, v[0], 4000));
+		}).thenIdle(3);
+		seq = seq.thenExecute(() -> {
+			var jbl = dev.villageheart.worker.WorkerAttachments.get(v[0]).orElseThrow().jobBlock();
+			BlockPos jbPos = new BlockPos(jbl.x(), jbl.y(), jbl.z());
+			net.minecraft.world.phys.Vec3 jb = net.minecraft.world.phys.Vec3.atBottomCenterOf(jbPos);
+			net.minecraft.world.phys.Vec3 dir = v[0].position().subtract(jb).multiply(1, 0, 1).normalize();
+			net.minecraft.world.phys.Vec3 spot = jb.add(dir.scale(1.55));
+			v[0].setPos(spot.x, jb.y, spot.z);
+			v[0].getNavigation().stop();
+			double d = dev.villageheart.worker.job.WalkTo.distance(v[0], jbPos);
+			h.assertTrue(d > 1.5 && d <= 1.6, "the worker stands in the band: " + d);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 150, "the craft makes progress", () -> {
+			var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[0].getUUID());
+			h.assertTrue(st != null && st.progress >= 4020, "progress " + (st == null ? "none" : st.progress));
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	/** The craft stops at the end of the work day, survives a reload (the restart path) and finishes next morning. */
 	@GameTest(environment = "villageheart-gametest:selfcraft_overnight", structure = YARD, skyAccess = true, maxTicks = 4000)
 	public void craftPausesOvernightAndSurvivesReload(GameTestHelper h) {
@@ -160,6 +197,13 @@ public class SelfCraftLifecycleGameTests {
 		double[] frozen = new double[1];
 		long[] t0 = new long[1];
 		h.onEachTick(() -> s.sample(h));
+		java.util.List<String> trace = new java.util.ArrayList<>();
+		h.onEachTick(() -> {
+			if (v[0] == null || h.getTick() % 25 != 0) return;
+			var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[0].getUUID());
+			trace.add("t" + h.getTick() + " day" + h.getLevel().getDayTime() % 24000 + " " + v[0].blockPosition().toShortString() + " entityTicking=" + h.getLevel().isPositionEntityTicking(v[0].blockPosition()) + " away=" + dev.villageheart.worker.job.AwayTrips.isAway(v[0])
+					+ (st == null ? " nostate" : " dec=" + st.decision + " prog=" + st.progress + " owning=" + st.owning));
+		});
 		GameTestSequence seq = scene(h, 0, true, SHAFT1).thenExecute(() -> {
 			lightYard(h, 0);
 			add(h, storeChest1(0), new ItemStack(Items.OAK_PLANKS, 5));
@@ -173,7 +217,7 @@ public class SelfCraftLifecycleGameTests {
 			var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[0].getUUID());
 			frozen[0] = st.progress;
 			System.out.println("[m19a] craftPausesOvernight: progress at 11050 = " + frozen[0]);
-			h.assertTrue(frozen[0] >= 4100 && frozen[0] <= 4800, "progress after the evening: " + frozen[0]);
+			h.assertTrue(frozen[0] >= 4100 && frozen[0] <= 4800, "progress after the evening: " + frozen[0] + " " + trace + " " + s.log);
 		});
 		seq = seq.thenIdle(200);
 		seq = seq.thenExecute(() -> {

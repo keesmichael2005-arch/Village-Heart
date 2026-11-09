@@ -313,8 +313,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `VillageCodecs.RAW` is now 16 of 16 fields (M13 `smoker_heat` last): the next top-level village key must split the codec (see "From M14")
 
 ## Flakes on dev (orchestrator, 2026-11-09, from the M22 builder's runs) — next free slot: a flake-fix agent
-- [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).
-- [ ] `level_game_tests_iron_axe_out_fells_stone_side_by_side`: "axe wear 112 but 110 logs felled".
-- [ ] `tier_game_tests_village_goals_tier_up_at_dawn`: "Expected one dinner to be 1: was 2".
-- [ ] L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
+- [x] (flake-fix: WalkTo 0.1 dead band in SelfCraftJob, see TESTING) `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`: progress 4003-4004 vs bound 4100 (also seen by the M18 verifier).
+- [x] (flake-fix: regrown saplings, random_tick_speed 0) `level_game_tests_iron_axe_out_fells_stone_side_by_side`: "axe wear 112 but 110 logs felled".
+- [x] (flake-fix: test owns the clock) `tier_game_tests_village_goals_tier_up_at_dawn`: "Expected one dinner to be 1: was 2".
+- [x] (flake-fix: WorldLoadTimeoutFix mixin, 1200 -> 6000 ticks; not reproducible here, so unproven by a run) L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
 Fix root causes; never loosen a bound without a written reason.
+- [x] (flake-fix) `sim_action_game_tests_forced_chunk_grows_without_player` timed out at tick 2202 of 2200: async chunk promotion, now pre-generated.
+- [ ] Audit the other jobs' `walk.begin(x, JOB_BLOCK_REACH)` against `WalkTo`'s +0.1 ARRIVED band (MinerJob, HunterJob, LumberJob, FarmJob, BuilderJob).

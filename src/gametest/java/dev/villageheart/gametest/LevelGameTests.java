@@ -484,6 +484,8 @@ public class LevelGameTests {
 		final int[] needsAxeSteps = new int[3];
 		final int[] longestNeedsAxe = new int[3];
 		final java.util.List<String> problems = new java.util.ArrayList<>();
+		final java.util.List<String> diag = new java.util.ArrayList<>();
+		final int[] lastWear = new int[3];
 		final java.util.Set<BlockPos>[] sets = new java.util.Set[3];
 		long windowStartDay = 1000, windowEndDay = 5000;
 		boolean active;
@@ -501,6 +503,7 @@ public class LevelGameTests {
 
 		void start(GameTestHelper h) {
 			for (int k = 0; k < 3; k++) last[k] = LumberTestSupport.standing(h, sets[k]);
+			for (int k = 0; k < 3; k++) lastWear[k] = SideBySide.wear(h, k, startDamage[k], maxDamageByLevel[k]);
 			active = true;
 		}
 
@@ -515,6 +518,11 @@ public class LevelGameTests {
 					if (day >= windowStartDay && day < windowEndDay) window[k] += d;
 				}
 				last[k] = now;
+				int wearNow = SideBySide.wear(h, k, startDamage[k], maxDamageByLevel[k]);
+				if (wearNow != lastWear[k] || d != 0) {
+					if (wearNow - lastWear[k] != Math.max(0, d) && diag.size() < 40) diag.add("@" + h.getTick() + " level " + k + ": standing " + (-d) + " wear +" + (wearNow - lastWear[k]));
+				}
+				lastWear[k] = wearNow;
 			}
 			var claims = dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).claims();
 			for (var e : claims.entrySet()) {
@@ -559,6 +567,9 @@ public class LevelGameTests {
 			if (sampler[0] != null) sampler[0].sample(h);
 		});
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			// replanted dark oak saplings must not grow during the run: a regrown tree's logs are not in the groves' sets, so the axes
+			// would wear for logs the sampler cannot see ("axe wear 115 but 114 logs felled"); the environment turns random ticks off
+			h.assertValueEqual(0, (int) h.getLevel().getGameRules().get(net.minecraft.world.level.gamerules.GameRules.RANDOM_TICK_SPEED), "random_tick_speed (the levels_side_by_side environment)");
 			LumberTestSupport.sweepStrayTrees(h, 48);
 			for (int k = 0; k < 3; k++) {
 				SideBySide.platform(h, k);
@@ -616,7 +627,8 @@ public class LevelGameTests {
 				}
 				System.out.println(String.format("[m15] side-by-side wood=%d stone=%d iron=%d ratios iron/stone=%.3f iron/wood=%.3f stone/wood=%.3f overhead(ticks per log)%s felled-total=%s",
 						wood, stone, iron, ironStone, ironWood, stone / (double) Math.max(1, wood), wlog, java.util.Arrays.toString(s.total)));
-				h.assertTrue(s.problems.isEmpty(), "measurement problems: " + s.problems);
+				System.out.println("[m15] side-by-side diag: " + s.diag + " totals " + java.util.Arrays.toString(s.total) + " xp " + data(w[0]).xp() + "/" + data(w[1]).xp() + "/" + data(w[2]).xp());
+				h.assertTrue(s.problems.isEmpty(), "measurement problems: " + s.problems + " per-tick mismatches: " + s.diag);
 				for (int k = 0; k < 3; k++) {
 					int standing = LumberTestSupport.standing(h, s.sets[k]);
 					h.assertTrue(standing >= 20, "grove ran out at level " + k + " (" + standing + " logs stand): the comparison is invalid");
