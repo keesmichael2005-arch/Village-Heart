@@ -1,5 +1,6 @@
 package dev.villageheart.core.heart;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.Rank;
 import java.util.Objects;
@@ -8,7 +9,7 @@ import java.util.UUID;
 
 /** A change a player asks for through the Heart screen. M18 adds SetGuardShift. */
 public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire, HeartAction.Recheck, HeartAction.SetRank,
-		HeartAction.Transfer {
+		HeartAction.Transfer, HeartAction.Deposit, HeartAction.Withdraw {
 	Permission permission();
 
 	/** Checked by the gate after the village checks and before the permission: a value no honest client sends. */
@@ -34,6 +35,20 @@ public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire
 		public Recheck { Objects.requireNonNull(marker, "marker"); }
 
 		@Override public Permission permission() { return Permission.RECHECK_BUILDING; }
+	}
+
+	/** Put every emerald the player carries into the treasury (M12). */
+	record Deposit() implements HeartAction {
+		@Override public Permission permission() { return Permission.DEPOSIT_TREASURY; }
+	}
+
+	/** Take {@code amount} emeralds out of the treasury (M12). Any int decodes; only 1..{@link Balance#MAX_WITHDRAW} pass the gate. */
+	record Withdraw(int amount) implements HeartAction {
+		@Override public Permission permission() { return Permission.WITHDRAW_TREASURY; }
+
+		@Override public Optional<Rejection> malformed() {
+			return amount >= 1 && amount <= Balance.MAX_WITHDRAW ? Optional.empty() : Optional.of(Rejection.BAD_AMOUNT);
+		}
 	}
 
 	/** Give {@code player} a rank. {@code rankId} is a {@link Rank} ordinal as sent by the client: any int decodes, only 1..3 pass. */

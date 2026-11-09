@@ -12,3 +12,9 @@ re-run the full verify, push, and report back.
 - End with a full `scripts/verify.sh` run. Look at every screenshot in `reports/screenshots/`.
 - Append a PROGRESS.md entry. Finish with: steps done, final verify result, anything you doubt.
 - You may start **at most 2 helper subagents** (e.g. tests in parallel, API research). They must not start their own.
+- Run test loops in the FOREGROUND (sequential runs within the 10-minute command limit, with long timeouts).
+  Never end your turn while a background command of yours is still running: that forces an early handback
+  and loses the in-flight work. Push after every green step so a restart or handback loses nothing.
+
+- The scratchpad is SHARED between agents. Put any helper scripts or logs in your own subfolder named after your role and milestone (e.g. `scratchpad/m11-builder/`); never run or overwrite a script you did not write.
+- DISK: the session disk allowance is shared and limited. Between repeated full runs, delete `build/run/gameTest/world`, `build/run/clientGameTest` and old sim run dirs in YOUR worktree. Never delete other worktrees.

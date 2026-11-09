@@ -92,4 +92,38 @@ class ActionGateTest {
 		Optional<VillageState> demoted = Optional.of(VILLAGE.get().withRank(STEWARD, Rank.VISITOR));
 		assertEquals(Optional.of(NO_PERMISSION), check(true, true, true, demoted, STEWARD, ASSIGN));
 	}
+
+	// ---- M12: the treasury actions ----------------------------------------------------------------------------
+
+	@Test void aCraftedWithdrawAmountNeverReachesTheTreasuryCode() {
+		for (int bad : new int[] {0, -1, 65, 100, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+			assertEquals(Optional.of(BAD_AMOUNT), ok(OWNER, new HeartAction.Withdraw(bad)), "Withdraw " + bad);
+		}
+		for (int good : new int[] {1, 2, 63, 64}) assertEquals(Optional.empty(), ok(OWNER, new HeartAction.Withdraw(good)), "Withdraw " + good);
+	}
+
+	@Test void badAmountComesAfterTheRateLimitAndTheVillageChecksAndBeforeThePermission() {
+		HeartAction bad = new HeartAction.Withdraw(65);
+		assertEquals(Optional.of(RATE_LIMITED), check(false, true, true, VILLAGE, OWNER, bad));
+		assertEquals(Optional.of(NOT_OPEN), check(true, false, true, VILLAGE, OWNER, bad));
+		assertEquals(Optional.of(NO_VILLAGE), check(true, true, true, Optional.empty(), OWNER, bad));
+		assertEquals(Optional.of(BAD_AMOUNT), ok(OWNER, bad));
+		assertEquals(Optional.of(BAD_AMOUNT), ok(STEWARD, bad), "malformed is checked before the permission");
+	}
+
+	@Test void onlyTheOwnerWithdraws() {
+		HeartAction w = new HeartAction.Withdraw(64);
+		assertEquals(Optional.empty(), ok(OWNER, w));
+		assertEquals(Optional.of(NO_PERMISSION), ok(STEWARD, w));
+		assertEquals(Optional.of(NO_PERMISSION), ok(RESIDENT, w));
+		assertEquals(Optional.of(NO_PERMISSION), ok(VISITOR, w));
+	}
+
+	@Test void residentsAndAboveDeposit() {
+		HeartAction d = new HeartAction.Deposit();
+		assertEquals(Optional.empty(), ok(OWNER, d));
+		assertEquals(Optional.empty(), ok(STEWARD, d));
+		assertEquals(Optional.empty(), ok(RESIDENT, d));
+		assertEquals(Optional.of(NO_PERMISSION), ok(VISITOR, d));
+	}
 }

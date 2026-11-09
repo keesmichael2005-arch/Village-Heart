@@ -15,7 +15,7 @@ public final class ScenarioParser {
 	}
 
 	/** Must match the keys of dev.villageheart.sim.SimActions (gametest source set). */
-	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang");
+	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire");
 
 	public static Scenario parse(String fileName, String json) {
 		Map<String, Object> m;
@@ -58,6 +58,11 @@ public final class ScenarioParser {
 			}
 			if (type.equals("command") && !(fields.get("command") instanceof String)) {
 				throw new ScenarioParseException(at + "command action needs a string \"command\"");
+			}
+			try {
+				ActionSpecs.validate(type, fields);
+			} catch (IllegalArgumentException e) {
+				throw new ScenarioParseException(at + type + ": " + e.getMessage());
 			}
 			actions.add(new ScenarioAction(type, day, tick, fields));
 		}

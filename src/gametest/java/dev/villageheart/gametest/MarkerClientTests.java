@@ -134,7 +134,10 @@ final class MarkerClientTests {
 			context.waitForScreen(InventoryScreen.class);
 			context.getInput().setCursorPos(2, 2);
 			context.runOnClient(mc -> mc.getToastManager().clear());
-			context.waitTicks(5);
+			// the backdrop of the inventory is the world: make it a clear noon right before the shot (it was night)
+			srv.runCommand("time set noon");
+			srv.runCommand("weather clear");
+			context.waitTicks(10);
 			context.takeScreenshot("marker_items");
 			context.setScreen(() -> null);
 		}

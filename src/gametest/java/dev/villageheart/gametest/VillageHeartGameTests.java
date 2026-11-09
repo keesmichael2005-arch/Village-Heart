@@ -108,7 +108,7 @@ public class VillageHeartGameTests {
 					h.assertValueEqual(Rank.STEWARD, r4.village().orElseThrow().rankOf(steward), "persisted rank");
 					h.assertValueEqual(VillageClaims.current(server).orElseThrow(), r4.village().orElseThrow(), "whole record equal");
 
-					alice.gameMode.destroyBlock(abs);
+					h.assertTrue(alice.gameMode.destroyBlock(abs), "owner may break the Heart (release step)");
 					h.assertTrue(reload(server).village().isEmpty(), "release persisted");
 
 					// clear(): needs a non-empty claim on disk first, or an empty file would mask a missing setDirty
@@ -188,6 +188,33 @@ public class VillageHeartGameTests {
 			VillageTestSupport.place(h, bob, bHeart.below());
 			h.assertBlockPresent(ModBlocks.VILLAGE_HEART, bHeart);
 			h.assertValueEqual(bob.getUUID(), village(h).owner(), "Bob now owns the village");
+			VillageTestSupport.done(h);
+		}, new BlockPos(1, 1, 1), new BlockPos(6, 1, 6));
+	}
+
+	/** M1-r3: the "already claimed by <owner>" refusal shown to the second player, and the "released" notice sent to the owner. */
+	@GameTest(environment = "villageheart-gametest:claim_messages", maxTicks = 100)
+	public void claimRefusalAndReleaseMessages(GameTestHelper h) {
+		VillageTestSupport.reset(h);
+		var alice = BuildingTestSupport.recordingPlayer(h, "alice");
+		var bob = BuildingTestSupport.recordingPlayer(h, "bob");
+		BlockPos aHeart = new BlockPos(1, 1, 2), bHeart = new BlockPos(6, 1, 5);
+		withBells(h, () -> {
+			VillageTestSupport.place(h, alice, aHeart.below());
+			h.assertValueEqual(alice.getUUID(), village(h).owner(), "alice claimed first");
+			h.assertTrue(alice.messages.isEmpty(), "claiming sends no chat message: " + alice.messages);
+
+			VillageTestSupport.place(h, bob, bHeart.below());
+			h.assertBlockNotPresent(ModBlocks.VILLAGE_HEART, bHeart);
+			h.assertTrue(bob.overlays.size() == 1, "bob got exactly one refusal: " + bob.overlays);
+			var refusal = BuildingTestSupport.translatable(bob.overlays.get(0));
+			h.assertValueEqual("message.villageheart.claim.already_claimed_other", refusal.getKey(), "refusal key");
+			h.assertValueEqual(List.of("alice"), List.of(refusal.getArgs()), "refusal names the owner");
+
+			h.assertTrue(alice.gameMode.destroyBlock(h.absolutePos(aHeart)), "owner may break the Heart");
+			h.assertTrue(alice.messages.size() == 1, "alice got exactly one notice: " + alice.messages);
+			h.assertValueEqual("message.villageheart.heart.released", BuildingTestSupport.translatable(alice.messages.get(0)).getKey(), "released notice");
+			h.assertTrue(bob.messages.isEmpty(), "bob is told nothing about the release: " + bob.messages);
 			VillageTestSupport.done(h);
 		}, new BlockPos(1, 1, 1), new BlockPos(6, 1, 6));
 	}
@@ -363,7 +390,8 @@ public class VillageHeartGameTests {
 			VillageTestSupport.place(h, owner, new BlockPos(2, 0, 2));
 			village(h);
 			dev.villageheart.world.VillageTicker.TIMER.snapshotAndReset();
-			var reg = dev.villageheart.world.VillageSystems.register("test_spin", (server, v) -> spinMs(2));
+			int[] spins = {0};
+			var reg = dev.villageheart.world.VillageSystems.register("test_spin", (server, v) -> { spins[0]++; spinMs(2); });
 			boolean threw = false;
 			try {
 				dev.villageheart.world.VillageSystems.register("test_spin", (server, v) -> { });
@@ -380,10 +408,14 @@ public class VillageHeartGameTests {
 				h.assertTrue(stats.samples() >= 20, "samples >= 20, got " + stats.samples());
 				h.assertTrue(stats.meanMs() >= 1.5, "mean >= 1.5 ms, got " + stats.meanMs());
 				dev.villageheart.world.VillageTicker.TIMER.snapshotAndReset();
+				int spinsAtClose = spins[0];
+				h.assertTrue(spinsAtClose >= 20, "the system ran every tick while registered, got " + spinsAtClose);
 				h.runAfterDelay(10, () -> {
 					var after = dev.villageheart.world.VillageTicker.TIMER.snapshot();
 					h.assertTrue(after.samples() >= 9, "still sampling, got " + after.samples());
-					h.assertTrue(after.meanMs() < 0.5, "unregistered system costs nothing, mean " + after.meanMs());
+					// Deterministic: an unregistered system never runs again. The wall-clock "idle tick is cheap" bound lives in
+					// VillageTickerPerfTest (perfTest), per the M4 rule: no wall-clock asserts in GameTests.
+					h.assertTrue(spins[0] == spinsAtClose, "unregistered system must not run again, ran " + (spins[0] - spinsAtClose) + " more time(s)");
 					VillageTestSupport.done(h);
 				});
 			});

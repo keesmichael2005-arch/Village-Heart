@@ -12,6 +12,30 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class VillageHeartClientTests implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		// M12: the older L4 tests hire workers and fund no treasury, so they run with wages off (as every GameTest does); TreasuryClientTests turns them on
+		dev.villageheart.needs.NeedsOverride.wagesEnabled = false;
+		// debugging aid: -Dvillageheart.l4.only=build runs only the Builder's Table flow (default: everything, as verify.sh does)
+		if ("build".equals(System.getProperty("villageheart.l4.only"))) {
+			BuildClientTests.builderFlow(context);
+			return;
+		}
+		if ("mp".equals(System.getProperty("villageheart.l4.only"))) {
+			MultiplayerClientTests.ownerAndResident(context);
+			return;
+		}
+		if ("treasury".equals(System.getProperty("villageheart.l4.only"))) {
+			TreasuryClientTests.overviewStrike(context);
+			return;
+		}
+		if ("defence".equals(System.getProperty("villageheart.l4.only"))) {
+			DefenceClientTests.walledSection(context);
+			return;
+		}
+		if ("levels".equals(System.getProperty("villageheart.l4.only"))) {
+			LevelClientTests.levelBadges(context);
+			LevelClientTests.villagersTabLevels(context);
+			return;
+		}
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
 			sp.getServer().runCommand("time set day");
@@ -26,7 +50,17 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		MarkerClientTests.markerItems(context);
 		MarkerClientTests.validationReport(context);
 		WorkerClientTests.workersAtJobBlocks(context);
+		LumberClientTests.lumberjackFelling(context);
+		FarmerClientTests.farmerField(context);
 		HeartScreenClientTests.heartTabs(context);
+		TreasuryClientTests.overviewStrike(context);
+		BuildClientTests.builderFlow(context);
+		DefenceClientTests.walledSection(context);
+		LumberClientTests.villagersNeedsAxe(context);
+		LevelClientTests.levelBadges(context);
+		LevelClientTests.villagersTabLevels(context);
+		MinerClientTests.villagersTabAwayMining(context);
+		HunterClientTests.villagersTabAwayHunting(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
 	}

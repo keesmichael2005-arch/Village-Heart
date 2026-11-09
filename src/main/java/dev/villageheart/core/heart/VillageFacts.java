@@ -17,10 +17,26 @@ import java.util.UUID;
  * @param villagers    workers (any order, see {@link VillagerFact#hiringIndex}) and unemployed adults
  * @param extraAlerts  alerts of later milestones (M11, M12, M25), appended after the built-in ones
  * @param members      the owner, every known player and every online player (M24); shown only to viewers who manage ranks
+ * @param wageBill     what the next wage run costs: the wages of every registered worker, loaded or not (M12)
+ * @param strikers     registered workers that are on strike (M12)
  */
 public record VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 		List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
-		List<AlertLine> extraAlerts, List<MemberFact> members) {
+		List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers) {
+	/** Without the wage figures (the shape before M12). */
+	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
+			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
+			List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds) {
+		this(ownerName, tier, treasury, adults, babies, beds, workerSlots, villagers, jobs, buildings, stock, extraAlerts, members, builds, 0, 0);
+	}
+
+	/** Without builds (the shape before M20). */
+	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
+			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
+			List<AlertLine> extraAlerts, List<MemberFact> members) {
+		this(ownerName, tier, treasury, adults, babies, beds, workerSlots, villagers, jobs, buildings, stock, extraAlerts, members, List.of());
+	}
+
 	public VillageFacts {
 		Objects.requireNonNull(ownerName, "ownerName");
 		Objects.requireNonNull(tier, "tier");
@@ -30,6 +46,7 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 		buildings = List.copyOf(buildings);
 		extraAlerts = List.copyOf(extraAlerts);
 		members = List.copyOf(members);
+		builds = List.copyOf(builds);
 	}
 
 	/**

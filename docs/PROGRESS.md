@@ -225,6 +225,29 @@ Steps 1-11 done. Villager control = brain mixin (DESIGN section 12): `VillagerBr
 - Heart release with an unloaded workstation: releaseAll records those blocks in pending_ticket_releases (saved, survives the village); processPending (END_SERVER_TICK, every 20 ticks, with or without a claim) frees them once the chunk is loaded. GameTest heartReleaseWithUnloadedWorkstation (mutation: recording removed -> red) asserts the freed ticket with the villager own POI query (ALL_ACQUIRABLE_JOBS) instead of waiting for a villager to walk in a far forced chunk. VillageTestSupport.reset clears stale pending entries of the reused test world.
 - Also: L4 comment fixed, camera pulled back so the vanilla villager is in the frame.
 
+## 2026-11-07: M9 plan written (docs/plans/M9.md), Lumberjack
+12-step plan for the first real job, written while M7 is still being built (assumptions M7-1..8 and M8-1 are in §3.1; the main ones: `JobBehaviours.work`
+is the per-job plug-in point, and M7 step 9's `DepositTrip` deposits everything at GO_HOME and gets three small hooks: keep, free-slot, `wanted`).
+- Core: a reusable job toolkit (`core.job`: tool tiers, `WorkSpeed` = tool × level × needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), tree detection
+  over a `TreeView` grid (a 26-connected natural-log component with ≥ 3 non-persistent leaf contacts, a soil base inside 2×2, no log in a valid room,
+  ≤ 192 logs), a budgeted nearest-first `TreeFinder`, a `LumberjackPlanner` decision table, and `TreeTask`s saved in `VillageState`, so an interrupted fell resumes.
+- Pace: stone ×1.25 → 40 ticks per log (1 log per 2 s). Copper, gold and netherite multipliers are pinned. The axe is used in place in the camp chest
+  (1 durability per log), never held, so it cannot be dropped or duplicated. Drops are picked up by mod code (vanilla looting needs `mob_griefing` and
+  `requestedItems`). No new fells after day time 5000, so the canopy (≈ 5 600 ticks to decay) drops before night. Never loads chunks.
+- Verified for the plan: villagers have FOLLOW_RANGE 16 (partial paths, so a progress watchdog is needed); random ticks run in GameTests without a player;
+  the GameTest server does not pace ticks.
+- Tests: 13 L1, 14 L2 (feature-grown trees with fixed seeds, measured `fellBound`, stray-tree sweep), 1-2 L4. L3: `work.<job>.<counter>`,
+  `workers.status.<status>` and the reserved `stockpile.tag.*` get filled for M11.
+Revised after a fresh critique (22 findings; I refuted 3 against the sources: random ticks, StandAtJobBlock, GameTest tick pacing).
+Next: BUILD M9 after M7 (including step 9) is merged. Top risk: the DepositTrip interplay (M7 step 9 does not exist yet).
+
+## M9 (builder, branch m9): Lumberjack
+Steps 1-12 done (the second L4 shot is skipped: M8 is not on dev; ROADMAP not ticked on instruction). Plan deviations: docs/plans/M9.md section 8.
+- core: `core.job` (tool kinds and tiers, `WorkSpeed` = tool x level x needs, `WorkClock`, `ToolAllocation`, `WorkCounters`), `JobType.tool()`, `core.tree` (`TreeScanner`, `TreeFinder`, `FellOrder`, `Species`), `core.lumber` (`LumberjackPlanner`, `ReplantRules`), `TreeTask` saved in `VillageState.treeTasks` (`tree_tasks`), L3 families `work.<job>.<counter>`, `workers.status.<status>`, `stockpile.tag.<tag>` (`DayMetrics`, `MetricsJson`, collector).
+- glue: `worker.lumber` (`LumberjackWork`, `LumberJob`, `LumberRuntime`, `LevelTreeView`, `LumberSystem`, `LumberKeep`), `worker.job` (`CampContainers`, `CampTools`, `ItemPickup`, `WalkTo`, `WorkerStatuses`, `WorkerStatusText`, `WorkStats`); `DepositTrip` gets the keep rule, the free-slot rule, `wanted()` and long-range walking.
+- Main findings while building: the vanilla walk sink cannot bring a worker out of a room to a tree behind a wall (own pathing, `WalkTo`); leaves block the ground up to the trunk (chop from the nearest reachable spot); a worker idling at the camp does not see drops 20 blocks away (collect in the work area); two workers jam in a doorway (jam breaker).
+- Tests: 14 L2 lumberjack tests, 13+ L1 test classes for the toolkit, trees, planner, saved tasks and metrics; L4 `lumberjack_felling` and `villagers_tab_needs_axe`. Verify summary and flake counts are in the M9 round 1 fixes entry below.
+
 ## 2026-11-07: M8 plan written (docs/plans/M8.md)
 9-step plan for the Heart screen v1. APIs checked against the 1.21.11 sources and Fabric 0.141.6 sources jars (no Gradle run).
 - Opening: Fabric `ExtendedScreenHandlerType<HeartMenu, HeartOpenData>` (a menu with no slots; the first snapshot travels with the open packet,
@@ -260,6 +283,14 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Deviations from the plan are in docs/plans/M8.md section 8 (own widgets instead of TabNavigationBar/ObjectSelectionList; unloaded worker simulated by discard; TextLine args).
 - Next: M9. Not ticked in ROADMAP (orchestrator's call). Open: M7's `workerOpensDoors` bound (400 ticks) failed once at 470 under machine load, passed on rerun.
 
+## 2026-11-07: M9 review round 1: FAIL (verifier)
+- Merged origin/dev (M8) into m9; all conflicts additive (both sides kept). Review: docs/reviews/M9-r1.md.
+- Fix 1: a free oak in the open yard is sometimes judged unreachable (WalkTo gives up, 6000-tick blacklist): Layer 2 failed 3 of 9
+  merged runs (two_lumberjacks x2, fell_resumes x1, odd_shapes x1). Fix 2: the Heart Villagers tab shows "Working", not "Needs axe"
+  (HeartFacts ignores NEEDS_TOOL/NO_WORK; WorkerStatusText unused; two key sets for the same statuses).
+- All roadmap tests mutation-checked and real; M7 worker tests 12/12 green; L1, L4, perf green.
+- Next: builder round 2 on m9. Blockers: none.
+
 ## 2026-11-07: M24 plan (ranks and multiplayer), branch m24-plan
 - Plan: docs/plans/M24.md, 11 steps. `Permission(minimum rank)` + new OPEN_CONTAINERS/MANAGE_RANKS/TRANSFER_OWNERSHIP/BREAK_HEART/START_BLUEPRINT;
   `VillageState.known` name book (64, ranked never evicted, save key `known_players`, lenient + repaired on load); `RankRules`; transfer to a
@@ -293,3 +324,347 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Required M12 change: fire dawn listeners on the wages-off branch too (`PayResult.none`).
 - L2 setup is cheap: a seeded streak of 2, one real dinner, one real dawn. A probe dawn listener proves `requestAll` deterministically. The L4 extends `heartTabs` (`heart_overview.png`).
 - Critique: 22 findings, 18 taken, 4 refuted (section 7). Build after M11 and M12 are on dev. Top risk: M11/M12 seam names and the wages-off dawn.
+### M9 review r1 fixes (builder)
+Merged origin/dev (M8 Heart screen, M24 ranks) into m9 (`VillageState` takes `treeTasks` as its last component next to M24's `known`; codec and fabric.mod.json merged).
+1. **False "cannot reach the tree" (roots found, three of them, none was the bound):**
+   - `WalkTo`'s give-up clocks ran while the worker stood at the tree chopping (a 40-log tree takes 1600 ticks): the first step away (a deposit trip, a push) read as an 800-tick walk. They now restart whenever the worker is at its spot, and after any gap in ticking.
+   - Vanilla replaces the navigation's path when a block on it changes (a door opens), recomputing with the villager's 16-block range; the new path led to the far corner of the yard (a 28-block detour and back, 300-600 ticks). `WalkTo` notices a path that is not its own and plans the long one again at once (the trace shows it about 3 times per walk through a door).
+   - The yard of a test is not cleared when the structure is placed (it is one air block): the glass box of `radiusAndUnreachable` and the rooms of other tests stayed and walled off trees of the next test that used the same place. `sweepStrayTrees` now empties the yard first.
+   - The planner started no new tree while a drop was waiting; with the leaves of the day's trees dropping, `oddShapesFelledWhole` never got to its 40-log dark oak before the cutoff. Trees now come before drops while a new fell is allowed (L1 `rows5to8_replantBeforeAFellBeforeCollect`).
+   - New guard: every "cannot reach" verdict is recorded (`LumberRuntime.giveUps`) and the open-yard tests fail on one (`assertNoGiveUps`; `sixOaksTwoDays` only for the six original trees, a regrown canopy can wall off its own trunk).
+   - Evidence: 12 consecutive full `./gradlew --no-daemon runGameTest` runs on the merged code, all 139 tests passed. Before the last fix 1 in 4 to 1 in 12 runs still failed (pace/fell bounds, six oaks), each with a traced cause above.
+2. **"Needs axe" on the Villagers tab:** `ActivityKind` has `NEEDS_TOOL` and `NO_WORK`; `HeartFacts` maps them; `HeartScreen` renders `HeartTexts.activityKey(activity, jobId)` ("Needs axe", "No trees within 32 blocks", red for a missing tool). One set of words: M9's `status.villageheart.*` keys are gone, `WorkerStatusText` now returns the `gui.villageheart.heart.activity.*` keys. The job column of the row is wider (the name column narrower): "Lumberjack L1" was cut off. L2: `noAxeNoLogs` asserts the snapshot row ("Needs axe"). L4: `villagers_tab_needs_axe` (looked at).
+3. Also: `DepositTrip.start` erases a left-over walk target; the felling shot shows the stump with its sapling.
+
+## 2026-11-07: backlog hardening batch 1, branch backlog-1
+- Zero-test guard: `scripts/check-gametest-log.sh` (run by verify.sh, self-tested by `test-check-gametest-log.sh`) fails on "All 0 required tests passed"; TESTING.md says filters must be exact ids. Checked against a real partial-filter run (exit 0, 0 tests) which it rejects.
+- `sweepStrayMarkers` guard: TESTING.md rule + `BuildingTestSupport.assertOwnEnvironment` (reads the test's environment by reflection; fails on the default environment or a shared one). Mutation: removing the environment from `outsideClaimAndNoClaim` goes red.
+- `villageTickerTimesSystems`: wall-clock `< 0.5 ms` assert replaced by a run counter (mutation: unregister no-op goes red); the timing bound is `VillageTickerPerfTest` (perfTest).
+- New tests (each mutation-checked, see BACKLOG): `claimRefusalAndReleaseMessages`, `oldMenuAfterReplaceIsStaleInTheSameTick`, `actionFromOutOfReachRejectedInTheSameTick`, `doubleChestOuterHalfIsProtectedThroughItsPartner`, `readableFullPlusUnknownStorageIsFullWithOneUnknown`; stronger: `depositMarksChestChanged` (partial shrink; the old test did NOT catch a missing `changed()` on withdraw, it survived), the sticky-piston test (wall moved), `outsideClaimAndNoClaim` (non-empty asserts), save/reload release (`destroyBlock` result).
+- `RecordingPlayer` now records action-bar messages (`overlays`). DESIGN section 2 "not stopped" list extended. TESTING.md snapshotCostReal line fixed.
+- marker_items: noon + clear weather set right before the shot; the shot was already noon, its dark backdrop is vanilla's screen dim (looked at).
+- Not done: the M24 demotion double-chest close branch (`compoundIsProtected`) is still untested (noted in BACKLOG). The `destroyBlock` assert in the save/reload test has no mutation (it cannot fail without breaking the release path another assert covers).
+
+## 2026-11-07: M20 plan written (docs/plans/M20.md)
+12-step plan for the Builder and blueprints (buildings). APIs checked against the 1.21.11 sources and data tags (no Gradle run).
+- Core `core.blueprint`: a text format (palette + layers, `base`, `anchor`, `front`, passes, two-block `part=` units, `converts`, room-cell annotations),
+  `Rotation4` (vanilla position rule), `Placement`, `BuildPlan` (clear top-down, place bottom-up, attached, last, check pass, marker last),
+  `SiteRules` (12 ordered refusals incl. overlap with any registered room's interior/shell), `MaterialPlanner`, `FetchBatch`, `BuilderPlanner`, saved `BuildJob`.
+- The three blueprints as data: Small House and Storage Shed (5x5 floor inside a 7x7 shell, marker included: 49 cobblestone, 119 planks, ...), Farm Plot
+  (80 dirt to farmland, water from a bucket, 39 fences, a gate). An L1 test proves both houses are valid rooms in all 4 rotations through the real `RoomScanner`.
+- "Player-placed" = anything outside `#villageheart:builder_clearable` (plus persistent leaves, fluids, block entities, logs); every marked room is protected by the overlap rule.
+- Builder reuses M9's `WorkClock`/`WalkTo`/`WorkerStatuses`/`WorkStats`/`keep`; works only from stand points outside the site; reservations keyed by build id.
+- Revised after a fresh critique (24 findings: confirm click below a base-1 box, check-pass reservations, double-counted carried items, unpinned gamerules, test layouts).
+Next: BUILD M20 after M9 merges (re-check assumptions A1-A10 first). Top risk: builder movement (WalkTo to stand points around real village terrain).
+
+## 2026-11-08: M20 Builder and blueprints (buildings), branch m20
+- Core `core.blueprint` (format, parser, Rotation4, BuildPlan, SiteRules with 12 refusals, MaterialPlanner, FetchBatch, BuilderPlanner, BuildJob) plus saved builds in VillageState; Small House, Storage Shed, Farm Plot as data. Glue in `dev.villageheart.build` and `worker.build` (BuilderJob, BuilderKeep), Builders Table menu and screen, blueprint item with green/red footprint particles, Buildings tab Builds section, START_BLUEPRINT enforced.
+- Deviations from the plan: see docs/plans/M20.md section 8. DepositTrip/ToolRequirement changes kept minimal (M10 overlap: only the builder keep rule hook).
+- Measured: House built in about 5206 ticks (172 places), Farm Plot about 5870 ticks (121 places, 81 clears); pause after 600 ticks of "Needs 12 more planks" resumes cleanly.
+- Pitfall: `.gitignore` `build/` hid the new `src/**/build/` packages from git; fixed with `!src/**/build/`, checked by a fresh-clone compile.
+- Roots fixed on the way: WalkTo stall at 1.2 blocks (ARRIVE 1.4, outward aim), stale pause (150 ticks), TextLine 16-char arg cap (32 for build keys), table menu not syncing the inventory (broadcastChanges), farmland drying (moisture 7).
+- Verify: 8 consecutive full runGameTest runs, 164/164 each. L4 screenshots viewed: builders_table, blueprint_footprint, blueprint_footprint_red, build_mid, heart_buildings_build, build_finished.
+- Next: M21 (defences reuse BuildPlan/SiteRules; add LINE mode). No blockers. M14 tiers not built: tests set the tier directly.
+
+## 2026-11-07: M10 planned (planner): Farmer
+Plan: `docs/plans/M10.md` (13 steps). The farmer reuses M9's job toolkit (`core.job`, `CampTools`, `WalkTo`, `ItemPickup`, `WorkStats`, `JobBehaviours.keep`,
+`DepositTrip.wanted`) and M7's DepositTrip; it adds no second version of any of them and no saved data.
+- Own `FarmerWork` behaviour instead of vanilla `HarvestFarmland`/`UseBonemeal`/`WorkAtComposter` (verified: they need the vanilla FARMER profession,
+  `SECONDARY_JOB_SITE`/`JOB_SITE`, `mob_griefing`, look only at 3×3 with random picks, make bread). Vanilla static helpers are reused (`isMaxAge`,
+  `Block.getDrops`, `BoneMealItem.growCrop`, composter level events).
+- Crops by block id (torchflower extends `CropBlock`): wheat/carrots/potatoes max age 7, beetroots 3. Harvest + replant is one atomic tick (the seed is
+  taken from the drops first). Area: within 24 blocks (xz circle) of the composter, ±8 y. Deterministic composting (21 seeds per bone meal, vanilla's mean).
+  Hoe = flat ×1.25, no hoe ×1.0 (§5.2 over §4's ×0.5; M9's `ToolRequirement` gets a BONUS mode).
+- Changes M7: DepositTrip kept every food item forever (carrots/potatoes/beetroots would never reach Storage); now food is kept only up to 12 points.
+- L2 determinism: each farmer test has its own environment with `random_tick_speed 0` (verified: batches run sequentially, teardown resets the rule).
+Revised after a fresh critique (22 findings; 2 blockers fixed: a night-time control and wrong compost arithmetic; 1 refuted against the sources).
+Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is on dev). Top risk: dependency on unbuilt M9 code.
+
+## 2026-11-08: M10 built (Farmer), branch m10
+- Farm core (`core.farm`: crops, `FieldIndex`, compost rule, `FarmerPlanner`, keep rules), BONUS tool mode, food keep rule in `DepositTrip` (food kept only up to 12 points), `FarmJob`/`FarmRuntime`/`FarmerWork` glue (own behaviour, 20-tick re-plan, server-wide index budget, claims, hoe lease, COLLECT, FETCH, compost, bone meal), `WalkTo.release` (PATH-memory fix). 14 L2 tests (`FarmerGameTests`), L4 `FarmerClientTests.farmerField`. Deviations: `docs/plans/M10.md` section 8 (D1-D12).
+- Collect-timeout bug (D10): a COLLECT interrupted by a deposit trip kept its old start time and the item was blacklisted for 6000 ticks on return. Fixed for both orders (planner YIELD first; trip behaviour first), with two L2 tests that go red when the fix is reverted. **The cause of the original `storageFullStopsHarvest` flake (1 loose wheat never collected) is still unconfirmed**: a traced run never COLLECTs before its trip in phase 2. It has not failed in about 30 runs since.
+- Second flake found by the series: `invalidBuildingKeepsWorker` (M7) expected status OK for a farmer with no farmland, now NO_WORK after a sweep (1 in 9); the test places one farmland block (D12).
+- Evidence: 9 consecutive full `./gradlew --no-daemon runGameTest` runs on the final code, 158/158 each (an earlier series with the flake fix but before D12: 7 of 8 green, the failure being the M7 test above).
+- Screenshot looked at: `farmer_field.png` (farmer at the Farmhouse door, mature wheat field, banner on the wall).
+- Next: M10 review; ROADMAP is the orchestrator's. Doubt: the collect-timeout cause is inferred, not observed.
+- Verify note: one full verify run failed on M8's `fireUnloadedWorker` (population 2 instead of 1 at tick 5, a stray loaded villager counted; not farmer code, not reproduced in 9 L2 runs + 2 verify runs); the rerun was green (158/158, L4, perf).
+
+### M10 review r1 fixes (builder)
+1. Stray farmland made an M7 test flaky (`hiredWorkerReachesJobBlock`: a hired farmer chased farmland 22 blocks away left by a farm test). `clearStrayFarmland` runs in both `begin`s; rule in TESTING; D12's field is removed at the test's end.
+2. D10 covered only the planner-yield order: now also the trip-first order (`FarmJob.tick` drops the collect target while a trip runs). New L2 tests `collectSurvivesTripThatStartsFirst` / `collectSurvivesTripThatPlannerYieldsTo`; both red with the fix reverted. `loose()` now counts the farmer's work area only. Original flake cause stays unconfirmed (see above).
+3. `farmer_field.png` re-framed from the Farmhouse side: the farmer stands between the replanted sprouts (front) and the ripe wheat (behind). Looked at.
+## 2026-11-08: second L4 NetworkSynchronizer stall (disconnect leak), branch l4-flake-2
+- **Root cause (Fabric, fabric-client-gametest-api-v1 4.3.5):** `Minecraft.disconnect` resets `NetworkSynchronizer.CLIENTBOUND` once, right after the client closed its end of the in-memory channel. Netty closes the server's end later on its own event loop while the integrated server keeps ticking, so clientbound packets sent in that window are counted after the reset and fail to write: never uncounted. The first client tick after "Stopping server … All dimensions are saved" then waits 10 s and dies with `Network synchronizer in invalid state`.
+- **Evidence:** temporary probes (not committed). Natural failure under load (1 of 3 loaded runs before the fix), at the end of `heartTabs`: 41 packets counted after the reset (20 `set_entity_data`, 20 `set_entity_motion` from the 20 killed villagers, 1 `disconnect`), `inFlight=41` when `disconnect` returned, invalid state 10 s later.
+- **Fix:** gametest-only client mixin `DisconnectInFlightLeakFix` (+ `NetworkSynchronizerAccessor`) re-applies the reset once the integrated server has stopped; logs `DISCONNECT_LEAK_FIX installed` / `DISCONNECT_LEAK_CLEARED: n`; `verify.sh` checks the first and reports the count. `heartTabs` now waits until the 20 villager deaths are over on server and client before it closes the world (the Heart menu was already closed, so no snapshot refresh is in flight). No retry, no test weakened.
+- **Forced repro** (probe blocks the server channel's event loop 500 ms at each world close): without the mixin 2/2 red at the first close (leaked `set_time`); with it 2/2 green, 6 leaks cleared per run (up to 61 packets in `heartTabs`).
+- **Under load** (4 to 6 of my busy loops, load 8 to 19, other agents' Minecraft too): 10/10 consecutive green L4 runs, 0 invalid states, 0 leaks needed clearing (the quiesce removed the burst); 3 lost-wakeup rescues by the first mixin.
+- **Next:** a disconnect from a dedicated server (`MultiplayerClientTests`) is not covered by the mixin; not seen, and Fabric's 10 s would still report it.
+
+## 2026-11-08: l4-flake-2 verifier review r1: PASS (docs/reviews/l4flake2-r1.md)
+- Root cause confirmed in the Fabric 4.3.5, Minecraft 1.21.11 and Netty 4.2.7 `LocalChannel` sources. The reset point (after `isShutdown()`, i.e. the server thread is dead, and the client channel already closed) is safe and only clears counts that can never arrive. The mixin is not in the shipped jar.
+- Forced repro (my own probe, removed afterwards): red without the mixin (invalid state 10 s after the first close), green with it (7 of 10 closes cleared). The verify.sh gate fails when the mixin is not installed.
+- Under load (load 12 to 16): 6 of 6 L4 runs green, plus the full verify.sh green. One natural leak (1 packet) was cleared after `WorkerClientTests` killed 10 villagers.
+- Notes: `WorkerClientTests:122` and `LumberClientTests:109,174` kill villagers without quiescing (covered by the mixin; hygiene).
+
+## 2026-11-08: M20 verifier review r2: FAIL (docs/reviews/M20-r2.md)
+- Rule 11b refuses 25 of 28 attachment probes (doors, signs of every kind, lanterns, buttons, plates, bells, ladders, paintings, item frames...). Two still break: carpets (the reflective `LevelReader` proxy runs default methods such as `isEmptyBlock` on the real level; `InvocationHandler.invokeDefault` fixes it, tried) and ascending rails (removed in `neighborChanged`, not `canSurvive`).
+- Farm Plot bug, flaky `farmPlotBuilt` (1 of 17 L2 runs): the check pass clears dried or trampled farmland next to the water in one action and places it in the next, so water flows in and the build finishes with 79 farmland. Reproduced deterministically.
+- Mutations of the 3 new tests all go red; the touched-cell exemption in `SiteSupport` has no test. verify.sh green; `workerOpensDoors` 0 failures in 18 runs (one 301-tick run).
+- Next: builder fixes items 1 to 3, then round 3.
+
+## 2026-11-08: M20 review rounds 1 and 2 (branch m20)
+- Round 1: clearing no longer breaks things of a player that rest on the site (rule 11b `Code.SUPPORT`, `SiteSupport`, per-step re-check in `BuildExecutor.cellState`). Round 2: carpets (default methods on the proxy), ascending rails, and the Farm Plot flood (clear and place in one action; water in a CHECK cell is wrong). Details in docs/plans/M20.md sections 8 and the review notes.
+- New tests: `SiteRulesTest.ruleOrder11b`, `attachedThingsRefuseTheSite`, `attachmentAfterConfirmBlocksTheBuilder`, `checkPassDoesNotFloodAFarmland`, `ownTorchDoesNotBlockTheCheckPass`; each mutation-checked.
+- Open: `workerOpensDoors` (M9) rare 300-tick stall, see BACKLOG. Lesson: the scratchpad is shared between agents, so keep helper scripts in an own subdirectory.
+## 2026-11-08: M10 verifier review r2: PASS (docs/reviews/M10-r2.md)
+- All 3 round-1 items fixed: stray farmland is swept in both `begin`s (every farmer-hiring L2 test is covered, and the M20 tests will be too); both collect-across-a-trip orders are tested (trip-first red with its part reverted; planner-first red with the whole fix reverted; `forcePlanForTest` only sets `needsPlan`, and the trace shows a real YIELD); `farmer_field.png` shows the sprouts.
+- Full verify.sh green; L2 160/160 in 10 of 10 runs (0 failures of `hiredWorkerReachesJobBlock`, `storageFullStopsHarvest`, `workerOpensDoors`, `fireUnloadedWorker`).
+- Notes: the `before != COLLECT` restart is now redundant on the trip path and not isolated by any test; the `clearStrayFarmland` doc says crop items, but the code discards all items; `workerOpensDoors` should log its walk ticks.
+## 2026-11-07: M16 plan (Miner + Mineshaft), branch m16-plan
+- Plan: docs/plans/M16.md, 12 steps. Reuses M9's toolkit (`CampTools` PICKAXE lease in the Mine chest, `WalkTo`, `WorkSpeed`, `WorkerStatuses`, `WorkStats`, `DepositTrip` + a `depositNow` hook).
+- "Disappears inside": the villager stays a loaded entity, moved to the shaft's deepest cell and set Invisible + Invulnerable + Silent + NoAI (NoAI freezes the vanilla brain; invulnerable mobs are never targeted); prior flags saved in a new persistent `AwayTrips.AWAY` attachment (separate from `WorkerData`) and restored on surfacing; trade/attack callbacks FAIL; load repair, conversion fix, `restoreVanilla` hook. Heart screen: new `ActivityKind.AWAY_WORKING` "Away (mining)".
+- Haul: 2500 units, stone L1 = 2000 underground ticks, stepped every 20 ticks by `MinerSystem`, progress saved per shaft and kept overnight; 10 durability per haul; tables by `DepthBand` (Y≥40 / 0≤Y<40 / Y<0) with diamonds only for iron+ below 0; `HaulRng` = SplitMix64 of (world seed, UUID, per-worker haul index), so L2 can predict every haul.
+- Shaft depth: `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth` (M5 threw `deepestY` away). Shaft invalid mid-trip → comes up, progress reset, Mine then WORKPLACE_INVALID with M5's reasons.
+- Finding: GameTests run at y ≈ -59, so a shaft in the normal yard is in the Y<0 band (cobbled deepslate). The roadmap's "≥40 cobblestone" test builds its scene high up (relative y computed from the test origin).
+- L1 note: 10k rolls cannot hold 5% for the 2%/10% entries; the plan runs the literal 10k check for fixed and ≥30% entries and a 400k check for all (orchestrator may adjust the ROADMAP wording).
+- Critique: remote critic session, 34 findings, 29 taken, 3 refuted, 2 accepted with reasons. Builds after M9 is on dev. Top risk: hiding a live villager with NoAI (anything else touching those flags or assuming the brain ticks).
+## 2026-11-08: M16 (Miner + Mineshaft), branch m16 (builder)
+- **Done (12 steps):** core `core.mine` (DepthBand, HaulTable, HaulRng, AwayProgress, AwayCheck, MinerPlanner, ShaftChoice, AwayState; 47 L1 tests incl. the roadmap statistics: 10k rolls within 5% for fixed and >=30% entries, 400k rolls for every entry, diamonds only DEEP + iron+); status words (`SITE_UNREACHABLE`, `AWAY_WORKING`, "Away (mining)"); `ShaftSurvey.deepestCell` + runtime `Buildings.shaftDepth`; `AwayTrips` (hide/surface with prior flags, load repair, interaction blocks, conversion fix); `MinerJob`/`MinerWork`/`MinerSystem`/`MinerHauls`; `JobBehaviours.depositNow` (+ `DepositTrip.wanted`); 14 L2 tests (`MinerGameTests`) and 1 L4 shot (`villagers_tab_away_mining.png`, looked at: row "Mina / Miner L1 / Away (mining)" readable, not cut).
+- **Measured:** stone pickaxe, high scene: 4 hauls and 64 cobblestone by day time 12000 (hauls delivered at ticks 2164, 4504, 6844, 9184, cycle 2340); 1981 to 2000 underground ticks per haul; iron 1669, stone 1989 in the two-miner test; first descent 183 to 250 ticks after hiring.
+- **Bugs found and fixed on the way (details in plans/M16.md section 8):** `Invisible` is not saved with a villager (a reloaded hidden miner came back visible: re-applied at ENTITY_LOAD); the Heart screen snapshot threw for any registered outdoor site (`DetailKind.NONE`).
+- **Test infrastructure:** low scene (tower + staircase, DEEP band) and high scene (stone platform in the air, HIGH band), see TESTING "Miner GameTests". Mutation-checked: no flag restore on conversion (red), no pickaxe wear (red), `depositNow` off (red).
+- **Flake seen once:** in the first full verify `minerHaulsFortyCobblestone` failed its "no item entity lying around" check (1 item). 10 full L2 runs since were green; the message now names the item (stack, position, age) so the next occurrence identifies it. Not understood; nothing in the miner code drops items except the `dropPending` fallback (logs a warning).
+- **Next:** M17 reuses `AwayTrips`/`AwayState`/`DetailKind.NONE`. Doubts: the hidden miner's hitbox (BACKLOG), the one unexplained stray item.
+
+
+## 2026-11-08: M20 verifier review r3: FAIL (docs/reviews/M20-r3.md)
+- All round-2 items are fixed. Carpets, moss carpets and ascending rails and powered rails in all 4 directions are refused, as are the door, lantern, wall sign and painting probes, and nothing is broken. The flood test goes red only with both mechanisms off. The planner rule is pinned at L2: a livelock when it is reverted. Short materials pause with "Needs N more dirt" in the main pass and in the check pass, with no gap left.
+- New regression: the check pass's "fluid in a CHECK cell is wrong" rule matches any fluid state, so it overwrites a player's waterlogged stair or chest. The support check's fluid skip (from round 1) misses a waterlogged sign attached after the confirm, and the real builder breaks it. Both are fixed by testing for `LiquidBlock` (tried, then removed).
+- M10 merged cleanly (all conflicts kept both sides). Full L2: 10 of 11 green. The one red was M9's `fellResumesAfterInterrupt` (known signature). verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 4.
+
+- M20 review round 3: waterlogged player blocks are left alone by the check pass and protected by the support check (`LiquidBlock` instead of "holds a fluid"); instant builder takes the material before it clears; "Needs materials" fallback; planner L1 case. See docs/plans/M20.md.
+
+## 2026-11-08: M20 verifier review r4: PASS (docs/reviews/M20-r4.md)
+- Both round-3 items are fixed (`LiquidBlock` only, in `BuildExecutor.cellState` and `SiteSupport.dependent`). The two new GameTests and the new L1 planner case each go red on the old code. M20 is ticked in ROADMAP.
+- Regression probe at confirm and after confirm (carpet, ascending rail, door, waterlogged lantern): each one refuses the site or stops the builder, and each survives. The new `BuildJobs.advance` order leaves no hole and takes one plank once.
+- Full L2: 6 of 6 green in the foreground (186 tests), no M9 flakes. `scripts/verify.sh` exit 0.
+- Next: M21 (Defence blueprints).
+
+## 2026-11-07: M11 plan written (docs/plans/M11.md)
+Planner. Food, dinner and needs, plus the first real L3 scenario `starter`. Planned on assumptions about M7 (origin/m7 at a49fa0f), M9 (origin/m9-plan)
+and M10 (no plan yet); section 3.1 lists them. M11 is built only after M7, M9 and M10 are on dev.
+- Dinner is abstract: at day tick 11000 a village system takes food straight from the Storage chests for every loaded villager in the claim
+  (no walking). Pure `core.food.DinnerPlanner`: hungriest first, then workers in hiring order; best food first (prepared before raw, then
+  nutrition); a villager eats only if it can reach its full need (10, children 5), so food is not wasted on partial meals. `DinnerClock` fires once per
+  day index (`!=`, so `/time set` works), saved as `last_dinner_day`; no catch-up.
+- Hunger lives in a persistent `villageheart:diet` attachment on every villager (epoch-checked); `WorkerData.needs` becomes a derived copy with
+  the invariant fed == (hungryDays == 0). `Needs.speed()` = hunger {1, 0.5, 0} x unhoused 0.75 x unpaid 0; paid is stubbed true (`PaidSource`) until M12.
+  Housed = HOME bed head is a `#bed` of a valid House scan (or the worker's own building). Workers are moved into free House beds (may take one
+  from an awake non-worker). Speed 0 gets a planner row in M9/M10 (idle + `TOO_HUNGRY`).
+- Harness: five new actions (`site` = deterministic flat-site search in core + flatten + light, `prefab` rooms, `field`, `grove` of worldgen oaks,
+  `hire` at day 1 tick 200), `food.*` and `housing.*` metrics, `sim/scenarios/starter.json` with the assertions for the roadmap criteria.
+- Roadmap correction to make in the build: 4 villagers + 20 bread leaves 12 bread (8 eaten), not 8.
+Revised after a fresh critique (22 findings; 3 refuted: `@prev` exists, `--reload-at` halts at dawn, job/building ids are core enums). Key fixes: test hooks so older worker GameTests keep full pace, adults-before-children tiebreak, lenient needs decode, dinner clock reset after the harness sets dawn.
+Next: BUILD M11 after M10 (orchestrator: approve the 12-bread roadmap correction). Top risk: `starter` relies on the unbuilt M9/M10 workers surviving and producing in an unseeded village for 10 days.
+
+## M11 build (food, dinner and needs, `starter`) - builder
+Steps 1-10 done (core food/needs, dinner glue, housing, work-speed wiring, metrics, harness actions, `starter`, docs). Deviations D1-D14: docs/plans/M11.md section 8.
+- **Dinner** at 11000, abstract (no walking), once per day index, `last_dinner_day` saved in the claim. Hunger is a per-villager attachment; 1 missed dinner x0.5, 2+ stops work
+  ("Too hungry to work"), nobody dies. Workers without a House bed work at x0.75 and are moved into a free House bed every 100 ticks. The Heart screen's need icons are real now.
+- **Tests**: L1 +food/needs/sim-harness classes; L2 20 new GameTests (`NeedsGameTests`, `NeedsHousingGameTests`, `NeedsWorkGameTests`, `SimActionGameTests`), 177 total, 9 clean full runs in a row
+  after the last fix. Measured: hungry lumberjack gaps 80/80/80/80 (x0.5), unhoused 53,53,54,53,53 (x0.75), hungry farmer 40-42 ticks per harvest.
+- **Layer 3 `starter` 10 days**: PASS (exit 0), wall 7m02s. 8 villagers all 10 days (no breeding), 8/8 fed at every dinner, 0 deaths, max hungry days 0, housed 2 of 8 villagers
+  (4 House beds). Logs in the stockpile: 37, 80, 116, 149, 187, 227, 278, 322, 347, 375 (first run). Nutrition in the chests rose from 740 to 2033 (the 9x9 carrot field feeds the village ~5x over).
+  **M13 baseline**: eaten nutrition per eaten item = 5.0 on day 1 (bread) and about 3.06 from day 3 (carrots, ~95 nutrition from ~31 items per dinner).
+- `--reload-at 2` with the red extra assertion: exit 1 (only the extra assertion fails), `reloads == [2]`, one dinner every day. The halt/resume needs lists (`[sim-needs]` lines) match for every
+  villager that is loaded at resume (3 of 8 are still unloaded 400 ticks after the resume; that is how the entities of a force-loaded area come back, not a loss).
+- Fixed on the way: the sim's forced chunks became entity-ticking at different speeds (site search was luck): `waitBell` now waits for them; the same race made `forcedChunkGrowsWithoutPlayer` flaky (now waits for ticking, and pins noon: saplings need daylight).
+- Doubt: in 1 of ~6 early 4-day runs the lumberjack's deposit trip reported STORAGE_UNREACHABLE from day 2 on (logs flat). It did not recur in 5 later runs (2x 10 days, 3x 4 days); a `[trip]` log line now names position and door if it does.
+- Next: M12 treasury (add `treasury add` to `starter`, see its description), M13 compares `food.eaten_nutrition / food.eaten_items`.
+
+## 2026-11-08: M11 verifier review r2: FAIL (docs/reviews/M11-r2.md)
+- Both round-1 items are fixed. Cooked-before-raw L1 and L2 tests go red when the raw key is removed. `starter` 10 days: 3 of 3 runs exit 0, logs rise daily, 100 % fed, 0 failed trips.
+- New real-game bug: `LeafEscape` breaks persistent (player-placed) leaves on every failed trip or tree give-up; a probe hedge lost 14 blocks in one give-up. The ramp's 1-block-per-step claim is false, and canopy air pockets leave floating grass (harness).
+- Merged origin/dev (M20): enum conflicts resolved with M20 values first, TOO_HUNGRY appended. L2 205/205 in 6 of 6 foreground runs plus verify.sh; no M9 flakes. verify.sh green.
+- Next: the builder fixes items 1 and 2, then round 3.
+
+## 2026-11-08: M11 round-2 fixes (builder, finisher)
+- `LeafEscape` (real-game bug): never breaks persistent leaves, acts only when the worker is enclosed (4 sides at feet and head blocked, one natural leaf), respects `mobGriefing` (D15). `lumberjackBoxedInByLeavesGetsOut` now uses natural leaves (and lost its always-true filler); three new L2 tests: player hedge and natural hedge survive a give-up, persistent cube is kept. Mutation-checked (persistent check, enclosed check, no-break, old behaviour): each is caught by the test meant for it.
+- Harness ramp: `core/sim/RampProfile` (pure, L1 `RampProfileTest`) gives a 1-block-per-step slope that meets the land; `StarterActions.ramp` reads the ground through canopies (no floating grass). L2 `siteRampHasOneBlockSteps` (red without the slope and without the canopy skip).
+- Found by the 3rd sim run (1 of 6 failed): an idle lumberjack had drifted 45 blocks from camp and could not path back (range 48). `LumberJob.idle` walks back in legs of 24 blocks (D17). Farmer has the same gap (BACKLOG).
+- Follow-up: `WorkerUnstick` (all jobs, via WorkerSystem) and farmer idle legs. A single-cell trunk is already resolved by vanilla push-out, so the run-7 trip flake cause stays unconfirmed.
+- Next: round 3 review.
+
+## 2026-11-08: M16 verifier review r1: PASS (docs/reviews/M16-r1.md)
+- Merged origin/dev (M20) into m16. Enum conflicts resolved: dev's `NEEDS_MATERIALS`/`BLOCKED` keep their indices and M16's kinds are appended after them. `HeartTextsActivityTest` now pins all four appended kinds.
+- Mutation-checked: band threshold (L1 and L2), the tier gate on diamonds, no wear, haul never delivered, invalid shaft ignored, and no Invisible re-apply on load. Each one turns its test red.
+- Hidden-miner probes: release while unloaded, fire then reload, and blocked surface cells (stays hidden, then recovers when cleared) all restore the flags. Notes are in BACKLOG ("From M16-r1").
+- Full L2: 8 of 8 green (199 tests). The stray-item flake and M9 flakes were not seen. `scripts/verify.sh` exit 0. I looked at `villagers_tab_away_mining.png`.
+- Next: M17 (Hunter) reuses AwayTrips.
+
+## 2026-11-07: M15 plan (job levels and tools), branch m15-plan
+- Plan: docs/plans/M15.md, 9 steps. One XP API: `Workers.addXp(villager, n)` (+ `WorkXp.award(villager, WorkUnit, n)` with fractional XP per unit);
+  `core.job.Leveling` applies M14's `TierRules.levelFor` (banked XP up to 300, level = max(stored, levelFor), never lowered); level changes
+  written to attachment and `WorkerRecord.level` at once via M12's `Workers.setLevel`; a 20-tick pass turns banked XP into levels after a tier-up.
+- Feedback: HAPPY_VILLAGER particles, VILLAGER_CELEBRATE sound, chat to online Resident+ members (max 3 lines + summary), a one-off "needs a Village"
+  notice, the vanilla belt badge (VillagerData level 1/2/3), a gold "capped" XP bar on the Villagers tab. Listener seam for M18 perks.
+- Tools: nothing to redo (M9 has tiers, multipliers, sharing, wear per log); M15 extends the speed table test, audits `CampTools.use` per job, and
+  re-proves wear in the side-by-side test.
+- **Blocked on decision D1:** the roadmap's "iron ≥1.3× stone" is impossible with DESIGN's multipliers (iron/stone = 1.5/1.25 = 1.2 is the
+  ceiling, walking only lowers it). Recommended: "≥1.1× stone and ≥1.3× wood" in one three-way test (stacked identical yards at +30/+60 on glass platforms).
+- Critique: a separate critic session, 19 findings (1 blocker = D1 confirmed, 9 major, 9 minor), all taken (plan section 7).
+- Top risk: D1, then the stacked-platform layout of the side-by-side test (fallback: three sequential days, recorded as a deviation).
+
+## 2026-11-08: M15 (job levels and XP; tools done in M9), branch m15
+- **What changed.** Core: `WorkUnit`, `Progress`, `XpChange`, `Leveling` (gain / levelNow / capped / tierForNext / sanitize), `XpAccumulator` (integer milli-XP, 0.2 per block never drifts), `Balance.LEVEL_CAPS`, `MAX_BANKED_XP`, `milliXpPerUnit`; `core.tier.TierRules` (levelCap, levelFromXp, levelFor; M14 was absent, M14 adds the rest to that class). Glue: `Workers.addXp` / `Workers.setLevel`, `WorkXp.award` (what jobs call), `WorkerLevels` (listeners for M18 perks), the 20-tick level pass in `WorkerSystem` (banked XP becomes a level after a tier-up, never lowers a level), the vanilla belt badge follows the level (also on install), `LevelUpFeedback` (particles, celebrate sound, chat to online Resident+, max 3 lines per tick then "and N more", "needs a Village/Town" notice once per threshold, test seam). XP wired into the lumberjack (log), farmer (crop) and builder (0.2 per block placed). Heart screen: `VillagerRow.levelCapped` (+1 byte in the codec), gold full bar and tooltip. Codec clamps values above the table. Zombie conversion also resets the badge level.
+- **Tests.** L1: `LevelingTest`, `XpAccumulatorTest`, `BalanceLevelsTest`, `WorkSpeedTest.fullToolLevelNeedsTable` (7 tiers x 3 levels x needs), codec clamp, snapshot `levelCappedFlag`, codec round trip with the new flag, `LangCoverageTest.levelUpMessages`. L2 (`LevelGameTests`, 10 tests): API and badge, tier-up turns banked XP into levels, reload and fire, cured zombie, felling pace after a level-up (40, 40, then 32 ticks), the Hamlet cap holds pace then lifts after `setTier`, farmer XP, feedback audience (Owner/Resident yes, Visitor no), tier-up flood summary, side-by-side; plus a builder XP assertion in `BuildGameTests.smallHouseWithinTwoDays`. L4: `LevelClientTests` (badges, Villagers tab).
+- **D1 (orchestrator, option A).** Side by side over day ticks [1000, 5000) at Hamlet: wood 71, stone 89, iron 106-107 logs; iron/stone 1.191-1.202 (>= 1.1), iron/wood 1.493-1.507 (>= 1.3), stone/wood 1.254. Eight full Layer 2 runs, each with the test: iron/stone 1.191, 1.202, 1.191, 1.202, 1.191, 1.191, 1.191, 1.202; iron/wood 1.493, 1.507, 1.493, 1.507, 1.493, 1.493, 1.493, 1.507 (plus 5 runs alone: all 1.191 / 1.493). Villager walking is deterministic in the stacked setup (about 4-6 ticks per log). Mutation: iron speed set to stone's turns it red.
+- **Verify.** 8 of 8 full Layer 2 runs green (196 tests). One earlier `./gradlew build` showed the known M9 flake `six_oaks_two_days` ("oak 0 went at tick 600 and was not replanted within a day"), before any glue change; not seen again in 14 runs.
+- **Deviations** (docs/plans/M15.md section 8): no `WorkerRecord.level` (M12 absent: T-L2-4 not written, re-install resets to level 1; M12 note in ROADMAP), codec clamps only above the table (M7's test pins the lower bound), oak trees have only 4-6 logs (T-L2-5/6 use oak seed 3), side-by-side offsets 28 instead of 30/60.
+- **Next.** M16-M19, M22 each call `WorkXp.award` (notes in ROADMAP). M12 adds the record mirror in `WorkXp`. M14 adds tier progression to `TierRules`.
+
+## 2026-11-08: M15 verifier review r1: FAIL (docs/reviews/M15-r1.md)
+- Merged origin/dev (M16, M20) into m15. The five conflicts (docs, client and reset hooks, gametest entrypoints) kept both sides. No enum conflicted. `levelCapped` is appended at the end of the row codec.
+- Every criterion goes red under its mutation: thresholds, cap ignored (L1 and 6 L2 tests), level not applied to speed (L1 and the felling-pace tests), XP not awarded (lumberjack, farmer, builder), the level pass removed, wear off, and the codec lower bound.
+- Fix 1: the merged miner (M16) never calls `WorkXp.award(ITEM_MINED)`, so a miner's level never rises (DESIGN §4: "mined item 1"). It needs the call in `MinerSystem`'s haul branch and an L2 assertion.
+- Full L2: 6 of 6 green in the foreground (209 tests). Side by side: iron/stone 1.191 or 1.202, iron/wood 1.493 or 1.507. No M9 flakes. M16's stray-item flake was seen once, in a mutated run. `scripts/verify.sh` exit 0. I looked at both M15 screenshots.
+- Next: M15 round 2 (fix 1).
+
+## 2026-11-08: M15 review r1 fixes
+- The merged miner (M16) now earns XP: `MinerSystem` awards `ITEM_MINED` (sum of the haul's item counts) next to `work.miner.hauls`; `minerHaulsFortyCobblestone` asserts XP == min(300, items hauled) and goes red without the call ("expected 77, was 0"). Builder, lumberjack and farmer were already wired and tested; no other job is merged. Stale M16 "Note (M15)" removed from ROADMAP.
+- Side-by-side test: the final assertions run in try/finally so a failed assertion still clears the upper platforms (a timeout is still covered only by the clear at the next run's start). T-L2-11 keeps the reflection (a rename fails loudly).
+## 2026-11-08: M21 plan (defence blueprints), branch m21-plan (planner)
+- **Plan:** docs/plans/M21.md, 11 steps. Wall Segment and Gate use the LINE mode (click start, click end, click the line to confirm, sneak to start over), straight along x or z, 1-32 long (gate 5-32, a centred 3-wide fence-gate opening under a lintel), level at the start's height; generated blueprints parsed by the normal parser, so every M20 safety rule applies. Lamp Post = 2 fences + lantern: vanilla's block-light rule (overworld limit 0, verified) gives a 12-step diamond on level ground. Watchtower (Town) = 3x3 shaft, ladder, 5x5 platform, rail. New site rule FOOTING (defences only); touching defence builds allowed; finished lamp posts and towers are saved as patrol-point sources for M18.
+- **Lamp L2 is deterministic:** the spawner's own predicate (`SpawnPlacements.checkSpawnRules` + `isSpawnPositionOk`, seeded random) on every cell over a real night: lit set 0 passes, the hd 13 ring and a control set > 0, the lit cells before the lamp > 0.
+- Critique: remote critic session, 25 findings (8 MAJOR): 23 taken, 2 refuted with reasons (reach formula, byId audit). Top risk: level-only walls on real terrain (no terrain following).
+- Blockers: none. M18 must register `Defences::patrolPoints` if it merges after M21.
+
+## 2026-11-08: M21 (defence blueprints), branch m21 (builder)
+- **What changed.** Core: `WallLines` (two-click line: NOT_STRAIGHT, TOO_LONG, TOO_SHORT), `DefenceBlueprints` (wall 1..32 and gate 5..32 generated and parsed at class init, lamp post, watchtower), `Blueprints` (7 entries, LINE `resolve`), `LampLight`, `SiteRules` (rule 11c FOOTING, defence adjacency in rule 8, `SiteView.solid`, `Box.defence`, appended codes, explicit `overridableByUnchecked`), `StandPoints.avoiding`, `BuildJob.start` with params, `DefenceSite`/`DefenceSpecs`/`Defences`, `VillageState.defences` + codec. Glue: LINE flow in `BlueprintUse` (start, end, confirm on the shown line, sneak clears), `BlueprintSite.length`, `/villageheart build line`, `BuildJobs.finish` records lamp posts and towers, `DefenceSystem` (200-tick refresh) and `dev.villageheart.defence.Defences.patrolPoints(server)`, `SiteValidation` stand-ring wrapper, client preview (line column and long outlines), Builder's Table rows (Gate, Wall, Watchtower detail) and tooltips.
+- **Tests.** L1: `WallLinesTest`, `DefenceBlueprintsTest`, `LampLightTest`, `DefencePlanTest`, `DefenceSiteRulesTest`, `DefencesTest`, `VillageStateDefencesTest`, extended `BlueprintsTest`. L2 (`DefenceGameTests`, 9 tests): attachments in 4 rotations, 8 instant lines, a 20-long wall built by a builder villager from 60 cobblestone in 1 692 ticks, a gate that opens (and the check pass leaves an opened gate), the line flow refusals, tower tier and patrol points (a broken lantern removes the point), the tower check pass repairs a popped ladder, walls queued end to end and round a corner, the lamp post over one (time-warped) night. L4: `DefenceClientTests.walledSection` plus two table rows in `builderFlow`.
+- **Deviations** in docs/plans/M21.md section 8 (watchtower rail centre ANY: 94 touched cells; time-warped lamp night; one-line table rows; a 2-arg limit of `TextLine` found by the L4 picture).
+- **Next.** M18 must register `Defences::patrolPoints` (BACKLOG, blocking line); M14 reads the tier as before.
+
+
+## 2026-11-08: M17 plan (Hunter + Hunting Ground), branch m17-plan
+- `docs/plans/M17.md`: 10 build steps, 12 L1 + 9 L2 + 1 L4 test groups. Reuses M16's away machinery (AwayTrips hide/surface, AwayCheck,
+  AwayProgress with a unit-cost overload, HaulRng, ShaftChoice); hunter-specific core in `core.hunt` (yield table with a pinned draw order,
+  biome meat weights from vanilla creature spawn weights, flat pace 3000 ticks/trip at L1, cap 2/day, departure cut-off 7700, arrows taken
+  at return for +1 meat, bow/crossbow ranked over swords, wear 5/trip).
+- M5 rule change planned: Hunting Ground link range 40 (was unlimited), so a hunter can always walk out and back.
+- Critique: fresh remote session, 27 findings; all but 2 taken (table in the plan's section 7).
+- Assumptions about M16 (built on origin/m16 only up to step 3 when planned): A1-A9 in section 3.1. Top risk: M16's glue API differs.
+- Next: build after M16 is merged on dev. No blockers.
+
+## 2026-11-08: M17 builder (Hunter + Hunting Ground), branch m17
+- Built on M16's real code (checkpoint A1-A9 in `docs/plans/M17.md` section 8): `AwayProgress`/`AwayCheck` unit-cost overloads, `ToolAllocation` ranked overload, `AwayHauls` (job-neutral give/flush), `CampTools.lease(..., rank)`, `AwayState` + `done_day`/`done_today` (M16 names and 8-arg constructor unchanged). New `core.hunt` (`MeatWeights`, `HuntTable`, `HuntPace`, `HunterWeapons`, `HuntBonus`, `TripDay`, `HunterPlanner`) and `worker.hunt` (`HunterJob`, `HunterWork`, `HunterSystem`, `HuntSites`, `HuntGear`, `HunterRuntime`). M5 rule change: a Hunting Ground links only to a Lodge within 40 blocks.
+- Tests: 10 L2 hunter tests (the roadmap test: 2 trips of 2989-2998 ticks away, exactly the predicted yields in Storage, 10 durability) and `villagers_tab_away_hunting.png` (looked at: "Hana / Hunter L1 / Away (hunting)", row readable). L2 is 209 tests; a hunter test costs 1000-6500 ticks, about 2 to 8 s of CPU each.
+- Two flakes found and fixed at the root, not by loosening bounds: a hunter walking behind a hidden one (solid NoAI villager) lost up to 2600 ticks under CPU load (3 of 8 runs under load, 0 of 8 after the fix; deterministic corridor test); `minerHaulsFortyCobblestone`'s stray-item check saw a neighbouring test's dropped chests (it now checks its own footprint: this is very likely the BACKLOG's "unexplained stray item"). A forced-chunk premise for the far-hunter test.
+- Existing assertions changed (reasons in the plan's section 8, item 5): `SiteRulesTest` text for the 40-block range, `HeartTextsActivityTest` generic-fallback examples, `minerHaulsFortyCobblestone` item box.
+- Docs: DESIGN 5.4 "Rules as built (M17)", TESTING "Hunter GameTests (M17)", BACKLOG "From M17".
+- Next: M17 review. ROADMAP not ticked (verifier does that). No blockers. The disk on this machine filled once during the L2 repeat loop (each full run leaves 740 MB in `build/run/gameTest/world`).
+
+## 2026-11-08: M17 review round 1 (verifier): PASS
+- Every criterion mutation-checked: L1 table ranges (leather max 3) and bow bonus (`pieces = base`) red; L2 no bow bonus, trips never delivered, no weapon wear, no arrow use, touch rule off: each red. All restored.
+- Changed assertions judged not weakened. The narrowed M16 stray-item box cannot hide a real drop: no mod code path drops a tool; the pickaxe comes from `clearHigh` spilling a neighbour's chests (BACKLOG note added to the review).
+- Full L2 6 of 6 green in the foreground (209 tests). `scripts/verify.sh` run 1 exit 1 on the known M9 `sixOaksTwoDays` flake (not M17), run 2 exit 0. Looked at `villagers_tab_away_hunting.png`.
+- Next: notes in `docs/reviews/M17-r1.md` (hidden villagers solid for every walker; empty chests in `clearHigh` first).
+
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.
+## 2026-11-08: M17 follow-up, hunter XP (branch m17-xp)
+- `HunterSystem` now calls `WorkXp.award(v, WorkUnit.GAME_HUNTED, 1)` when a trip's yield is delivered (next to `WorkStats "returns"`), like M16's miner. Level speed already applied through `HuntPace` (level of the worker data), nothing else M15 expects of the hunter.
+- Test: `hunterWithSwordBringsMeatAndLeather` also asserts the worker's XP equals 2 trips x `Balance.milliXpPerUnit(GAME_HUNTED)` (red without the call). BACKLOG line ticked.
+
+## 2026-11-08: backlog-2 (test hardening: GameTest flakes), branch backlog-2
+- **M9 `sixOaksTwoDays`** (not replanted within a day): oak leaf drops come from the per-world loot sequence `minecraft:blocks/oak_leaves`. Alone the test always gets the same 9 saplings (needs 6); in a full run the earlier tests shift the window, and 2-5% of this world's 250-300-roll windows hold fewer than 6 (min 3). Forced repro: sequence salt 553 + rule off gives the exact "oak 2 went at tick 400 ... on tick 50002". Game fix: a felled tree yields the saplings its own stump still lacks (`ReplantRules.cuttings`, `LumberJob.giveCuttings`). New L2 `stumpsReplantedWhenLeavesDropNoSapling`, L1 cuttings test, `fellsOneOakWhole` asserts no cutting with a sapling on hand.
+- **M9 `fellResumesAfterInterrupt`** (second oak, "no movement for 201 ticks, 21.9 blocks" in the camp doorway): the fired worker idled outside the door; the jam rule "stepped back" to the worker's own cell. Game fix: `WalkTo` asks an idle villager within a block to step aside. New L2 `idlerInTheDoorwayStepsAside` (red without the nudge with the natural signature).
+- **M17 `farHunterWalksViaLodge`** (not entity-ticking on tick 2602): not load. Only the strip's two corner chunks were forced; at 9 of 256 placements the far spot's chunk was neither (the failing run's origin is one). The test forces every chunk the strip touches and asserts it.
+- **M7 `workerOpensDoors`**: walk-time logging + trace added; no outlier in 9 full + 8 isolated runs (all 64 ticks), not root-caused, BACKLOG left open.
+- Runs: full L2 green in 4 of 4 on backlog-2 and 5 of 5 on origin/m11 merged with backlog-2 (the coordinator saw 2 of 5 red on origin/m11), under load 2-10.
+- Next: review. No blockers.
+
+## 2026-11-08: M21 review round 1 (verifier): PASS
+- Merged origin/dev into m21 (doc conflicts kept both sides; the gametest entrypoint list keeps `HunterGameTests` and `DefenceGameTests`).
+- Lamp test judged a faithful proof (time only enters via sky darken, which the 111 samples cover; same predicate as `NaturalSpawner`; three counterfactuals). Mutations red: lantern removed (lit 30469), predicate bypassed (lit 138528); L1 `maxLength + 1` red. Wall-20 and gate tests read and judged exact.
+- `scripts/verify.sh` exit 0 (228 L2 tests); full L2 4 more runs: 3 green, 1 M17 `farHunterWalksViaLodge` load flake (known, BACKLOG). Looked at every new screenshot and the M20 builder-flow ones.
+- Next: notes in `docs/reviews/M21-r1.md` (a two-builder touching-walls test; rail centre cell). M18 must still register `Defences::patrolPoints`.
+
+## 2026-11-08: backlog-2 review round 1 (verifier): FAIL
+- `scripts/verify.sh` exit 0, plus 6 more full L2 runs: 1 red, in the new `idlerInTheDoorwayStepsAside` ("idler asked false", the same natural signature: the walker stalled 2 blocks from the idler, outside the nudge's 1-block box).
+- Mutations red: cuttings off, nudge off, the L1 cuttings cap. The M17 chunk cause is proven by arithmetic on the failing origin. The cuttings rule was judged sane (at most one replant per felled stump).
+- The lumber trace shows the nudge pushing a vanilla WALK_TARGET onto mod lumberjacks mid-walk (4508 -> 4509, 9854 -> 9855). Fix items in `docs/reviews/backlog-2-r1.md`: find the real path blocker, exclude workers/trading, add a test.
+- WorkerGameTests ~1185: not the corner bug (it forces the exact chunk); optional premise hardening.
+
+## 2026-11-08: backlog-2 review r1 fixes (builder)
+- Item 1: the step-aside rule now finds the villager on the walker's next path cells (and within a block), also after the navigation gave up (the last planned path), and a standing villager counts even with its own WALK_TARGET (no race with its brain). New `idlerTwoCellsAheadIsAsked` (walker held on the first cell inside, idler on the door front; red without the path cells).
+- Item 2: never one of our workers (`WorkerAttachments.isWorker`), nor trading, sleeping or NoAI villagers; two mod walkers use the id step-back again. New `chopperIsNotAskedToStepAside` (red, "nudged 3", without the worker exclusion). With the lumber trace on, the only nudges in a full run were the two idler tests' plain villagers.
+- Item 3: DESIGN says Storage and ground saplings are not counted by the cuttings rule.
+- Runs: 7 consecutive full L2 runs green (232 tests, load 4-9), then the final verify.sh (L2 run 8).
+
+## 2026-11-08: backlog-2 review round 2 (verifier): FAIL
+- `scripts/verify.sh` exit 0 (232 L2 tests), plus 7 more full L2 runs, all green; no flake seen (doorway idler asked at 70 ticks in every run).
+- Mutations: path cells off -> `idlerTwoCellsAheadIsAsked` red; worker exclusion off -> `chopperIsNotAskedToStepAside` red. But the `lastPath` fallback, the jam branch while `nav.isDone()`, and the WALK_TARGET race removal survive (green): the test pins the walker (live path) and erases the idler's WALK_TARGET.
+- Adversarial: the step-aside target (LandRandomPos 4/2, stable, no malus) cannot lead into lava/water/off a cliff or out of a fenced pen; golems/traders are never nudged. Fix items in `docs/reviews/backlog-2-r2.md`: 1 must-fix (tests for the uncovered branches), 3 BACKLOG.
+
+## 2026-11-08: backlog-2 review round 3 (verifier): PASS
+- `scripts/verify.sh` exit 0 (234 L2 tests), plus 4 more full L2 runs, all green; no flake seen (all three `twoCellsAhead` variants asked at 31 ticks, doorway idler at 70-71).
+- r2 must-fix done: M3 (no `lastPath` fallback) and M4 (jam branch only while the navigation is busy) turn `idlerAheadIsAskedAfterTheNavigationGaveUp` red; M5 (an idler with a WALK_TARGET skipped) turns `idlerWithItsOwnWalkTargetIsAsked` red; restored, both green.
+- f2cd64b checked line by line against origin/dev: with no plain villager to ask, the jam branch is the pre-backlog-2 code in every state, so the two-walker step-back timing is restored (`twoMinersAndBrokenMarker` green in all 5 runs).
+- Next: BACKLOG items (stale `lastPath` after a retarget; golems/traders in doorways). Notes in `docs/reviews/backlog-2-r3.md`.
+## 2026-11-09: tool-speed (builder)
+- Human decision: tool work speed follows vanilla mining speeds. `Balance.TOOL_SPEED` is now derived from `VANILLA_TOOL_SPEED` {wood 2, stone 4, copper 5, gold 12, iron 6, diamond 8, netherite 9} / 2: wood 1.0, stone 2.0, copper 2.5, gold 6.0, iron 3.0, diamond 4.0, netherite 4.5 (gold was 1.0, a deliberate change).
+- Anchored on stone (x1.6): `BASE_TICKS_PER_LOG` 50 -> 80, `MINER_HAUL_UNITS` 2500 -> 4000. A stone tool is exactly as fast as before (40 ticks per log, 2000 ticks per haul); wood is 1.6x slower, the rest faster. Hunter pace (weapon-independent), farmer hoe bonus (1.25) and level multipliers are untouched.
+- ROADMAP M15 side-by-side criterion restored to "iron >= 1.3x stone" (iron/stone is 1.5 now); `ironAxeOutFellsStoneSideBySide` asserts it.
+- Tests: L1 pins (vanilla/2, stone pace) in ToolRulesTest; literal expectations for non-stone tiers and miner unit counts updated in WorkSpeedTest, AwayProgressTest, AwayCheckTest, BalanceLevelsTest; gametests paceByTier, miner progress/haul bounds, levelUpSpeedsUpFelling message. DESIGN section 4/5 and TESTING updated.
+## 2026-11-08: M11 review round 4 (verifier): FAIL
+- Merged origin/dev (M21) into m11. Round-3 items 1 and 3 fixed (both new tests red under mutation).
+- Cause of the "silent stall" found: the sim force-loads only 9x9 chunks around the village start chunk (south edge z = 895, 15 blocks past the site). Morning strolls take workers up the hill to z = 896, where the chunk is not entity-ticking and they freeze for good. `starter` failed 2 of 4 runs, each with the farmer frozen at z = 896. Net (b) cannot see it (the job never ticks), and net (c) needs > 40 blocks (the farmer is 31-34).
+- The `[far-worker]` rescue teleports a builder working at a far site and a sleeper in a far House (probes). verify.sh exit 0, L2 3/3 green.
+- Next: notes in `docs/reviews/M11-r4.md` (sim forced area plus a not-ticking metric; remove or narrow net (c); drop net (b)'s teleport).
+
+## 2026-11-08: M11 round-4 fixes (builder, finisher)
+- Root cause of the silent worker stall (D19): the sim force-loaded +-4 chunks around the village start chunk; workers strolled out of the ticking area in the morning and froze at z=896. Now +-6 chunks, plus the metric `work.workers.not_ticking` asserted 0 by `starter`.
+- Removed the `[far-worker]` rescue and the farmer's teleport; kept the stall status/log, the trip-flag expiry and `WorkerUnstick`. Test switches are reset in `VillageTestSupport.reset`.
+
+## 2026-11-09: M11 review round 5 (verifier): PASS
+- All four round-4 must-fix items are done. A mutation check of the new `not_ticking` assertion: red at radius 3, green at radius 4 by chance, and red naturally in one run at radius 6.
+- `starter 10`: passed 3 of 4 runs. The roadmap L3 criteria held in all 4. Run 1 failed because a farmer fled 111 blocks east at night and froze outside the forced area. That is a fixture problem, now in BACKLOG as high priority.
+- L2: 3 runs, 257/257 each. Full `verify.sh`: exit 0. The needs and overview screenshots were checked by eye. M11 is ticked in the ROADMAP. Notes: `docs/reviews/M11-r5.md`.
+## 2026-11-07: M12 plan written (docs/plans/M12.md, branch m12-plan)
+8-step plan for the treasury and wages. APIs checked with javap against the 1.21.11 jar (no Gradle run).
+- Deposit: right-click the Heart with emeralds in the main hand (`useItemOn`; other items `TRY_WITH_EMPTY_HAND` → M8's screen) plus "Deposit all" on the Overview;
+  Owner-only "Withdraw 1/64" buttons through M8's validated action path. New permissions DEPOSIT_TREASURY (Resident+) / WITHDRAW_TREASURY (Owner only; M8's Steward-gets-all case rewritten).
+- Dawn: shared pure `DailyClock` (M11's dinner clock delegates); wages when the day index changes, Heart chunk loaded, once per day, no catch-up; dawn listeners for M14/M23.
+- Pay rule (core `PayRun`): hiring order, skip on when a wage does not fit; `Payroll(lastWageDay, paidToday, unpaid with stored wages)` saved in the claim.
+  Strike = in today's unpaid list; any treasury increase settles strikers at once; hires are charged at once (closes the fire/rehire free-day exploit).
+- Strike → `needs.paid` false → speed 0, enforced by one `GatedWork` wrapper in `JobBehaviours.work` (deposit trips still run); status ON_STRIKE.
+- `WorkerRecord.level` mirror so unloaded workers are paid and the wage bill is known. Overview: wage bill, STRIKE (danger) and TREASURY_SHORT alerts, severity-first alert order.
+- Cross-milestone catch: M11's `starter` L3 scenario would strike from day 2 with treasury 0: M12 adds `villageheart treasury add 32` and wage assertions, re-run by hand.
+Revised after a fresh critique (25 findings; 22 taken, 2 partly, 1 refuted).
+Assumptions: built after M8, M9, M11 are merged on dev (names from their plans/branches, plan 3.1); steps 1-2 only need M7.
+Next: BUILD M12 once M8/M9/M11 are on dev (steps 1-2 can start now). Top risk: three unmerged dependencies' APIs.
+
+## 2026-11-08: M12 built (branch m12, builder)
+- Built on `origin/m11` + `dev` (M15/16/17/20/21/24) + `m12-plan`. Pure core: `DailyClock` (dinner delegates), `WageRules`, `PayRun`, `Payroll`, `TreasuryMath`, `WageAlerts`, `WorkGate`; `WorkerRecord.level` mirror; `WorldClaim.payroll` (lenient codec, reset on release).
+- Glue: `economy.WageSystem` (after needs), `VillageDawn` (fires on both branches), `Treasury` (deposit/settle/withdraw), `Wages`; right-click deposit in `VillageHeartBlock.useItemOn`; `TreasuryActionPayload`, `Deposit`/`Withdraw` actions, `BAD_AMOUNT`; `/villageheart treasury get|add|set`; severity-first alerts; Overview treasury bar and red wage line.
+- Tests: 12 `WageGameTests` (roadmap case, right-click matrix, screen actions, strike ends on deposit, one pay/day, frozen when unloaded, reload, hire charge exploit, levels, release, claim, M24 `onlyOwnerCanWithdraw`, M15 re-install level), many L1, L4 `TreasuryClientTests` (looked at `treasury_overview.png`, `treasury_villagers.png`: red wage line, red strike line, yellow short line, 3 buttons clear of the alerts, "On strike" with slashed emerald), multiplayer step 5.
+- L3 `starter 10` PASS by hand with the seeded treasury. Daily treasury: 30, 28, 26, 24, 22, 20, 18, 16, 14, 12 (2 hires charged on day 1; 9 runs; a dawn lands in the record of the day that ends at it, so day 1 has runs 0). The poor variant was not run (10 min): `StarterAssertionsTest.wageAssertionsOfTheStarterScenario` proves the assertions fail for an unfunded village.
+- Deviations: docs/plans/M12.md section 8 (no GatedWork wrapper, Permissions already min-rank, `toDawn(h, seq, out)` is sequence-style). Bug found by L4: `Treasury.refreshInventory`.
+- Next: M12 review. Blockers: none. ROADMAP not ticked.
+
+## 2026-11-08: M12 review round 1 (verifier): FAIL, 2 fix items
+- L1 red at `69321c9`: `ScenarioFilesTest.starterHasItsActionsAndAssertions` still expects M11's starter counts (12 actions, 7+1 assertions); M12's starter has 13 / 11.
+- `Treasury.depositInventory`/`depositFromHand`: a throw after the treasury write puts the emeralds back (or skips the shrink): duplication. Put back only when the write did not happen; test it.
+- Otherwise sound: 6 mutations all red (strike gate, Owner-only withdraw, deposit-all removal, hire charge, unloaded freeze, pay order). L2 4 full runs: 3 green, 1 known M9 `six_oaks_two_days` flake. L4 screenshots show treasury, red wage bill, strike and short alerts, "On strike". L3 skipped (another agent's sim was running).
+- Merge with newer origin/m11 (`27e087d`): 7 trivial conflicts, merged tree compiles, 271 L2 green; ScenarioFilesTest then needs 13 / 11 / 12. Details: docs/reviews/M12-r1.md.
+## 2026-11-08: M11 round-3 fixes (builder, finisher)
+- WorkerUnstick skips hidden away workers; LeafEscape mobGriefing test; trip flag expiry; farmer stall watchdog; far-worker rescue; starter asserts the farmer harvests from day 3 (D19). The cause of the silent worker stall is not confirmed; the logs `[farm-stall]` and `[far-worker]` leave the evidence.
+
+## 2026-11-08: M12 review round 1 fixes (builder)
+- Merged origin/m11 (27e087d); 7 textual conflicts kept both sides. `ScenarioFilesTest.starterHasItsActionsAndAssertions` now matches the real starter file (13 actions, 11 on day 0, 12 assertions, `command` at index 1): a genuine scenario change by M12 (`villageheart treasury add 32` + 3 wage assertions), not a weakened test.
+- `Treasury`: a failure around the treasury write no longer duplicates emeralds. A `writes` counter says whether the write happened: `depositInventory` puts the emeralds back only if it did not, `depositFromHand` shrinks the stack when it did. Test `depositFailureConservesEmeralds` (hand and inventory, throw before and after the write; inventory + treasury conserved).
+- `simulate.sh starter 10` PASS (10 wage runs, 0 strikers, farmer harvest line passes).
+- Full `scripts/verify.sh` exit 0 at the pushed head: Layer 1 ok; Layer 2 "All 272 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok.

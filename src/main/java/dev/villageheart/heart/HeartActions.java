@@ -9,6 +9,7 @@ import dev.villageheart.core.heart.HeartAction;
 import dev.villageheart.core.heart.Rejection;
 import dev.villageheart.core.heart.RateLimiter;
 import dev.villageheart.core.worker.HireRefusal;
+import dev.villageheart.economy.Treasury;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.heart.net.HeartActionResultPayload;
 import dev.villageheart.heart.net.HeartNetwork;
@@ -87,6 +88,8 @@ public final class HeartActions {
 			case HeartAction.Recheck r -> recheck(player, containerId, server, state, r);
 			case HeartAction.SetRank s -> setRank(player, containerId, server, s);
 			case HeartAction.Transfer t -> transfer(player, containerId, server, t);
+			case HeartAction.Deposit d -> deposit(player, containerId);
+			case HeartAction.Withdraw w -> withdraw(player, containerId, w);
 		};
 		if (ok) {
 			HeartFacts.invalidate();
@@ -153,6 +156,35 @@ public final class HeartActions {
 		if (o.rejected().isPresent()) return reject(player, containerId, o.rejected().get(), server.getTickCount());
 		reply(player, containerId, true, "message.villageheart.rank.transferred", "You gave the village to %s. You are now a Steward.",
 				List.of(o.targetName()));
+		return true;
+	}
+
+	/** The gate already checked the rank. */
+	private static boolean deposit(ServerPlayer player, int containerId) {
+		var r = Treasury.depositInventory(player);
+		if (r.accepted() == 0) {
+			reply(player, containerId, false, "message.villageheart.treasury.no_emeralds", "You carry no emeralds", List.of());
+			return false;
+		}
+		if (r.settledWorkers() > 0) {
+			reply(player, containerId, true, "message.villageheart.treasury.deposited_settled", "Deposited %s emeralds. Paid %s striking workers. Treasury: %s",
+					List.of(Integer.toString(r.accepted()), Integer.toString(r.settledWorkers())));
+		} else {
+			reply(player, containerId, true, "message.villageheart.treasury.deposited", "Deposited %s emeralds. Treasury: %s",
+					List.of(Integer.toString(r.accepted()), Integer.toString(r.treasuryAfter())));
+		}
+		return true;
+	}
+
+	private static boolean withdraw(ServerPlayer player, int containerId, HeartAction.Withdraw w) {
+		int taken = Treasury.withdraw(player, w.amount());
+		if (taken == 0) {
+			reply(player, containerId, false, "message.villageheart.treasury.empty", "The treasury is empty", List.of());
+			return false;
+		}
+		int after = VillageClaims.current(player.level().getServer()).map(VillageState::treasury).orElse(0);
+		reply(player, containerId, true, "message.villageheart.treasury.withdrawn", "Withdrew %s emeralds. Treasury: %s",
+				List.of(Integer.toString(taken), Integer.toString(after)));
 		return true;
 	}
 

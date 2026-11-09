@@ -11,10 +11,12 @@ import dev.villageheart.worker.Workers;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.lwjgl.glfw.GLFW;
 
@@ -35,18 +37,18 @@ final class HeartScreenClientTests {
 		return s;
 	}
 
-	private static String uuid(UUID id) {
+	static String uuid(UUID id) {
 		long m = id.getMostSignificantBits(), l = id.getLeastSignificantBits();
 		return "[I;" + (int) (m >> 32) + "," + (int) m + "," + (int) (l >> 32) + "," + (int) l + "]";
 	}
 
-	private static void summon(TestServerContext srv, UUID id, String name, int x, int y, int z) {
+	static void summon(TestServerContext srv, UUID id, String name, int x, int y, int z) {
 		srv.runCommand("summon minecraft:villager " + x + " " + y + " " + z + " {NoAI:1b,PersistenceRequired:1b,UUID:" + uuid(id)
 				+ (name == null ? "" : ",CustomName:\"" + name + "\"") + "}");
 	}
 
 	/** A hollow oak room: shell x0..x0+w+1, z 6..6+d+1, floor on the ground layer, a south door and its marker. */
-	private static void room(TestServerContext srv, int x0, int y, int w, int d, String marker) {
+	static void room(TestServerContext srv, int x0, int y, int w, int d, String marker) {
 		int x1 = x0 + w + 1, z1 = 6 + d + 1, doorX = x0 + (w + 1) / 2;
 		srv.runCommand("fill " + x0 + " " + (y - 1) + " 6 " + x1 + " " + (y + 3) + " " + z1 + " minecraft:oak_planks hollow");
 		srv.runCommand("setblock " + doorX + " " + y + " " + z1 + " minecraft:oak_door[facing=south,half=lower]");
@@ -258,13 +260,25 @@ final class HeartScreenClientTests {
 				});
 				if (!closed) throw new AssertionError("the server still has the Heart menu open after Escape");
 				srv.runCommand("kill @e[type=minecraft:villager]");
+				// Quiesce before the world closes (docs/TESTING.md, NetworkSynchronizer): wait until the 20 deaths are over on both sides,
+				// so the server is not broadcasting a burst of entity packets while the connection closes.
+				boolean removed = false;
+				for (int i = 0; i < 100 && !removed; i++) {
+					context.waitTicks(1);
+					boolean serverNone = srv.computeOnServer(server -> server.overworld().getEntities(EntityType.VILLAGER, e -> true).isEmpty());
+					boolean clientNone = context.computeOnClient(mc -> StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false)
+							.noneMatch(e -> e.getType() == EntityType.VILLAGER));
+					removed = serverNone && clientNone;
+				}
+				if (!removed) throw new AssertionError("villagers were still present 100 ticks after the kill");
+				context.waitTicks(2);
 			} finally {
 				HeartScreen.recordLayout = false;
 			}
 		}
 	}
 
-	private static String marker(net.minecraft.server.level.ServerLevel level, BlockPos pos) {
+	static String marker(net.minecraft.server.level.ServerLevel level, BlockPos pos) {
 		var st = level.getBlockState(pos);
 		return st.hasProperty(dev.villageheart.block.MarkerBlock.STATUS) ? st.getValue(dev.villageheart.block.MarkerBlock.STATUS).name() : "MISSING";
 	}
