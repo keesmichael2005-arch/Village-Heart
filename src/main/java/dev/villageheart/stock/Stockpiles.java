@@ -129,6 +129,25 @@ public final class Stockpiles {
 		return view(server, c).nearestHolding(RoomScans.pos(from), match).map(s -> RoomScans.blockPos(s.anchor()));
 	}
 
+	/** M13/M18: the anchor of the nearest Storage holding {@code key} that {@code holder} may take (others' reservations respected). */
+	public static Optional<BlockPos> nearestHolding(ServerLevel level, BlockPos from, StackKey key, @Nullable UUID holder) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (c.level() != level) return Optional.empty();
+		return view(server, c).nearestHolding(RoomScans.pos(from), key, holder).map(s -> RoomScans.blockPos(s.anchor()));
+	}
+
+	/** M13/M18: up to {@code n} (capped at one stack) of {@code key} from the Storage whose anchor is {@code anchor}. */
+	public static ItemStack withdrawAt(ServerLevel level, BlockPos anchor, StackKey key, int n, @Nullable UUID holder) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (c.level() != level) return ItemStack.EMPTY;
+		int taken = view(server, c).withdrawAt(RoomScans.pos(anchor), key, Math.min(n, key.maxStackSize()), holder);
+		return taken == 0 ? ItemStack.EMPTY : key.toStack(taken);
+	}
+
 	// ---- writing ---------------------------------------------------------------------------------
 
 	/** Moves as much of {@code stack} as fits (nearest first, spilling); shrinks the stack by that amount; returns it. */
