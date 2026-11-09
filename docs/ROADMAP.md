@@ -206,6 +206,14 @@ from there instead of hard-coding them.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged
+- [ ] *(added 2026-11-09, human: walls must not make a village immune; plan r2 sections 3.9-3.18)* Siege damage: zombies (lured at night and in sieges), creepers, ravagers and vindicators (in raids) damage the village's **recorded defence blocks** (Wall Segment, Gate, Watchtower cobblestone and fence gates) that block their way; wall blocks have hit points with the vanilla crack overlay, gates are weakest; gamerule `villageheart:siege_damage` (default on, independent of `mobGriefing`); no other block is ever damaged by these rules
+- [ ] *(added)* Motive: zombies near a walled village are lured towards it at night (or in a siege) without line of sight; creepers seek the nearest wall and blow a breach (mod-controlled, no crater); every other hostile stays vanilla
+- [ ] *(added)* Upkeep: damaged or broken defence blocks raise an alert (Heart + chat); the builder repairs them with cobblestone / fence gates from Storage (repairs cost items and builder time); an unrepaired breach stays open
+- [ ] *(added)* Random raids and zombie sieges: seeded daily chance scaling with population, wealth and defences, only while the village is loaded (a won raid roll is postponed until a player is near); vanilla `Raid` machinery; the mod's siege replaces vanilla's `VillageSiege` inside the claim
+- [ ] *(added)* Raid strength scales with the village (omen level, extra vindicators and ravagers per wave); a victory pays emeralds into the treasury
+- **L1** *(added)*: threat score, raid scaling, reward, roll odds and conditions, wall HP per attacker, crack stages, breach choice, lure window and budget, repair order and cost
+- **L2** *(added)*: a zombie outside a closed wall with no line of sight walks to it and damages it, a skeleton in the same spot does not, the lure is off by day unless a siege runs; a creeper walks to a wall and breaches it while guards are absent, houses behind it untouched; a ravager breaks a wall block in 2 hits; non-defence player blocks are never damaged; a damaged wall is repaired by the builder using cobblestone from Storage; a random raid starts only when the village is loaded
+- **L3** *(added)*: in scenario `raid` the walls are a closed ring with gates and a builder, and every broken defence block is repaired by the last day
 
 ## M26: Balance pass
 - [ ] Run the L3 scenarios and tune the *(tunable)* values. Record the before/after metrics in PROGRESS.md
