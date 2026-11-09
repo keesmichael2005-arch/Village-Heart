@@ -719,3 +719,9 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Deviations: docs/plans/M13.md section 8 (no dinner in the cutoff test, runtime reset instead of entity reload, no hunger L2, `Report.provenance`, no 50-commit WARN, `gui.villageheart.heart.activity.*` keys).
 - `scripts/verify.sh` at `8440884` (the last main-code commit; after it only the `starter_cook` scenario seed and its L1 test changed, L1 re-run green): Layer 1 ok; Layer 2 "All 292 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; Layer 4 ok (lost-wakeup and disconnect-leak fixes installed, no model warnings, 2-player session clean); perf limits ok (village ticker idle tick 8.7E-4 ms).
 - Next: M13 review. Blockers: none. ROADMAP not ticked.
+
+## 2026-11-09: M13 review round 1 (verifier): FAIL
+- Head `9e19d5e` (m13 `3c94e96` + origin/dev, clean merge: only LOOP_STATE). verify.sh: L1, L2 (292 x2), gates, perf green; L4 red on `Timeout loading world` in an early non-cook test while other agents' Minecraft runs loaded the 4 cores (3 full and 2 cook-only re-runs died the same way); L4 and the two cook screenshots are not checked in this round.
+- 6 more full L2 runs: 8/8 green overall, `twoCooksShareReservations` 8/8. L3: `starter_cook 10` PASS twice (4.57, 4.81 vs B 3.14; 81/86 items cooked from day 2), `starter 10` PASS (3.12, the baseline reproduces).
+- Mutations: input dupe and fuel-free cooking are red; no reservations, ignoring hunger/strike, no cook XP all green; an always-false probe in `noFuelNothingCooked`'s 3000-tick sample stays green (`thenWaitUntil` swallows assertion failures).
+- Next: 4 must-fix items and 7 BACKLOG items in `docs/reviews/M13-r1.md`; one green L4 run with the screenshots looked at.
