@@ -8,6 +8,10 @@ import dev.villageheart.core.guard.GearPlanner;
 import dev.villageheart.core.guard.GuardPlanner;
 import dev.villageheart.core.guard.PatrolRoute;
 import net.minecraft.world.item.ItemStack;
+import dev.villageheart.core.worker.WorkGate;
+import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.worker.WorkXp;
+import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.world.VillageTicker;
@@ -43,6 +47,7 @@ public final class GuardRuntime {
 		long nextGearCheck;
 		java.util.ArrayDeque<GuardGear.Candidate> trip;
 		boolean returning;
+		final dev.villageheart.core.job.WorkClock clock = new dev.villageheart.core.job.WorkClock(Balance.SPAR_TICKS_PER_XP);
 	}
 
 	private static final Map<UUID, State> STATES = new HashMap<>();
@@ -119,8 +124,46 @@ public final class GuardRuntime {
 	static void tickOff(ServerLevel level, Villager guard, long now) {
 		try (var t = VillageTicker.section()) {
 			State s = state(guard);
-			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, GuardGear.wearsAnything(guard), false, false));
+			WorkerData data = guard.getAttached(WorkerAttachments.WORKER);
+			if (data == null) return;
+			Optional<BlockPos> yard = trainingYard(level, data);
+			boolean canWork = WorkGate.mayWork(data.needs());
+			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, GuardGear.wearsAnything(guard), yard.isPresent(), canWork));
 			if (off == GuardPlanner.OffMode.RETURN_GEAR) returnGear(level, guard, s, now);
+			else if (off == GuardPlanner.OffMode.SPAR) spar(level, guard, s, data, yard.get(), now);
+			else s.walk.release(guard);
+		}
+	}
+
+	/** The valid Training Yard linked to the guard's Barracks (its marker), if any. */
+	static Optional<BlockPos> trainingYard(ServerLevel level, WorkerData data) {
+		for (var b : dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.TRAINING_YARD)) {
+			if (b.link() == null) continue;
+			var l = data.building();
+			if (b.link().getX() == l.x() && b.link().getY() == l.y() && b.link().getZ() == l.z()) return Optional.of(b.marker());
+		}
+		return Optional.empty();
+	}
+
+	/** Sparring at the yard: the work clock at the guard's pace, one SPAR unit (1 XP) per SPAR_TICKS_PER_XP ticks; no damage to anything. */
+	private static void spar(ServerLevel level, Villager guard, State s, WorkerData data, BlockPos yard, long now) {
+		s.mode = Mode.PATROL;
+		if (!s.walk.active() || !s.walk.target().equals(yard)) s.walk.begin(yard, 3.5, 6.0, now);
+		WalkTo.State st = s.walk.tick(guard, now);
+		if (st == WalkTo.State.WALKING) return;
+		if (st == WalkTo.State.UNREACHABLE) {
+			s.walk.release(guard);
+			return;
+		}
+		int units = s.clock.tick(data.needs().speed());
+		if (now % 20 == 0) {
+			guard.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+			guard.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.LOOK_TARGET, new net.minecraft.world.entity.ai.behavior.BlockPosTracker(yard));
+		}
+		if (units > 0) {
+			WorkXp.award(guard, dev.villageheart.core.job.WorkUnit.SPAR, units);
+			WorkStats.add("guard", "spar_xp", units);
+			level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT, guard.getX(), guard.getY(0.7), guard.getZ(), 4, 0.3, 0.3, 0.3, 0.1);
 		}
 	}
 

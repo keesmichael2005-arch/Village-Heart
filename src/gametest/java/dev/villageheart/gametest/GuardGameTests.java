@@ -552,4 +552,128 @@ public class GuardGameTests {
 		});
 	}
 
+
+	// ---- training (T-L2-11, 12) --------------------------------------------------------------------
+
+	static final BlockPos YARD_MARKER = new BlockPos(22, 0, 16);
+
+	/** An oak fence post with the Training Yard marker on its south face and two target blocks near it. */
+	private static void buildYard(GameTestHelper h) {
+		h.setBlock(YARD_MARKER.north(), net.minecraft.world.level.block.Blocks.OAK_FENCE);
+		h.setBlock(YARD_MARKER.east(2), net.minecraft.world.level.block.Blocks.TARGET);
+		h.setBlock(YARD_MARKER.south(2), net.minecraft.world.level.block.Blocks.TARGET);
+		BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.TRAINING_YARD, YARD_MARKER, net.minecraft.core.Direction.SOUTH);
+	}
+
+	private static int xpOf(Villager g) { return g.getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).xp(); }
+
+	private static void setXp(Villager g, int level, int xp) {
+		var d = g.getAttached(dev.villageheart.worker.WorkerAttachments.WORKER);
+		g.setAttached(dev.villageheart.worker.WorkerAttachments.WORKER, d.withProgress(level, xp));
+	}
+
+	/** Sparring at the linked Training Yard gives the last XP: level 2, 30 health, +1 damage. */
+	@GameTest(environment = "villageheart-gametest:guards_spar", structure = YARD, skyAccess = true, maxTicks = 2400)
+	public void sparringGivesXpLevelTwoHealth30(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		long[] spar0 = new long[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> buildYard(h))
+				.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, YARD_MARKER, dev.villageheart.block.MarkerStatus.VALID)).thenExecute(() -> {
+					h.assertValueEqual(BuildingTestSupport.loc(h, barracksMarker()), BuildingTestSupport.record(h, YARD_MARKER).orElseThrow().link(), "the yard is linked to the Barracks");
+					setTime(h, 11900);
+					g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+					setXp(g[0], 1, dev.villageheart.core.Balance.LEVEL_2_XP - 1);
+					h.assertTrue(g[0].getMaxHealth() == 20.0, "max health 20 at the start");
+					spar0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "spar_xp");
+				});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1000, "level 2 from sparring", () -> {
+			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level " + g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level()
+					+ ", xp " + xpOf(g[0]) + " at " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities());
+			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health " + g[0].getMaxHealth());
+		});
+		seq.thenExecute(() -> {
+			h.assertTrue(xpOf(g[0]) >= dev.villageheart.core.Balance.LEVEL_2_XP, "xp " + xpOf(g[0]));
+			h.assertTrue(g[0].getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) == dev.villageheart.core.Balance.GUARD_BASE_DAMAGE + 1.0, "base damage + 1");
+			h.assertTrue(dev.villageheart.worker.job.WorkStats.get("guard", "spar_xp") > spar0[0], "work.guard.spar_xp counted");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** No Training Yard: no sparring XP; a level-2 guard keeps its 30 health across a save and reload (permanent modifiers are not clamped). */
+	@GameTest(environment = "villageheart-gametest:guards_no_yard", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void noYardNoSparXpAndReload(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		int[] xp0 = new int[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 11900);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			setXp(g[0], 1, 50);
+			xp0[0] = 50;
+		}).thenIdle(900);
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(xp0[0], xpOf(g[0]), "no XP without a yard");
+			dev.villageheart.worker.Workers.setLevel(h.getLevel().getServer(), g[0], 2);
+			dev.villageheart.worker.guard.Guards.applyPerks(g[0], false);
+			g[0].setHealth(25.0F);
+			g[0] = LumberTestSupport.reloadEntity(h.getLevel(), g[0]);
+			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health survives the reload: " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getHealth() == 25.0F, "and so does the health: " + g[0].getHealth());
+			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level intact");
+			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow().pinned(), "pin intact");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	// ---- raid call-up (T-L2-14) --------------------------------------------------------------------
+
+	/** A real raid on the village calls every guard up, asleep or not; a raid that is only near (outside the claim) does not; the end of the raid sends them back. */
+	@GameTest(environment = "villageheart-gametest:guards_raid_callup", structure = YARD, skyAccess = true, maxTicks = 2400)
+	public void raidCallsUpAllGuards(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[2];
+		net.minecraft.world.entity.raid.Raid[] raid = new net.minecraft.world.entity.raid.Raid[1];
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			setTime(h, 18000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			g[1] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.DAY));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both day guards asleep at 18000", () -> {
+			h.assertTrue(g[0].isSleeping() && g[1].isSleeping(), "asleep: " + g[0].isSleeping() + g[1].isSleeping());
+		});
+		// (b) a raid whose centre and raiders are outside the claim but within 96 blocks of the Heart does not call guards up
+		seq = seq.thenExecute(() -> {
+			var heart = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().heart();
+			var far = new BlockPos(heart.x() + 90, heart.y(), heart.z());
+			dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest((level, at) -> new dev.villageheart.worker.guard.RaidCheck.View() {
+				public boolean active() { return true; }
+				public BlockPos center() { return far; }
+				public Iterable<? extends net.minecraft.world.entity.Entity> raiders() { return java.util.List.of(); }
+			});
+		}).thenIdle(200);
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(g[0].isSleeping() && g[1].isSleeping(), "a raid outside the claim does not wake the guards");
+			dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
+		});
+		// (a) a real raid
+		seq = seq.thenExecute(() -> {
+			var owner = BuildingTestSupport.owner();
+			raid[0] = h.getLevel().getRaids().createOrExtendRaid(owner, h.absolutePos(new BlockPos(3, 0, 1)));
+			h.assertTrue(raid[0] != null, "the raid was created");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "both guards awake and on duty", () -> {
+			for (Villager v : g) h.assertTrue(!v.isSleeping() && v.getBrain().isActive(GuardActivities.DUTY), "guard " + v.getId() + " " + v.isSleeping() + " " + v.getBrain().getActiveActivities());
+		});
+		seq = seq.thenExecute(() -> raid[0].stop());
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "back to rest when the raid is over", () -> {
+			for (Villager v : g) h.assertTrue(v.getBrain().isActive(Activity.REST), "guard " + v.getId() + " " + v.getBrain().getActiveActivities());
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

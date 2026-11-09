@@ -9,27 +9,41 @@ import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.entity.raid.Raider;
 
 /**
- * Is a raid on the village (M18 3.2, A7)? A raid counts when it is not over or stopped, and its centre is in the claim or one of its raiders
- * is: {@code getRaidAt} alone matches any raid within 96 blocks. A seam, so a test can feed a fake raid view.
+ * Is a raid on the village, so every guard comes on duty (M18 3.2, A7)? The default counts a raid that is not over or stopped and whose
+ * centre is in the claim or one of whose raiders is ({@code getRaidAt} alone matches any raid within 96 blocks). Two seams: {@link #setSource}
+ * replaces the whole answer (M25 plugs its raid tracker in here, so there is one raid truth), {@link #setViewSourceForTest} feeds a fake
+ * raid to the default.
  */
 public final class RaidCheck {
-	/** What the check needs to know about a raid. */
+	/** What the default check needs to know about a raid. */
 	public interface View {
 		boolean active();
 		BlockPos center();
 		Iterable<? extends net.minecraft.world.entity.Entity> raiders();
 	}
 
-	/** Test hook: when set, replaces the real raid lookup. */
-	public interface Source { View raidAt(ServerLevel level, BlockPos heart); }
+	/** Where the default finds a raid at the Heart. */
+	public interface ViewSource { View raidAt(ServerLevel level, BlockPos heart); }
 
-	private static Source source = RaidCheck::real;
+	/** The answer guards schedule by. */
+	@FunctionalInterface
+	public interface Source { boolean underRaid(ServerLevel level, VillageState village); }
+
+	private static ViewSource viewSource = RaidCheck::real;
+	private static Source source = RaidCheck::vanilla;
 
 	private RaidCheck() {}
 
-	public static Source setSourceForTest(Source s) {
+	/** Replaces the answer (null restores the default). Returns the previous one. */
+	public static Source setSource(Source s) {
 		Source old = source;
-		source = s == null ? RaidCheck::real : s;
+		source = s == null ? RaidCheck::vanilla : s;
+		return old;
+	}
+
+	public static ViewSource setViewSourceForTest(ViewSource s) {
+		ViewSource old = viewSource;
+		viewSource = s == null ? RaidCheck::real : s;
 		return old;
 	}
 
@@ -43,16 +57,17 @@ public final class RaidCheck {
 		};
 	}
 
-	/** True when guards must come on duty. */
-	public static boolean active(ServerLevel level, VillageState village) {
+	private static boolean vanilla(ServerLevel level, VillageState village) {
 		BlockPos heart = new BlockPos(village.heart().x(), village.heart().y(), village.heart().z());
-		View raid = source.raidAt(level, heart);
+		View raid = viewSource.raidAt(level, heart);
 		if (raid == null || !raid.active()) return false;
-		BlockPos c = raid.center();
-		if (ClaimGeometry.inClaim(village.heart(), VillageClaims.locate(level, c))) return true;
+		if (ClaimGeometry.inClaim(village.heart(), VillageClaims.locate(level, raid.center()))) return true;
 		for (var r : raid.raiders()) {
 			if (r instanceof Raider && ClaimGeometry.inClaim(village.heart(), VillageClaims.locate(level, r.blockPosition()))) return true;
 		}
 		return false;
 	}
+
+	/** True when guards must come on duty. */
+	public static boolean active(ServerLevel level, VillageState village) { return source.underRaid(level, village); }
 }
