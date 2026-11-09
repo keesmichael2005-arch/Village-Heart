@@ -273,4 +273,4 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `completeUnit` ignores the `addItem` remainder when putting inputs back
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
-- [ ] PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+- [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
