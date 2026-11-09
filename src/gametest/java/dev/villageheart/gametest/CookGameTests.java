@@ -367,4 +367,85 @@ public class CookGameTests {
 					finish(h);
 				});
 	}
+
+	// ---- T-L2-5 two cooks -------------------------------------------------------------------------------
+
+	/** Two cooks planning together never double-claim: reservations stay within the stock, nothing is lost, and the heat is conserved. */
+	@GameTest(environment = "villageheart-gametest:cook_two", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void twoCooksShareReservations(GameTestHelper h) {
+		Villager[] cooks = new Villager[2];
+		scene(h).thenExecute(() -> {
+			h.setBlock(smoker2(), net.minecraft.world.level.block.Blocks.SMOKER);
+			putStore(h, Items.BEEF, 12);
+			putStore(h, Items.COAL, 2);
+			setDayTime(h, 1000);
+		}).thenIdle(60).thenExecute(() -> {
+			cooks[0] = hire(h);
+			cooks[1] = hire(h, BuildingTestSupport.inside(KITCHEN, 3, 0, 1));
+		}).thenWaitUntil(() -> {
+			long reserved = Stockpiles.reservations(h.getLevel().getServer()).reserved(dev.villageheart.stock.StackKey.of(Items.BEEF));
+			long total = count(h, Items.BEEF) + count(h, Items.COOKED_BEEF) + carried(cooks[0], Items.BEEF) + carried(cooks[0], Items.COOKED_BEEF)
+					+ carried(cooks[1], Items.BEEF) + carried(cooks[1], Items.COOKED_BEEF);
+			h.assertTrue(total == 12, "every beef is accounted for once: " + total);
+			h.assertTrue(reserved <= count(h, Items.BEEF), "reserved " + reserved + " of " + count(h, Items.BEEF));
+			h.assertTrue(count(h, Items.COOKED_BEEF) == 12, "cooked " + count(h, Items.COOKED_BEEF));
+		}).thenExecute(() -> {
+			h.assertTrue(count(h, Items.COAL) == 0, "coal " + count(h, Items.COAL));
+			var village = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow();
+			int banks = village.smokerHeat(BuildingTestSupport.loc(h, smoker())) + village.smokerHeat(BuildingTestSupport.loc(h, smoker2()));
+			h.assertTrue(banks == 2 * 1600 - 12 * 200, "the banks sum to " + banks);
+			for (var u : CookRuntime.get(h.getLevel().getServer()).unitLog()) {
+				h.assertTrue(u.at().equals(h.absolutePos(smoker())) || u.at().equals(h.absolutePos(smoker2())), "a unit at " + u.at());
+			}
+			finish(h);
+		});
+	}
+
+	// ---- T-L2-6 the dinner cutoff -------------------------------------------------------------------------
+
+	/** Late in the day only the batch the time allows is taken; nothing is left in the cook's pockets when dinner comes. */
+	@GameTest(environment = "villageheart-gametest:cook_dinner", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void foodReachesStorageBeforeDinner(GameTestHelper h) {
+		Villager[] cook = new Villager[1];
+		scene(h).thenExecute(() -> {
+			putStore(h, Items.BEEF, 8);
+			putStore(h, Items.COAL, 1);
+			setDayTime(h, 9800);
+			cook[0] = hire(h);
+		}).thenWaitUntil(() -> {
+			long t = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			h.assertTrue(t >= 10990 && t < 11500, "waiting for the end of the work day, at " + t);
+		}).thenExecute(() -> {
+			h.assertTrue(count(h, Items.COOKED_BEEF) >= 1 && count(h, Items.COOKED_BEEF) <= 3, "cooked " + count(h, Items.COOKED_BEEF));
+			h.assertTrue(carried(cook[0], Items.COOKED_BEEF) == 0 && carried(cook[0], Items.BEEF) == 0 && carried(cook[0], Items.COAL) == 0,
+					"the cook carries no food: " + cook[0].getInventory());
+			h.assertTrue(count(h, Items.BEEF) + count(h, Items.COOKED_BEEF) == 8, "all of it is in Storage");
+			h.assertTrue(count(h, Items.BEEF) >= 5, "only the batch the time allows was taken: raw left " + count(h, Items.BEEF));
+			finish(h);
+		});
+	}
+
+	// ---- T-L2-7 a restart mid batch -----------------------------------------------------------------------
+
+	/** The cook's transient state is dropped mid-batch (as after a restart): the inventory is the state, nothing is duplicated or lost, the bank is not charged twice. */
+	@GameTest(environment = "villageheart-gametest:cook_reload", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void restartMidBatchResumes(GameTestHelper h) {
+		Villager[] cook = new Villager[1];
+		scene(h).thenExecute(() -> {
+			putStore(h, Items.BEEF, 8);
+			putStore(h, Items.COAL, 1);
+			setDayTime(h, 1000);
+			cook[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(unitsOf(h, cook[0]).size() >= 3, "3 units done: " + unitsOf(h, cook[0]).size()))
+				.thenExecute(() -> {
+					h.assertTrue(bank(h) == 1600 - 3 * 200, "bank before " + bank(h));
+					CookRuntime.resetForTests();
+				})
+				.thenWaitUntil(() -> h.assertTrue(count(h, Items.COOKED_BEEF) == 8, "cooked " + count(h, Items.COOKED_BEEF)))
+				.thenExecute(() -> {
+					h.assertTrue(count(h, Items.BEEF) == 0 && count(h, Items.COAL) == 0, "all used");
+					h.assertTrue(bank(h) == 0, "no fuel loaded twice, none lost: bank " + bank(h));
+					finish(h);
+				});
+	}
 }

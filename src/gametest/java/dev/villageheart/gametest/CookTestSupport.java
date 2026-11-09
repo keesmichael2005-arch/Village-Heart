@@ -39,7 +39,9 @@ public final class CookTestSupport {
 
 	public static BlockPos smoker() { return BuildingTestSupport.inside(KITCHEN, 0, 0, 0); }
 
-	public static BlockPos table() { return BuildingTestSupport.inside(KITCHEN, 4, 0, 0); }
+	public static BlockPos table() { return BuildingTestSupport.inside(KITCHEN, 0, 0, 3); }
+
+	public static BlockPos smoker2() { return BuildingTestSupport.inside(KITCHEN, 4, 0, 0); }
 
 	public static BlockPos kitchenChest() { return BuildingTestSupport.inside(KITCHEN, 4, 0, 3); }
 
