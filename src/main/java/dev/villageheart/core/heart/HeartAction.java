@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /** A change a player asks for through the Heart screen. M18 adds SetGuardShift. */
 public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire, HeartAction.Recheck, HeartAction.SetRank,
-		HeartAction.Transfer, HeartAction.Deposit, HeartAction.Withdraw, HeartAction.SetGuardShift {
+		HeartAction.Transfer, HeartAction.Deposit, HeartAction.Withdraw, HeartAction.SetReserves, HeartAction.SetGuardShift {
 	Permission permission();
 
 	/** Checked by the gate after the village checks and before the permission: a value no honest client sends. */
@@ -90,5 +90,17 @@ public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire
 
 		/** Only valid after {@link #malformed()} passed. */
 		public Rank expected() { return Rank.values()[expectedRank]; }
+	}
+
+	/** Set what the market keeps (M22): days of food and the stock of every other item. Any ints decode; only values in range pass the gate. */
+	record SetReserves(int foodDays, int itemReserve) implements HeartAction {
+		@Override public Permission permission() { return Permission.SET_RESERVES; }
+
+		@Override public Optional<Rejection> malformed() {
+			return dev.villageheart.core.market.Reserves.valid(foodDays, itemReserve) ? Optional.empty() : Optional.of(Rejection.BAD_RESERVE);
+		}
+
+		/** Only valid after {@link #malformed()} passed. */
+		public dev.villageheart.core.market.Reserves reserves() { return new dev.villageheart.core.market.Reserves(foodDays, itemReserve); }
 	}
 }

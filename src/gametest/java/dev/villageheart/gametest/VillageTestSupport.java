@@ -72,6 +72,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.guard.GuardGear.resetForTests();
 		dev.villageheart.worker.guard.PatrolPoints.invalidate();
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
+		dev.villageheart.market.Markets.clearRuntime(); // M22
+		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
 		dev.villageheart.economy.WageStats.setTestListener(null);
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world

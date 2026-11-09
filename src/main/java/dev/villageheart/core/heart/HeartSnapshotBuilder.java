@@ -229,9 +229,9 @@ public final class HeartSnapshotBuilder {
 		List<StockLine> lines = new ArrayList<>(shown);
 		for (int k = 0; k < shown; k++) {
 			StockItemFact i = sorted.get(k);
-			lines.add(new StockLine(HeartLimits.cut(i.itemId(), HeartLimits.MAX_ID), i.count(), nutritionEach(i)));
+			lines.add(new StockLine(HeartLimits.cut(i.itemId(), HeartLimits.MAX_ID), i.count(), nutritionEach(i), i.forSale()));
 		}
 		return new Stock(lines, sorted.size() - shown, total, nutrition, s.storages(), s.unknownStorages(), s.containers(),
-				s.freeSlots(), s.slots(), s.alert());
+				s.freeSlots(), s.slots(), s.alert(), s.reserves(), s.soldToday(), s.merchants());
 	}
 }

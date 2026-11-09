@@ -363,4 +363,22 @@ public final class Balance {
 	public static final int COOK_PREP_TIMEOUT = 200;
 	/** Fuel kinds in the order they are burnt: charcoal and coal before logs (building wood is protected). */
 	public static final java.util.List<String> COOK_FUEL_ORDER = java.util.List.of("minecraft:charcoal", "minecraft:coal");
+
+	// ---- M22: market ---------------------------------------------------------------------------------
+
+	/** Work units a sale costs (600 ticks at speed 1.0, 480 at level 2, 400 at level 3). */
+	public static final double MERCHANT_SALE_UNITS = 600;
+	/** Emeralds a merchant (or its stall) may earn per day by level 1, 2, 3. Read through {@link #merchantDailyCap}. */
+	private static final int[] MERCHANT_DAILY_CAP = {8, 12, 16};
+	/** Emeralds the whole village's market earns per day, however many stalls (orchestrator decision, tunable in M26). */
+	public static final int MARKET_VILLAGE_DAILY_CAP = 32;
+	public static final int FOOD_RESERVE_DAYS = 3, ITEM_RESERVE = 64;
+	public static final int MAX_FOOD_RESERVE_DAYS = 30, MAX_ITEM_RESERVE = 1024;
+	public static final int FOOD_RESERVE_STEP = 1, ITEM_RESERVE_STEP = 16;
+	/** The market's shared view of the stockpile lives this many ticks; the population count lives longer. */
+	public static final int MARKET_VIEW_TTL = 20, MARKET_CENSUS_TTL = 100;
+	/** WORK ticks in a row away from the stall before the merchant reports that it cannot reach it. */
+	public static final int MERCHANT_STALL_PATIENCE = 600;
+
+	public static int merchantDailyCap(int level) { return MERCHANT_DAILY_CAP[Math.max(1, Math.min(level, MERCHANT_DAILY_CAP.length)) - 1]; }
 }

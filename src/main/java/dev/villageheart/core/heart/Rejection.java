@@ -5,7 +5,7 @@ import java.util.Locale;
 /** Why the server refused a Heart screen action. */
 public enum Rejection {
 	NOT_OPEN, STALE, NO_VILLAGE, NO_PERMISSION, RATE_LIMITED, UNKNOWN_JOB, VILLAGER_NOT_FOUND, NOT_A_BUILDING,
-	BAD_RANK, UNKNOWN_PLAYER, OWNER_RANK_FIXED, TOO_MANY_MEMBERS, NOT_A_MEMBER, TARGET_CHANGED, BAD_AMOUNT, BAD_SHIFT, NOT_A_GUARD;
+	BAD_RANK, UNKNOWN_PLAYER, OWNER_RANK_FIXED, TOO_MANY_MEMBERS, NOT_A_MEMBER, TARGET_CHANGED, BAD_AMOUNT, BAD_RESERVE, BAD_SHIFT, NOT_A_GUARD;
 
 	public String id() { return name().toLowerCase(Locale.ROOT); }
 
@@ -32,6 +32,7 @@ public enum Rejection {
 			case BAD_AMOUNT -> "That amount cannot be withdrawn.";
 			case BAD_SHIFT -> "That shift does not exist.";
 			case NOT_A_GUARD -> "That villager is not a guard.";
+			case BAD_RESERVE -> "That reserve cannot be set.";
 		};
 	}
 }

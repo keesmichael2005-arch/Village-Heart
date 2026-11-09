@@ -16,5 +16,7 @@ public enum ActivityKind {
 	/** M13: a cook with food to cook and no fuel in the stockpile. */
 	NEEDS_FUEL,
 	/** M18: a guard on its rounds, in a fight, fetching gear, sparring, or wounded and resting. Appended. */
-	PATROLLING, FIGHTING, EQUIPPING, TRAINING, WOUNDED
+	PATROLLING, FIGHTING, EQUIPPING, TRAINING, WOUNDED,
+	/** M22: the merchant sold today's limit / the treasury is full. Appended. */
+	DAILY_LIMIT, TREASURY_FULL
 }

@@ -91,6 +91,7 @@ public final class HeartActions {
 			case HeartAction.Deposit d -> deposit(player, containerId);
 			case HeartAction.Withdraw w -> withdraw(player, containerId, w);
 			case HeartAction.SetGuardShift g -> setGuardShift(player, containerId, server, state, g);
+			case HeartAction.SetReserves r -> setReserves(player, containerId, server, r);
 		};
 		if (ok) {
 			HeartFacts.invalidate();
@@ -187,6 +188,14 @@ public final class HeartActions {
 		};
 		VillageClaims.data(server).update(s -> s.withGuardPin(g.villager(), pin));
 		reply(player, containerId, true, "message.villageheart.heart.shift_set", "Shift set.", List.of());
+		return true;
+	}
+
+	/** The gate already checked the rank and the range. */
+	private static boolean setReserves(ServerPlayer player, int containerId, MinecraftServer server, HeartAction.SetReserves r) {
+		dev.villageheart.market.Markets.setReserves(server, r.reserves());
+		reply(player, containerId, true, "message.villageheart.market.reserves_set", "Keeping %s days of food, %s of each item",
+				List.of(Integer.toString(r.foodDays()), Integer.toString(r.itemReserve())));
 		return true;
 	}
 

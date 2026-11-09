@@ -115,18 +115,28 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 
 	/** @param items one entry per item id (variants already merged) */
 	public record StockFacts(List<StockItemFact> items, int storages, int unknownStorages, int containers, int slots,
-			int freeSlots, StorageAlert alert) {
+			int freeSlots, StorageAlert alert, dev.villageheart.core.market.Reserves reserves, int soldToday, int merchants) {
 		public StockFacts {
 			items = List.copyOf(items);
 			Objects.requireNonNull(alert, "alert");
+			Objects.requireNonNull(reserves, "reserves");
+		}
+
+		/** Without the market's figures (the shape before M22). */
+		public StockFacts(List<StockItemFact> items, int storages, int unknownStorages, int containers, int slots, int freeSlots, StorageAlert alert) {
+			this(items, storages, unknownStorages, containers, slots, freeSlots, alert, dev.villageheart.core.market.Reserves.DEFAULT, 0, 0);
 		}
 	}
 
 	/**
 	 * @param foodNutrition the item's nutrition, 0 when it is not food
 	 * @param villageFood   false for foods the village does not eat (tag {@code #villageheart:not_village_food})
+	 * @param forSale       how many the market may sell now (M22)
 	 */
-	public record StockItemFact(String itemId, long count, int foodNutrition, boolean villageFood) {
+	public record StockItemFact(String itemId, long count, int foodNutrition, boolean villageFood, long forSale) {
 		public StockItemFact { Objects.requireNonNull(itemId, "itemId"); }
+
+		/** Without the market's figure (the shape before M22). */
+		public StockItemFact(String itemId, long count, int foodNutrition, boolean villageFood) { this(itemId, count, foodNutrition, villageFood, 0); }
 	}
 }
