@@ -11,6 +11,11 @@ public final class WorkCounters {
 		counts.merge(job + "." + counter, n, Long::sum);
 	}
 
+	/** Keeps the larger of the stored value and {@code n} (a per-day maximum, such as {@code workers.max_heart_distance}). */
+	public void max(String job, String counter, long n) {
+		counts.merge(job + "." + counter, n, Math::max);
+	}
+
 	public long get(String job, String counter) { return counts.getOrDefault(job + "." + counter, 0L); }
 
 	/** The counters since the last call; the counters restart at zero. */

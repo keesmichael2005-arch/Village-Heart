@@ -460,6 +460,27 @@ public final class StarterActions {
 		}
 	}
 
+	/**
+	 * Every {@link dev.villageheart.core.sim.SimArea#FOLLOW_INTERVAL_TICKS} ticks: moves the follow tickets ({@link SimTickets}, a player's
+	 * simulation distance around each hired worker) and records the day's farthest worker from the Heart in {@code work.workers.max_heart_distance}
+	 * (blocks, rounded down), so a worker that keeps ticking far away is still seen.
+	 */
+	public static void followWorkers(Host ctx, SimTickets tickets) {
+		Optional<VillageState> village = VillageClaims.current(ctx.server());
+		Map<java.util.UUID, dev.villageheart.core.sim.SimArea.Chunk> at = new java.util.HashMap<>();
+		double far = -1;
+		if (village.isPresent()) {
+			for (var w : village.get().workers()) {
+				Villager v = Workers.findLoaded(ctx.server(), w.villager()).orElse(null);
+				if (v == null || v.level() != ctx.level()) continue;
+				at.put(w.villager(), SimTickets.chunkOf(v.blockPosition()));
+				if (ctx.heart() != null) far = Math.max(far, Math.sqrt(v.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(ctx.heart()))));
+			}
+		}
+		tickets.follow(at);
+		if (far >= 0) dev.villageheart.worker.job.WorkStats.max("workers", "max_heart_distance", (long) far);
+	}
+
 	private static void hireNow(Host ctx, JobType job, BuildingType type, boolean teleport, boolean strict) {
 		ServerLevel level = ctx.level();
 		BlockPos from = ctx.site() != null ? ctx.site() : ctx.heart();
