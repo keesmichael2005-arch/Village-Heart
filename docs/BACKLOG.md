@@ -316,6 +316,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] (carried from M14-r1) No test exercises the guard count in `TierFacts.inputs`. With M18 merged, an L2 can hire 2 guards and check the Town guard goal
 - [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload` failed once in 3 L2 runs during M18-r1 ("progress after the evening: 4004.0", bound >= 4100). Nothing in M18 touches the self-craft path by inspection, so check it on dev for a timing flake
 - [ ] `JobSiteReservations.evictHomeClaimants` scans the villagers within 64 blocks of every held Barracks bed on every reservation pass. Fine at v1 sizes; batch per Barracks if beds grow
+## From M18-r2
+- [ ] A guard that falls back below half health still counts as engaged, so `GatePaths.mayPass` ignores the hostile near a wall gate and `GateKeeper` holds the gate open for it. A wounded guard outside the wall can lead the zombie chasing it through the gate. Fix: a retreating guard does not count as engaged for gates. Add an L2 with a guard outside the ring and a healthy ally inside
+- [ ] `GuardAlarm.refresh` keeps the alarm up while any in-claim hostile targets a villager. A zombie outside a wall, but inside the claim, keeps every guard on duty and walking toward an unreachable `spot` all night. Consider: only a hostile with a path to a villager, or a cap on the hold
+- [ ] Sim `hire ... replace` re-hires a dead guard at once, mid-fight. In `defended` failure mode A, four fresh guards were fed in one by one and slain or zombified. Consider waiting until the alarm ends or dawn, as a player would
+- [ ] `guard_on_duty.png` shows the sleeping night guard from the foot of the bed (robe and apron only). A side view, or a camera at the bed's side, would read better
 ## From M22-r1
 - [ ] Merchant strike gate: `WorkGate.mayWork` in `MerchantJob.tick` is untested alone (speed 0 masks it), yet it is the only guard for a pending sale held after a SHORT/STOPPED attempt; add a test where a pending unit is held when a strike starts
 - [ ] The per-stall cap (`SalesLedger.byStall`, the fire/re-hire exploit) is tested at L1 only; add an L2 case: a capped merchant is fired and another villager is hired at the same stall the same day

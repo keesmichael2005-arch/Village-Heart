@@ -854,3 +854,10 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Diagnosis: `guardBeatsOneZombie` (level-1 guard, iron sword, iron helmet, one helmeted zombie, flat ground, daylight) logs 4 hits of 6.0 at 21-27 ticks (cooldown 20), and the zombie lands 3-4 hits of ~2.9: the guard wins in ~96 ticks and loses 8-12 of 20 health. Damage, rate and reach are vanilla's, so it is not a bug: a 20-health guard dies to the third zombie (about 9 health each, no regeneration awake). Scripted threat: 3 zombies per night (27 in all); natural spawns are not counted separately (kills >= 15 counts any hostile).
 - Per-lever `defended` runs (unseeded, 3 each, assertions unchanged): alarm only 0/3 (deaths.mobs 6/6/7, kills 3/3/3); + a (armour kit: 2 iron chestplates, 2 iron helmets) 0/3 (deaths 2/0/4, kills 12/9/17); + b (gather at the alarm spot, fall back toward a healthy guard below half health) 2/3 (the third: deaths 8, kills 4); + c (guard max health 30/40/50) 3/3 (deaths 1/1/0, kills 17/23/15, duty_samples always >= 100).
 - Verify at 4dfa87d (includes the M22 merge): L1, L2 (369 tests), L3 self-test, perf green; L4 timed out loading the first world at machine load 6-12 in 4 tries and passed (41 screenshots) at load < 4.
+
+## 2026-11-09: M18 review round 2 (verifier)
+- Verdict FAIL, 7 fix items, 4 BACKLOG items ("From M18-r2"). Review: `docs/reviews/M18-r2.md`. Head: merge `e8e237b` (origin/m18 `2b8aac0` + origin/dev `455e2bf`, LOOP_STATE only).
+- Full verify exit 0 (L2: 369 passed, L4 first try, 41 screenshots). Mutations: alarm (L1 and the L2 wake and return), retarget, bed eviction, grindstone, sleeper position and the codec split are all red. The unhired-villager gate assertion is still green with `isHired` = any adult villager.
+- `defended`: 1 of 5 at the head (deaths 7/0/6/1/7, kills 6/12/9/32/4) and 1 of 3 at `47b7994` (deaths 0/6/6, kills 17/2/42). A fresh guard is hired at 20 of 30 health (`onHired` does not heal). `guardBrainHasNoPanic` passed 9 of 10 alone. The static `GuardAlarm` state leaks across worlds.
+- Next: the builder fixes the 7 items. Blockers: none.
+
