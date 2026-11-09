@@ -22,5 +22,7 @@ public enum WorkerStatus {
 	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
 	TOO_HUNGRY,
 	/** Unpaid: the worker stops working until the treasury pays it (M12). */
-	ON_STRIKE
+	ON_STRIKE,
+	/** The cook has food to cook but nothing to burn (M13): "Needs fuel". */
+	NEEDS_FUEL
 }

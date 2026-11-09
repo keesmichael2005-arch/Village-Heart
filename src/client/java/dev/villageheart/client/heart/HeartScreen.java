@@ -845,6 +845,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
 				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
 		boolean warn = v.workplaceInvalid() && v.isWorker() || v.activity() == dev.villageheart.core.heart.ActivityKind.NEEDS_TOOL
+				|| v.activity() == dev.villageheart.core.heart.ActivityKind.NEEDS_FUEL
 				|| v.activity() == dev.villageheart.core.heart.ActivityKind.ON_STRIKE;
 		int actColor = warn ? RED : GREY;
 		text(g, act, x + 258, ty, w - 258 - 4, actColor, AREA_BODY, grp);

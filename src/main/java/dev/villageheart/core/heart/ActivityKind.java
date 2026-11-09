@@ -10,5 +10,7 @@ public enum ActivityKind {
 	/** M11: missed two dinners or more. */
 	TOO_HUNGRY,
 	/** M12: unpaid, the worker stops working until the treasury pays it. */
-	ON_STRIKE
+	ON_STRIKE,
+	/** M13: a cook with food to cook and no fuel in the stockpile. */
+	NEEDS_FUEL
 }

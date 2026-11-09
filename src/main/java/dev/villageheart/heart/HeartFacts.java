@@ -143,6 +143,7 @@ public final class HeartFacts {
 				case BLOCKED -> ActivityKind.BLOCKED;
 				case TOO_HUNGRY -> ActivityKind.TOO_HUNGRY;
 				case ON_STRIKE -> ActivityKind.ON_STRIKE;
+				case NEEDS_FUEL -> ActivityKind.NEEDS_FUEL;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
