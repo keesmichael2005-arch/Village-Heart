@@ -260,3 +260,4 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
+- [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning

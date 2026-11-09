@@ -22,6 +22,18 @@ class TierChoiceTest {
 	private static void takes(CraftPlan p, ItemCount... expected) { assertEquals(List.of(expected), p.take()); }
 
 	@Test
+	void stoneBeatsWoodenWhenBothAreAffordable() {
+		for (GearNeed n : GearNeed.values()) {
+			CraftPlan p = pick(n, stone("cobblestone", 3), sticks(2), planks("oak", 10), logs("oak", 5));
+			assertEquals(CraftTier.STONE, p.recipe().tier(), n.name());
+			// stone from planks for the sticks, again with wood to spare
+			CraftPlan q = pick(n, stone("cobblestone", 3), planks("oak", 10));
+			assertEquals(CraftTier.STONE, q.recipe().tier(), n.name());
+		}
+		assertEquals(CraftTier.WOODEN, pick(GearNeed.AXE, stone("cobblestone", 2), planks("oak", 10)).recipe().tier(), "stone short: wooden");
+	}
+
+	@Test
 	void stoneWithSticksInStorage() {
 		CraftPlan p = pick(GearNeed.PICKAXE, stone("cobblestone", 3), sticks(2));
 		assertEquals("minecraft:stone_pickaxe", p.recipe().outputId());
