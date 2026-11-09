@@ -408,6 +408,7 @@ public class CookGameTests {
 			watch[0] = true;
 		}).thenIdle(1200).thenExecute(() -> {
 			watch[0] = false;
+			log("strike window over at " + h.getTick() + ": cooked " + count(h, Items.COOKED_BEEF) + " problems " + problems + " status " + status(h, cook[0]));
 			h.assertTrue(problems.isEmpty(), "the striking cook did something: " + problems);
 			WageTestSupport.deposit(h, 1);
 			t0[0] = h.getTick();
