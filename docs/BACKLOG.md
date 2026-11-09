@@ -261,3 +261,6 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
 - [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`
 - [ ] (reviewer tip, M19a-r1) a lumberjack whose axe is only WORN could defer its replacement craft to the afternoon (after LUMBER_LAST_FELL) instead of losing a morning
+
+## From M19a-r2
+- [ ] Under heavy CPU load (load ~14) the first L4 client-test world can stall at "Preparing spawn area" until "Timeout loading world"; passed on rerun. Longer world-load timeout, or one full verify.sh at a time across worktrees
