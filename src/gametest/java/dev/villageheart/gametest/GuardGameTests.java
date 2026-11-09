@@ -890,4 +890,45 @@ public class GuardGameTests {
 			end(h);
 		});
 	}
+
+	// ---- the duel (orchestrator, M18 r1) -------------------------------------------------------------
+
+	private static String describe(java.util.List<Object[]> hits) {
+		StringBuilder b = new StringBuilder();
+		long prev = -1;
+		for (Object[] x : hits) {
+			long t = (Long) x[0];
+			b.append(prev < 0 ? "" : " +" + (t - prev)).append(" [").append(String.format("%.1f", (Float) x[3])).append("]");
+			prev = t;
+		}
+		return hits.size() + " hits" + b;
+	}
+
+	/** One level-1 guard with an iron sword and a helmet against one zombie on flat ground in daylight: it must win with at least half its health, fast. */
+	@GameTest(environment = "villageheart-gametest:guards_duel", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void guardBeatsOneZombie(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		long[] t0 = new long[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			setTime(h, 2000);
+			g[0] = hireGuard(h, new BlockPos(2, 0, 12), Optional.of(Shift.DAY));
+			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
+			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
+			g[0].setGuaranteedDrop(net.minecraft.world.entity.EquipmentSlot.HEAD);
+			z[0] = zombie(h, new BlockPos(8, 0, 12));
+			t0[0] = h.getLevel().getGameTime();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the zombie is dead", () -> h.assertTrue(!z[0].isAlive(), "zombie hp " + z[0].getHealth() + " guard hp " + g[0].getHealth()
+				+ " guard hits: " + describe(hits(z[0], g[0])) + "; zombie hits: " + describe(hits(g[0], z[0]))));
+		seq.thenExecute(() -> {
+			System.out.println("[m18] duel: guard " + describe(hits(z[0], g[0])) + "; zombie " + describe(hits(g[0], z[0])) + "; guard hp left " + g[0].getHealth()
+					+ ", attack damage attribute " + g[0].getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) + ", done in " + (h.getLevel().getGameTime() - t0[0]) + " ticks");
+			h.assertTrue(g[0].isAlive() && g[0].getHealth() >= 10.0F, "the guard keeps at least half its health: " + g[0].getHealth());
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

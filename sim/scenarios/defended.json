@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "defended",
-  "description": "M18: the starter village plus a tier-Village Barracks (two guards, an iron sword each in the chest, one iron chestplate, two leather helmets), a Training Yard and a scripted threat: 3 zombies placed 12-20 blocks from the Heart at tick 14000 of days 1..9 (27 in all). The guards (one night, one day shift) must kill at least 15 of them and at most one mob may kill anyone in 10 days. 64 emeralds in the treasury: 4 workers cost 4 on day 1 and 4 at each of the 9 dawns of days 2..10 (40 in all), so nobody strikes.",
+  "description": "M18: the starter village plus a tier-Village Barracks (two guards, an iron sword each in the chest, two iron chestplates and two iron helmets), a Training Yard and a scripted threat: 3 zombies placed 12-20 blocks from the Heart at tick 14000 of days 1..9 (27 in all). The guards (one night, one day shift) must kill at least 15 of them and at most one mob may kill anyone in 10 days. 64 emeralds in the treasury: 4 workers cost 4 on day 1 and 4 at each of the 9 dawns of days 2..10 (40 in all), so nobody strikes.",
   "default_days": 10,
   "actions": [
     {
@@ -186,8 +186,8 @@
       ],
       "chest_items": {
         "minecraft:iron_sword": 2,
-        "minecraft:iron_chestplate": 1,
-        "minecraft:leather_helmet": 2
+        "minecraft:iron_chestplate": 2,
+        "minecraft:iron_helmet": 2
       }
     },
     {

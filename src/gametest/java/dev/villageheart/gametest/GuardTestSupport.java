@@ -109,6 +109,8 @@ public final class GuardTestSupport {
 	private static final java.util.List<java.util.UUID[]> DAMAGE = new java.util.ArrayList<>();
 	/** Every villager that died since {@link #clearRecords}. */
 	private static final java.util.List<java.util.UUID> VILLAGER_DEATHS = new java.util.ArrayList<>();
+	/** (game time, victim, attacker, damage taken) of every hit with a source entity. */
+	private static final java.util.List<Object[]> LOG = new java.util.ArrayList<>();
 	private static boolean installed;
 
 	/** Registers the test-wide recorders once (Fabric events cannot be removed); {@link #clearRecords} empties them per test. */
@@ -117,6 +119,7 @@ public final class GuardTestSupport {
 			installed = true;
 			net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register((e, src, base, taken, blocked) -> {
 				if (src.getEntity() != null) DAMAGE.add(new java.util.UUID[] {e.getUUID(), src.getEntity().getUUID()});
+				if (src.getEntity() != null) LOG.add(new Object[] {e.level().getGameTime(), e.getUUID(), src.getEntity().getUUID(), taken});
 			});
 			net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((e, src) -> {
 				if (e instanceof Villager) VILLAGER_DEATHS.add(e.getUUID());
@@ -127,12 +130,18 @@ public final class GuardTestSupport {
 
 	public static void clearRecords() {
 		DAMAGE.clear();
+		LOG.clear();
 		VILLAGER_DEATHS.clear();
 	}
 
 	/** Has {@code attacker} damaged {@code victim} since the records were cleared? */
 	public static boolean damaged(net.minecraft.world.entity.Entity victim, net.minecraft.world.entity.Entity attacker) {
 		return DAMAGE.stream().anyMatch(d -> d[0].equals(victim.getUUID()) && d[1].equals(attacker.getUUID()));
+	}
+
+	/** The hits of {@code attacker} on {@code victim}: {game time, victim, attacker, damage}. */
+	public static java.util.List<Object[]> hits(net.minecraft.world.entity.Entity victim, net.minecraft.world.entity.Entity attacker) {
+		return LOG.stream().filter(d -> d[1].equals(victim.getUUID()) && d[2].equals(attacker.getUUID())).toList();
 	}
 
 	public static java.util.List<java.util.UUID> villagerDeaths() { return java.util.List.copyOf(VILLAGER_DEATHS); }
