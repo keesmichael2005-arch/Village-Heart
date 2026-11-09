@@ -23,12 +23,54 @@ public final class MetricsJson {
 	public record Report(String scenario, SimStatus status, String error, boolean cleanShutdown, long heartbeat,
 			int actionsDone, Integer stoppedAfterDay, long seed, String difficulty, int daysRequested, String minecraft,
 			VillagePositions village, long g0, List<Integer> reloads, DayMetrics baseline, List<DayMetrics> days,
-			List<AssertionResult> assertions) {
+			List<AssertionResult> assertions, Provenance provenance) {
 		public Report {
 			reloads = List.copyOf(reloads);
 			days = List.copyOf(days);
 			assertions = List.copyOf(assertions);
 		}
+
+		/** Without provenance (the shape before M13). */
+		public Report(String scenario, SimStatus status, String error, boolean cleanShutdown, long heartbeat, int actionsDone, Integer stoppedAfterDay,
+				long seed, String difficulty, int daysRequested, String minecraft, VillagePositions village, long g0, List<Integer> reloads,
+				DayMetrics baseline, List<DayMetrics> days, List<AssertionResult> assertions) {
+			this(scenario, status, error, cleanShutdown, heartbeat, actionsDone, stoppedAfterDay, seed, difficulty, daysRequested, minecraft, village, g0,
+					reloads, baseline, days, assertions, null);
+		}
+	}
+
+	/**
+	 * Where a report comes from (M13): the baseline file a comparison read, the SHA-256 of the scenario's canonical JSON, and the git commit of
+	 * the run (informational). Any member may be null.
+	 */
+	public record Provenance(String baselineFile, String scenarioSha256, String gitCommit) {}
+
+	/** The SHA-256 (hex) of the scenario text as canonical JSON: parsed, written with sorted keys and no whitespace, so formatting and line endings do not matter. */
+	public static String scenarioSha256(String scenarioJson) {
+		try {
+			String canonical = Json.write(sortKeys(Json.parse(scenarioJson)), false);
+			byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			StringBuilder sb = new StringBuilder();
+			for (byte b : d) sb.append(String.format("%02x", b));
+			return sb.toString();
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Object sortKeys(Object o) {
+		if (o instanceof Map<?, ?> m) {
+			Map<String, Object> out = new TreeMap<>();
+			for (Map.Entry<?, ?> e : m.entrySet()) out.put((String) e.getKey(), sortKeys(e.getValue()));
+			return out;
+		}
+		if (o instanceof List<?> l) {
+			List<Object> out = new ArrayList<>();
+			for (Object x : l) out.add(sortKeys(x));
+			return out;
+		}
+		return o;
 	}
 
 	public static final int SCHEMA = 1;
@@ -76,6 +118,11 @@ public final class MetricsJson {
 			as.add(am);
 		}
 		m.put("assertions", as);
+		if (r.provenance() != null) {
+			m.put("baseline_file", r.provenance().baselineFile());
+			m.put("scenario_sha256", r.provenance().scenarioSha256());
+			m.put("git_commit", r.provenance().gitCommit());
+		}
 		return m;
 	}
 
@@ -202,7 +249,8 @@ public final class MetricsJson {
 				(int) lng(m, "days_requested"), (String) m.get("minecraft"),
 				new VillagePositions(readPos(v.get("structure")), readPos(v.get("bell")), readPos(v.get("heart")), readPos(v.get("site"))),
 				lng(m, "g0"), reloads, m.get("baseline") == null ? null : readDay(Json.obj(m.get("baseline"), "baseline")),
-				days, as);
+				days, as, m.containsKey("scenario_sha256") || m.containsKey("baseline_file")
+						? new Provenance((String) m.get("baseline_file"), (String) m.get("scenario_sha256"), (String) m.get("git_commit")) : null);
 	}
 
 	private static Pos readPos(Object o) {

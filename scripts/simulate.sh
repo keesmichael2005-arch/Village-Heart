@@ -20,6 +20,7 @@ SIM_DIR=${SIM_DIR:-build/run/sim}
 # with this run's token (or in this run's process group), never anything else on the machine.
 SIM_RUN_TOKEN="vh-sim-$$-$(date +%s%N)"
 export SIM_RUN_TOKEN SIM_DIR
+SIM_GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo unknown); export SIM_GIT_COMMIT
 REPORT_DIR=${SIM_REPORT_DIR:-reports/sim}
 SIM_GRADLE_CMD=${SIM_GRADLE_CMD:-"./gradlew --no-daemon runSimulation"}
 SIM_STALL_SECONDS=${SIM_STALL_SECONDS:-600}
