@@ -689,12 +689,26 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int grp = groupCounter++;
 		text(g, t("overview.title", o.ownerName()), lx, y, colW, GOLD, AREA_BODY, grp);
 		text(g, t("overview.tier", o.tier().displayName()), lx, y + 12, colW, WHITE, AREA_BODY, grp);
-		text(g, o.nextTier().isPresent() ? t("overview.next_tier", o.nextTier().get().displayName()) : t("overview.top_tier"),
-				lx, y + 24, colW, GREY, AREA_BODY, grp);
+		boolean ready = !o.goals().isEmpty() && o.goals().stream().allMatch(dev.villageheart.core.heart.GoalLine::met);
+		text(g, o.nextTier().isPresent() ? t(ready ? "overview.next_tier_ready" : "overview.next_tier", o.nextTier().get().displayName()) : t("overview.top_tier"),
+				lx, y + 24, colW, ready ? GREEN : GREY, AREA_BODY, grp);
 		int gy = y + 36;
+		int rows = 0;
+		int grpBox = groupCounter++;
 		for (var goal : o.goals()) {
-			text(g, text(goal.label()), lx, gy, colW - 40, goal.met() ? GREEN : WHITE, AREA_BODY, grp);
-			gy += 12;
+			if (rows++ >= dev.villageheart.core.heart.HeartLimits.MAX_GOAL_ROWS) break;
+			// a 6 x 6 check box (filled green when met, a grey frame when not), then the label
+			int bx = lx, by = gy + 1;
+			if (goal.met()) g.fill(bx, by, bx + 6, by + 6, 0xFF55FF55);
+			else {
+				g.fill(bx, by, bx + 6, by + 1, GREY);
+				g.fill(bx, by + 5, bx + 6, by + 6, GREY);
+				g.fill(bx, by, bx + 1, by + 6, GREY);
+				g.fill(bx + 5, by, bx + 6, by + 6, GREY);
+			}
+			note(AREA_BODY, grpBox, bx, by, 6, 6);
+			text(g, text(goal.label()), lx + 10, gy, colW - 50, goal.met() ? GREEN : WHITE, AREA_BODY, grp);
+			gy += 10;
 		}
 
 		int grp2 = groupCounter++;
@@ -710,11 +724,11 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (o.wageBill() < 0) text(g, t("overview.wages_none"), rx, y + 48, colW, GREY, AREA_BODY, grp2);
 		else text(g, t("overview.wages", o.wageBill()), rx, y + 48, colW, o.treasury() < o.wageBill() ? RED : GREY, AREA_BODY, grp2);
 
-		int ay = y + 66;
+		int ay = Math.max(y + 66, gy + 4);
 		int grp3 = groupCounter++;
 		// the treasury bar (M12) takes the bottom 24 px of the body: the alert list gives way to it
 		boolean bar = !actionWidgets.isEmpty();
-		int fit = bar ? Math.max(1, (bodyBottom() - 24 - 2 - ay) / 12) : Integer.MAX_VALUE;
+		int fit = Math.max(1, (bodyBottom() - (bar ? 24 : 0) - 2 - ay) / 12);
 		if (o.alerts().isEmpty()) {
 			text(g, t("overview.no_alerts"), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
 		} else {

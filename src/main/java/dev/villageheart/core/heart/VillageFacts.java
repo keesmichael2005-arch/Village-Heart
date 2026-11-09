@@ -19,10 +19,22 @@ import java.util.UUID;
  * @param members      the owner, every known player and every online player (M24); shown only to viewers who manage ranks
  * @param wageBill     what the next wage run costs: the wages of every registered worker, loaded or not (M12)
  * @param strikers     registered workers that are on strike (M12)
+ * @param population   the Overview's population: loaded villagers in the claim plus registered workers that are not loaded there (M14)
+ * @param tierReport   the next tier's goals with progress (M14)
  */
 public record VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 		List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
-		List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers) {
+		List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers,
+		int population, dev.villageheart.core.tier.TierReport tierReport) {
+	/** Without the population and the tier checklist (the shape before M14): population is adults plus babies, the report has no live inputs. */
+	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
+			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
+			List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers) {
+		this(ownerName, tier, treasury, adults, babies, beds, workerSlots, villagers, jobs, buildings, stock, extraAlerts, members, builds, wageBill,
+				strikers, adults + babies, dev.villageheart.core.tier.TierGoals.evaluate(tier, dev.villageheart.core.tier.TierInputs.EMPTY,
+						dev.villageheart.core.tier.TierProgress.INITIAL));
+	}
+
 	/** Without the wage figures (the shape before M12). */
 	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
@@ -41,6 +53,7 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 		Objects.requireNonNull(ownerName, "ownerName");
 		Objects.requireNonNull(tier, "tier");
 		Objects.requireNonNull(stock, "stock");
+		Objects.requireNonNull(tierReport, "tierReport");
 		villagers = List.copyOf(villagers);
 		jobs = List.copyOf(jobs);
 		buildings = List.copyOf(buildings);

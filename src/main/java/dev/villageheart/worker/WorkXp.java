@@ -78,7 +78,10 @@ public final class WorkXp {
 			villager.setAttached(WorkerAttachments.WORKER, data.withProgress(now, data.xp()));
 			syncBadge(villager, now);
 			dev.villageheart.economy.Wages.mirrorLevel(level.getServer(), villager.getUUID(), now);
-			WorkerLevels.fireLevelChanged(level, villager, new XpChange(before, new Progress(now, before.xp()), true, false));
+			Progress after = new Progress(now, before.xp());
+			WorkerLevels.fireLevelChanged(level, villager, new XpChange(before, after, true, false));
+			// the banked XP is worth more than this tier allows: no gain will cross a threshold again, so say it once here (M14)
+			if (Leveling.capped(after, tier)) WorkerLevels.fireCapped(level, villager, new XpChange(before, after, true, true));
 		} else if (villager.getVillagerData().level() != data.level()) {
 			syncBadge(villager, data.level());
 		}

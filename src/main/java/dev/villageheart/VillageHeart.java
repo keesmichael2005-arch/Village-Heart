@@ -46,6 +46,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:dinner", dev.villageheart.food.DinnerSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:needs", dev.villageheart.needs.NeedsSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:wages", dev.villageheart.economy.WageSystem.INSTANCE);
+		dev.villageheart.tier.Tiers.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:guards", dev.villageheart.worker.guard.GuardSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:gates", dev.villageheart.defence.GateKeeper.INSTANCE);
