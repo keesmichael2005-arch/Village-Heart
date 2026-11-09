@@ -144,10 +144,10 @@ from there instead of hard-coding them.
 - **L1**: trip yield table with and without a bow
 - **L2**: a hunter with a sword and a valid Hunting Ground → ≥4 raw meat and ≥2 leather within 1 day
 
-## M19a: Self-made basic tools
-- Status (builder, 2026-11-09): built on branch `m19a`, awaiting review (not ticked). Unit tests, 23 GameTests (`SelfCraft*GameTests`) and the L4 shot `villagers_tab_making_tool.png` are in; deviations in the plan's section 8.
+## M19a: Self-made basic tools ✅
+- Status (verifier, 2026-11-09): PASS in round 2 (`docs/reviews/M19a-r2.md`). Built on branch `m19a`. Unit tests, 23 GameTests (`SelfCraft*GameTests`) and the L4 shot `villagers_tab_making_tool.png` are in; deviations in the plan's section 8.
 - Depends on M15 (tools) and the tool jobs M9, M10, M16, M17. Not on M11, M18 or M19 (M19 later extends the same core). Plan: `docs/plans/M19a.md`.
-- [ ] (owner 2026-11-09) §4.1: a hired lumberjack, miner, hunter or farmer with no usable tool in its job chest, or one about to wear out
+- [x] (owner 2026-11-09) §4.1: a hired lumberjack, miner, hunter or farmer with no usable tool in its job chest, or one about to wear out
       (the M19 worn line), makes its **own** wooden or stone tool from Storage materials at its job block, at any tier, slowly and in its own
       work time (wooden 2400, stone 4800 ticks at level 1, *tunable*; the smith's are 600 / 1200). Stone (`#stone_tool_materials`) when
       affordable, else wooden (planks, sticks or logs); never copper or better (Smithy, M19). Vanilla recipe counts. Demand only: no upgrade
