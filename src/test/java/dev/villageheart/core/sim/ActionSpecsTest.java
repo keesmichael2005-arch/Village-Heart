@@ -1,0 +1,39 @@
+package dev.villageheart.core.sim;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import dev.villageheart.core.sim.ScenarioParser.ScenarioParseException;
+import org.junit.jupiter.api.Test;
+
+class ActionSpecsTest {
+	private static String doc(String actions) {
+		return "{\"schema\":1,\"name\":\"x\",\"default_days\":1,\"actions\":[" + actions + "],\"assertions\":[]}";
+	}
+
+	private static void bad(String action, String contains) {
+		ScenarioParseException e = assertThrows(ScenarioParseException.class, () -> ScenarioParser.parse("x", doc(action)));
+		assertTrue(e.getMessage().contains(contains), e.getMessage());
+	}
+
+	private static final String PREFAB = "\"action\":\"prefab\",\"building\":\"house\",\"at\":[2,2],\"size\":[5,4],\"door\":\"south\",\"contents\":[\"bed\",\"light\"]";
+
+	@Test void validActionsParse() {
+		ScenarioParser.parse("x", doc("{\"action\":\"site\",\"size\":[44,32],\"min_distance\":24,\"max_distance\":72},{" + PREFAB + "},"
+				+ "{\"action\":\"field\",\"at\":[10,14],\"size\":9,\"crop\":\"carrots\",\"age\":7},"
+				+ "{\"action\":\"grove\",\"area\":[22,21,20,10],\"trees\":8,\"spacing\":5,\"seed\":11},"
+				+ "{\"action\":\"hire\",\"day\":1,\"tick\":200,\"job\":\"farmer\",\"building\":\"farmhouse\"}"));
+	}
+
+	@Test void typosNameTheField() {
+		bad("{\"action\":\"prefab\",\"building\":\"house\",\"at\":[2,2],\"door\":\"south\",\"contents\":[]}", "size");
+		bad("{" + PREFAB.replace("\"bed\"", "\"sofa\"") + "}", "unknown word sofa");
+		bad("{" + PREFAB.replace("south", "up") + "}", "door");
+		bad("{" + PREFAB.replace("house", "castle") + "}", "unknown building castle");
+		bad("{\"action\":\"field\",\"at\":[1,1],\"size\":10,\"crop\":\"carrots\"}", "size");
+		bad("{\"action\":\"field\",\"at\":[1,1],\"size\":9,\"crop\":\"kale\"}", "crop");
+		bad("{\"action\":\"hire\",\"job\":\"wizard\",\"building\":\"farmhouse\"}", "unknown job wizard");
+		bad("{\"action\":\"site\",\"size\":[44],\"max_distance\":72}", "size");
+		bad("{\"action\":\"site\",\"size\":[4,4],\"min_distance\":50,\"max_distance\":20}", "min_distance");
+		bad("{\"action\":\"grove\",\"area\":[1,1,5,5],\"trees\":0,\"spacing\":5}", "trees");
+	}
+}

@@ -2,8 +2,8 @@ status: RUNNING         # RUNNING | PAUSED | DONE
 budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop percentage. Goal: every milestone built AND reviewed (v1.0 gate) before the human's first real playthrough. Weekly resets 16:00 NZ Mon 9 Nov (03:00Z); work stops cleanly if the weekly limit hits first."
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
-run_cost_usd: "run 1 total ~188 (orchestrator session usage incl. all workers, 06:28Z-17:45Z). 5h limit never hit; weekly start 17%. Ask the user for the weekly % to calibrate"
-current: "run 2 | M15, M17(+xp), M21 merged | M11 VERIFY r5 (m11 @8496f82: sim area 13x13, not_ticking metric, nets removed; 6/6 starter passes) | M12 PASS r2 (m12 @bf62640) — HOLD: merge after M11 passes (contains m11 @27e087d; re-merge newer m11 first) | backlog-2 + tool-speed MERGED | M19a BUILD (m19a) | M19 plan r3 (extend M19a core.gear) in progress | plans ready: M12 M13 M14 M18 M19 M22 M23 M25 M26 (wait on M11)"
+run_cost_usd: "run 1 ~188. Run 2 (to the weekly limit, hit ~23:20Z 8 Nov): session cost_usd 871 - 188 = ~683 for 34%->100% weekly (~$10.3 per 1%). Run 3 starts at the 03:05Z 9 Nov weekly reset, from cost_usd 871"
+current: "run 3 | M11 + M12 MERGED (03:20Z 9 Nov) | M19a BUILD (m19a) | M13 BUILD (m13) | sim-area fix (Heart-centred forced area) | NEXT: M14, M18 builders (deps met) | plans ready: M14 M18 M19(r3, needs M19a) M22 M23 M25 M26"
 blocked: []
 decisions_by_human:
   - "2026-11-09: v1.0 gate '2 players' = M24's 1 real client + 1 server-side FakePlayer test. ACCEPTED"

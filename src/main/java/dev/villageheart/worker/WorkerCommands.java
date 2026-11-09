@@ -1,12 +1,15 @@
 package dev.villageheart.worker;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.worker.JobType;
+import dev.villageheart.economy.Treasury;
 import dev.villageheart.world.VillageClaims;
 import java.util.Arrays;
 import java.util.Optional;
@@ -44,7 +47,39 @@ public final class WorkerCommands {
 												.executes(ctx -> hire(ctx, Optional.of(BlockPosArgument.getBlockPos(ctx, "building"))))))))
 				.then(Commands.literal("fire")
 						.then(Commands.argument("entity", EntityArgument.entity()).executes(WorkerCommands::fire)))
-				.then(Commands.literal("workers").executes(WorkerCommands::list));
+				.then(Commands.literal("workers").executes(WorkerCommands::list))
+				.then(Commands.literal("treasury")
+						.then(Commands.literal("get").executes(ctx -> treasury(ctx, "get", 0)))
+						.then(Commands.literal("add").then(Commands.argument("amount", IntegerArgumentType.integer(0, Balance.MAX_TREASURY))
+								.executes(ctx -> treasury(ctx, "add", IntegerArgumentType.getInteger(ctx, "amount")))))
+						.then(Commands.literal("set").then(Commands.argument("amount", IntegerArgumentType.integer(0, Balance.MAX_TREASURY))
+								.executes(ctx -> treasury(ctx, "set", IntegerArgumentType.getInteger(ctx, "amount"))))));
+	}
+
+	/** {@code treasury get|add n|set n}: admin and test access to the treasury; both writes pay the strikers they can (M12). */
+	private static int treasury(CommandContext<CommandSourceStack> ctx, String op, int amount) {
+		CommandSourceStack source = ctx.getSource();
+		if (VillageClaims.current(source.getServer()).isEmpty()) {
+			source.sendFailure(Component.translatable("message.villageheart.hire.no_village"));
+			return 0;
+		}
+		switch (op) {
+			case "add" -> {
+				var r = Treasury.deposit(source.getServer(), amount, source.getPlayer());
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.add", r.accepted(), r.treasuryAfter()), true);
+				return r.treasuryAfter();
+			}
+			case "set" -> {
+				int now = Treasury.set(source.getServer(), amount);
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.set", now), true);
+				return now;
+			}
+			default -> {
+				int now = VillageClaims.current(source.getServer()).orElseThrow().treasury();
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.get", now), false);
+				return now;
+			}
+		}
 	}
 
 	private static int hire(CommandContext<CommandSourceStack> ctx, Optional<BlockPos> building) throws CommandSyntaxException {

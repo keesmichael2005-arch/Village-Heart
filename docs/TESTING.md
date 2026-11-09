@@ -66,6 +66,39 @@ server tick while a claim exists) or inside `try (var t = VillageTicker.section(
 `VillageTicker.TIMER` adds the sections of one tick into one sample; layer 3 reports its mean/p95/max per day as `village_ms.*`.
 A separate tick listener, or behaviour code outside a section, escapes the budget measurement. GameTests T-L2-1 / T-L2-1b prove the hook measures real work.
 
+## Needs GameTests (M11)
+`NeedsGameTests`, `NeedsHousingGameTests`, `NeedsWorkGameTests`, `SimActionGameTests` (helpers in `NeedsTestSupport`). Rules:
+- **Hooks.** `VillageTestSupport.reset` calls `NeedsTestHooks.disable()` (default needs for every worker, no dinner), so the worker tests of M7-M10 keep their
+  pace. A `needs_<name>` test calls `NeedsTestHooks.enable()` after its scene. `existingWorkerTestsUnaffected` proves the switch.
+- **Dinner** is triggered by `NeedsTestSupport.nextDinner(h)`: today's dinner counts as served, the clock goes to the NEXT day's 10980. Never a fixed day time.
+  `storageScene` sweeps every villager within 100 blocks first (leftovers would eat the bread) and the test counts the census before the first dinner.
+- Speed tests start at a day's 1000 with today's dinner marked as served and assert that `last_dinner_day` is unchanged at the end.
+  Farmer gaps: 20 work units at x0.5 are 40 ticks, plus up to 2 for the planner (measured 40-42).
+- `forcedChunkGrowsWithoutPlayer` pins the day time to noon with time frozen: saplings only grow in daylight (without it the test flaked at night).
+- `SimActionGameTests` runs the scenario's own prefab/field/grove/hire actions in the yard through the `Host` interface (the simulation implements it too).
+
+## Wage GameTests (M12+)
+`WageGameTests` (helpers in `WageTestSupport`, environments `villageheart-gametest:wages_<name>`, structure `yard`, `skyAccess = true`). Rules:
+- **Hooks.** `VillageTestSupport.reset` calls `NeedsTestHooks.disable()`, which also switches wages OFF (`NeedsOverride.wagesEnabled = false`): the wage
+  system only consumes each day change, hires are not charged, nobody ever strikes. A wage test hires with wages off (so no hire is charged), then calls
+  `NeedsTestHooks.enableWages()` (`WageTestSupport.wagesOn()`); fed/housed stay forced, `paid` always comes from the payroll. The old L4 tests run with wages off too
+  (`VillageHeartClientTests` sets it); `TreasuryClientTests` turns them on.
+- **`WorkerTestSupport.begin` first**: it turns `advance_time` on (the GameTest level has it off) and the day clock must run.
+- **Crossing a dawn**: `WageTestSupport.toDawn(h, seq, out)` sets the day time to `index * 24000 + 23980` and waits (bound 60 ticks) until the payroll's
+  `lastWageDay` is the next index; `out[0]` is the `PayResult` of the run (null when wages are off: the day was consumed). Never jump backwards except to
+  test exactly that. `setPhase(h, 900)` moves inside the day without a new run.
+- Dawn counters: `VillageDawn.register("test:<name>", ...)` (ids starting with `test:` are dropped by `reset` and `WageTestSupport.done`).
+- Strike proofs make the striker the only one who can do the work (two farmers and one lumberjack: any fallen log is the striker's) plus a capability check
+  (one deposit and the same worker fells a log). A first version told two lumberjacks apart by distance to the trees and flaked (a striker may wander).
+- The far-chunk test (`frozenWhileHeartUnloaded`) claims a village 100 000 blocks away in a force-loaded chunk, un-forces it and polls (bound 200 ticks)
+  until it unloads. It has no workers: the proof is that `lastWageDay` and the dawn counter do not move while the Heart is unloaded.
+- **L4** `TreasuryClientTests.overviewStrike` (`treasury_overview.png`, `treasury_villagers.png`; `-Dvillageheart.l4.only=treasury` runs just this): hires charged
+  with an empty treasury, a real right-click with 2 emeralds, the Overview and Villagers tab, the Deposit all and Withdraw 1 buttons. Emeralds for the button
+  are put in the hotbar BEFORE the screen opens (a creative client ignores inventory updates while a menu with no slots is open; `Treasury` re-sends the
+  inventory menu after a deposit or withdraw for the same reason).
+- **L3** `starter` seeds the treasury with `villageheart treasury add 32` and asserts `max(wages.strikers) == 0 from day 1`, `sum(wages.runs) >= 8 from day 1`
+  and `treasury <= treasury@prev - 2 from day 3`. Metrics: `wages.runs|bill|paid|spent|strikers`.
+
 ## Layer 3: simulations
 `scripts/simulate.sh <scenario> [days] [--assert "<expr>"]... [--reload-at <day>]` (`--list` shows the scenarios). It boots a real headless
 dedicated server (`./gradlew runSimulation`, a Loom run config over the `gametest` source set, run dir `build/run/sim`) on seed 1, finds the plains
@@ -87,6 +120,12 @@ Concurrency: every run kills only what it started (its process group, plus any p
 the day, run due actions, write, halt), restarts on the same world and finishes the run; `reloads` in the report is `[D]`.
 Env: `SIM_TIMEOUT_SECONDS`, `SIM_STALL_SECONDS` (report must change at least this often, default 600), `SIM_START_SECONDS` (default 180), `SIM_GRADLE_CMD`.
 `scripts/test-simulate.sh` (run by `verify.sh`) checks this exit-code contract against a stub server (`scripts/testdata/fake-sim.sh`).
+
+M11 actions (`StarterActions`, field shapes checked at parse time by `core.sim.ActionSpecs`): `site` (find, flatten and light a patch of untouched
+natural land near the Heart: `size`, `min_distance`, `max_distance`, optional `max_deviation` and `odd_percent` for rough plains), `prefab` (a room with its
+marker: `building`, `at`, `size`, `door`, `contents`, `chest_items`), `field`, `grove`, `hire` (nearest free adult, teleported to the door; with `replace: true`
+a replacement is hired whenever the job has nobody). Positions are relative to the site origin. `starter` carries the M12 hook (a `treasury add` command) in its
+description. Concurrent runs in one checkout need their own `SIM_REPORT_DIR` as well as `SIM_DIR`.
 
 Scenarios are `sim/scenarios/<name>.json` (`ScenarioFilesTest` parses every file in L1). Fields: `schema` 1, `name` (= file name), `description`,
 `default_days`, optional `seed`, `actions` (`action`, optional `day` (0 = setup, before the baseline) and `tick` 0..23999), `assertions`.

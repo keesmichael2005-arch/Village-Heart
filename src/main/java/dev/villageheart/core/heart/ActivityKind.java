@@ -7,6 +7,10 @@ public enum ActivityKind {
 	NEEDS_MATERIALS, BLOCKED,
 	/** A loaded worker inside its work site (the miner in the Mineshaft, M16), and a site it cannot reach; appended so old values keep their codec index. */
 	AWAY_WORKING, SITE_UNREACHABLE,
+	/** M11: missed two dinners or more. */
+	TOO_HUNGRY,
+	/** M12: unpaid, the worker stops working until the treasury pays it. */
+	ON_STRIKE,
 	/** M19a: a worker making its own tool (fetching the materials or working on it), and a required tool that cannot be made. Appended. */
 	MAKING_WOODEN_TOOL, MAKING_STONE_TOOL, TOOL_NO_MATERIALS, TOOL_NO_SPACE
 }

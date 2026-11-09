@@ -293,11 +293,12 @@ class HeartSnapshotBuilderTest {
 						NeedsFlags.of(true, true, true), ActivityKind.WORKING, true, false, false, true)),
 				many.jobs(), many.buildings(), many.stock(), List.of(), List.of());
 		Overview o = HeartSnapshotBuilder.build(broken, Rank.OWNER).overview();
-		assertEquals(List.of(AlertCode.STORAGE_FULL, AlertCode.INVALID_BUILDINGS, AlertCode.WORKPLACE_INVALID),
+		// severity first (M12): the danger line leads, the warnings keep their old relative order
+		assertEquals(List.of(AlertCode.WORKPLACE_INVALID, AlertCode.STORAGE_FULL, AlertCode.INVALID_BUILDINGS),
 				o.alerts().stream().map(AlertLine::code).toList());
-		assertEquals("2 buildings need attention", o.alerts().get(1).text().english());
-		assertEquals("1 worker has no valid workplace", o.alerts().get(2).text().english());
-		assertEquals(Severity.DANGER, o.alerts().get(2).severity());
+		assertEquals("2 buildings need attention", o.alerts().get(2).text().english());
+		assertEquals("1 worker has no valid workplace", o.alerts().get(0).text().english());
+		assertEquals(Severity.DANGER, o.alerts().get(0).severity());
 	}
 
 	@Test void equalFactsGiveEqualSnapshots() {

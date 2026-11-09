@@ -327,6 +327,25 @@ final class MultiplayerClientTests {
 					context.takeScreenshot("mp_ranks");
 					context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
 					context.waitTicks(5);
+
+					// ---- 5. the treasury (M12): the new Owner deposits and withdraws through the Overview buttons; the inventory must stay in step
+					srv.runCommand("item replace entity " + me + " hotbar.8 with minecraft:emerald 5");
+					syncCheck(context, srv, me, "emeralds given", s -> true);
+					aimAt(context, srv, me, -1.5, y, 3.5, new BlockPos(-2, y, 0));
+					context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+					context.waitForScreen(HeartScreen.class);
+					context.waitTicks(5);
+					syncCheck(context, srv, me, "owner Overview", s -> s.viewerRank() == Rank.OWNER && s.overview().treasury() == 0);
+					context.clickScreenButton("gui.villageheart.heart.deposit_all");
+					syncCheck(context, srv, me, "deposited", s -> s.overview().treasury() == 5);
+					int left5 = srv.computeOnServer(s -> s.getPlayerList().getPlayerByName(me).getInventory().countItem(net.minecraft.world.item.Items.EMERALD));
+					if (left5 != 0) throw new AssertionError("Deposit all left " + left5 + " emeralds in the inventory");
+					context.clickScreenButton("gui.villageheart.heart.withdraw_stack");
+					syncCheck(context, srv, me, "withdrawn", s -> s.overview().treasury() == 0);
+					int back5 = srv.computeOnServer(s -> s.getPlayerList().getPlayerByName(me).getInventory().countItem(net.minecraft.world.item.Items.EMERALD));
+					if (back5 != 5) throw new AssertionError("Withdraw 64 should hand back the 5 emeralds, the inventory holds " + back5);
+					context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+					context.waitTicks(5);
 					syncCheck(context, srv, me, "end", s -> true);
 				} finally {
 					HeartScreen.recordLayout = false;

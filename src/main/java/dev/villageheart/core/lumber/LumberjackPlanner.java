@@ -7,6 +7,7 @@ import dev.villageheart.core.Balance;
  * <ol>
  *   <li>camp invalid: idle at the camp</li>
  *   <li>a deposit trip is wanted: yield to it</li>
+ *   <li>the worker cannot work (work speed 0: too hungry, or unpaid, M11): idle at the camp, nothing is felled, planted or collected</li>
  *   <li>a fell is in progress (and the axe is there): carry on felling</li>
  *   <li>axe missing or unknown: only replanting and collecting may run, otherwise idle (status "Needs axe" when it is certain)</li>
  *   <li>a replant spot the worker can plant now</li>
@@ -31,13 +32,20 @@ public final class LumberjackPlanner {
 	public enum StatusChange { KEEP, CLEAR_ALL, CLEAR_NEEDS_TOOL, NEEDS_TOOL, NO_WORK }
 
 	public record Snapshot(boolean campValid, boolean depositWanted, boolean fellInProgress, ToolState tool, boolean replantReady,
-			boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder) {}
+			boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder, boolean cannotWork) {
+		/** A worker that can work. */
+		public Snapshot(boolean campValid, boolean depositWanted, boolean fellInProgress, ToolState tool, boolean replantReady,
+				boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder) {
+			this(campValid, depositWanted, fellInProgress, tool, replantReady, collectAvailable, fellingTaskAvailable, dayTime, finder, false);
+		}
+	}
 
 	public record Decision(Action action, StatusChange status) {}
 
 	public static Decision plan(Snapshot s) {
 		if (!s.campValid()) return new Decision(Action.IDLE_AT_CAMP, StatusChange.KEEP);
 		if (s.depositWanted()) return new Decision(Action.YIELD, StatusChange.KEEP);
+		if (s.cannotWork()) return new Decision(Action.IDLE_AT_CAMP, StatusChange.KEEP);
 		boolean tool = s.tool() == ToolState.PRESENT;
 		if (tool && s.fellInProgress()) return new Decision(Action.CONTINUE_FELL, StatusChange.CLEAR_ALL);
 		StatusChange base = tool ? StatusChange.CLEAR_NEEDS_TOOL : s.tool() == ToolState.NONE ? StatusChange.NEEDS_TOOL : StatusChange.KEEP;

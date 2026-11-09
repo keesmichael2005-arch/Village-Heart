@@ -434,9 +434,44 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
   food values (bread 5, baked potato 5, cooked beef 8, carrot 3, apple 4, raw meat counts as its vanilla raw
   value). The best foods are eaten first, cooked before raw. Children need half.
   *Food days left* = stockpile nutrition ÷ (population × 10).
+  Rules as built (M11):
+  - **Abstract dinner.** At 11000 the village system takes every villager's meal straight out of the Storage chests (`Stockpiles.withdraw`),
+    wherever they stand; nobody walks. Eaters = every living, loaded villager in the claim sphere (workers, unemployed, nitwits, children);
+    unloaded ones keep their state (no catch-up). Food in a villager's own inventory is never eaten. Reserved items (M20) are never eaten.
+    A day jump over the whole window (`/time add`) skips that dinner; `/time set` back re-serves it (`last_dinner_day` is compared with `!=`).
+    Sleeping through a thunderstorm before 11000 also skips it. `last_dinner_day` is saved with the claim.
+  - **Need and order.** Adult 10, child (baby) 5. Best food first: prepared before raw (raw = beef, porkchop, chicken, mutton, rabbit, cod,
+    salmon, potato), then nutrition, saturation, item id. Never eaten (= item tag `villageheart:not_village_food`): rotten flesh, spider eye,
+    poisonous potato, pufferfish, suspicious stew, chorus fruit, golden apple, enchanted golden apple, golden carrot. Eaters: the hungriest
+    first, then workers in hiring order, adults before children, UUID. A villager eats until it has 10 (a second beef overshoots) or, when
+    the food left cannot cover its need, nothing at all. Stews leave their bowl in the Storage.
+  - **Hunger** is a per-villager attachment (`villageheart:diet`, saved, claim-scoped). A missed dinner adds a day, a meal resets it.
+    1 missed dinner: work speed x0.5; 2 or more: the worker stops working (status "Too hungry to work"; deposit trips still run).
+    Nobody ever dies of hunger. `WorkerData.needs` is a derived copy written only by the needs system.
+  - **Housing.** A worker is housed when its bed (HOME) is in a valid House (or its own building, M18); unhoused = x0.75. Every 100 ticks an
+    awake unhoused worker moves into the nearest free House bed, else the nearest awake non-worker's; workers never take each other's beds.
+  - *Food days left* uses the real daily need (adults x10 + children x5).
 - **Treasury**: emeralds deposited at the Heart (Resident+). Only the Owner can withdraw.
 - **Wages**: paid at **dawn**: **1 / 1 / 2 emeralds** per day for levels 1 / 2 / 3 *(tunable)*. If the treasury is short,
   workers are paid in hiring order, and the rest strike for the day.
+  Rules as built (M12):
+  - **Deposit** = right-click the Heart with emeralds in the main hand: the whole stack goes in (as much as fits under 100 000), for Owner, Steward
+    and Resident; a Visitor gets a message and the Overview opens instead. Sneaking with an item skips the block (vanilla). "Deposit all" on the
+    Overview takes every emerald in the inventory. **Withdraw 1 / 64** (Overview, Owner only) puts emeralds in the inventory (what does not fit drops at
+    the player). Any emerald counts (a renamed one loses its name). Every deposit and withdraw is one INFO log line with the player's name.
+  - **Dawn** = the first tick of a new day index (`floorDiv(dayTime, 24000)`, also where sleeping lands). It runs once per index change and only while
+    the Heart chunk is loaded: no catch-up for skipped days or unloaded time, `/time set` back pays once. A new claim or an old save starts at today
+    (no instant charge). With `advance_time` off nobody is paid. `VillageDawn.register(id, listener)` lets later milestones react to the same dawn
+    (after wages, with the pre- and post-wage treasury in `PayResult`).
+  - **Pay rule.** Every registered worker, loaded or not (its level is mirrored in `WorkerRecord.level`), in hiring order; a worker whose wage fits what
+    is left is paid, one that does not strikes **and the walk goes on** (a cheaper later worker can still be paid). Owed wages are never carried over.
+  - **Strike** = on today's unpaid list. A striker's work speed is 0 (all jobs, via `needs.paid`; deposit trips still run), its status is "On strike"
+    and it outranks hunger. **Every treasury increase** (deposit, the `treasury add` and `set` commands, a merchant's sale in M22) pays the strikers at
+    their wage as charged at dawn, in hiring order, at once. **A hire is charged at once** (a fresh hire strikes when the treasury cannot pay), so
+    firing at dusk and hiring again at dawn is no free day; a worker already paid today costs nothing to hire again the same day.
+  - **Overview.** Treasury, "Wages tomorrow: N emeralds" (red when the treasury is short), a danger line "N workers are on strike" and a warning "Treasury
+    short: X of Y". Alerts are ordered severity first (danger, then warning), so the five-line cap never hides a strike.
+  - The treasury is capped at 100 000 emeralds (`Balance.MAX_TREASURY`). `/villageheart treasury get|add n|set n` (op) is the admin and test way in.
 - **Simulation is frozen when the village's chunks are unloaded**, as in vanilla. There is no catch-up. Dinner and
   dawn events fire only while the Heart chunk is loaded.
 

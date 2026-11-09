@@ -105,4 +105,34 @@ class VillageStateTest {
 		assertEquals(dev.villageheart.core.building.BuildingType.STORAGE, r.type().orElseThrow());
 		assertEquals(LOC, r.withLink(LOC).link());
 	}
+
+	// ---- M12: treasury ----------------------------------------------------------------------------------------
+
+	@Test void withdrawTakesAndRefusesMoreThanTheTreasuryHolds() {
+		VillageState v = founded().depositTreasury(5);
+		assertEquals(2, v.withdrawTreasury(3).treasury());
+		assertEquals(0, v.withdrawTreasury(5).treasury());
+		assertEquals(5, v.withdrawTreasury(0).treasury());
+		assertThrows(IllegalArgumentException.class, () -> v.withdrawTreasury(6));
+		assertThrows(IllegalArgumentException.class, () -> v.withdrawTreasury(-1));
+		assertEquals(5, v.treasury(), "the original is untouched");
+	}
+
+	@Test void withTreasurySetsAValueAtLeastZero() {
+		assertEquals(9, founded().withTreasury(9).treasury());
+		assertThrows(IllegalArgumentException.class, () -> founded().withTreasury(-1));
+	}
+
+	@Test void withWorkerLevelKeepsHiringOrderAndIsANoOpForAStranger() {
+		UUID a = UUID.randomUUID(), b = UUID.randomUUID(), c = UUID.randomUUID();
+		HeartLocation j1 = new HeartLocation("minecraft:overworld", 2, 64, 2), j2 = new HeartLocation("minecraft:overworld", 3, 64, 2),
+				j3 = new HeartLocation("minecraft:overworld", 4, 64, 2);
+		VillageState v = founded().withWorker(new WorkerRecord(a, "farmer", LOC, j1)).withWorker(new WorkerRecord(b, "farmer", LOC, j2))
+				.withWorker(new WorkerRecord(c, "farmer", LOC, j3));
+		VillageState up = v.withWorkerLevel(b, 3);
+		assertEquals(List.of(a, b, c), up.workers().stream().map(WorkerRecord::villager).toList());
+		assertEquals(List.of(1, 3, 1), up.workers().stream().map(WorkerRecord::level).toList());
+		assertSame(v, v.withWorkerLevel(UUID.randomUUID(), 2));
+		assertSame(up, up.withWorkerLevel(b, 3));
+	}
 }

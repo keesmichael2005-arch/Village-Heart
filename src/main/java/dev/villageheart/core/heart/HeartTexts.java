@@ -30,7 +30,13 @@ public final class HeartTexts {
 		EN.put(PREFIX + "overview.food", "Food: %s days");
 		EN.put(PREFIX + "overview.food_none", "Food: -");
 		EN.put(PREFIX + "overview.treasury", "Treasury: %s emeralds");
-		EN.put(PREFIX + "overview.wages", "Wages tomorrow: -");
+		EN.put(PREFIX + "overview.wages", "Wages tomorrow: %s emeralds");
+		EN.put(PREFIX + "overview.wages_none", "Wages tomorrow: -");
+		EN.put(PREFIX + "deposit_all", "Deposit all");
+		EN.put(PREFIX + "deposit_all.tip", "Deposit every emerald you carry");
+		EN.put(PREFIX + "withdraw_one", "Withdraw 1");
+		EN.put(PREFIX + "withdraw_stack", "Withdraw 64");
+		EN.put(PREFIX + "withdraw.tip", "Only the Owner can take emeralds out");
 		EN.put(PREFIX + "overview.no_alerts", "No alerts");
 		EN.put(PREFIX + "overview.more_alerts", "(+%s more)");
 		EN.put(PREFIX + "villagers.none", "No villagers nearby.");
@@ -85,6 +91,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_tool.pickaxe", "Needs pickaxe");
 		EN.put(PREFIX + "activity.needs_tool.hoe", "Needs hoe");
 		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
+		EN.put(PREFIX + "activity.too_hungry", "Too hungry to work");
+		EN.put(PREFIX + "activity.on_strike", "On strike");
 		// M19a: a worker making its own tool, and why it cannot
 		EN.put(PREFIX + "activity.making_wooden_tool", "Making a wooden tool");
 		EN.put(PREFIX + "activity.making_wooden_tool.axe", "Making a wooden axe");

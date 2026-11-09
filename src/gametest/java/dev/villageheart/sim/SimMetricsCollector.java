@@ -127,6 +127,12 @@ public final class SimMetricsCollector {
 			double wallSeconds, long ticksInDay) {
 		Optional<VillageState> village = VillageClaims.current(server);
 		Census c = centre == null ? new Census(0, 0, 0) : census(level, centre, radius);
+		long nutrition = 0;
+		double daysLeft = 0.0;
+		if (village.isPresent()) {
+			nutrition = dev.villageheart.food.Dinner.nutrition(server);
+			daysLeft = dev.villageheart.core.food.FoodMath.daysLeft(nutrition, c.adults(), c.babies()).orElse(Double.NaN);
+		}
 		double mspt = server.getAverageTickTimeNanos() / 1e6;
 		double tps = wallSeconds > 0 ? ticksInDay / wallSeconds : 0;
 		Runtime rt = Runtime.getRuntime();
@@ -135,9 +141,32 @@ public final class SimMetricsCollector {
 				village.map(v -> v.workers().size()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() == dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() != dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
-				village.isPresent() ? dev.villageheart.stock.Stockpiles.totalsById(server) : Map.of(), 0, 0.0, village.map(VillageState::treasury).orElse(0),
+				village.isPresent() ? dev.villageheart.stock.Stockpiles.totalsById(server) : Map.of(), (int) Math.min(Integer.MAX_VALUE, nutrition), daysLeft,
+				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
-				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village));
+				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
+				needsDay(server, village), wageDay());
+	}
+
+	/** The wage runs of the day (reset here, M12). */
+	private static DayMetrics.WageDay wageDay() {
+		dev.villageheart.economy.WageStats.Counts c = dev.villageheart.economy.WageStats.snapshotAndReset();
+		return new DayMetrics.WageDay(c.runs(), c.bill(), c.paid(), c.spent(), c.strikers());
+	}
+
+	/** The dinner totals of the day (reset here), the hungriest villager now, and who sleeps in a valid House (M11). */
+	private static DayMetrics.NeedsDay needsDay(MinecraftServer server, Optional<VillageState> village) {
+		dev.villageheart.food.FoodStats.Day food = dev.villageheart.food.FoodStats.snapshotAndReset();
+		if (village.isEmpty()) return DayMetrics.NeedsDay.ZERO;
+		VillageState v = village.get();
+		dev.villageheart.needs.Housing.rebuild(server);
+		long maxHungry = 0, housed = 0;
+		for (Villager villager : dev.villageheart.world.VillageCensus.of(server, v)) {
+			maxHungry = Math.max(maxHungry, dev.villageheart.food.DietAttachments.read(villager, v.claimedAtGameTime()).hungryDays());
+			if (dev.villageheart.needs.Housing.housed(server, villager, Optional.empty())) housed++;
+		}
+		return new DayMetrics.NeedsDay(food.dinners(), food.diners(), food.fed(), food.hungry(), food.eatenNutrition(), food.eatenItems(),
+				maxHungry, housed, dev.villageheart.needs.Housing.beds(server).houseBeds().size());
 	}
 
 	/** Workers in each status right now (lowercase status name): "ok", "needs_tool", "no_work" ... */

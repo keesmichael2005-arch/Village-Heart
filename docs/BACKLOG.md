@@ -89,14 +89,16 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] DepositTrip keeps all crops forever; M10 changes this to keep food only up to the breeding threshold
 
 ## Cross-milestone (from the M12 plan)
-- [ ] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+- [x] **M11 `starter` scenario must seed the treasury** (`villageheart treasury add 32` or equivalent) once M12 lands, otherwise both workers strike from day 2 and "logs increase every day" fails. The M12 builder must re-run `starter` by hand. The M11 builder should leave a hook for it
+  - Done in M12: `starter.json` seeds 32 emeralds and asserts the wage metrics (hand run recorded in PROGRESS).
 
 ## From M8-r1
 - [x] No L2 test reaches the `STALE` rejection (the menu closes first). Add a one-tick test: break and re-place the Heart, send from the old menu, expect STALE
   - Fixed (backlog-1): `oldMenuAfterReplaceIsStaleInTheSameTick`.
 - [x] The `nearHeart` check in HeartActions is untested: move the player away and send in the same tick
   - Fixed (backlog-1): `actionFromOutOfReachRejectedInTheSameTick`.
-- [ ] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+- [x] Villagers-tab need icons show M7 placeholder values (looks housed while Overview says beds 0). Re-check in M11
+  - Done in M11: `WorkerData.needs` is now real (fed from the diet, housed from the House beds), so the icons follow it. Non-worker villagers still show no icons.
 - [ ] An invalid Farmhouse with a worker reads "Slots 1/0" (confusing)
 
 ## From M24
@@ -104,7 +106,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] **Creative pick-block with data copies a protected chest:** `PlayerPickItemEvents.BLOCK` exists in Fabric for a later fix
 - [ ] Should breaking a registered marker be Steward-only (today Residents can, Visitors cannot)?
 - [ ] No self step-down: an Owner can demote anyone but must transfer to stop being Owner
-- [ ] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+- [x] M12 must append `DEPOSIT_TREASURY(RESIDENT)` and `WITHDRAW_TREASURY(OWNER)` to `Permission` and add its rows to `PermissionsTest`; then add the plan's T-L2-6 `onlyOwnerCanWithdraw`, and a deposit/withdraw step to `MultiplayerClientTests`
+  - Done in M12: both permissions and rows, `WageGameTests.onlyOwnerCanWithdraw`, and step 5 of `MultiplayerClientTests` (deposit all and withdraw 64 through the buttons on the dedicated server, inventory equality checked by `syncCheck`).
 - [ ] `SimPlayer` could use `FakePlayer` (its own owner needs creative mode and a different position rule)
 - [ ] Heart snapshot worst case is 481 KiB of 512 KiB: bound the next list before adding it
 - [ ] Ranks tab: no "you" marker on the Owner's own row, no rename-collision hint when two players share a name
@@ -144,6 +147,14 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] clearStrayFarmland discards every item entity; javadoc and TESTING say crop items only
 - [ ] workerOpensDoors doesn't log its walk time (near misses invisible); it flaked once at 456 vs 400 in the M20 builder's run
 - [ ] The original storageFullStopsHarvest flake's cause is unconfirmed (not seen in ~40 runs since)
+
+## From M11-r1
+- [ ] T-L2-10(d) deferred: no L2 test for a villager 81 blocks (or at the box corner 84.9) from the Heart not eating; the census is `world.VillageCensus` over `ClaimGeometry` (L1-tested)
+- [ ] T-L2-2 (`noFoodAllHungryNoDeaths`) only jumps dinner to dinner and never crosses dawn; M12's dawn wages need the plan's version (each round also crosses 23980)
+- [ ] `sum(deaths.cause.minecraft:starve) == 0` in `starter` can never fail (villagers take no hunger damage); the L2 full-health check is the real guard
+- [ ] `starter` workers sometimes die at night (run with 2 deaths, re-hired); the lumberjack's `no_work` on many days is the grove being felled on day 1 (saplings regrow slowly)
+- [ ] The site ramp (`StarterActions.ramp`, `core/sim/RampProfile`) is 9 blocks wide plus up to 12 more while it still differs from the land by more than 1: a `max_deviation` above 8 leaves a larger step at the ring (the cone is floor +- k)
+- [ ] `LeafEscape` is not a general unstick: it only frees a worker whose four sides at feet and head height are all blocked and at least one is natural leaves (M11 r2)
 
 ## From M16 (builder notes)
 - [ ] A hidden miner's hitbox still catches the crosshair at the bottom of the shaft (placing or breaking rails there while a miner is down); fix with a `Villager.isPickable` mixin if players complain (the hold spot is the deepest cell, so the entrance and the marker stay free)
@@ -209,6 +220,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] No test with two builders on two touching defence builds (risk: slowness/stale stand ring, not safety)
 - [ ] Watchtower rail centre cell is ANY: a natural block (e.g. leaf) left there can block climbing out of the ladder hole. Clear it or document it
 - [ ] `walled_section` screenshot: the line action-bar text is still fading in (cosmetic)
+- [ ] The WAKE-phase stroll (vanilla `VillageBoundRandomStroll`) drifts workers 40+ blocks from their workplace every morning; a stroll around HOME or the job block would keep them near (M11 r4)
+- [ ] `FarmJob.setAllCellsTakenForTest` is a test switch inside the production planner; prefer seeding real claims (M11 r4)
 
 ## From M12-r2
 - [ ] Withdraw: give the emeralds before `changed()` (hardening; `changed()` cannot realistically throw today)
@@ -235,3 +248,15 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] L3 by hand when M11's `starter` scenario exists: `starter` + Mine with a miner and no tools, 10 oak logs in Storage, 5 days; report `work.<job>.tools_made.<tier>` per day (expected wooden day 1, stone from day 2)
 - [ ] M19 r3 note: the census uses lead 0 whatever `SmithService` says (the plan's 3.8 #4 gives the smith's lead when one serves); M19 passes its lead when it registers the service
 - [ ] `ToolAllocation` still ranks by tier enum order (gold below iron); unchanged here, see the tool-speed item above
+## From M11-r5
+- [ ] (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
+- [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`
+
+## From M12 (builder notes)
+- [ ] **No `GatedWork` wrapper** (plan 3.2 #7): a striker stops through M11's per-job speed-0 handling (planner rows and `WorkSpeed`), which every current job already honours; `core.worker.WorkGate.mayWork` exists and `StrikersProduceNothingTest` pins speed 0 for every `JobType`. A wrapper around `JobBehaviours.work` would also stop the idle walk-back of a hungry or unpaid lumberjack/farmer (M11 r2 legs), so it was left out. M13+ jobs must read `needs.speed()` themselves (or call `WorkGate.mayWork`).
+- [ ] `NeedsOverride.forceDefaultNeeds` keeps its name (plan: `forceFedAndHoused`) to keep M11's tests untouched; its Javadoc says `paid` is never forced
+- [ ] `frozenWhileHeartUnloaded` has no workers in the far village (building one 100 000 blocks away is heavy): it proves `lastWageDay` and the dawn counter do not move while unloaded and that exactly one run happens on load, not that a treasury figure stays put
+- [ ] `threeWorkersTwoEmeraldsOneStrikes` uses two farmers and one lumberjack (C, the striker, is the only chopper, so any fallen log is C's; no per-villager log watcher exists) and watches the working day's first 2 500 ticks, not all 11 000
+- [ ] A hungry creative client does not see inventory changes made while the Heart menu is open (a menu with no slots): `Treasury.refreshInventory` re-sends the inventory menu after a deposit or withdraw, but other server-side changes still wait for the screen to close
+- [ ] Deposit all removes emeralds before the treasury write (the count is unknown before); a failed write puts them back. Nothing can fail between them today (one thread), so this is not exercised
+- [ ] The `WageStats` test listener is a single slot (`toDawn` replaces any other listener); other tests count dawns with `VillageDawn.register("test:...")`

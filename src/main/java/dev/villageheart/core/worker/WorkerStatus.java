@@ -19,6 +19,10 @@ public enum WorkerStatus {
 	BLOCKED,
 	/** The job's site (the Mineshaft) could not be reached: it retries after a while (M16). */
 	SITE_UNREACHABLE,
+	/** Missed two dinners or more: the worker stops working until it has eaten (M11). */
+	TOO_HUNGRY,
+	/** Unpaid: the worker stops working until the treasury pays it (M12). */
+	ON_STRIKE,
 	/** The worker is making its own tool (M19a): fetching the materials, or working on it at its job block. */
 	MAKING_WOODEN_TOOL,
 	MAKING_STONE_TOOL

@@ -88,6 +88,22 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Day index of the last dinner, absent for a claim that has not seen one (M11). */
+	public java.util.OptionalLong lastDinnerDay() { return claim.lastDinnerDay(); }
+
+	public void setLastDinnerDay(long day) {
+		claim.setLastDinnerDay(day);
+		setDirty();
+	}
+
+	/** Who is paid and who strikes today (M12); absent for a claim that has not seen a wage tick. */
+	public Optional<dev.villageheart.core.economy.Payroll> payroll() { return claim.payroll(); }
+
+	public void setPayroll(dev.villageheart.core.economy.Payroll payroll) {
+		claim.setPayroll(payroll);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {
