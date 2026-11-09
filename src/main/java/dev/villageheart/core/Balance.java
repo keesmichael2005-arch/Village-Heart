@@ -128,6 +128,32 @@ public final class Balance {
 	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
 	public static final int GUARD_FALLBACK_RADIUS = 16;
 
+	// ---- guards (M18) ----
+	public static final double GUARD_BASE_DAMAGE = 1.0;
+	/** Max health and bonus melee damage by level 1..3. */
+	public static final double[] GUARD_LEVEL_HEALTH = {20, 30, 40};
+	public static final double[] GUARD_LEVEL_DAMAGE = {0, 1, 2};
+	public static final int DAY_DUTY_START = 0;
+	public static final int NIGHT_DUTY_START = 12000;
+	public static final int GUARD_DUTY_TICKS = 12000;
+	public static final int GUARD_OFF_TICKS = 1000;
+	public static final int GUARD_SIGHT = 24;
+	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
+	public static final int GUARD_SCAN_TICKS = 10;
+	public static final double GUARD_CHASE_SPEED = 0.6;
+	public static final int GUARD_ATTACK_COOLDOWN = 20;
+	public static final int GUARD_GIVE_UP_TICKS = 200;
+	public static final double GUARD_WOUNDED_BELOW = 0.3;
+	public static final double GUARD_HEALED_AT = 0.8;
+	public static final int GUARD_SLEEP_HEAL_TICKS = 40;
+	/** Sparring ticks (at speed 1.0) that make one SPAR unit (1 XP). */
+	public static final int SPAR_TICKS_PER_XP = 40;
+	public static final int GEAR_RECHECK_TICKS = 1200;
+	/** Gear with less durability left than this fraction is left for repair (shared with M19a). */
+	public static final double GEAR_MIN_DURABILITY = 0.1;
+	public static final int PATROL_DWELL_TICKS = 100;
+	public static final int PATROL_SKIP_TICKS = 1200;
+
 	// ---- builder and blueprints (M20) ----
 	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
 	public static final double BUILD_TICKS_PER_BLOCK = 20;
