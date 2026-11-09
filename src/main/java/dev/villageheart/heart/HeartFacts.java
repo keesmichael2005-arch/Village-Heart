@@ -150,6 +150,8 @@ public final class HeartFacts {
 				case NEEDS_FUEL -> ActivityKind.NEEDS_FUEL;
 				case MAKING_WOODEN_TOOL -> ActivityKind.MAKING_WOODEN_TOOL;
 				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
+				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
+				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
 				default -> activityOf(v);
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
@@ -209,7 +211,7 @@ public final class HeartFacts {
 		Set<UUID> censusIds = loaded.keySet();
 		dev.villageheart.core.tier.TierInputs tierInputs = dev.villageheart.tier.TierFacts.inputs(server, state, censusIds);
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
-				villagers, jobs, buildings, stock(server), List.of(), members(server, state), builds(server),
+				villagers, jobs, buildings, stock(server, state, adults, babies), List.of(), members(server, state), builds(server),
 				dev.villageheart.core.economy.WageRules.bill(levels), strikers, tierInputs.population(),
 				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress())));
 	}
@@ -244,17 +246,28 @@ public final class HeartFacts {
 				dev.villageheart.rank.Members.online(server, id) != null);
 	}
 
-	private static StockFacts stock(MinecraftServer server) {
+	private static StockFacts stock(MinecraftServer server, VillageState state, int adults, int babies) {
 		StockSnapshot<StackKey> snap = Stockpiles.snapshot(server);
+		// what the market may sell, per item id: the sum over the plain variants (M22 plan 3.5); the population is the one counted above
+		var market = dev.villageheart.market.Markets.state(server);
+		var marketStock = dev.villageheart.market.Markets.stockItems(server);
+		long demand = new VillageCensus.Headcount(adults, babies).demand();
+		Map<String, Long> forSale = new HashMap<>();
+		for (var it : marketStock) {
+			long n = dev.villageheart.core.market.Surplus.of(it, marketStock, market.reserves(), demand);
+			if (n > 0) forSale.merge(it.id(), n, Long::sum);
+		}
 		List<StockItemFact> items = new ArrayList<>();
 		for (Map.Entry<String, Long> e : snap.totalsBy(StackKey::id).entrySet()) {
 			Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(e.getKey()));
 			FoodProperties food = item.components().get(DataComponents.FOOD);
 			boolean village = !item.builtInRegistryHolder().is(NOT_VILLAGE_FOOD);
-			items.add(new StockItemFact(e.getKey(), e.getValue(), food == null ? 0 : food.nutrition(), village));
+			items.add(new StockItemFact(e.getKey(), e.getValue(), food == null ? 0 : food.nutrition(), village, forSale.getOrDefault(e.getKey(), 0L)));
 		}
+		long today = dev.villageheart.core.time.DailyClock.dayIndex(server.overworld().getDayTime());
+		int merchants = (int) state.workers().stream().filter(w -> w.jobId().equals(JobType.MERCHANT.id())).count();
 		return new StockFacts(items, snap.sites(), snap.unknownSites(), snap.containers(), snap.slots(), snap.freeSlots(),
-				Stockpiles.alert(server));
+				Stockpiles.alert(server), market.reserves(), market.ledger().forDay(today).soldToday(), merchants);
 	}
 
 	private static String name(Villager v) {

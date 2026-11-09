@@ -27,5 +27,9 @@ public enum WorkerStatus {
 	MAKING_WOODEN_TOOL,
 	MAKING_STONE_TOOL,
 	/** The cook has food to cook but nothing to burn (M13): "Needs fuel". */
-	NEEDS_FUEL
+	NEEDS_FUEL,
+	/** The merchant has sold today's limit (M22). */
+	DAILY_LIMIT,
+	/** The treasury is full: the merchant stops selling (M22). */
+	TREASURY_FULL
 }

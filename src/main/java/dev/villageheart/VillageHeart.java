@@ -22,6 +22,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.food.DietAttachments.register();
 		dev.villageheart.worker.WorkerBrain.register();
 		dev.villageheart.worker.WorkerCommands.register();
+		dev.villageheart.market.MarketCommands.register();
 		dev.villageheart.room.RoomCells.register();
 		dev.villageheart.heart.ModMenus.register();
 		dev.villageheart.heart.net.HeartNetwork.register();

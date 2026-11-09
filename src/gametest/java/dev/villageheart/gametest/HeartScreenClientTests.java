@@ -78,7 +78,7 @@ final class HeartScreenClientTests {
 		List<String> problems = context.computeOnClient(mc -> screen(mc).layoutProblems());
 		int clipped = context.computeOnClient(mc -> screen(mc).clippedThisFrame());
 		if (!problems.isEmpty()) throw new AssertionError(what + ": layout problems " + problems);
-		if (clipped != 0) throw new AssertionError(what + ": " + clipped + " texts were cut off");
+		if (clipped != 0) throw new AssertionError(what + ": " + clipped + " texts were cut off, e.g. " + context.computeOnClient(mc -> screen(mc).lastClippedText()));
 	}
 
 	static HeartSnapshot snapshot(ClientGameTestContext context) {

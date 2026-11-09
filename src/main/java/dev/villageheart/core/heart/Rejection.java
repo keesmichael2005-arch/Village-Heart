@@ -5,7 +5,7 @@ import java.util.Locale;
 /** Why the server refused a Heart screen action. */
 public enum Rejection {
 	NOT_OPEN, STALE, NO_VILLAGE, NO_PERMISSION, RATE_LIMITED, UNKNOWN_JOB, VILLAGER_NOT_FOUND, NOT_A_BUILDING,
-	BAD_RANK, UNKNOWN_PLAYER, OWNER_RANK_FIXED, TOO_MANY_MEMBERS, NOT_A_MEMBER, TARGET_CHANGED, BAD_AMOUNT;
+	BAD_RANK, UNKNOWN_PLAYER, OWNER_RANK_FIXED, TOO_MANY_MEMBERS, NOT_A_MEMBER, TARGET_CHANGED, BAD_AMOUNT, BAD_RESERVE;
 
 	public String id() { return name().toLowerCase(Locale.ROOT); }
 
@@ -30,6 +30,7 @@ public enum Rejection {
 			case NOT_A_MEMBER -> "Make them a Resident or Steward first.";
 			case TARGET_CHANGED -> "That player's rank just changed. Check and try again.";
 			case BAD_AMOUNT -> "That amount cannot be withdrawn.";
+			case BAD_RESERVE -> "That reserve cannot be set.";
 		};
 	}
 }

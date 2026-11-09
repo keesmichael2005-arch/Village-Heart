@@ -104,6 +104,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** The market's reserves and today's sales (M22). */
+	public dev.villageheart.core.market.MarketState market() { return claim.market(); }
+
+	public void setMarket(dev.villageheart.core.market.MarketState m) {
+		claim.setMarket(m);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {

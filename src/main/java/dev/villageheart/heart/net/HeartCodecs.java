@@ -219,18 +219,20 @@ public final class HeartCodecs {
 	private static final StreamCodec<ByteBuf, List<BuildRow>> BUILDS = BUILD_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_BUILDS));
 
 	private static final StreamCodec<ByteBuf, StockLine> STOCK_LINE = codec(
-			buf -> new StockLine(ID.decode(buf), LONG.decode(buf), INT.decode(buf)),
+			buf -> new StockLine(ID.decode(buf), LONG.decode(buf), INT.decode(buf), LONG.decode(buf)),
 			(buf, s) -> {
 				ID.encode(buf, s.itemId());
 				LONG.encode(buf, s.count());
 				INT.encode(buf, s.nutritionEach());
+				LONG.encode(buf, s.forSale());
 			});
 
 	private static final StreamCodec<ByteBuf, List<StockLine>> STOCK_LINES = STOCK_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_STOCK_KINDS));
 
 	public static final StreamCodec<ByteBuf, Stock> STOCK = codec(
 			buf -> new Stock(STOCK_LINES.decode(buf), INT.decode(buf), LONG.decode(buf), LONG.decode(buf), INT.decode(buf),
-					INT.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), STORAGE_ALERT.decode(buf)),
+					INT.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), STORAGE_ALERT.decode(buf),
+					decodeReserves(buf), INT.decode(buf), INT.decode(buf)),
 			(buf, s) -> {
 				STOCK_LINES.encode(buf, s.items());
 				INT.encode(buf, s.moreKinds());
@@ -242,7 +244,18 @@ public final class HeartCodecs {
 				INT.encode(buf, s.freeSlots());
 				INT.encode(buf, s.slots());
 				STORAGE_ALERT.encode(buf, s.alert());
+				INT.encode(buf, s.reserves().foodDays());
+				INT.encode(buf, s.reserves().itemReserve());
+				INT.encode(buf, s.soldToday());
+				INT.encode(buf, s.merchants());
 			});
+
+	/** The two reserve numbers, clamped into range: a hostile server cannot make the client throw. */
+	private static dev.villageheart.core.market.Reserves decodeReserves(ByteBuf buf) {
+		int food = INT.decode(buf);
+		int items = INT.decode(buf);
+		return dev.villageheart.core.market.Reserves.clamped(food, items);
+	}
 
 	private static final StreamCodec<ByteBuf, List<VillagerRow>> VILLAGERS = VILLAGER_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_VILLAGERS));
 	private static final StreamCodec<ByteBuf, List<JobChoice>> JOB_CHOICES = JOB_CHOICE.apply(ByteBufCodecs.list(HeartLimits.MAX_JOB_CHOICES));

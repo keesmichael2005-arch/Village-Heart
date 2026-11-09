@@ -82,6 +82,17 @@ public final class HeartTexts {
 		EN.put(PREFIX + "stock.line2_none", "Food: %s nutrition");
 		EN.put(PREFIX + "stock.more", "+%s more kinds");
 		EN.put(PREFIX + "stock.count", "\u00d7 %s");
+		EN.put(PREFIX + "stock.market_sold", "Market: sold %s emeralds today");
+		EN.put(PREFIX + "stock.market_none", "No merchant: nothing is sold");
+		EN.put(PREFIX + "stock.for_sale", "Up to %s for sale above the reserve");
+		EN.put(PREFIX + "reserve.label_food", "Keep: food");
+		EN.put(PREFIX + "reserve.days", "%s days");
+		EN.put(PREFIX + "reserve.label_items", "other items");
+		EN.put(PREFIX + "reserve.each", "%s each");
+		EN.put(PREFIX + "reserve.food_less", "-");
+		EN.put(PREFIX + "reserve.food_more", "+");
+		EN.put(PREFIX + "reserve.items_less", "-16");
+		EN.put(PREFIX + "reserve.items_more", "+16");
 		EN.put(PREFIX + "activity.working", "Working");
 		EN.put(PREFIX + "activity.idle", "Idle");
 		EN.put(PREFIX + "activity.going_home", "Going home");
@@ -141,6 +152,10 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.no_work.cook", "Nothing to cook");
 		EN.put(PREFIX + "activity.away_working.hunter", "Away (hunting)");
 		EN.put(PREFIX + "activity.site_unreachable.hunter", "Can't reach the Hunting Ground");
+		EN.put(PREFIX + "activity.no_work.merchant", "Nothing to sell (all stock is within the reserve)");
+		EN.put(PREFIX + "activity.site_unreachable.merchant", "Can't reach its stall");
+		EN.put(PREFIX + "activity.daily_limit", "Sold today's limit");
+		EN.put(PREFIX + "activity.treasury_full", "Treasury full");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

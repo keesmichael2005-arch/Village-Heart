@@ -20,7 +20,9 @@ public enum Permission {
 	/** Put emeralds into the treasury (M12): right-click the Heart with emeralds, or "Deposit all" on the Overview. */
 	DEPOSIT_TREASURY(RESIDENT),
 	/** Take emeralds out of the treasury (M12): the Owner only, a Steward may not. */
-	WITHDRAW_TREASURY(OWNER);
+	WITHDRAW_TREASURY(OWNER),
+	/** Change what the market keeps (M22): days of food and the stock of every other item. */
+	SET_RESERVES(STEWARD);
 
 	private final Rank minimum;
 
