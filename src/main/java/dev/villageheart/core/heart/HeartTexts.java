@@ -91,8 +91,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "reserve.each", "%s each");
 		EN.put(PREFIX + "reserve.food_less", "-");
 		EN.put(PREFIX + "reserve.food_more", "+");
-		EN.put(PREFIX + "reserve.items_less", "-");
-		EN.put(PREFIX + "reserve.items_more", "+");
+		EN.put(PREFIX + "reserve.items_less", "-16");
+		EN.put(PREFIX + "reserve.items_more", "+16");
 		EN.put(PREFIX + "activity.working", "Working");
 		EN.put(PREFIX + "activity.idle", "Idle");
 		EN.put(PREFIX + "activity.going_home", "Going home");

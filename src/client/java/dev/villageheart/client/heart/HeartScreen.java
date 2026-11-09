@@ -114,6 +114,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	private List<Rect> lastFrame = List.of();
 	private int clipped;
 	private int lastClipped;
+	/** The last text that was cut off (for test messages). */
+	private String lastClippedText = "";
+
+	public String lastClippedText() { return lastClippedText; }
 	private int groupCounter;
 	private int[] clip = {0, 0, 0, 0};
 	private int scrollbarRight;
@@ -231,6 +235,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (font.width(s) > maxW) {
 			s = font.plainSubstrByWidth(s, Math.max(0, maxW - font.width("…"))) + "…";
 			clipped++;
+			lastClippedText = c.getString() + " in " + maxW;
 		}
 		g.drawString(font, s, x, y, color);
 		int w = font.width(s);
@@ -243,6 +248,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (font.width(s) > maxW) {
 			s = font.plainSubstrByWidth(s, Math.max(0, maxW - font.width("…"))) + "…";
 			clipped++;
+			lastClippedText = c.getString() + " in " + maxW;
 		}
 		int w = font.width(s);
 		g.drawString(font, s, right - w, y, color);
@@ -499,7 +505,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	/** x of the four labels and values of the bar, set by {@link #reserveBar}. */
 	private int barFoodLabelX, barFoodValueX, barItemsLabelX, barItemsValueX;
 
-	private static final int BAR_BTN_W = 20, BAR_VALUE_W = 54;
+	private static final int BAR_BTN_W = 20, BAR_ITEM_BTN_W = 28, BAR_VALUE_W = 46;
 
 	private void sendReserves(int foodDays, int itemReserve) {
 		ClientPlayNetworking.send(new dev.villageheart.heart.net.SetReservesPayload(menu.containerId, foodDays, itemReserve));
@@ -529,13 +535,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		x += font.width(t("reserve.label_items").getString()) + 6;
 		if (edit) {
 			itemsLess = Button.builder(t("reserve.items_less"), b -> sendReserves(snap().stock().reserves().foodDays(), snap().stock().reserves().itemReserve() - Balance.ITEM_RESERVE_STEP))
-					.bounds(x, y, BAR_BTN_W, 20).build();
+					.bounds(x, y, BAR_ITEM_BTN_W, 20).build();
 			addAction(itemsLess);
 		}
-		barItemsValueX = x + (edit ? BAR_BTN_W + 4 : 0);
+		barItemsValueX = x + (edit ? BAR_ITEM_BTN_W + 4 : 0);
 		if (edit) {
 			itemsMore = Button.builder(t("reserve.items_more"), b -> sendReserves(snap().stock().reserves().foodDays(), snap().stock().reserves().itemReserve() + Balance.ITEM_RESERVE_STEP))
-					.bounds(barItemsValueX + BAR_VALUE_W + 4, y, BAR_BTN_W, 20).build();
+					.bounds(barItemsValueX + BAR_VALUE_W + 4, y, BAR_ITEM_BTN_W, 20).build();
 			addAction(itemsMore);
 		}
 		refreshReserveButtons();

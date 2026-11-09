@@ -180,7 +180,7 @@ public final class HeartActions {
 	/** The gate already checked the rank and the range. */
 	private static boolean setReserves(ServerPlayer player, int containerId, MinecraftServer server, HeartAction.SetReserves r) {
 		dev.villageheart.market.Markets.setReserves(server, r.reserves());
-		reply(player, containerId, true, "message.villageheart.market.reserves_set", "The market keeps %s days of food and %s of every other item.",
+		reply(player, containerId, true, "message.villageheart.market.reserves_set", "Keeping %s days of food, %s of each item",
 				List.of(Integer.toString(r.foodDays()), Integer.toString(r.itemReserve())));
 		return true;
 	}
