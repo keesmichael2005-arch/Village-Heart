@@ -216,11 +216,11 @@ public final class GuardCombat {
 			if (now - f.lastHitAt >= Balance.GUARD_ATTACK_COOLDOWN) hit(level, guard, f, target, now);
 			return;
 		}
-		if (now - f.lastPathAt >= REPATH_TICKS || nav.isDone()) {
+		if (now - f.lastPathAt >= REPATH_TICKS) {
 			f.lastPathAt = now;
 			Path path = nav.createPath(target.blockPosition(), 1, 32);
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
-			if (!near && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
+			if (!near && target.onGround() && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
 				if (++f.shortPaths >= 3) {
 					drop(guard, f, target, now, true);
 					return;

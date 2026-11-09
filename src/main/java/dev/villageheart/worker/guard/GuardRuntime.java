@@ -3,7 +3,11 @@ package dev.villageheart.worker.guard;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.guard.GuardShift;
+import dev.villageheart.core.guard.GearItem;
+import dev.villageheart.core.guard.GearPlanner;
+import dev.villageheart.core.guard.GuardPlanner;
 import dev.villageheart.core.guard.PatrolRoute;
+import net.minecraft.world.item.ItemStack;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.world.VillageTicker;
@@ -36,6 +40,9 @@ public final class GuardRuntime {
 		Mode mode = Mode.PATROL;
 		int arrivals;
 		BlockPos lastArrival;
+		long nextGearCheck;
+		java.util.ArrayDeque<GuardGear.Candidate> trip;
+		boolean returning;
 	}
 
 	private static final Map<UUID, State> STATES = new HashMap<>();
@@ -86,6 +93,16 @@ public final class GuardRuntime {
 				s.mode = Mode.FIGHT;
 				return; // the combat behaviour in CORE owns the navigation
 			}
+			if (s.trip == null && now >= s.nextGearCheck) {
+				s.nextGearCheck = now + Balance.GEAR_RECHECK_TICKS;
+				s.trip = planTrip(level, guard);
+			}
+			var duty = GuardPlanner.duty(new GuardPlanner.DutyFacts(false, s.trip != null, true));
+			if (duty == GuardPlanner.DutyMode.EQUIP) {
+				s.mode = Mode.EQUIP;
+				if (!equipStep(level, guard, s, now)) endTrip(level, guard, s);
+				return;
+			}
 			s.mode = Mode.PATROL;
 			patrol(level, guard, s, now);
 		}
@@ -93,13 +110,103 @@ public final class GuardRuntime {
 
 	static void stopDuty(ServerLevel level, Villager guard) {
 		State s = STATES.get(guard.getUUID());
-		if (s != null) s.walk.release(guard);
+		if (s == null) return;
+		s.walk.release(guard);
+		endTrip(level, guard, s);
+		s.nextGearCheck = 0; // entering duty again: look at the gear at once
 	}
 
 	static void tickOff(ServerLevel level, Villager guard, long now) {
 		try (var t = VillageTicker.section()) {
-			// filled in by the gear-return and sparring steps
+			State s = state(guard);
+			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, GuardGear.wearsAnything(guard), false, false));
+			if (off == GuardPlanner.OffMode.RETURN_GEAR) returnGear(level, guard, s, now);
 		}
+	}
+
+	// ---- gear -------------------------------------------------------------------------------------
+
+	/** Lists the upgrades this guard should fetch (Barracks chest first, then the stockpile) and promises them; null when there are none. */
+	private static java.util.ArrayDeque<GuardGear.Candidate> planTrip(ServerLevel level, Villager guard) {
+		List<GuardGear.Candidate> cands = GuardGear.available(level, guard);
+		if (cands.isEmpty()) return null;
+		List<GearItem> items = new ArrayList<>();
+		for (var c : cands) items.add(c.item());
+		var plan = GearPlanner.plan(GuardGear.worn(guard), items);
+		if (plan.isEmpty()) return null;
+		var trip = new java.util.ArrayDeque<GuardGear.Candidate>();
+		var reservations = dev.villageheart.stock.Stockpiles.reservations(level.getServer());
+		for (int pass = 0; pass < 2; pass++) {
+			for (GearItem it : plan) {
+				var c = cands.get(it.order());
+				if ((c.key() == null) != (pass == 0)) continue;
+				trip.add(c);
+				if (c.key() != null) reservations.set(guard.getUUID(), c.key(), 1);
+				else GuardGear.CLAIMS.put(c.chest().asLong() + "#" + c.chestSlot(), guard.getUUID());
+			}
+		}
+		return trip;
+	}
+
+	private static void endTrip(ServerLevel level, Villager guard, State s) {
+		s.trip = null;
+		dev.villageheart.stock.Stockpiles.reservations(level.getServer()).release(guard.getUUID());
+		GuardGear.CLAIMS.values().removeIf(guard.getUUID()::equals);
+		s.walk.release(guard);
+	}
+
+	/** One tick of the equip trip; false when the trip is over. */
+	private static boolean equipStep(ServerLevel level, Villager guard, State s, long now) {
+		GuardGear.Candidate c = s.trip.peek();
+		if (c == null) return false;
+		BlockPos goal;
+		if (c.key() == null) {
+			if (!GuardGear.read(c.container().getItem(c.chestSlot()), GearItem.Source.BARRACKS, 0).id().equals(c.item().id())) {
+				s.trip.poll();
+				return !s.trip.isEmpty();
+			}
+			goal = c.chest();
+		} else {
+			var anchor = dev.villageheart.stock.Stockpiles.nearestHolding(level, guard.blockPosition(), c.key(), guard.getUUID());
+			if (anchor.isEmpty()) {
+				s.trip.poll();
+				return !s.trip.isEmpty();
+			}
+			goal = anchor.get();
+		}
+		if (!s.walk.active() || !s.walk.target().equals(goal)) s.walk.begin(goal, 2.5, 4.0, now);
+		WalkTo.State st = s.walk.tick(guard, now);
+		if (st == WalkTo.State.UNREACHABLE) return false; // skipped until the next recheck
+		if (st != WalkTo.State.ARRIVED) return true;
+		ItemStack got;
+		if (c.key() == null) {
+			got = c.container().getItem(c.chestSlot()).copy();
+			c.container().setItem(c.chestSlot(), ItemStack.EMPTY);
+			c.container().setChanged();
+		} else {
+			got = dev.villageheart.stock.Stockpiles.withdrawAt(level, goal, c.key(), 1, guard.getUUID());
+		}
+		s.walk.release(guard);
+		s.trip.poll();
+		if (!got.isEmpty()) {
+			ItemStack old = GuardGear.equip(guard, GuardGear.slotOf(c.item().slot()), got);
+			if (!old.isEmpty()) GuardGear.handIn(level, guard, old);
+			WorkStats.add("guard", "gear_equipped", 1);
+		}
+		return !s.trip.isEmpty();
+	}
+
+	/** Off shift: walk to the Barracks chest and hand in every worn piece. */
+	private static void returnGear(ServerLevel level, Villager guard, State s, long now) {
+		var chests = GuardGear.chests(level.getServer(), guard);
+		if (!chests.isEmpty()) {
+			BlockPos goal = chests.get(0).pos();
+			if (!s.walk.active() || !s.walk.target().equals(goal)) s.walk.begin(goal, 2.5, 4.0, now);
+			WalkTo.State st = s.walk.tick(guard, now);
+			if (st == WalkTo.State.WALKING) return;
+		}
+		s.walk.release(guard);
+		GuardGear.returnAll(level, guard);
 	}
 
 	static void stopOff(ServerLevel level, Villager guard) {

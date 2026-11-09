@@ -377,4 +377,179 @@ public class GuardGameTests {
 		return poi.getInSquare(t -> true, head, 0, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE)
 				.filter(r -> r.getPos().equals(head)).count();
 	}
+	// ---- gear (T-L2-5, 7, 8, 9) --------------------------------------------------------------------
+
+	private static void buildStorage(GameTestHelper h) {
+		BuildingTestSupport.room(h, STORE, 5, 4);
+		h.setBlock(BuildingTestSupport.inside(STORE, 0, 0, 3), net.minecraft.world.level.block.Blocks.CHEST);
+		h.setBlock(BuildingTestSupport.inside(STORE, 4, 0, 3), net.minecraft.world.level.block.Blocks.CHEST);
+		BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.STORAGE, storeMarker(), net.minecraft.core.Direction.NORTH);
+	}
+
+	private static GameTestSequence sceneWithStorage(GameTestHelper h, int guards) {
+		return scene(h, guards).thenExecute(() -> buildStorage(h))
+				.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, storeMarker(), dev.villageheart.block.MarkerStatus.VALID));
+	}
+
+	private static boolean chestHas(GameTestHelper h, net.minecraft.world.item.Item item) {
+		var c = StockpileTestSupport.container(h, chest());
+		for (int i = 0; i < c.getContainerSize(); i++) if (c.getItem(i).is(item)) return true;
+		return false;
+	}
+
+	private static void wear(Villager g, net.minecraft.world.entity.EquipmentSlot slot, net.minecraft.world.item.Item item) {
+		g.setItemSlot(slot, new net.minecraft.world.item.ItemStack(item));
+		g.setGuaranteedDrop(slot);
+	}
+
+	/** The better chestplate lies in Storage, a worse one in the Barracks chest: at shift start the guard walks to Storage and wears the iron one. */
+	@GameTest(environment = "villageheart-gametest:guards_equip_storage", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void ironChestplateFromStorageAtShiftStart(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[1];
+		GameTestSequence seq = sceneWithStorage(h, 1).thenExecute(() -> {
+			putInChest(h, 0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.LEATHER_CHESTPLATE));
+			LumberTestSupport.putInChest(h, BuildingTestSupport.inside(STORE, 0, 0, 3), 0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+			setTime(h, 23800);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 24000, "waiting for the shift start"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the guard wears the iron chestplate", () ->
+				h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.IRON_CHESTPLATE),
+						"wears " + g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST) + " at " + g[0].blockPosition() + " mode "
+								+ dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID())));
+		seq.thenExecute(() -> {
+			h.assertTrue(StockpileTestSupport.container(h, BuildingTestSupport.inside(STORE, 0, 0, 3)).getItem(0).isEmpty(), "Storage has no iron chestplate left");
+			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.LEATHER_CHESTPLATE), "the leather one is still in the Barracks chest");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** One chestplate serves two shifts: handed in at the end of a shift, worn by the next guard at its recheck (day to night and back). */
+	@GameTest(environment = "villageheart-gametest:guards_gear_shared", structure = YARD, skyAccess = true, maxTicks = 5200)
+	public void gearHandedInAndShared(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[2];
+		var chest = net.minecraft.world.entity.EquipmentSlot.CHEST;
+		GameTestSequence seq = scene(h, 2).thenExecute(() -> {
+			setTime(h, 11800);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
+			g[1] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.NIGHT));
+			wear(g[0], chest, net.minecraft.world.item.Items.IRON_CHESTPLATE);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 12600, "waiting for 12600"));
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(g[0].getItemBySlot(chest).isEmpty(), "A handed the chestplate in");
+			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE), "it is in the Barracks chest");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 13400, "waiting for 13400"));
+		seq = seq.thenExecute(() -> h.assertTrue(g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B wears it: " + g[1].getItemBySlot(chest)));
+		seq = seq.thenExecute(() -> setTime(h, 23800));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 24600, "waiting for 600 after the shift change"));
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(g[1].getItemBySlot(chest).isEmpty(), "B handed it in");
+			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE), "back in the Barracks chest");
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 25400, "waiting for 1400 after the shift change"));
+		seq.thenExecute(() -> {
+			h.assertTrue(g[0].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "A wears it again: " + g[0].getItemBySlot(chest));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** Fire returns the gear and the perks, a death drops the gear intact, a conversion leaves the zombie villager bare; the Barracks beds stay held. */
+	@GameTest(environment = "villageheart-gametest:guards_fire_death_gear", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void fireAndDeathKeepGear(GameTestHelper h) {
+		begin(h);
+		Villager[] g = new Villager[3];
+		GameTestSequence seq = scene(h, 3).thenExecute(() -> {
+			setTime(h, 2000);
+			for (int i = 0; i < 3; i++) {
+				g[i] = hireGuard(h, spawnSpot().east(i - 1), Optional.of(Shift.DAY));
+				dev.villageheart.worker.Workers.setLevel(h.getLevel().getServer(), g[i], 2);
+				dev.villageheart.worker.guard.Guards.applyPerks(g[i], false);
+				wear(g[i], net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.item.Items.IRON_CHESTPLATE);
+				wear(g[i], net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.Items.IRON_SWORD);
+				h.assertTrue(g[i].getMaxHealth() == 30.0, "level 2 health");
+			}
+		}).thenIdle(30);
+		seq = seq.thenExecute(() -> {
+			for (int i = 0; i < 3; i++) h.assertTrue(dev.villageheart.worker.guard.GuardSystem.bedOf(g[i].getUUID()).isPresent(), "bed " + i);
+			dev.villageheart.worker.Workers.fire(h.getLevel(), g[0]);
+			h.assertTrue(g[0].getMaxHealth() == 20.0, "max health back to 20: " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).getModifier(
+					net.minecraft.resources.Identifier.fromNamespaceAndPath("villageheart", "guard_health")) == null, "no modifier left");
+			h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty() && g[0].getMainHandItem().isEmpty(), "nothing worn");
+			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE) && chestHas(h, net.minecraft.world.item.Items.IRON_SWORD), "both in the Barracks chest");
+			h.assertTrue(g[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME).isEmpty(), "HOME erased");
+			h.assertTrue(freeTickets(h, bedHead(0)) == 0 && freeTickets(h, bedHead(1)) == 0 && freeTickets(h, bedHead(2)) == 0, "the bed tickets are still held");
+			g[1].kill(h.getLevel());
+		}).thenIdle(5);
+		seq = seq.thenExecute(() -> {
+			var items = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, g[1].getBoundingBox().inflate(6));
+			boolean chest = items.stream().anyMatch(e -> e.getItem().is(net.minecraft.world.item.Items.IRON_CHESTPLATE) && e.getItem().getDamageValue() == 0);
+			boolean sword = items.stream().anyMatch(e -> e.getItem().is(net.minecraft.world.item.Items.IRON_SWORD) && e.getItem().getDamageValue() == 0);
+			h.assertTrue(chest && sword, "the dead guard dropped its chestplate and sword intact: " + items);
+			h.assertTrue(freeTickets(h, bedHead(1)) == 0, "the dead guard's bed ticket is still held");
+			var zombie = zombie(h, spawnSpot());
+			h.assertTrue(zombie.convertVillagerToZombieVillager(h.getLevel(), g[2]), "converted");
+			// checked in the same tick: a zombie would pick the dropped gear up a moment later
+			var zv = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.ZombieVillager.class, new net.minecraft.world.phys.AABB(h.absolutePos(spawnSpot())).inflate(8));
+			h.assertTrue(!zv.isEmpty(), "a zombie villager exists");
+			for (var z : zv) {
+				h.assertTrue(z.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty() && z.getMainHandItem().isEmpty(), "the zombie villager wears nothing");
+				h.assertTrue(z.getMaxHealth() == 20.0, "and has no perks: " + z.getMaxHealth());
+			}
+			var drops = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(spawnSpot())).inflate(8));
+			h.assertTrue(drops.stream().filter(e -> e.getItem().is(net.minecraft.world.item.Items.IRON_CHESTPLATE)).count() >= 2, "the converted guard's chestplate is on the ground too");
+		}).thenIdle(5);
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** The roadmap fight: a zombie 10 blocks from a guard that fetched an iron sword and chestplate dies within 60 s, and no villager dies. */
+	@GameTest(environment = "villageheart-gametest:guards_zombie_night", structure = YARD, skyAccess = true, maxTicks = 2600)
+	public void zombieInClaimKilledAtNight(GameTestHelper h) {
+		begin(h);
+		installRecorders();
+		Villager[] g = new Villager[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		long[] kills0 = new long[1];
+		int[] xp0 = new int[1];
+		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_SWORD));
+			putInChest(h, 1, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+			setTime(h, 14000);
+			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.NIGHT));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the guard holds the sword and wears the chestplate", () -> {
+			h.assertTrue(g[0].getMainHandItem().is(net.minecraft.world.item.Items.IRON_SWORD), "main hand " + g[0].getMainHandItem());
+			h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "chest");
+		});
+		seq = seq.thenExecute(() -> {
+			var p = h.absolutePos(new BlockPos(20, 0, 14));
+			g[0].teleportTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5);
+			g[0].getNavigation().stop();
+			z[0] = zombie(h, new BlockPos(30, 0, 14));
+			kills0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "kills");
+			xp0[0] = g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).xp();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "the zombie dies", () -> h.assertTrue(!z[0].isAlive(), "alive at " + z[0].blockPosition() + ", guard at "
+				+ g[0].blockPosition() + " hp " + g[0].getHealth() + " " + dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID())));
+		seq.thenExecute(() -> {
+			h.assertTrue(damaged(z[0], g[0]), "the guard dealt the damage");
+			h.assertValueEqual(kills0[0] + 1, dev.villageheart.worker.job.WorkStats.get("guard", "kills"), "work.guard.kills");
+			int xp = g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).xp();
+			h.assertValueEqual(xp0[0] + dev.villageheart.core.Balance.milliXpPerUnit(dev.villageheart.core.job.WorkUnit.HOSTILE_KILLED) / 1000, xp, "XP gained");
+			h.assertTrue(villagerDeaths().isEmpty() && g[0].isAlive(), "no villager died");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 }

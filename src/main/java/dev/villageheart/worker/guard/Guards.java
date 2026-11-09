@@ -55,6 +55,17 @@ public final class Guards {
 			if (entity instanceof Villager v && isGuard(v)) v.getBrain().eraseMemory(MemoryModuleType.HOME);
 			return true;
 		});
+		// a guard that a zombie (or lightning) converts: the gear stays in the world, the result wears nothing and has no perks
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, context) -> {
+			if (!(previous instanceof Villager v) || !isGuard(v) || !(converted.level() instanceof ServerLevel level)) return;
+			for (var slot : GuardGear.SLOTS) {
+				var stack = converted.getItemBySlot(slot).copy();
+				if (stack.isEmpty()) continue;
+				converted.setItemSlot(slot, net.minecraft.world.item.ItemStack.EMPTY);
+				converted.spawnAtLocation(level, stack);
+			}
+			removePerks(converted);
+		});
 		WorkerLevels.register(new WorkerLevels.LevelListener() {
 			@Override
 			public void onLevelChanged(ServerLevel level, Villager villager, XpChange change) {
