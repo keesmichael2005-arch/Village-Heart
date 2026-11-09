@@ -358,6 +358,21 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Text args:** `TextLine` keeps at most 2 args (`HeartLimits.MAX_TEXT_ARGS`); a lang text with three `%s` shows as the raw format string on the client (the L4 picture caught it).
 
 
+## Guard tests (M18+)
+- `GuardGameTests` (helpers `GuardTestSupport`: `scene(h, guards)` = claim + tier Village + a valid Barracks with that many grindstones and beds;
+  `hireGuard(h, spawn, pin)`; recorders for damage and villager deaths; `zombie(h, rel)` = an adult that does not burn) and `GateGameTests`. Each test
+  has its own environment `villageheart-gametest:guards_<name>` / `gates_<name>` (natural spawning off, so no mob joins a test that did not spawn it)
+  and the `yard` structure. Filter ids: `villageheart-gametest:guard_game_tests_<method_snake>`, `villageheart-gametest:gate_game_tests_<method_snake>`.
+- **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn).
+- **Trace**: `-Dvillageheart.guard.trace=true` logs every target, hit and drop of a guard (`[guard] ...`).
+- **Gate scene** (`GateGameTests.ring`): a 31 x 18 cobblestone ring south of the camp with a three-wide gate of closed oak fence gates; the oak is more
+  than 8 blocks from any spot outside the wall (the lumberjack chops from the nearest reachable spot within 8, so a smaller ring proves nothing).
+  `insideRing` compares in world coordinates (structures may be rotated).
+- **Layer 4**: `GuardClientTests` (`guard_on_duty.png`: a day guard holding an iron sword and a night guard asleep, the client-side main hand and pose
+  are asserted; `heart_villagers_guards.png`: the Villagers tab with a Shift button that is clicked once). `-Dvillageheart.l4.only=guards` runs just these.
+- **Layer 3**: `scripts/simulate.sh defended` (the starter village + a Barracks with two guards + a Training Yard + 27 scripted zombies). New actions
+  `tier`, `training_yard`, `night_spawn`; `prefab` words `grindstone` and `target`; two `hire ... replace` actions keep two guards on the roll.
+
 ## Self-craft GameTests (M19a)
 `SelfCraftGameTests` (miner basics, helpers in `SelfCraftTestSupport`), `SelfCraftLifecycleGameTests` (wood then stone, the lumberjack bootstrap, overnight pause and reload, refunds, sharing, Storage tools, a full chest, worn-first) and `SelfCraftJobsGameTests` (hunter, farmer, the smith seam, the recipe tables against the game). Environments `villageheart-gametest:selfcraft_<name>` (the farmer's carries `random_tick_speed 0` like the farm ones); scenes come from `MineTestSupport` (the low scene, a second stonecutter where two miners are hired), `LumberTestSupport`, `HuntTestSupport` and `FarmTestSupport`, with the Storage's first chest filled by `SelfCraftTestSupport.add`. Day time is set to 1000 after the scene; every test logs `[m19a]` tick counts.
 - **The clock**: `SelfCraftTestSupport.Sampler` (register `h.onEachTick(() -> s.sample(h))` from the test body) records when a worker's `self_crafts` record appeared (the commit), when it went, and the ticks its progress really advanced (`SelfCraftRuntime.State.progress`). The timing asserts check the clock against `Balance.SELF_TOOL_TICKS` (`[tier - 20, tier + 100]`) and the wall time against `selfBound(ticks, dist)`.

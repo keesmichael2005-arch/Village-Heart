@@ -221,7 +221,7 @@ public final class GuardCombat {
 			Path path = nav.createPath(target.blockPosition(), 1, 32);
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
 			if (!near && target.onGround() && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
-				if (++f.shortPaths >= 3) {
+				if (++f.shortPaths >= 8) {
 					drop(guard, f, target, now, true);
 					return;
 				}
@@ -232,6 +232,7 @@ public final class GuardCombat {
 				guard.getBrain().setMemory(MemoryModuleType.PATH, path);
 				f.navigating = true;
 			}
+			else if (path == null && nav.moveTo(target, Balance.GUARD_CHASE_SPEED)) f.navigating = true; // no planned path: close in directly (the give-up rule still ends a hopeless chase)
 		}
 	}
 
