@@ -461,11 +461,13 @@ replace "vanilla raids, unchanged" above where they differ.
   Watchtower made by the builder) are defence blocks. Hand-built walls, a player's blocks in a defence cell, and every other block are
   never damaged by these rules. A cell a player breaks is left open (not repaired).
 - **Hit points.** Wall cobblestone 12, fence gate 4 *(tunable)*. Cracks show with the vanilla breaking overlay; a block at 0 HP is
-  removed without a drop. Per hit: zombie 1 (gate 2), vindicator 2 (gate 4), ravager 6; a creeper's breach breaks the cells nearest the
-  blast (a 1-3 block hole) and nothing else. Gamerule `villageheart:siege_damage` (default true) turns all of it off; it is independent
+  removed without a drop. Per hit: zombie 1 (gate 2), vindicator 2 (gate 4), ravager 6; a creeper's breach breaks the wall block it chose and the one
+  above or below it (a 1x2 hole) and cracks its neighbours, and nothing else. A block that something of a player rests on (a torch, a
+  ladder, gravel) cracks but never breaks. Gamerule `villageheart:siege_damage` (default true) turns all of it off; it is independent
   of `mobGriefing`, because siege damage never touches terrain or player builds.
 - **Who attacks.** Zombies, husks and zombie villagers are **lured** towards a village that has walls at night (13000-23000) and during
-  a siege, without needing to see a villager, and hit the defence block that blocks their path. Creepers (at the same times, with no
+  a siege, without needing to see a villager, and hit the defence block that blocks their path (they must
+  be able to touch it). The lure needs an enclosure (at least 150 wall/gate blocks), not one wall piece. Creepers (at the same times, with no
   player target) walk to the nearest wall or gate and explode there. Ravagers and vindicators of a raid on the village hit blocking
   defence blocks. Every other hostile (skeletons, spiders, witches, endermen, pillagers, drowned, …) is vanilla. A village without walls
   is not lured (zombies see its villagers anyway).
@@ -476,10 +478,12 @@ replace "vanilla raids, unchanged" above where they differ.
   (after its first 7 days, at least 5 days apart; chance 2 % + 3 % × threat, at most 25 %), and a dusk roll a zombie siege at midnight
   (4 % + 2 % × threat, at most 20 %, 3 nights apart): zombies spawn outside the walls. Threat = adults/10 + wealth/100 + defence
   blocks/200 + tier bonus (wealth = treasury + stockpile value). Inside the claim the mod's siege replaces vanilla's. Raids and sieges
-  start only while a player is within 96 blocks; a won raid roll waits for one. Gamerules `villageheart:random_raids` and
+  start only while a player is within 96 blocks (and the raid's spawn ring is loaded); a won raid roll waits for one. Days are counted
+  from the world's game time, so sleeping or setting the time never repeats a roll. Gamerules `villageheart:random_raids` and
   `villageheart:sieges` (default true).
-- **Scaling and reward.** Stronger villages get stronger raids: omen level 1 + threat/3 (a bonus wave from 2), and per wave up to 4
-  extra vindicators and 2 extra ravagers. A raid victory pays up to 40 emeralds into the treasury; Hero of the Village stays vanilla.
+- **Scaling and reward.** Stronger villages get stronger random raids: omen level 1 + threat/3 (a bonus wave from 2), and per wave up
+  to 4 extra vindicators and 2 extra ravagers. A random-raid victory pays up to 40 emeralds into the treasury (at most once per 5 days).
+  Bad Omen raids stay vanilla (no extras, no mod reward), so a raid farm gains nothing; Hero of the Village stays vanilla.
 - **Not chosen:** a cap on wall length per tier.
 
 ## 9. Progression: village tiers
