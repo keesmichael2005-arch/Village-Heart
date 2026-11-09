@@ -286,3 +286,11 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Cook keep rules count renamed stacks with plain ones
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
+
+## From M22-r1
+- [ ] Merchant strike gate: `WorkGate.mayWork` in `MerchantJob.tick` is untested alone (speed 0 masks it), yet it is the only guard for a pending sale held after a SHORT/STOPPED attempt; add a test where a pending unit is held when a strike starts
+- [ ] The per-stall cap (`SalesLedger.byStall`, the fire/re-hire exploit) is tested at L1 only; add an L2 case: a capped merchant is fired and another villager is hired at the same stall the same day
+- [ ] Stockpile tab draws "for sale" counts in green even with no merchant ("No merchant: nothing is sold" above green counts); grey them when `merchants == 0`
+- [ ] "Market: sold 1 emeralds today": singular/plural
+- [ ] The "Up to N for sale above the reserve" tooltip is never captured in a screenshot
+- [ ] Load flake candidate (not M22): `sim_action_game_tests_forced_chunk_grows_without_player` timed out waiting for the forced chunk to be entity-ticking (tick 2202 of 2200, load ~8 on 4 cores); passed alone and in the next full run
