@@ -80,7 +80,8 @@ final class GuardClientTests {
 					String b = Workers.hire(server.overworld(), server.overworld().getEntity(night), JobType.GUARD, Optional.empty()).toString();
 					VillageClaims.data(server).update(v -> v.withGuardPin(day, Optional.of(Shift.DAY)).withGuardPin(night, Optional.of(Shift.NIGHT)));
 					Villager d = (Villager) server.overworld().getEntity(day), n = (Villager) server.overworld().getEntity(night);
-					d.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+					// both have done their training day (a trainee is awake and never sleeps); the day guard keeps its starting wooden sword
+					for (Villager g : new Villager[] {d, n}) dev.villageheart.worker.guard.GuardAttachments.set(g, dev.villageheart.worker.guard.GuardAttachments.get(g).withTrainingUntil(0));
 					d.teleportTo(0.5, fy, 4.6);
 					d.setYRot(180.0F);
 					d.setYBodyRot(180.0F);
@@ -119,7 +120,7 @@ final class GuardClientTests {
 				List<String> wrong = context.computeOnClient(mc -> {
 					List<String> bad = new java.util.ArrayList<>();
 					if (!(mc.level.getEntity(dayEid) instanceof Villager d)
-							|| !d.getMainHandItem().is(Items.IRON_SWORD)) bad.add("the day guard does not hold the iron sword on the client");
+							|| !d.getMainHandItem().is(Items.WOODEN_SWORD)) bad.add("the day guard does not hold the wooden sword on the client");
 					if (!(mc.level.getEntity(nightEid) instanceof Villager n)
 							|| n.getPose() != Pose.SLEEPING) bad.add("the night guard is not sleeping on the client");
 					else if (n.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(bed)) > 1.5) bad.add("the night guard is not at its bed on the client: " + n.position());
@@ -181,6 +182,9 @@ final class GuardClientTests {
 					String a = Workers.hire(server.overworld(), server.overworld().getEntity(dayId), JobType.GUARD, Optional.empty()).toString();
 					String b = Workers.hire(server.overworld(), server.overworld().getEntity(nightId), JobType.GUARD, Optional.empty()).toString();
 					VillageClaims.data(server).update(v -> v.withGuardPin(nightId, Optional.of(Shift.NIGHT)));
+					// Ada has done her training day (a patrolling day guard); Bram was hired just now and is still training: the row says "Training"
+					var ada = (net.minecraft.world.entity.npc.villager.Villager) server.overworld().getEntity(dayId);
+					dev.villageheart.worker.guard.GuardAttachments.set(ada, dev.villageheart.worker.guard.GuardAttachments.get(ada).withTrainingUntil(0));
 					return a + " " + b;
 				});
 				if (hired.contains("Refused")) throw new AssertionError("a hire failed: " + hired);
@@ -211,6 +215,8 @@ final class GuardClientTests {
 				}
 				if (a == null || a.shift() != GuardShiftView.DAY_PINNED) throw new AssertionError("after one click Ada's row is " + a);
 				context.waitTicks(5);
+				dev.villageheart.core.heart.VillagerRow bram = HeartScreenClientTests.snapshot(context).villagers().stream().filter(r -> r.id().equals(nightId)).findFirst().orElse(null);
+				if (bram == null || bram.activity() != dev.villageheart.core.heart.ActivityKind.TRAINING) throw new AssertionError("Bram's row should say Training: " + bram);
 				context.takeScreenshot("heart_villagers_guards");
 				HeartScreenClientTests.assertClean(context, "villagers tab with guards");
 				srv.runCommand("gamerule advance_time true");
