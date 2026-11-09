@@ -221,6 +221,13 @@ public class GrowthCourtshipGameTests {
 		});
 		seq = toDawn(h, seq).thenExecute(() -> {
 			before[0] = licence(h).orElseThrow(() -> h.assertionException("licensed: " + describe(h)));
+			// the third adult may have found a House bed of its own and be a parent: the licence says who is
+			java.util.List<Villager> all = new java.util.ArrayList<>(java.util.List.of(v));
+			Villager[] sorted = new Villager[3];
+			int n = 0;
+			for (Villager x : all) if (before[0].pair().contains(x.getUUID())) sorted[n++] = x;
+			for (Villager x : all) if (!before[0].pair().contains(x.getUUID())) sorted[n++] = x;
+			System.arraycopy(sorted, 0, v, 0, 3); // v[0], v[1] are the parents now, v[2] is the other
 			v[0].setNoAi(true); // frozen after the dawn (the census leaves frozen villagers out): nothing advances
 			v[1].setNoAi(true);
 			h.assertTrue(before[0].bed().isPresent() && before[0].state() == LicenceState.WAITING, "a fresh licence: " + before[0]);

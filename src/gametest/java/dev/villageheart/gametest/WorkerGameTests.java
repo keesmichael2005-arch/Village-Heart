@@ -1044,7 +1044,7 @@ public class WorkerGameTests {
 			h.assertTrue(GrowthTestSupport.babies(h).size() == 1, "no baby yet" + d);
 		});
 		seq.thenExecute(() -> {
-			h.assertTrue(h.getLevel().getDayTime() < 1000, "the baby came inside the wake-up window: day time " + h.getLevel().getDayTime());
+			h.assertTrue(Math.floorMod(h.getLevel().getDayTime(), 24000L) < 1000, "the baby came inside the wake-up window: day time " + h.getLevel().getDayTime());
 			h.assertTrue(GrowthTestSupport.licence(h).orElseThrow().state() == dev.villageheart.core.growth.LicenceState.BORN, "the licence is BORN");
 			GrowthTestSupport.end(h);
 			end(h);
