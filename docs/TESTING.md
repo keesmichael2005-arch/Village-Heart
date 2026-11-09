@@ -107,6 +107,20 @@ through the real `useItemOn` path), sets the time to dawn, records a baseline an
 `reports/sim/<scenario>.json` (one record per day, schema in `core.sim.MetricsJson`), `.summary.md`, `.log` (`.2.log` after a reload).
 Expect about 50 s per in-game day on 4 cores; a 5-day run is 5-6 minutes. The script's timeout is `240 + 150 * days` seconds.
 
+**Ticking area (sim-area).** A villager in a chunk that is loaded but not entity-ticking freezes for good, and in a real game the player's
+simulation distance is what keeps a village's surroundings ticking. The sim stands in for that presence in two parts (`core.sim.SimArea`, glue `SimWorld` + `SimTickets`):
+- **Static square.** ±`SimArea.staticRadiusChunks(CLAIM_RADIUS)` = ±6 chunks, force-loaded. It is centred on the village start until the claim, then on the
+  **Heart's** chunk (`SimWorld.recentre`), so it covers the whole claim plus one chunk on any seed. On seed 1 the Heart is in the start chunk, so the chunks do not change.
+- **Follow tickets.** Every 20 ticks each loaded hired worker gets a non-persistent ticket (`SimTickets.WORKER`, loading + simulation) that keeps its chunk
+  and 2 chunks around it entity-ticking, like a player's simulation distance that goes where the action is. One ticket per occupied chunk, shared
+  and reference-counted (`SimArea.Follower`). So a worker that strolls or flees past the square keeps its brain and walks home (vanilla HOME walk limit 150 blocks).
+- **Still visible.** `work.workers.max_heart_distance` is the farthest a hired worker was from the Heart that day (sampled every 20 ticks, blocks, rounded down),
+  and `starter` asserts it stays `< 150`. A worker past the walk-home limit is lost for real and fails the run. `work.workers.not_ticking` (sampled every 100 ticks)
+  stays asserted `== 0`: a worker that is unloaded or frozen anyway (for example after `--reload-at`, which starts with no follow tickets) is still red.
+- L1 `SimAreaTest` (square coverage, the reference counts, a random walk); L2 `SimActionGameTests.followTicketKeepsFarChunkTicking` (a far chunk ticks entities
+  under the ticket, 2 chunks out ticks too, 3 does not; the ticket moves; release leaves nothing). The GameTest server does not wait between ticks, so the test
+  generates the ticket's square synchronously first (asynchronous generation 60 000 blocks out lasted longer than 2000 ticks).
+
 | Exit | Meaning |
 |---|---|
 | 0 | `PASS`, `clean_shutdown`, N day records, no crash report, Gradle rc 0 |

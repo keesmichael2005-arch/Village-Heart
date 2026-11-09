@@ -86,6 +86,31 @@ class StarterAssertionsTest {
 		assertFalse(run(falling, poor).passed(), "a treasury that never falls fails: wages are not being charged");
 	}
 
+	private static DayMetrics workDay(int d, Map<String, Long> work) {
+		DayMetrics b = day(d, 1, 10, 9, 0, d, List.of());
+		return new DayMetrics(b.day(), b.gameTime(), true, 8, 8, 0, 2, 6, 0, Map.of(), 100, 2.0, 0, List.of(), b.villageMs(),
+				1.5, 470.0, 50.0, 900, 41_000_000L, work, Map.of(), Map.of("minecraft:logs", (long) d), b.needs(), new DayMetrics.WageDay(0, 0, 0, 0, 0));
+	}
+
+	/**
+	 * sim-area: the follow tickets keep a wandering worker ticking, so a worker that walks away for real must still fail the run. The daily
+	 * farthest distance from the Heart is a metric and the starter asserts it stays under the vanilla walk-home limit (150 blocks).
+	 */
+	@Test void wanderingWorkersAreSeenAndFrozenOnesFail() {
+		String far = "max(work.workers.max_heart_distance) < 150 from day 1";
+		String frozen = "sum(work.workers.not_ticking) == 0 from day 1";
+		List<DayMetrics> days = new ArrayList<>();
+		days.add(workDay(1, Map.of("workers.max_heart_distance", 60L)));
+		days.add(workDay(2, Map.of("workers.max_heart_distance", 111L)));
+		MetricsTable ok = new MetricsTable(workDay(0, Map.of()), days);
+		assertTrue(run(far, ok).passed(), "111 blocks (the r5 farmer's flight) is a stroll the worker comes back from");
+		assertTrue(run(frozen, ok).passed(), "a missing not_ticking key reads 0");
+		days.add(workDay(3, Map.of("workers.max_heart_distance", 150L, "workers.not_ticking", 5L)));
+		MetricsTable lost = new MetricsTable(workDay(0, Map.of()), days);
+		assertFalse(run(far, lost).passed(), "a worker 150 blocks out cannot walk home: a real loss");
+		assertFalse(run(frozen, lost).passed());
+	}
+
 	@Test void maxHungryDaysBelowThree() {
 		String a = "max(food.max_hungry_days) < 3 from day 3";
 		List<DayMetrics> days = new ArrayList<>();

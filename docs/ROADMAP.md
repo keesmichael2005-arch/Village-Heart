@@ -103,6 +103,7 @@ from there instead of hard-coding them.
 - **L2**: 4 villagers and 20 bread in Storage → after dinner, 12 bread are left (8 eaten: 2 × 5 nutrition each) and all are fed. With 0 food → all hungry, and still alive after 3 days
 - **L3**: scenario `starter` (prebuilt House×2, Storage, Farmhouse + field, Lumber Camp, Kitchen; 1 farmer + 1 lumberjack), 10 days:
       0 starvation deaths, ≥90% fed villager-days from day 3, logs increase every day
+- Note (sim-area): the L3 harness now keeps a moving ticking ticket around every hired worker (a player's simulation distance) on top of the Heart-centred ±6-chunk square; `starter` also asserts `max(work.workers.max_heart_distance) < 150`. 8/8 `starter 10` runs green (the M11-r5 flake was ~1 in 4).
 
 ## M12: Treasury and wages
 - Note (M15): `WorkerRecord` has no `level` on dev. Add it (codec key `level`, default 1) and write it in `WorkXp.setLevel`, `WorkXp.addXp` and `WorkXp.pass` (the three places that change a level), and use it in the re-install branch of `WorkerSystem.tick` instead of `WorkerData.hired` (level 1). Then add the planned T-L2-4 (a worker that lost its attachment comes back at its level).

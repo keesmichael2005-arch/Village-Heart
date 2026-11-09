@@ -441,6 +441,10 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
   - The treasury is capped at 100 000 emeralds (`Balance.MAX_TREASURY`). `/villageheart treasury get|add n|set n` (op) is the admin and test way in.
 - **Simulation is frozen when the village's chunks are unloaded**, as in vanilla. There is no catch-up. Dinner and
   dawn events fire only while the Heart chunk is loaded.
+  - The L3 harness models the player who keeps a village alive: a force-loaded square over the claim, centred on the Heart, plus a moving
+    ticket around every hired worker, like a player's simulation distance. Without it, a worker that wanders past a fixed square freezes. That
+    is a harness artefact that a nearby player never sees. Such a worker is still reported: its farthest distance from the Heart is a metric and
+    is asserted under the 150-block walk-home limit (docs/TESTING.md, "Ticking area").
 
 ## 7. Population growth
 At each dawn, if there is **≥1 free bed** in a valid House, **food days left ≥3**, and ≥2 adult villagers who are fed
