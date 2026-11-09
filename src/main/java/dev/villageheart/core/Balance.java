@@ -135,8 +135,8 @@ public final class Balance {
 
 	// ---- guards (M18) ----
 	public static final double GUARD_BASE_DAMAGE = 1.0;
-	/** Max health and bonus melee damage by level 1..3. */
-	public static final double[] GUARD_LEVEL_HEALTH = {20, 30, 40};
+	/** Max health (30 / 40 / 50: lever c of the M18 r1 balance pass, tunable for M26) and bonus melee damage by level 1..3. */
+	public static final double[] GUARD_LEVEL_HEALTH = {30, 40, 50};
 	public static final double[] GUARD_LEVEL_DAMAGE = {0, 1, 2};
 	public static final int DAY_DUTY_START = 0;
 	public static final int NIGHT_DUTY_START = 12000;

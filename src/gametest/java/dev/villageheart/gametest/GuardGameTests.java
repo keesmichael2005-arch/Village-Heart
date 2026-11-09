@@ -221,7 +221,7 @@ public class GuardGameTests {
 			level3(h, g[0]);
 			arm(g[0], net.minecraft.world.item.Items.IRON_SWORD);
 			g[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
-			g[0].setHealth(11.0F); // 27 % of 40: wounded
+			g[0].setHealth(11.0F); // 22 % of 50: wounded
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(dev.villageheart.worker.guard.GuardAttachments.get(g[0]).wounded(), "wounded within 20 ticks"));
 		seq = seq.thenExecute(() -> z[0] = zombie(h, BuildingTestSupport.inside(BARRACKS, 0, 0, 1)));
@@ -475,7 +475,7 @@ public class GuardGameTests {
 				dev.villageheart.worker.guard.Guards.applyPerks(g[i], false);
 				wear(g[i], net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.item.Items.IRON_CHESTPLATE);
 				wear(g[i], net.minecraft.world.entity.EquipmentSlot.MAINHAND, net.minecraft.world.item.Items.IRON_SWORD);
-				h.assertTrue(g[i].getMaxHealth() == 30.0, "level 2 health");
+				h.assertTrue(g[i].getMaxHealth() == 40.0, "level 2 health");
 			}
 		}).thenIdle(30);
 		seq = seq.thenExecute(() -> {
@@ -587,13 +587,13 @@ public class GuardGameTests {
 					setTime(h, 11900);
 					g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
 					setXp(g[0], 1, dev.villageheart.core.Balance.LEVEL_2_XP - 1);
-					h.assertTrue(g[0].getMaxHealth() == 20.0, "max health 20 at the start");
+					h.assertTrue(g[0].getMaxHealth() == 30.0, "max health 20 at the start");
 					spar0[0] = dev.villageheart.worker.job.WorkStats.get("guard", "spar_xp");
 				});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 1000, "level 2 from sparring", () -> {
 			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level " + g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level()
 					+ ", xp " + xpOf(g[0]) + " at " + g[0].blockPosition() + " " + g[0].getBrain().getActiveActivities());
-			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getMaxHealth() == 40.0, "max health " + g[0].getMaxHealth());
 		});
 		seq.thenExecute(() -> {
 			h.assertTrue(xpOf(g[0]) >= dev.villageheart.core.Balance.LEVEL_2_XP, "xp " + xpOf(g[0]));
@@ -622,7 +622,7 @@ public class GuardGameTests {
 			dev.villageheart.worker.guard.Guards.applyPerks(g[0], false);
 			g[0].setHealth(25.0F);
 			g[0] = LumberTestSupport.reloadEntity(h.getLevel(), g[0]);
-			h.assertTrue(g[0].getMaxHealth() == 30.0, "max health survives the reload: " + g[0].getMaxHealth());
+			h.assertTrue(g[0].getMaxHealth() == 40.0, "max health survives the reload: " + g[0].getMaxHealth());
 			h.assertTrue(g[0].getHealth() == 25.0F, "and so does the health: " + g[0].getHealth());
 			h.assertTrue(g[0].getAttached(dev.villageheart.worker.WorkerAttachments.WORKER).level() == 2, "level intact");
 			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().guardShift(g[0].getUUID()).orElseThrow().pinned(), "pin intact");

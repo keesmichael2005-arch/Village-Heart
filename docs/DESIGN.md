@@ -354,7 +354,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   raiders inside the claim. During a raid every guard is called on shift.
 - **Training**: off-shift time while awake is spent sparring at the Training Yard (guards in pairs, or
   against armor stands), which earns XP. Guards also earn XP from kills.
-- **Level perks**: max health **20 / 30 / 40** and melee damage +0 / +1 / +2 *(tunable)*.
+- **Level perks**: max health **30 / 40 / 50** (M18 r1 balance lever: a 20-health guard dies to three zombies; tunable for M26) and melee damage +0 / +1 / +2 *(tunable)*.
 - **Gear**: at the start of each shift it equips the best armour and weapon available in the stockpile
   and Barracks chest (leather < chainmail < iron < diamond), and returns damaged gear when off shift. There is no bow combat in v1.
 

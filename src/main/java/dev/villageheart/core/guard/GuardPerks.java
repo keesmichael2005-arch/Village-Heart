@@ -2,7 +2,7 @@ package dev.villageheart.core.guard;
 
 import dev.villageheart.core.Balance;
 
-/** What a guard's level gives (M18 3.2 #7): max health 20/30/40, melee damage +0/+1/+2. Level above 3 counts as 3. */
+/** What a guard's level gives (M18 3.2 #7): max health 30/40/50, melee damage +0/+1/+2. Level above 3 counts as 3. */
 public final class GuardPerks {
 	private GuardPerks() {}
 
