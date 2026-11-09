@@ -372,7 +372,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   has its own environment `villageheart-gametest:guards_<name>` / `gates_<name>` (natural spawning off, so no mob joins a test that did not spawn it)
   and the `yard` structure. Filter ids: `villageheart-gametest:guard_game_tests_<method_snake>`, `villageheart-gametest:gate_game_tests_<method_snake>`.
 - **Qualified or trainee**: `hireGuard` hires through the real path and then clears the training day (so the shift tests are about shifts); `hireTrainee`
-  keeps it (a hire at night is refused, so the helper puts the clock to morning for the call and back).
+  keeps it (the night-hire rule is switched off for the call by `Workers.nightGuardHireForTests`).
 - **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn). A level 1 guard
   has 20 health, a wooden sword and no armour (`guardBeatsOneZombie` is the duel: at least half the health must be left).
 - **Rules added by the M18 round-1 and -3 reviews** (each has a GameTest and, where it is pure, an L1 test): `alarmWakesSleepingGuardsAndTheyReturn`,

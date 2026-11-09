@@ -66,6 +66,9 @@ public final class Workers {
 	 * baby, nitwit, outside the claim sphere, then {@link JobSlots#decide} (already employed, tier, preferred building, no free slot).
 	 * On success the record is appended (hiring order) and the villager becomes a worker (see {@link #install}). Server thread only.
 	 */
+	/** Test seam: lets the tests that are not about the night rule hire a guard whatever the clock says (moving the clock back and forth upsets the villagers). */
+	public static boolean nightGuardHireForTests;
+
 	public static HireResult hire(ServerLevel level, Entity entity, JobType job, Optional<HeartLocation> preferredBuilding) {
 		MinecraftServer server = level.getServer();
 		Optional<VillageState> village = VillageClaims.current(server);
@@ -78,7 +81,7 @@ public final class Workers {
 			return new HireResult.Refused(HireRefusal.OUTSIDE_CLAIM);
 		}
 		// a guard is hired by day: one that fell at night is replaced the next morning (M18 r3)
-		if (job == JobType.GUARD && !dev.villageheart.core.guard.GuardTraining.mayHire(level.getDayTime())) return new HireResult.Refused(HireRefusal.GUARD_AT_NIGHT);
+		if (job == JobType.GUARD && !nightGuardHireForTests && !dev.villageheart.core.guard.GuardTraining.mayHire(level.getDayTime())) return new HireResult.Refused(HireRefusal.GUARD_AT_NIGHT);
 		HireDecision decision = JobSlots.decide(jobSites.sites(server, job), v.workers(), v.tier(), villager.getUUID(), job, preferredBuilding);
 		if (decision instanceof HireDecision.Refused r) return new HireResult.Refused(r.reason());
 		HireDecision.Hired hired = (HireDecision.Hired) decision;

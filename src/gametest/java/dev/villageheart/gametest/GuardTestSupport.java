@@ -97,11 +97,13 @@ public final class GuardTestSupport {
 	/** Hires a guard through the real path, so it starts its training day. A hire at night is refused, so the clock is put to morning for the call. */
 	public static Villager hireTrainee(GameTestHelper h, BlockPos spawnRel, Optional<Shift> pin) {
 		Villager v = WorkerTestSupport.spawnVillager(h, spawnRel);
-		long t = h.getLevel().getDayTime();
-		boolean moved = !dev.villageheart.core.guard.GuardTraining.mayHire(t);
-		if (moved) h.getLevel().setDayTime(t - Math.floorMod(t, 24000L) + 100);
-		HireResult r = Workers.hire(h.getLevel(), v, JobType.GUARD, Optional.empty());
-		if (moved) h.getLevel().setDayTime(t);
+		dev.villageheart.worker.Workers.nightGuardHireForTests = true;
+		HireResult r;
+		try {
+			r = Workers.hire(h.getLevel(), v, JobType.GUARD, Optional.empty());
+		} finally {
+			dev.villageheart.worker.Workers.nightGuardHireForTests = false;
+		}
 		h.assertTrue(r instanceof HireResult.Hired, "the guard was hired: " + r);
 		pin(h, v, pin);
 		return v;
