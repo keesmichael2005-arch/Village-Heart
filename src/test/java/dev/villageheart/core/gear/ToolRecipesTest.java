@@ -33,9 +33,10 @@ class ToolRecipesTest {
 		assertEquals(2, ToolRecipes.PLANKS_PER_STICK_BATCH);
 		assertEquals(4, ToolRecipes.STICKS_PER_BATCH);
 		assertEquals(4, ToolRecipes.PLANKS_PER_LOG);
-		assertEquals(2400, Balance.SELF_TOOL_TICKS[CraftTier.WOODEN.ordinal()]);
-		assertEquals(4800, Balance.SELF_TOOL_TICKS[CraftTier.STONE.ordinal()]);
+		assertEquals(2400, Balance.SELF_WOODEN_TICKS);
+		assertEquals(4800, Balance.SELF_STONE_TICKS);
 		assertTrue(CraftTier.WOODEN.selfTicks() < CraftTier.STONE.selfTicks());
+		assertTrue(CraftTier.WOODEN.rank() < CraftTier.STONE.rank());
 		assertEquals(GearNeed.SWORD, GearNeed.of(ToolKind.BOW_OR_SWORD));
 		assertEquals(ToolKind.BOW_OR_SWORD, GearNeed.SWORD.toolKind());
 		assertEquals(ToolRecipes.of(GearNeed.AXE, CraftTier.STONE), ToolRecipes.byOutput("minecraft:stone_axe").orElseThrow());

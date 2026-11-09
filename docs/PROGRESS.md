@@ -577,3 +577,10 @@ Next: BUILD M10 after M9 is merged (steps 1-3 may start once M9's `core.job` is 
 - Top risk: older L2 job tests change behaviour where a worker lacks a tool and Storage holds wood (step 12 audits, setup or a gametest-only switch, never an assertion).
 - Critique by a fresh remote session (11 MAJOR, 8 MINOR) folded in (plan section 7): presence counted per camp (a finished order no longer cancels its neighbour), crafting workers skipped by the tool lease, an explicit fetch phase (no hysteresis before commit), update-only progress writes with compare-and-remove (no refund duplication), per-`StackKey` materials and reservations, farmer idle from a fresh planner run, block statuses that the job's `NEEDS_TOOL` cannot overwrite, full-chest handling.
 - Next: orchestrator merges the plan; M19's plan gets the r3 note above. No blockers.
+
+## 2026-11-09: M19a self-made basic tools (builder)
+- Built per `docs/plans/M19a.md`: pure `core.gear` (recipes, worn line, per-camp demand, tier choice stone-else-wooden, cancel hysteresis, supply rule, planner), saved `self_crafts`, status words, glue `worker.gear` (`SelfCraftJob` hooked into the four tool jobs, `SelfCraftSystem`, `GearOrders`, censuses, `SelfCraftSwitch`, `SmithService` seam), `CampTools.lease` uses durability order and skips crafting workers.
+- Tests: L1 in `core/gear/*`, codec and text tests; 23 L2 (`SelfCraft*GameTests`); L4 `villagers_tab_making_tool.png`. Deviations: plan section 8.
+- Step 12 audit: three L2 tests and the L4 `villagersNeedsAxe` turn self-crafting off (the "no tool, no wood" row is now a different row); no assertion changed.
+- Visual finding: the plan's long words were cut off in the Villagers column (caught by `LevelClientTests`), so they are "Needs axe (no wood)" / "Needs axe (no room)".
+- M19 r3 note: census lead is 0 here; M19 supplies the smith lead when it registers its `SmithService`.

@@ -15,7 +15,20 @@ public enum CraftTier {
 	public String itemPrefix() { return prefix; }
 
 	/** Work ticks at level 1 for a self-made tool of this tier. */
-	public int selfTicks() { return Balance.SELF_TOOL_TICKS[ordinal()]; }
+	public int selfTicks() {
+		return switch (this) {
+			case WOODEN -> Balance.SELF_WOODEN_TICKS;
+			case STONE -> Balance.SELF_STONE_TICKS;
+		};
+	}
+
+	/** Quality order for comparisons (WOODEN < STONE); M19 slots higher tiers above by rank, whatever their ordinal. */
+	public int rank() {
+		return switch (this) {
+			case WOODEN -> 1;
+			case STONE -> 2;
+		};
+	}
 
 	public String id() { return name().toLowerCase(Locale.ROOT); }
 }

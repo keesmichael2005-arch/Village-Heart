@@ -216,8 +216,8 @@ public final class Balance {
 	public static final int HUNTER_STEP_TICKS = 20;
 
 	// ---- self-made tools (M19a) ---------------------------------------------------------------------------------------------
-	/** Work ticks at level 1 to make a tool yourself, indexed by CraftTier (wooden, stone) (tunable). */
-	public static final int[] SELF_TOOL_TICKS = {2400, 4800};
+	/** Work ticks at level 1 to make a tool yourself, per CraftTier (tunable; never indexed by ordinal). */
+	public static final int SELF_WOODEN_TICKS = 2400, SELF_STONE_TICKS = 4800;
 	/** A tool is worn when less than this share of its durability is left (tunable). */
 	public static final double GEAR_MIN_DURABILITY = 0.1;
 	/** The cancel check of every saved self-craft runs this often. */

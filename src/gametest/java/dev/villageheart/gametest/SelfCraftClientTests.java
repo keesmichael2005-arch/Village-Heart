@@ -66,6 +66,18 @@ final class SelfCraftClientTests {
 			srv.runCommand("setblock -2 " + y + " 7 minecraft:stonecutter");
 			srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
 			srv.runCommand("setblock 0 " + y + " 10 minecraft:torch");
+			// the Mine needs a linked Mineshaft to be valid: the 12-deep tower of the miner's L4 test
+			int sx = 12, sz = 9, top = y + 12;
+			srv.runCommand("fill " + (sx - 2) + " " + y + " " + (sz - 2) + " " + (sx + 2) + " " + top + " " + (sz + 2) + " minecraft:stone");
+			srv.runCommand("fill " + (sx - 1) + " " + (y + 1) + " " + (sz - 1) + " " + (sx + 1) + " " + (y + 2) + " " + (sz + 1) + " minecraft:air");
+			srv.runCommand("fill " + sx + " " + (y + 3) + " " + sz + " " + sx + " " + top + " " + sz + " minecraft:air");
+			int n = 0;
+			for (int x = sx - 1; x <= sx + 1; x++) for (int z = sz - 1; z <= sz + 1; z++) {
+				srv.runCommand("setblock " + x + " " + (y + 1) + " " + z + (n < 8 ? " minecraft:rail" : " minecraft:torch"));
+				n++;
+			}
+			srv.runCommand("setblock " + sx + " " + (top + 1) + " " + (sz - 1) + " minecraft:oak_fence");
+			srv.runCommand("setblock " + sx + " " + (top + 1) + " " + sz + " villageheart:mineshaft_marker[facing=south]");
 			HeartScreenClientTests.room(srv, -13, y, 5, 4, "lumber_camp_marker");
 			srv.runCommand("setblock -12 " + y + " 7 villageheart:chopping_block[facing=south]");
 			srv.runCommand("setblock -8 " + y + " 10 minecraft:chest");
