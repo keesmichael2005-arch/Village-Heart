@@ -356,6 +356,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
 	}
 
+	/** GUI coordinates of the middle of the first button of the action bar (the guard's Shift button in the Villagers tab); null when none. */
+	public int[] firstActionCentre() {
+		if (actionWidgets.isEmpty()) return null;
+		AbstractWidget w = actionWidgets.get(0);
+		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
+	}
+
 	/** The labels of the buttons of the action bar, left to right (for tests: the Overview's treasury bar). */
 	public List<String> actionLabels() {
 		List<String> out = new ArrayList<>();
