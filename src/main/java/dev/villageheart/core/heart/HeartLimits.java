@@ -16,6 +16,8 @@ public final class HeartLimits {
 	public static final int MAX_JOB_CHOICES = 9;
 	public static final int MAX_ALERTS = 5;
 	public static final int MAX_GOALS = 8;
+	/** Goal rows the Overview screen draws (a tier has at most this many goals; pinned against {@code TierGoals.maxGoals()}). */
+	public static final int MAX_GOAL_ROWS = 6;
 	public static final int MAX_TEXT = 120;
 	public static final int MAX_NAME = 32;
 	public static final int MAX_KEY = 64;

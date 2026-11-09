@@ -647,4 +647,60 @@ public class LevelGameTests {
 		var list = h.getLevel().getEntitiesOfClass(Villager.class, box, e -> !e.isRemoved());
 		return list.isEmpty() ? null : list.get(0);
 	}
+
+	// ---- M14 step 3a: the tier-up that lifts a banked worker back to a cap says "needs a Town" ----------------------------
+
+	@GameTest(environment = "villageheart-gametest:levels_tier_up_needs_town", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void tierUpToVillageTellsNeedsTown(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		EventLog events = new EventLog();
+		var owner = new BuildingTestSupport.RecordingPlayer[1];
+		String capped = "message.villageheart.worker_level_capped";
+		GameTestSequence seq = scene(h, false, false).thenExecute(() -> {
+			owner[0] = LevelTestSupport.ownerRecorder(h);
+			v[0] = hire(h, spawnSpot());
+			put(v[0], 1, 300);
+			dev.villageheart.worker.WorkerLevels.register(events);
+		}).thenIdle(45);
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(0, events.levelUps + events.capped, "at Hamlet the banked XP makes no event");
+			LevelTestSupport.tier(h, Tier.VILLAGE);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 41, "the level pass after the tier-up",
+				() -> h.assertValueEqual(2, data(v[0]).level(), "level after setTier(VILLAGE)"));
+		seq.thenIdle(3).thenExecute(() -> {
+			dev.villageheart.worker.WorkerLevels.unregister(events);
+			h.assertValueEqual(1, events.levelUps, "one level-up event (1 -> 2)");
+			h.assertValueEqual(1, events.capped, "one capped notice: level 3 needs a Town");
+			h.assertValueEqual(1L, LevelTestSupport.count(owner[0], capped), "the owner was told");
+			var line = owner[0].messages.stream().filter(m -> LevelTestSupport.keyOf(m).equals(capped)).findFirst().orElseThrow();
+			var args = ((net.minecraft.network.chat.contents.TranslatableContents) line.getContents()).getArgs();
+			h.assertValueEqual("Town", String.valueOf(args[2]), "the tier it needs");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	@GameTest(environment = "villageheart-gametest:levels_tier_up_no_notice", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void tierUpWithoutEnoughXpHasNoCappedNotice(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		EventLog events = new EventLog();
+		GameTestSequence seq = scene(h, false, false).thenExecute(() -> {
+			v[0] = hire(h, spawnSpot());
+			put(v[0], 1, 150);
+			dev.villageheart.worker.WorkerLevels.register(events);
+		}).thenIdle(45);
+		seq = seq.thenExecute(() -> LevelTestSupport.tier(h, Tier.VILLAGE));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 41, "the level pass after the tier-up",
+				() -> h.assertValueEqual(2, data(v[0]).level(), "level after setTier(VILLAGE)"));
+		seq.thenIdle(3).thenExecute(() -> {
+			dev.villageheart.worker.WorkerLevels.unregister(events);
+			h.assertValueEqual(1, events.levelUps, "one level-up event");
+			h.assertValueEqual(0, events.capped, "150 XP is not enough for level 3: no notice");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
 }

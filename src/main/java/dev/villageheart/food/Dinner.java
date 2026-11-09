@@ -123,6 +123,7 @@ public final class Dinner {
 		NeedsSystem.mirror(server, VillageClaims.current(server).orElse(village));
 		long eatenNutrition = plan.eatenNutrition(), eatenItems = plan.eatenItems();
 		FoodStats.record(plan.diners(), fedCount, plan.diners() - fedCount, eatenNutrition, eatenItems);
+		dev.villageheart.tier.Tiers.onDinner(server, day, plan.diners(), fedCount);
 		OptionalDouble daysLeft = FoodMath.daysLeft(FoodMath.nutrition(stock(server, false)), adults, children);
 		VillageHeart.LOG.info("[dinner] day {}: {}/{} fed, {} nutrition from {} items, {} food days left", day, fedCount, plan.diners(),
 				eatenNutrition, eatenItems, daysLeft.isPresent() ? String.format("%.1f", daysLeft.getAsDouble()) : "-");

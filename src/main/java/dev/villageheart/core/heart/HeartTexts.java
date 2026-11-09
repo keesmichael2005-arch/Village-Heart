@@ -24,6 +24,15 @@ public final class HeartTexts {
 		EN.put(PREFIX + "overview.tier", "Tier: %s");
 		EN.put(PREFIX + "overview.next_tier", "Next tier: %s");
 		EN.put(PREFIX + "overview.top_tier", "Highest tier reached");
+		EN.put(PREFIX + "overview.next_tier_ready", "Next tier: %s (at dawn)");
+		EN.put(PREFIX + "goal.population", "Population %s / %s");
+		EN.put(PREFIX + "goal.workers", "Workers %s / %s");
+		EN.put(PREFIX + "goal.guards", "Guards %s / %s");
+		EN.put(PREFIX + "goal.storage", "A valid Storage");
+		EN.put(PREFIX + "goal.farmhouse", "A valid Farmhouse");
+		EN.put(PREFIX + "goal.kitchen", "A valid Kitchen");
+		EN.put(PREFIX + "goal.fed_days", "Fed days in a row %s / %s");
+		EN.put(PREFIX + "goal.dawn_treasury", "Treasury at a dawn %s / %s");
 		EN.put(PREFIX + "overview.population", "Population %s (beds %s)");
 		EN.put(PREFIX + "overview.population_tip", "Unemployed villagers count only while nearby.");
 		EN.put(PREFIX + "overview.workers", "Workers %s / %s slots");

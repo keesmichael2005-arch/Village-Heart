@@ -119,11 +119,25 @@ public final class HeartSnapshotBuilder {
 		int more = Math.max(0, alerts.size() - HeartLimits.MAX_ALERTS);
 		List<AlertLine> shown = alerts.subList(0, alerts.size() - more);
 
-		Tier[] tiers = Tier.values();
-		Optional<Tier> next = f.tier().ordinal() + 1 < tiers.length ? Optional.of(tiers[f.tier().ordinal() + 1]) : Optional.empty();
-		return new Overview(HeartLimits.cut(f.ownerName(), HeartLimits.MAX_NAME), f.tier(), next, List.of(),
-				f.adults() + f.babies(), f.adults(), f.babies(), f.beds(), workers, f.workerSlots(),
+		return new Overview(HeartLimits.cut(f.ownerName(), HeartLimits.MAX_NAME), f.tier(), f.tierReport().next(), goals(f.tierReport()),
+				f.population(), f.adults(), f.babies(), f.beds(), workers, f.workerSlots(),
 				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), f.wageBill(), shown, more);
+	}
+
+	/** One line per goal of the next tier, in checklist order (M14). Two arguments at most. */
+	private static List<GoalLine> goals(dev.villageheart.core.tier.TierReport report) {
+		List<GoalLine> out = new ArrayList<>();
+		for (dev.villageheart.core.tier.Goal g : report.goals()) {
+			String key = HeartTexts.PREFIX + "goal." + g.id().name().toLowerCase(java.util.Locale.ROOT);
+			String fallback = HeartTexts.EN.get(key);
+			TextLine label = switch (g.id()) {
+				case STORAGE, FARMHOUSE, KITCHEN -> new TextLine(key, fallback);
+				case DAWN_TREASURY -> new TextLine(key, fallback, List.of(Integer.toString(Math.min(g.have(), g.need())), Integer.toString(g.need())));
+				default -> new TextLine(key, fallback, List.of(Integer.toString(g.have()), Integer.toString(g.need())));
+			};
+			out.add(new GoalLine(label, g.have(), g.need(), g.met()));
+		}
+		return out;
 	}
 
 	private static int nutritionEach(StockItemFact i) { return i.villageFood() ? Math.max(0, i.foodNutrition()) : 0; }

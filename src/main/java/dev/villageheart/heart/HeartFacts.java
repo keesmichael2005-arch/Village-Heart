@@ -205,9 +205,12 @@ public final class HeartFacts {
 		java.util.List<Integer> levels = new ArrayList<>();
 		for (WorkerRecord rec : state.workers()) levels.add(rec.level());
 		int strikers = VillageClaims.data(server).payroll().map(p -> p.strikers(workerIds)).orElse(0);
+		Set<UUID> censusIds = loaded.keySet();
+		dev.villageheart.core.tier.TierInputs tierInputs = dev.villageheart.tier.TierFacts.inputs(server, state, censusIds);
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
 				villagers, jobs, buildings, stock(server), List.of(), members(server, state), builds(server),
-				dev.villageheart.core.economy.WageRules.bill(levels), strikers));
+				dev.villageheart.core.economy.WageRules.bill(levels), strikers, tierInputs.population(),
+				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress())));
 	}
 
 	/** The builds in progress, oldest first (M20). */
