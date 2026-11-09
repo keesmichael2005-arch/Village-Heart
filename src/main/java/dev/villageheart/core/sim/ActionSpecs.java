@@ -14,7 +14,7 @@ public final class ActionSpecs {
 	private ActionSpecs() {}
 
 	public static final Set<String> DOORS = Set.of("north", "south", "east", "west");
-	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table");
+	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target");
 	public static final Set<String> CROPS = Set.of("carrots", "potatoes", "wheat", "beetroots");
 
 	/** @throws IllegalArgumentException naming the bad field; unknown action types are not this class's business. */
@@ -70,6 +70,17 @@ public final class ActionSpecs {
 				string(f, "building", BuildingType.class);
 				if (f.containsKey("teleport") && !(f.get("teleport") instanceof Boolean)) throw new IllegalArgumentException("teleport must be true or false");
 				if (f.containsKey("replace") && !(f.get("replace") instanceof Boolean)) throw new IllegalArgumentException("replace must be true or false");
+			}
+			case "tier" -> {
+				String t = str(f, "tier");
+				if (!java.util.List.of("hamlet", "village", "town").contains(t)) throw new IllegalArgumentException("tier must be hamlet, village or town: " + t);
+			}
+			case "training_yard" -> ints(f, "at", 2, 0, 200);
+			case "night_spawn" -> {
+				String mob = str(f, "mob");
+				if (!mob.contains(":")) throw new IllegalArgumentException("mob must be a namespaced entity id: " + mob);
+				integer(f, "count", -1, 1, 16);
+				integer(f, "radius", 20, 13, 60);
 			}
 			default -> { }
 		}

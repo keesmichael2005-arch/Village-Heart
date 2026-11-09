@@ -715,4 +715,61 @@ public class GuardGameTests {
 	private static void send(net.minecraft.server.level.ServerPlayer p, int container, java.util.UUID villager, int choice) {
 		HeartTestSupport.send(p, dev.villageheart.heart.net.SetGuardShiftPayload.CODEC, new dev.villageheart.heart.net.SetGuardShiftPayload(container, villager, choice));
 	}
+
+	// ---- the L3 layout (T-L2-13) -------------------------------------------------------------------
+
+	/** The {@code defended} scenario's Barracks and Training Yard, built by the real sim actions inside the yard, are valid and linked. */
+	@GameTest(environment = "villageheart-gametest:guards_defended_layout", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void defendedLayoutValid(GameTestHelper h) {
+		begin(h);
+		dev.villageheart.core.sim.Scenario scenario;
+		try {
+			java.nio.file.Path p = java.nio.file.Path.of("sim/scenarios/defended.json");
+			if (!java.nio.file.Files.exists(p)) p = java.nio.file.Path.of("../../../sim/scenarios/defended.json");
+			scenario = dev.villageheart.core.sim.ScenarioParser.parse("defended", java.nio.file.Files.readString(p));
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+		var level = h.getLevel();
+		BlockPos site = h.absolutePos(new BlockPos(0, -1, 0));
+		dev.villageheart.sim.Host host = new dev.villageheart.sim.Host() {
+			public net.minecraft.server.level.ServerLevel level() { return level; }
+			public net.minecraft.server.MinecraftServer server() { return level.getServer(); }
+			public BlockPos heart() { return h.absolutePos(BuildingTestSupport.BELL); }
+			public BlockPos site() { return site; }
+			public void setSite(BlockPos s) { }
+		};
+		BlockPos[] yardMarker = new BlockPos[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			for (var a : scenario.actions()) {
+				if (a.type().equals("tier")) dev.villageheart.sim.GuardActions.tier(host, a);
+				else if (a.type().equals("training_yard")) dev.villageheart.sim.GuardActions.trainingYard(host, shifted(a, -26, 0));
+				else if (a.type().equals("prefab") && "barracks".equals(a.fields().get("building"))) dev.villageheart.sim.StarterActions.prefab(host, shifted(a, -26, 0));
+			}
+		}).thenWaitUntil(() -> {
+			var views = dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.BARRACKS);
+			h.assertTrue(views.size() == 1, "one valid Barracks");
+			h.assertTrue(views.get(0).verdict().orElseThrow().slots() == 2, "two guard slots: " + views.get(0).verdict());
+			var yards = dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.TRAINING_YARD);
+			h.assertTrue(yards.size() == 1, "one valid Training Yard");
+			h.assertTrue(yards.get(0).link() != null && yards.get(0).link().equals(views.get(0).marker()), "the yard is linked to the Barracks");
+		});
+		seq.thenExecute(() -> {
+			var chestItems = new java.util.ArrayList<String>();
+			for (var chest : dev.villageheart.worker.job.CampContainers.of(level.getServer(), dev.villageheart.world.VillageClaims.locate(level,
+					dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.BARRACKS).get(0).marker())).orElseThrow()) {
+				for (int i = 0; i < chest.container().getContainerSize(); i++) if (!chest.container().getItem(i).isEmpty()) chestItems.add(chest.container().getItem(i).getItem().toString());
+			}
+			h.assertTrue(chestItems.stream().filter(s -> s.contains("iron_sword")).count() >= 1 && chestItems.stream().anyMatch(s -> s.contains("iron_chestplate")), "kit in the chest: " + chestItems);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	private static dev.villageheart.core.sim.ScenarioAction shifted(dev.villageheart.core.sim.ScenarioAction a, int dx, int dz) {
+		java.util.Map<String, Object> f = new java.util.LinkedHashMap<>(a.fields());
+		if (f.get("at") instanceof java.util.List<?> l) f.put("at", java.util.List.of(((Number) l.get(0)).longValue() + dx, ((Number) l.get(1)).longValue() + dz));
+		return new dev.villageheart.core.sim.ScenarioAction(a.type(), a.day(), a.tick(), f);
+	}
 }

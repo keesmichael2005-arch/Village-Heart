@@ -304,6 +304,8 @@ public final class StarterActions {
 				case "composter" -> Blocks.COMPOSTER.defaultBlockState();
 				case "smoker" -> Blocks.SMOKER.defaultBlockState();
 				case "crafting_table" -> Blocks.CRAFTING_TABLE.defaultBlockState();
+				case "grindstone" -> Blocks.GRINDSTONE.defaultBlockState();
+				case "target" -> Blocks.TARGET.defaultBlockState();
 				default -> JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK).defaultBlockState();
 			};
 			set(level, p, state);
@@ -410,7 +412,9 @@ public final class StarterActions {
 	// ---- hire ----------------------------------------------------------------------------------
 
 	/** Standing hires ({@code replace: true}): job id to building type. */
-	private static final Map<String, BuildingType> STANDING = new java.util.LinkedHashMap<>();
+	private record Standing(BuildingType type, int want) {}
+
+	private static final Map<String, Standing> STANDING = new java.util.LinkedHashMap<>();
 
 	public static void resetStanding() { STANDING.clear(); }
 
@@ -423,7 +427,10 @@ public final class StarterActions {
 	}
 
 	static void registerStanding(ScenarioAction a) {
-		STANDING.put((String) a.fields().get("job"), BuildingType.byId((String) a.fields().get("building")).orElseThrow());
+		// one more worker wanted per action: two guard hires keep two guards on the roll
+		String job = (String) a.fields().get("job");
+		Standing old = STANDING.get(job);
+		STANDING.put(job, new Standing(BuildingType.byId((String) a.fields().get("building")).orElseThrow(), old == null ? 1 : old.want() + 1));
 	}
 
 	/** Called every 100 ticks: a standing hire whose job has nobody gets a replacement (a worker died). */
@@ -432,11 +439,11 @@ public final class StarterActions {
 		if (village.isEmpty()) return;
 		sampleNotTicking(ctx, village.get());
 		if (STANDING.isEmpty()) return;
-		for (Map.Entry<String, BuildingType> e : STANDING.entrySet()) {
-			boolean staffed = village.get().workers().stream().anyMatch(w -> w.jobId().equals(e.getKey()));
-			if (staffed) continue;
+		for (Map.Entry<String, Standing> e : STANDING.entrySet()) {
+			long staffed = village.get().workers().stream().filter(w -> w.jobId().equals(e.getKey())).count();
+			if (staffed >= e.getValue().want()) continue;
 			try {
-				hireNow(ctx, JobType.byId(e.getKey()).orElseThrow(), e.getValue(), true, false);
+				hireNow(ctx, JobType.byId(e.getKey()).orElseThrow(), e.getValue().type(), true, false);
 				VillageHeart.LOG.info("[sim] re-hired a {}", e.getKey());
 			} catch (RuntimeException ex) {
 				VillageHeart.LOG.info("[sim] could not re-hire a {} yet: {}", e.getKey(), ex.getMessage());
