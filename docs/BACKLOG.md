@@ -348,3 +348,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `tier_game_tests_village_goals_tier_up_at_dawn`: "Expected one dinner to be 1: was 2".
 - [ ] L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
 Fix root causes; never loosen a bound without a written reason.
+
+## From M18 round 3
+- [ ] A retreating guard still counts as engaged for gates (r2 note): it may lead the zombie through a gate. Fix: not engaged while `GuardCombat.retreating`.
+- [ ] Guard ration withdrawal is remote (no walk to Storage); a walk would be more honest, and would need a trip state like the gear trip.
+- [ ] A zombie outside the wall but inside the claim keeps the alarm up all night (r2 note).
+- [ ] The `SERVER_STOPPING`/`SERVER_STARTING` listeners of `GuardAlarm` have no GameTest (only `reset()` does).
