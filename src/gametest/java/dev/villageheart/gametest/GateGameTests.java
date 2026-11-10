@@ -229,9 +229,12 @@ public class GateGameTests {
 		boolean[] plainReached = new boolean[1];
 		seq = seq.thenWaitUntil(() -> {
 			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 0);
-			v[1].teleportTo(v[0].getX(), v[0].getY(), v[0].getZ());
-			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 0);
-			if (plain != null && plain.canReach()) plainReached[0] = true; // on ANY tick of the wait: path planning from a moving start is not stable tick to tick
+			// recorded only while the hired worker is still OUTSIDE the ring: from inside, anybody reaches the cell inside
+			if (!insideRing(h, v[0])) {
+				v[1].teleportTo(v[0].getX(), v[0].getY(), v[0].getZ());
+				Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 0);
+				if (plain != null && plain.canReach()) plainReached[0] = true; // on ANY such tick: planning from a moving start is not stable tick to tick
+			}
 			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
 		});
 		seq = seq.thenExecute(() -> {
