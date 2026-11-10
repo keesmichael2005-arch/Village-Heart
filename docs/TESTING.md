@@ -391,6 +391,10 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   are asserted; `heart_villagers_guards.png`: the Villagers tab with a Shift button that is clicked once). `-Dvillageheart.l4.only=guards` runs just these.
 - **Layer 3**: `scripts/simulate.sh defended` (the starter village + a Barracks with two guards + a Training Yard + 27 scripted zombies). New actions
   `tier`, `training_yard`, `night_spawn`; `prefab` words `grindstone` and `target`; two `hire ... replace` actions keep two guards on the roll.
+  `scripts/simulate.sh defended_walled` is the realistic twin: the same village and assertions, plus `wall_ring` (a two-high cobblestone wall on the
+  edge of the site with ONE oak fence gate that workers and guards open), `lamps` (fence posts with torches every 7 blocks) and the zombies placed
+  `outside` the wall (`night_spawn` field). `defended` stays the harsh case (wooden kit, no walls). Both run unseeded 5 times for a verdict (the result
+  varies run to run). New actions have `ActionSpecs` field checks and `DefendedScenarioTest` entries.
   The re-hire hook waits for the morning (no guard is hired at night). Per-day numbers worth reading: `deaths.mobs`, `work.guard.kills`, `duty_samples`,
   `employed`, `ration_items`/`ration_points`/`food_eaten` (food the guards took and ate), `retreats`, `guards_night`/`guards_day` (the shift counts).
 
