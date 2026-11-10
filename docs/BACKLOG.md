@@ -354,3 +354,4 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] Guard ration withdrawal is remote (no walk to Storage); a walk would be more honest, and would need a trip state like the gear trip.
 - [ ] A zombie outside the wall but inside the claim keeps the alarm up all night (r2 note).
 - [ ] The `SERVER_STOPPING`/`SERVER_STARTING` listeners of `GuardAlarm` have no GameTest (only `reset()` does).
+- [ ] Duel intent: with a better sword than wood (stone or iron) a level-1 guard should beat one zombie with at least 50 % of its max health; add a test when guards get better swords by default.

@@ -374,7 +374,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Qualified or trainee**: `hireGuard` hires through the real path and then clears the training day (so the shift tests are about shifts); `hireTrainee`
   keeps it (the night-hire rule is switched off for the call by `Workers.nightGuardHireForTests`).
 - **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn). A level 1 guard
-  has 20 health, a wooden sword and no armour (`guardBeatsOneZombie` is the duel: at least half the health must be left).
+  has 20 health, a wooden sword and no armour (`guardBeatsOneZombie` is the duel: the guard must win with at least 25 % of its max health left, 5 of 20. Why not 50 %: a wooden sword takes 5 hits at vanilla damage 4.0 and the zombie lands 5 hits of 3.0 meanwhile. 50 % stays the intent for better swords: a BACKLOG idea, not a test).
 - **Rules added by the M18 round-1 and -3 reviews** (each has a GameTest and, where it is pure, an L1 test): `alarmWakesSleepingGuardsAndTheyReturn`,
   `guardSwitchesToTheMobThatHurtsIt`, `barracksBedEvictsHiredWorker`, `brokenGrindstoneKeepsTheGuardOnDuty`, `guardBrainHasNoPanic` (the control villager is
   penned so it cannot stroll out of the zombie's range), `newGuardTrainsOneDayThenWorksTheNight`, `traineeSparsAtTheYardAndGainsXp`,

@@ -76,11 +76,20 @@ public final class ActionSpecs {
 				if (!java.util.List.of("hamlet", "village", "town").contains(t)) throw new IllegalArgumentException("tier must be hamlet, village or town: " + t);
 			}
 			case "training_yard" -> ints(f, "at", 2, 0, 200);
+			case "wall_ring" -> {
+				ints(f, "size", 2, 8, 200);
+				integer(f, "gate", 0, 1, 198);
+			}
+			case "lamps" -> {
+				ints(f, "size", 2, 8, 200);
+				integer(f, "spacing", 7, 3, 16);
+			}
 			case "night_spawn" -> {
 				String mob = str(f, "mob");
 				if (!mob.contains(":")) throw new IllegalArgumentException("mob must be a namespaced entity id: " + mob);
 				integer(f, "count", -1, 1, 16);
 				integer(f, "radius", 20, 13, 60);
+				if (f.containsKey("outside")) ints(f, "outside", 2, 8, 200);
 			}
 			default -> { }
 		}

@@ -177,7 +177,7 @@ final class GuardClientTests {
 					context.waitTicks(1);
 				}
 				if (!state.equals("VALID")) throw new AssertionError("the Barracks plaque is " + state);
-				// Ada is hired first (night, auto), Bram second (day, auto); pinning Bram to the night moves Ada, the newest unpinned guard of the bigger side, to the day
+				// two guards both work nights (owner rule); Bram is pinned to the night, Ada stays automatic (night) until the Shift button is clicked
 				String hired = srv.computeOnServer(server -> {
 					String a = Workers.hire(server.overworld(), server.overworld().getEntity(dayId), JobType.GUARD, Optional.empty()).toString();
 					String b = Workers.hire(server.overworld(), server.overworld().getEntity(nightId), JobType.GUARD, Optional.empty()).toString();
@@ -202,7 +202,7 @@ final class GuardClientTests {
 					context.waitTicks(1);
 					a = HeartScreenClientTests.snapshot(context).villagers().stream().filter(r -> r.id().equals(dayId)).findFirst().orElse(null);
 				}
-				if (a == null || a.shift() != GuardShiftView.DAY_AUTO) throw new AssertionError("Ada's row is " + a);
+				if (a == null || a.shift() != GuardShiftView.NIGHT_AUTO) throw new AssertionError("Ada's row is " + a);
 				int[] row = context.computeOnClient(mc -> ((HeartScreen) mc.screen).villagerRowCentre(dayId));
 				HeartScreenClientTests.clickAt(context, row);
 				context.waitTicks(5);

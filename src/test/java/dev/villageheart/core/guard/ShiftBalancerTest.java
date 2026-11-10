@@ -35,58 +35,54 @@ class ShiftBalancerTest {
 	}
 
 	@Test
-	void mostGuardsTakeTheNightAndTheDayKeepsAtLeastOne() {
-		int[][] expect = {{1, 0}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {4, 2}, {5, 2}, {6, 2}, {6, 3}};
-		for (int n = 1; n <= 9; n++) {
+	void upToThreeGuardsAllWorkNightsThenOneDayGuardPerFour() {
+		int[][] expect = {{1, 0}, {2, 0}, {3, 0}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {9, 3}};
+		for (int n = 1; n <= 12; n++) {
 			Map<UUID, GuardShift> m = ShiftBalancer.rebalance(ids(n), Map.of());
 			assertEquals(expect[n - 1][0], count(m, Shift.NIGHT), n + " guards: nights");
 			assertEquals(expect[n - 1][1], count(m, Shift.DAY), n + " guards: days");
-			if (n >= 2) assertTrue(count(m, Shift.DAY) >= 1 && count(m, Shift.NIGHT) > count(m, Shift.DAY) - 1);
+			if (n >= 3) assertTrue(count(m, Shift.NIGHT) >= 3, "nights keep at least 3");
 		}
 	}
 
 	@Test
-	void seniorsTakeTheNights() {
-		// 3 guards, the third has the most XP: it and the second-best are on nights
-		Map<UUID, GuardShift> m = ShiftBalancer.assign(guards(10, 0, 50), Map.of());
-		assertEquals(Shift.NIGHT, m.get(id(2)).shift());
-		assertEquals(Shift.NIGHT, m.get(id(0)).shift());
+	void seniorsTakeTheNightsAndTheNewestTakesTheOpenDaySlot() {
+		// 4 guards: one day slot. The junior (no XP) takes it; the rest are nights
+		Map<UUID, GuardShift> m = ShiftBalancer.assign(guards(10, 0, 50, 5), Map.of());
 		assertEquals(Shift.DAY, m.get(id(1)).shift());
+		for (int i : new int[] {0, 2, 3}) assertEquals(Shift.NIGHT, m.get(id(i)).shift());
 	}
 
 	@Test
 	void levelBeatsXp() {
-		List<ShiftBalancer.Guard> g = List.of(new ShiftBalancer.Guard(id(0), 1, 90), new ShiftBalancer.Guard(id(1), 2, 5));
+		List<ShiftBalancer.Guard> g = new ArrayList<>();
+		g.add(new ShiftBalancer.Guard(id(0), 1, 90));
+		g.add(new ShiftBalancer.Guard(id(1), 2, 5));
+		g.add(new ShiftBalancer.Guard(id(2), 2, 1));
+		g.add(new ShiftBalancer.Guard(id(3), 2, 9));
 		Map<UUID, GuardShift> m = ShiftBalancer.assign(g, Map.of());
-		assertEquals(Shift.NIGHT, m.get(id(1)).shift());
-		assertEquals(Shift.DAY, m.get(id(0)).shift());
+		assertEquals(Shift.DAY, m.get(id(0)).shift(), "level 1 is the junior whatever its XP");
 	}
 
 	@Test
-	void aNewGuardStartsOnDaysAndMovesToNightWithXp() {
-		Map<UUID, GuardShift> m = ShiftBalancer.assign(guards(30, 20, 0), Map.of());
-		assertEquals(Shift.DAY, m.get(id(2)).shift(), "the new guard (no XP) is on days");
-		// it gains XP past a night guard's: it moves up, the least senior night guard goes to days
-		m = ShiftBalancer.assign(guards(30, 20, 25), m);
-		assertEquals(Shift.NIGHT, m.get(id(2)).shift());
-		assertEquals(Shift.DAY, m.get(id(1)).shift());
-		assertEquals(Shift.NIGHT, m.get(id(0)).shift());
+	void aNewGuardTakesTheDaySlotAndMovesToNightWithXp() {
+		Map<UUID, GuardShift> m = ShiftBalancer.assign(guards(30, 20, 15, 0), Map.of());
+		assertEquals(Shift.DAY, m.get(id(3)).shift(), "the new guard (no XP) is on days");
+		// it gains XP past the least senior night guard's: it moves up, that guard goes to days
+		m = ShiftBalancer.assign(guards(30, 20, 15, 18), m);
+		assertEquals(Shift.NIGHT, m.get(id(3)).shift());
+		assertEquals(Shift.DAY, m.get(id(2)).shift());
 	}
 
 	@Test
-	void aFallenNightGuardIsReplacedByTheMostSeniorDayGuard() {
+	void aFallenNightGuardLeavesTheDayGuardInPlaceUntilTheCountsChange() {
 		Map<UUID, GuardShift> m = ShiftBalancer.assign(guards(30, 20, 5, 0), Map.of()); // N N N D
 		assertEquals(3, count(m, Shift.NIGHT));
 		List<ShiftBalancer.Guard> after = new ArrayList<>(guards(30, 20, 5, 0));
-		after.remove(0); // the senior night guard falls: 3 guards = 2 nights + 1 day
+		after.remove(0); // 3 guards left: no day shift at all, the day guard goes to the night
 		m = ShiftBalancer.assign(after, m);
-		assertEquals(Shift.NIGHT, m.get(id(1)).shift());
-		assertEquals(Shift.NIGHT, m.get(id(2)).shift());
-		assertEquals(Shift.DAY, m.get(id(3)).shift());
-		after.remove(0); // and another: 2 guards = 1 + 1, the senior of the two stays on nights
-		m = ShiftBalancer.assign(after, m);
-		assertEquals(Shift.NIGHT, m.get(id(2)).shift());
-		assertEquals(Shift.DAY, m.get(id(3)).shift());
+		assertEquals(3, count(m, Shift.NIGHT));
+		assertEquals(0, count(m, Shift.DAY));
 	}
 
 	@Test

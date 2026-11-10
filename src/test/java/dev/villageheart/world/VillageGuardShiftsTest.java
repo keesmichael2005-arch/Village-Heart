@@ -54,8 +54,10 @@ class VillageGuardShiftsTest {
 	void hiringAndFiringRebalance() {
 		VillageState v = withGuards();
 		assertEquals(Shift.NIGHT, v.guardShift(G1).orElseThrow().shift());
-		assertEquals(Shift.DAY, v.guardShift(G2).orElseThrow().shift());
+		assertEquals(Shift.NIGHT, v.guardShift(G2).orElseThrow().shift(), "up to three guards all work nights");
 		assertEquals(List.of(G1, G2), v.guardIds());
+		VillageState four = v.withWorker(guard(G3, 3)).withWorker(guard(new UUID(7, 4), 4));
+		assertEquals(Shift.DAY, four.guardShift(new UUID(7, 4)).orElseThrow().shift(), "the 4th guard takes the one day slot");
 		VillageState gone = v.withoutWorker(G1);
 		assertTrue(gone.guardShift(G1).isEmpty());
 		assertEquals(Set.of(G2), gone.guardShifts().keySet());
@@ -97,7 +99,7 @@ class VillageGuardShiftsTest {
 		arr.get(0).getAsJsonObject().addProperty("shift", "dusk");
 		VillageState loaded = VillageCodecs.VILLAGE_STATE.parse(JsonOps.INSTANCE, json).getOrThrow();
 		assertEquals(2, loaded.guardShifts().size(), "the dropped entry is re-created by the balancer");
-		assertEquals(Shift.DAY, loaded.guardShift(G2).orElseThrow().shift());
+		assertEquals(Shift.NIGHT, loaded.guardShift(G2).orElseThrow().shift());
 	}
 
 	@Test
@@ -167,11 +169,13 @@ class VillageGuardShiftsTest {
 
 	@Test
 	void seniorityMovesTheShiftsWithXpAndNothingElse() {
-		VillageState v = withGuards(); // G1 night, G2 day (see withGuards)
+		UUID g4 = new UUID(7, 4);
+		VillageState v = withGuards().withWorker(guard(G3, 3)).withWorker(guard(g4, 4)); // G1-G3 nights, G4 the day guard
+		assertEquals(Shift.DAY, v.guardShift(g4).orElseThrow().shift());
 		assertSame(v, v.withGuardSeniority(java.util.Map.of()), "no XP news: nothing moves, same instance");
-		VillageState up = v.withGuardSeniority(java.util.Map.of(G2, 50));
-		assertEquals(Shift.NIGHT, up.guardShift(G2).orElseThrow().shift(), "the guard with the XP takes the night");
-		assertEquals(Shift.DAY, up.guardShift(G1).orElseThrow().shift());
+		VillageState up = v.withGuardSeniority(java.util.Map.of(g4, 50, G1, 10, G2, 20, G3, 30));
+		assertEquals(Shift.NIGHT, up.guardShift(g4).orElseThrow().shift(), "the guard with the XP takes the night");
+		assertEquals(Shift.DAY, up.guardShift(G1).orElseThrow().shift(), "and the least senior night guard goes to days");
 		assertEquals(v.workers(), up.workers());
 	}
 

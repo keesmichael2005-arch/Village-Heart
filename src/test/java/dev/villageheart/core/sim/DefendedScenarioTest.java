@@ -60,4 +60,33 @@ class DefendedScenarioTest {
 		f.put("contents", List.of("bed", "anvil"));
 		bad("prefab", f, "anvil");
 	}
+
+	@Test
+	void defendedWalledIsDefendedPlusAWallLampsAndZombiesOutside() throws Exception {
+		Scenario plain = ScenarioParser.parse("defended", Files.readString(Path.of("sim/scenarios/defended.json")));
+		Scenario walled = ScenarioParser.parse("defended_walled", Files.readString(Path.of("sim/scenarios/defended_walled.json")));
+		assertEquals(plain.assertions(), walled.assertions(), "the same assertions, unchanged");
+		assertEquals(plain.defaultDays(), walled.defaultDays());
+		assertEquals(1, walled.actions().stream().filter(a -> a.type().equals("wall_ring")).count(), "one wall ring (with one gate)");
+		assertEquals(1, walled.actions().stream().filter(a -> a.type().equals("lamps")).count());
+		var spawns = walled.actions().stream().filter(a -> a.type().equals("night_spawn")).toList();
+		assertEquals(9, spawns.size());
+		for (var sp : spawns) assertTrue(sp.fields().containsKey("outside"), "every zombie is placed outside the wall");
+		// everything else is defended's: dropping the two additions leaves the same action types in the same order
+		var types = walled.actions().stream().map(a -> a.type()).filter(t -> !t.equals("wall_ring") && !t.equals("lamps")).toList();
+		assertEquals(plain.actions().stream().map(a -> a.type()).toList(), types);
+		assertTrue(plain.actions().stream().noneMatch(a -> a.type().equals("wall_ring")), "defended stays the harsh case: no walls");
+	}
+
+	@Test
+	void wallRingAndLampsFieldErrors() {
+		ActionSpecs.validate("wall_ring", Map.of("size", List.of(44L, 32L), "gate", 22L));
+		bad("wall_ring", Map.of(), "size");
+		bad("wall_ring", Map.of("size", List.of(44L)), "size");
+		bad("wall_ring", Map.of("size", List.of(44L, 32L), "gate", 500L), "gate");
+		ActionSpecs.validate("lamps", Map.of("size", List.of(44L, 32L)));
+		bad("lamps", Map.of("size", List.of(44L, 32L), "spacing", 1L), "spacing");
+		ActionSpecs.validate("night_spawn", Map.of("mob", "minecraft:zombie", "count", 3L, "outside", List.of(44L, 32L)));
+		bad("night_spawn", Map.of("mob", "minecraft:zombie", "count", 3L, "outside", List.of(44L)), "outside");
+	}
 }

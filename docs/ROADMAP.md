@@ -170,12 +170,12 @@ from there instead of hard-coding them.
 - **L4**: Villagers tab row "Making a stone pickaxe" (screenshot looked at)
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
-- Status (builder, 2026-11-09): built on branch `m18` incl. fence-gate opening for hired workers and guards, redesigned in round 3 by the owner (wooden sword start, level 1 = 20 health, food rations and no free healing, night-heavy shifts with seniors on nights, one training day, no night hire, wake on death; archers not built). Not ticked: the verifier ticks. See docs/plans/M18.md section 8 and docs/PROGRESS.md.
+- Status (builder, 2026-11-09): built on branch `m18` incl. fence-gate opening for hired workers and guards, redesigned in round 3 by the owner (wooden sword start, level 1 = 20 health, food rations and no free healing, nights only below 4 guards, then one day guard per four, seniors on nights, one training day, no night hire, wake on death; archers not built). Not ticked: the verifier ticks. See docs/plans/M18.md section 8 and docs/PROGRESS.md.
 - Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health by level: see DESIGN 5.6, 20/30/40 as of M18 r3). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
       Training Yard XP, level perks for health and damage, best gear from the stockpile, raid call-up
-- **L1**: shift balancing (most guards nights, seniors on nights, new guards on days). Gear ranking. Max health by level (20/30/40). Ration and heal maths, training qualification, the no-night-hire rule
+- **L1**: shift balancing (1-3 guards all nights, one day guard per four from the 4th, seniors on nights, the newest takes the day slot). Gear ranking. Max health by level (20/30/40). Ration and heal maths, training qualification, the no-night-hire rule
 - **L2**: a night-shift guard is asleep in a Barracks bed at tick 6000 and patrolling at tick 18000
 - **L2**: a zombie spawned in the claim at night is killed by a guard within 60 s, and no villager dies
 - **L2**: an iron chestplate in Storage → the guard wears it at shift start

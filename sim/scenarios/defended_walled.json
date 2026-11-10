@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "name": "defended_walled",
+  "description": "M18: the realistic twin of `defended`. The same village (starter, a tier-Village Barracks with two guards that each start with a wooden sword and no armour, a Training Yard), plus a two-high cobblestone wall on the edge of the site with ONE oak fence gate (hired workers and guards open it, mobs cannot), fence-post lamps with torches every 7 blocks inside and a torch every 6 blocks on the wall, and the same scripted threat (3 zombies at tick 14000 of days 1..9) placed OUTSIDE the wall. The assertions are those of `defended`, unchanged.",
+  "default_days": 10,
+  "actions": [
+    {
+      "action": "claim"
+    },
+    {
+      "action": "command",
+      "command": "villageheart treasury add 64"
+    },
+    {
+      "action": "site",
+      "size": [
+        44,
+        32
+      ],
+      "min_distance": 24,
+      "max_distance": 72,
+      "max_deviation": 5,
+      "odd_percent": 4
+    },
+    {
+      "action": "prefab",
+      "building": "house",
+      "at": [
+        2,
+        2
+      ],
+      "size": [
+        5,
+        4
+      ],
+      "door": "south",
+      "contents": [
+        "bed",
+        "bed",
+        "light"
+      ]
+    },
+    {
+      "action": "prefab",
+      "building": "house",
+      "at": [
+        10,
+        2
+      ],
+      "size": [
+        5,
+        4
+      ],
+      "door": "south",
+      "contents": [
+        "bed",
+        "bed",
+        "light"
+      ]
+    },
+    {
+      "action": "prefab",
+      "building": "storage",
+      "at": [
+        18,
+        2
+      ],
+      "size": [
+        4,
+        3
+      ],
+      "door": "south",
+      "contents": [
+        "chest",
+        "chest",
+        "light"
+      ],
+      "chest_items": {
+        "minecraft:bread": 40
+      }
+    },
+    {
+      "action": "prefab",
+      "building": "kitchen",
+      "at": [
+        25,
+        2
+      ],
+      "size": [
+        4,
+        3
+      ],
+      "door": "south",
+      "contents": [
+        "smoker",
+        "chest",
+        "crafting_table",
+        "light"
+      ]
+    },
+    {
+      "action": "prefab",
+      "building": "farmhouse",
+      "at": [
+        2,
+        14
+      ],
+      "size": [
+        4,
+        3
+      ],
+      "door": "north",
+      "contents": [
+        "composter",
+        "chest",
+        "light"
+      ]
+    },
+    {
+      "action": "field",
+      "at": [
+        10,
+        14
+      ],
+      "size": 9,
+      "crop": "carrots",
+      "age": 7
+    },
+    {
+      "action": "prefab",
+      "building": "lumber_camp",
+      "at": [
+        24,
+        14
+      ],
+      "size": [
+        4,
+        3
+      ],
+      "door": "north",
+      "contents": [
+        "chopping_block",
+        "chest",
+        "light"
+      ],
+      "chest_items": {
+        "minecraft:diamond_axe": 1,
+        "minecraft:oak_sapling": 8
+      }
+    },
+    {
+      "action": "grove",
+      "area": [
+        22,
+        21,
+        20,
+        10
+      ],
+      "trees": 8,
+      "spacing": 5,
+      "seed": 11
+    },
+    {
+      "action": "tier",
+      "tier": "village"
+    },
+    {
+      "action": "prefab",
+      "building": "barracks",
+      "at": [
+        33,
+        2
+      ],
+      "size": [
+        5,
+        4
+      ],
+      "door": "south",
+      "contents": [
+        "bed",
+        "bed",
+        "grindstone",
+        "grindstone",
+        "chest",
+        "light"
+      ]
+    },
+    {
+      "action": "training_yard",
+      "at": [
+        38,
+        12
+      ]
+    },
+    {
+      "action": "wall_ring",
+      "size": [
+        44,
+        32
+      ],
+      "gate": 22
+    },
+    {
+      "action": "lamps",
+      "size": [
+        44,
+        32
+      ],
+      "spacing": 7
+    },
+    {
+      "action": "hire",
+      "day": 1,
+      "tick": 200,
+      "job": "farmer",
+      "building": "farmhouse",
+      "replace": true
+    },
+    {
+      "action": "hire",
+      "day": 1,
+      "tick": 200,
+      "job": "lumberjack",
+      "building": "lumber_camp",
+      "replace": true
+    },
+    {
+      "action": "hire",
+      "day": 1,
+      "tick": 200,
+      "job": "guard",
+      "building": "barracks",
+      "replace": true
+    },
+    {
+      "action": "hire",
+      "day": 1,
+      "tick": 200,
+      "job": "guard",
+      "building": "barracks",
+      "replace": true
+    },
+    {
+      "action": "night_spawn",
+      "day": 1,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 2,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 3,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 4,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 5,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 6,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 7,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 8,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    },
+    {
+      "action": "night_spawn",
+      "day": 9,
+      "tick": 14000,
+      "mob": "minecraft:zombie",
+      "count": 3,
+      "radius": 20,
+      "outside": [
+        44,
+        32
+      ]
+    }
+  ],
+  "assertions": [
+    "claimed == 1 on every day",
+    "employed == 4 on day 1",
+    "sum(deaths.mobs) <= 1 from day 1",
+    "max(wages.strikers) == 0 from day 1",
+    "sum(work.workers.not_ticking) == 0 from day 1",
+    "max(work.workers.max_heart_distance) < 150 from day 1",
+    "sum(work.guard.kills) >= 15 from day 1",
+    "work.guard.duty_samples >= 100 on every day",
+    "sum(deaths.cause.minecraft:starve) == 0 from day 1",
+    "village_ms.mean < 1 on every day"
+  ]
+}

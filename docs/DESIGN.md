@@ -348,9 +348,10 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Overall rate.** 8 per hour is the rate at the smoker; with the fetch and deposit walks a cook makes about 4 to 5 items an hour.
 
 ### 5.6 Guard (Barracks, Grindstone)
-- **Shifts**: each guard is on a **day** or a **night** shift. **Most guards work nights** (where the mobs are): the day keeps `max(1, n / 3)` guards
-  once there are two or more (2 guards: 1 + 1, 3: 2 + 1, 6: 4 + 2; a lone guard works nights). **Seniors take the nights** (level, then XP); a new guard
-  starts on days and moves to the night as it gains XP or when a night guard falls. A Steward can pin a guard to a shift (the Shift button).
+- **Shifts**: each guard is on a **day** or a **night** shift. **Up to 3 guards all work nights** (where the mobs are) and there is no day shift; from
+  the 4th guard on the day keeps `floor(n / 4)` guards (4-7 guards: 1, 8-11: 2), so nights always have at least 3. **Seniors take the nights** (level,
+  then XP); a new guard has the least seniority, so it takes an open day slot and moves to the night as it gains XP or when a night guard falls.
+  With no day guard the alarm (below) is the only daytime cover. A Steward can pin a guard to a shift (the Shift button).
   A guard sleeps in a Barracks bed during its off shift, so night-shift guards sleep in the day.
 - **On shift**: it patrols between the Heart, Watchtowers and lamp posts. It attacks hostile mobs and raiders inside the claim. During a raid, or when a
   hostile hurts a villager, or when a guard dies, every guard that is not wounded or in training is called on duty.
@@ -371,7 +372,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   shift off `[0, 1000)`, asleep `[1000, 12000)`, on duty `[12000, 24000)`. Overrides, first wins: wounded goes to bed (even in a raid), a trainee is
   off and awake (never on duty, never sent to bed by the clock), a raid or the alarm puts every guard on duty, a guard that cannot work (strike,
   starving) is off instead of on duty but still sleeps. `ShiftBalancer.assign` ranks the unpinned guards by level, then XP (ties keep the side a guard
-  is on, then hiring order, so nothing flaps) and gives the best `n - max(1, n / 3)` the night; pinned guards never move and count for their side.
+  is on, then hiring order, so nothing flaps) and gives the best `n - floor(n / 4)` the night; pinned guards never move and count for their side.
   `GuardSystem` re-ranks every 20 ticks with the XP the village state does not hold.
 - **Alarm** (`GuardAlarm`): raised when a hostile hurts a villager in the claim, or when a guard dies (so every sleeping or off-duty guard wakes and
   comes). `refresh` keeps it up every 20 ticks while a hostile that hunts a villager is within 24 blocks of a guard; it ends 600 ticks after the last
@@ -394,7 +395,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   hit, worn armour per hit taken (vanilla's rule). A guard that a different hostile hurts switches to it. A guard below 50 % health with a healthy
   awake guard (at least 70 %) within 32 blocks falls back to within 5 blocks of it, eats and holds the line there, defending itself only against what
   reaches it, and fights again at 80 % (`work.guard.retreats`); with nobody to fall back to it fights on.
-  A duel of one level-1 guard (wooden sword, no armour) against one zombie is a test (`guardBeatsOneZombie`): it must end with at least half the max health.
+  A duel of one level-1 guard (wooden sword, no armour) against one zombie is a test (`guardBeatsOneZombie`): the guard must win with at least 25 % of its max health left (a wooden sword takes 5 hits at vanilla damage; half the health stays the intent for better swords).
 - **Gear**: worn on the villager with a guaranteed drop (a dead guard drops it intact; a converted guard's gear drops and the zombie villager
   wears nothing). A hired guard gets a wooden sword (a trainee keeps it; a fired guard hands it in with the rest). At the start of duty and every 1200
   ticks a guard plans one pick per slot, strictly better than what it wears, from the Barracks

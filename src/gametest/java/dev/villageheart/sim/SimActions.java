@@ -39,7 +39,9 @@ public final class SimActions {
 			Map.entry("hire", StarterActions::hire),
 			Map.entry("tier", GuardActions::tier),
 			Map.entry("training_yard", GuardActions::trainingYard),
-			Map.entry("night_spawn", GuardActions::nightSpawn));
+			Map.entry("night_spawn", GuardActions::nightSpawn),
+			Map.entry("wall_ring", GuardActions::wallRing),
+			Map.entry("lamps", GuardActions::lamps));
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");

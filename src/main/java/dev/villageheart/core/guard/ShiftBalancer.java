@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Splits the guards into a night and a day shift (M18 r3, owner design): most guards take the night, where the mobs are, and the day keeps
- * {@code max(1, n / 3)} guards once there are two or more (2 guards: 1 + 1, 3: 2 + 1, 6: 4 + 2; a lone guard works nights). The most senior
- * guards (level, then XP) take the nights; a new guard starts on days and moves to the night as it gains XP or when a night guard falls.
- * Ties keep the side a guard is on, then the hiring order, so the shifts do not flap. Pinned guards (the player's Shift button) never move
- * and count toward their side.
+ * Splits the guards into a night and a day shift (M18 r3, owner rule): up to 3 guards ALL work the night (no day shift); from the 4th guard on
+ * the day keeps {@code floor(n / 4)} guards (4-7 guards: 1, 8-11: 2), the rest work nights, so nights always have at least 3 once there are 3 or
+ * more. The most senior guards (level, then XP) take the nights; a new guard has the least seniority, so it takes an open day slot, and moves to
+ * the night as it gains XP or when a night guard falls. Ties keep the side a guard is on, then the hiring order, so the shifts do not flap.
+ * Pinned guards (the player's Shift button) never move and count toward their side. In daytime with no day guard the alarm is the only cover.
  */
 public final class ShiftBalancer {
 	private ShiftBalancer() {}
@@ -20,8 +20,8 @@ public final class ShiftBalancer {
 	/** A guard as the balancer sees it: hiring order is the list order. */
 	public record Guard(UUID id, int level, int xp) {}
 
-	/** How many guards of {@code n} work the day. */
-	public static int dayCount(int n) { return n < 2 ? 0 : Math.max(1, n / 3); }
+	/** How many guards of {@code n} work the day: none below 4, then one per four. */
+	public static int dayCount(int n) { return n / 4; }
 
 	public static Map<UUID, GuardShift> assign(List<Guard> guardsInHiringOrder, Map<UUID, GuardShift> current) {
 		int n = guardsInHiringOrder.size();
