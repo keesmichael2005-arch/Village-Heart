@@ -223,13 +223,27 @@ public class GateGameTests {
 			z[0].discard();
 		});
 		// the discarded zombie leaves the entity list at the end of the tick: ask again until the path is found
+		// The tick on which the hired worker finds its way, the unemployed villager asks from the very same spot: only the hired rule can differ. The
+		// answer is recorded on every tick of the wait and asserted once. (A retried check on a villager that wanders let a lucky tick pass, so a mutation of
+		// GatePaths.isHired to "any adult villager" stayed green: the M18 r2 review.)
+		boolean[] plainReached = new boolean[1];
 		seq = seq.thenWaitUntil(() -> {
 			Path hired = v[0].getNavigation().createPath(h.absolutePos(inside), 0);
-			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
-
+			v[1].teleportTo(v[0].getX(), v[0].getY(), v[0].getZ());
 			Path plain = v[1].getNavigation().createPath(h.absolutePos(inside), 0);
-			h.assertTrue(plain == null || !plain.canReach(), "and the unemployed villager is still refused (the zombie is not what keeps it out)");
+			if (plain != null && plain.canReach()) plainReached[0] = true; // on ANY tick of the wait: path planning from a moving start is not stable tick to tick
+			h.assertTrue(hired != null && hired.canReach(), "without the zombie the hired worker plans through the gate");
 		});
+		seq = seq.thenExecute(() -> {
+			// the rule itself, on every gate cell, with the same facts for all three walkers (no zombie near any more): deterministic, unlike planning
+			for (int i = 0; i < 3; i++) {
+				BlockPos abs = h.absolutePos(gate(i));
+				var state = h.getLevel().getBlockState(abs);
+				h.assertTrue(dev.villageheart.defence.GatePaths.mayPass(v[0], abs, state), "gate " + i + ": the hired worker may pass");
+				h.assertTrue(!dev.villageheart.defence.GatePaths.mayPass(v[1], abs, state), "gate " + i + ": an unemployed villager may not pass");
+			}
+		});
+		seq = seq.thenExecute(() -> h.assertTrue(!plainReached[0], "the unemployed villager, asking from the same spot as the hired worker, is refused (the zombie is not what keeps it out)"));
 		seq.thenExecute(() -> {
 			h.assertTrue(!anyOpen(h), "planning does not open a gate");
 			VillageTestSupport.done(h);
