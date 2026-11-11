@@ -10,7 +10,7 @@ class RaiderRecallTest {
 	void aRaiderThatDoesNotCloseOnTheHeartIsBroughtToTheGate() {
 		long stall = Balance.RAIDER_RECALL_STALL;
 		assertTrue(RaiderRecall.recall(true, stall, 40, 0), "the ledge group never walks in");
-		assertFalse(RaiderRecall.recall(true, stall, 40, 1), "one at the gate is already a fight");
+		assertFalse(RaiderRecall.recall(true, stall, 40, 1), "one already on a guard is a fight");
 		assertFalse(RaiderRecall.recall(true, stall - 1, 40, 0), "still inside the stall window");
 		assertFalse(RaiderRecall.recall(true, stall, 24, 0), "already at the gate");
 		assertFalse(RaiderRecall.recall(false, stall + 100, 80, 0), "a dead raider is not moved");
@@ -24,10 +24,11 @@ class RaiderRecallTest {
 	}
 
 	@Test
-	void theRaiderIsPlacedOutsideTheGateAwayFromTheHeart() {
-		double[] at = RaiderRecall.outsideGate(681, 70, 855, 641, 821);
-		assertTrue(at[0] > 681, "east of the east gate, not inside the ring");
+	void theRaiderIsPlacedBesideTheGuardTowardTheGate() {
+		double[] at = RaiderRecall.besideGuard(660, 70, 864, 681, 855);
+		double dx = at[0] - 660, dz = at[2] - 864;
+		assertEquals(2, Math.sqrt(dx * dx + dz * dz), 0.05);
+		assertTrue(at[0] > 660, "toward the east gate, two blocks from the guard");
 		assertEquals(70, at[1], 0.01);
-		assertTrue(Math.abs(at[2] - 855) < 4);
 	}
 }

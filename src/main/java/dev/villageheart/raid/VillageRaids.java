@@ -145,7 +145,7 @@ public final class VillageRaids implements VillageSystem {
 		if (gates.length < 3) return;
 		HeartLocation heart = village.heart();
 		long now = level.getGameTime();
-		int nearGate = raidersNearGate(raid, gates);
+		int busy = raidersOnGuards(level, village, raid);
 		List<Integer> live = new ArrayList<>();
 		Raider chosen = null;
 		int[] chosenGate = null;
@@ -164,7 +164,7 @@ public final class VillageRaids implements VillageSystem {
 			if (gate == null) continue;
 			double gdx = raider.getX() - gate[0], gdz = raider.getZ() - gate[2];
 			double gateDist = Math.sqrt(gdx * gdx + gdz * gdz);
-			if (!RaiderRecall.recall(true, now - stall.since(), gateDist, nearGate)) continue;
+			if (!RaiderRecall.recall(true, now - stall.since(), gateDist, busy)) continue;
 			if (gateDist > chosenGateDist) {
 				chosen = raider;
 				chosenGate = gate;
@@ -173,27 +173,49 @@ public final class VillageRaids implements VillageSystem {
 		}
 		STALLS.keySet().retainAll(live);
 		if (chosen == null || chosenGate == null || now < nextRecallAt) return;
-		double[] at = RaiderRecall.outsideGate(chosenGate[0], chosenGate[1], chosenGate[2], heart.x(), heart.z());
+		Villager guard = nearestGuard(level, village, chosen);
+		if (guard == null) return;
+		double[] at = RaiderRecall.besideGuard(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(), chosenGate[0], chosenGate[2]);
 		Entity body = chosen;
 		while (body.getVehicle() != null) body = body.getVehicle();
 		body.teleportTo(at[0], at[1], at[2]);
 		if (body instanceof LivingEntity living) living.fallDistance = 0;
 		nextRecallAt = now + Balance.RAIDER_RECALL_GAP;
-		double ndx = at[0] - heart.x(), ndz = at[2] - heart.z();
+		double ndx = body.getX() - heart.x(), ndz = body.getZ() - heart.z();
 		STALLS.put(chosen.getId(), new Stall(Math.sqrt(ndx * ndx + ndz * ndz), now));
 	}
 
-	private static int raidersNearGate(Raid raid, int[] gates) {
+	/** Raiders already in a guard's reach. Another one is not added to that fight. */
+	private static int raidersOnGuards(ServerLevel level, VillageState village, Raid raid) {
 		int n = 0;
-		double limit = (double) Balance.RAIDER_RECALL_NEAR_GATE * Balance.RAIDER_RECALL_NEAR_GATE;
+		double limit = (double) Balance.RAIDER_RECALL_BUSY * Balance.RAIDER_RECALL_BUSY;
 		for (Raider raider : raid.getAllRaiders()) {
 			if (!raider.isAlive()) continue;
-			int[] gate = RaiderRecall.nearestGate(raider.getBlockX(), raider.getBlockY(), raider.getBlockZ(), gates);
-			if (gate == null) continue;
-			double gdx = raider.getX() - gate[0], gdz = raider.getZ() - gate[2];
-			if (gdx * gdx + gdz * gdz <= limit) n++;
+			for (WorkerRecord w : village.workers()) {
+				if (!JobType.GUARD.id().equals(w.jobId())) continue;
+				if (!(level.getEntity(w.villager()) instanceof Villager g) || !g.isAlive()) continue;
+				if (g.distanceToSqr(raider) <= limit) {
+					n++;
+					break;
+				}
+			}
 		}
 		return n;
+	}
+
+	private static Villager nearestGuard(ServerLevel level, VillageState village, Raider raider) {
+		Villager best = null;
+		double bestD = Double.MAX_VALUE;
+		for (WorkerRecord w : village.workers()) {
+			if (!JobType.GUARD.id().equals(w.jobId())) continue;
+			if (!(level.getEntity(w.villager()) instanceof Villager g) || !g.isAlive()) continue;
+			double d = g.distanceToSqr(raider);
+			if (d < bestD) {
+				bestD = d;
+				best = g;
+			}
+		}
+		return best;
 	}
 
 	private static int[] gateCells(VillageState village) {

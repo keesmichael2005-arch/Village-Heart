@@ -35,11 +35,13 @@ public final class RaiderRecall {
 		return new int[] { gates[best], gates[best + 1], gates[best + 2] };
 	}
 
-	/** Four blocks outside the gate, on the side away from the Heart, so the raider is not dropped in the yard. */
-	public static double[] outsideGate(int gx, int gy, int gz, int hx, int hz) {
-		double dx = gx - hx, dz = gz - hz;
+	/**
+	 * Two blocks from the guard, toward the gate. The raider is in melee with that guard. Placing it outside the gate
+	 * let it walk back to the ledge and hold the wave.
+	 */
+	public static double[] besideGuard(int gx, int gy, int gz, int gateX, int gateZ) {
+		double dx = gateX - gx, dz = gateZ - gz;
 		double h = Math.max(Math.sqrt(dx * dx + dz * dz), 0.1);
-		double step = Balance.RAIDER_RECALL_OUTSIDE;
-		return new double[] { gx + dx / h * step, gy, gz + dz / h * step };
+		return new double[] { gx + dx / h * 2, gy, gz + dz / h * 2 };
 	}
 }
