@@ -321,7 +321,6 @@ public class BuildGameTests {
 			problem = SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER);
 			h.assertTrue(problem == null, "the site is fine once the player's block is gone: " + (problem == null ? "" : problem.english()));
 			before.putAll(Stockpiles.totalsById(server));
-			BuildTestSupport.stock(h, new ItemStack(Items.DIRT, 3));
 			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
 			BuildJobs.Advanced a = BuildJobs.advance(server, BuildTestSupport.onlyBuild(h), 246);
 			h.assertTrue(a.steps() == 246 && !a.finished(), "the 246 clear steps ran: " + a);
@@ -1265,7 +1264,6 @@ public class BuildGameTests {
 			var job = BuildTestSupport.builds(h).get(0);
 			VillageClaims.data(h.getLevel().getServer()).update(v -> v.withBuild(job.withCarried(carried).withCarrier(builder[0].getUUID())));
 			before[0] = Stockpiles.snapshot(h.getLevel().getServer()).totals().stream().mapToLong(t -> t.count()).sum();
-			BuildTestSupport.stock(h, new ItemStack(Items.DIRT, 3));
 			cursor0[0] = BuildTestSupport.cursor(h);
 			watch[0] = true;
 		}).thenIdle(400).thenExecute(() -> {

@@ -62,8 +62,11 @@ public final class SiteGround {
 			}
 			if (floor == null) continue;
 			Pos cell = placement.world(bp, x, layer, z);
+			int floorY = placement.ground().y() + bp.base();
 			BlockPos at = new BlockPos(cell.x(), cell.y(), cell.z());
 			for (int d = 1; d <= 4; d++) {
+				// air inside the blueprint (under a marker in the front opening) is not foundation
+				if (cell.y() - d >= floorY) continue;
 				BlockPos below = at.below(d);
 				if (!level.getBlockState(below).isAir()) break;
 				if (out) { missing++; continue; }
