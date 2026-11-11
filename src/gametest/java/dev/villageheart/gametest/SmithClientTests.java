@@ -132,7 +132,10 @@ final class SmithClientTests {
 			srv.runCommand("tp @a -0.5 " + (y + 1) + " 20 facing -1.5 " + (y + 1.0) + " 7.5");
 			context.waitTicks(20);
 			sp.getClientWorld().waitForChunksRender();
-			String problem = context.computeOnClient(mc -> {
+			String problem = "not checked";
+			for (int i = 0; i < 40 && problem != null; i++) {
+				context.waitTicks(2);
+				problem = context.computeOnClient(mc -> {
 				var st = mc.level.getBlockState(new BlockPos(-2, fy, 7));
 				if (!st.is(Blocks.BLAST_FURNACE)) return "no blast furnace: " + st;
 				if (!st.getValue(AbstractFurnaceBlock.LIT)) return "the blast furnace is not lit on the client";
@@ -148,7 +151,15 @@ final class SmithClientTests {
 				if (!cracked) return "no cracked golem on the client";
 				return null;
 			});
-			if (problem != null) throw new AssertionError("smithy scene: " + problem);
+			}
+			if (problem != null) {
+				String serverJob = srv.computeOnServer(server -> {
+					var e = server.overworld().getEntity(smithId);
+					if (!(e instanceof Villager v)) return "no smith";
+					return v.getVillagerData().profession().unwrapKey().map(k -> k.identifier().toString()).orElse("none");
+				});
+				throw new AssertionError("smithy scene: " + problem + "; server profession " + serverJob);
+			}
 			context.takeScreenshot("smithy_golem");
 			context.runOnClient(mc -> { mc.options.hideGui = hideGui; mc.options.fov().set(fov); });
 			srv.runCommand("gamerule advance_time true");
