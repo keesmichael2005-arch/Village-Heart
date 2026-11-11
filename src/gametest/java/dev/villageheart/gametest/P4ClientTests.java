@@ -92,14 +92,25 @@ final class P4ClientTests {
 		context.takeScreenshot("slope_foundation_side");
 	}
 
-	/** A small solid pad. The player is teleported first so the chunk is loaded (a fill in an unloaded chunk does nothing). */
+	/** A solid pad laid on the server, then the player stands clear so they are not an entity in the build. */
 	private static void pad(ClientGameTestContext context, TestServerContext srv, int x, int y, int z) {
-		srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
-		context.waitTicks(20);
-		srv.runCommand("fill " + (x - 12) + " " + (y - 3) + " " + (z - 12) + " " + (x + 12) + " " + (y - 3) + " " + (z + 12) + " minecraft:stone");
-		srv.runCommand("fill " + (x - 12) + " " + (y - 2) + " " + (z - 12) + " " + (x + 12) + " " + (y - 2) + " " + (z + 12) + " minecraft:dirt");
-		srv.runCommand("fill " + (x - 12) + " " + (y - 1) + " " + (z - 12) + " " + (x + 12) + " " + (y - 1) + " " + (z + 12) + " minecraft:grass_block");
-		srv.runCommand("fill " + (x - 12) + " " + y + " " + (z - 12) + " " + (x + 12) + " " + (y + 14) + " " + (z + 12) + " minecraft:air");
+		srv.computeOnServer(server -> {
+			var level = server.overworld();
+			var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+			var dirt = net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState();
+			var grass = net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState();
+			var air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+			for (int dx = -24; dx <= 24; dx++) for (int dz = -24; dz <= 24; dz++) {
+				BlockPos column = new BlockPos(x + dx, y, z + dz);
+				level.setBlock(column.below(3), stone, 3);
+				level.setBlock(column.below(2), dirt, 3);
+				level.setBlock(column.below(1), grass, 3);
+				for (int dy = 0; dy <= 14; dy++) level.setBlock(column.above(dy), air, 3);
+			}
+			return 0;
+		});
+		srv.runCommand("tp @a " + (x + 30) + " " + (y + 4) + " " + (z + 30));
+		context.waitTicks(5);
 	}
 
 	private static void shootWatchtower(ClientGameTestContext context, TestSingleplayerContext sp, TestServerContext srv, int x, int y, int z) {
@@ -171,8 +182,8 @@ final class P4ClientTests {
 	private static void shoot(ClientGameTestContext context, TestServerContext srv, String blueprint, int x, int y, int z, String shot, boolean prepareGround) {
 		if (prepareGround) pad(context, srv, x, y, z);
 		else {
-			srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
-			context.waitTicks(10);
+			srv.runCommand("tp @a " + (x + 30) + " " + (y + 4) + " " + (z + 30));
+			context.waitTicks(5);
 		}
 		String result = srv.computeOnServer(server -> {
 			var bp = resolve(blueprint);
@@ -206,6 +217,12 @@ final class P4ClientTests {
 
 	private static void stockAll(net.minecraft.server.level.ServerLevel level, BlockPos chest) {
 		java.util.Map<Item, Integer> need = new java.util.LinkedHashMap<>();
+		need.put(Items.COBBLESTONE, 1600);
+		need.put(Items.OAK_PLANKS, 2800);
+		need.put(Items.OAK_LOG, 600);
+		need.put(Items.DIRT, 800);
+		need.put(Items.OAK_FENCE, 200);
+		need.put(Items.OAK_FENCE_GATE, 32);
 		List<Blueprint> plans = new ArrayList<>(Blueprints.all());
 		plans.add(Blueprints.SMALL_HOUSE);
 		for (Blueprint bp : plans) {
@@ -224,7 +241,7 @@ final class P4ClientTests {
 			while (left > 0) {
 				int n = Math.min(64, left);
 				int stored = Stockpiles.deposit(level, chest, new ItemStack(e.getKey(), n));
-				if (stored <= 0) return;
+				if (stored <= 0) break;
 				left -= stored;
 			}
 		}
