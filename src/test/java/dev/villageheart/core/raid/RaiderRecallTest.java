@@ -7,10 +7,12 @@ import org.junit.jupiter.api.Test;
 class RaiderRecallTest {
 	@Test
 	void aRaiderThatDoesNotCloseOnTheHeartIsBroughtToTheGate() {
-		assertTrue(RaiderRecall.recall(true, 200, 40), "the ledge group never walks in");
-		assertFalse(RaiderRecall.recall(true, 199, 40), "still inside the stall window");
-		assertFalse(RaiderRecall.recall(true, 200, 24), "already at the gate");
-		assertFalse(RaiderRecall.recall(false, 400, 80), "a dead raider is not moved");
+		assertTrue(RaiderRecall.recall(true, 200, 40, 0), "the ledge group never walks in");
+		assertTrue(RaiderRecall.recall(true, 200, 40, 1), "one raider at the gate still leaves room");
+		assertFalse(RaiderRecall.recall(true, 199, 40, 0), "still inside the stall window");
+		assertFalse(RaiderRecall.recall(true, 200, 24, 0), "already at the gate");
+		assertFalse(RaiderRecall.recall(true, 200, 40, 2), "two at the gate is already a fight");
+		assertFalse(RaiderRecall.recall(false, 400, 80, 0), "a dead raider is not moved");
 	}
 
 	@Test

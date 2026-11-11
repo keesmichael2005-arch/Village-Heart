@@ -9,9 +9,13 @@ import dev.villageheart.core.Balance;
 public final class RaiderRecall {
 	private RaiderRecall() {}
 
-	/** Stalled, and still far enough from a gate that the fight has not already reached the door. */
-	public static boolean recall(boolean alive, long ticksWithoutClosing, double distanceToGate) {
-		return alive && ticksWithoutClosing >= Balance.RAIDER_RECALL_STALL && distanceToGate > Balance.RAIDER_RECALL_NEAR_GATE;
+	/**
+	 * Stalled, still far from a gate, and the door is not already crowded. Two raiders at the gate are enough; a third
+	 * dropped on that fight is what killed the guards.
+	 */
+	public static boolean recall(boolean alive, long ticksWithoutClosing, double distanceToGate, int raidersNearGate) {
+		return alive && ticksWithoutClosing >= Balance.RAIDER_RECALL_STALL && distanceToGate > Balance.RAIDER_RECALL_NEAR_GATE
+				&& raidersNearGate < Balance.RAIDER_RECALL_AT_GATE;
 	}
 
 	/** The gate closest to the raider. {@code gates} is x, y, z triples. Null when there is no gate. */

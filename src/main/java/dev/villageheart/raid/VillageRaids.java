@@ -145,6 +145,7 @@ public final class VillageRaids implements VillageSystem {
 		if (gates.length < 3) return;
 		HeartLocation heart = village.heart();
 		long now = level.getGameTime();
+		int nearGate = raidersNearGate(raid, gates);
 		List<Integer> live = new ArrayList<>();
 		Raider chosen = null;
 		int[] chosenGate = null;
@@ -163,7 +164,7 @@ public final class VillageRaids implements VillageSystem {
 			if (gate == null) continue;
 			double gdx = raider.getX() - gate[0], gdz = raider.getZ() - gate[2];
 			double gateDist = Math.sqrt(gdx * gdx + gdz * gdz);
-			if (!RaiderRecall.recall(true, now - stall.since(), gateDist)) continue;
+			if (!RaiderRecall.recall(true, now - stall.since(), gateDist, nearGate)) continue;
 			if (gateDist > chosenGateDist) {
 				chosen = raider;
 				chosenGate = gate;
@@ -180,6 +181,19 @@ public final class VillageRaids implements VillageSystem {
 		nextRecallAt = now + Balance.RAIDER_RECALL_GAP;
 		double ndx = at[0] - heart.x(), ndz = at[2] - heart.z();
 		STALLS.put(chosen.getId(), new Stall(Math.sqrt(ndx * ndx + ndz * ndz), now));
+	}
+
+	private static int raidersNearGate(Raid raid, int[] gates) {
+		int n = 0;
+		double limit = (double) Balance.RAIDER_RECALL_NEAR_GATE * Balance.RAIDER_RECALL_NEAR_GATE;
+		for (Raider raider : raid.getAllRaiders()) {
+			if (!raider.isAlive()) continue;
+			int[] gate = RaiderRecall.nearestGate(raider.getBlockX(), raider.getBlockY(), raider.getBlockZ(), gates);
+			if (gate == null) continue;
+			double gdx = raider.getX() - gate[0], gdz = raider.getZ() - gate[2];
+			if (gdx * gdx + gdz * gdz <= limit) n++;
+		}
+		return n;
 	}
 
 	private static int[] gateCells(VillageState village) {
