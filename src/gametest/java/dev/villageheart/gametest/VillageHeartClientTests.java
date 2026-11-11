@@ -45,6 +45,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			LevelClientTests.villagersTabLevels(context);
 			return;
 		}
+		if ("smith".equals(System.getProperty("villageheart.l4.only"))) {
+			SmithClientTests.smithyGolem(context);
+			return;
+		}
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
 			sp.getServer().runCommand("time set day");
@@ -75,6 +79,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		HunterClientTests.villagersTabAwayHunting(context);
 		GuardClientTests.guardOnDuty(context);
 		GuardClientTests.villagersTabGuards(context);
+		SmithClientTests.smithyGolem(context);
 		MarketClientTests.stockpileReserves(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
