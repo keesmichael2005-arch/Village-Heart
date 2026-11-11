@@ -60,8 +60,10 @@ public class SiegeGameTests {
 			int stone = DefenceCells.count(index.cells().stream().map(c -> new DefenceCells.Placed(c.pos(), c.kind(), c.expectedState())).toList(), DefenceKind.STONE);
 			int gates = DefenceCells.count(index.cells().stream().map(c -> new DefenceCells.Placed(c.pos(), c.kind(), c.expectedState())).toList(), DefenceKind.GATE);
 			h.assertTrue(index.size() == 42 && stone == 39 && gates == 3, "index " + index.size() + " stone " + stone + " gate " + gates);
-			var rules = h.getLevel().getGameRules();
-			h.assertTrue(rules.get(SiegeGamerules.SIEGE_DAMAGE) && rules.get(SiegeGamerules.RANDOM_RAIDS) && rules.get(SiegeGamerules.SIEGES),
+			// The live values are one world, shared with every other GameTest. The registered default is what "default on" means.
+			h.assertTrue(Boolean.TRUE.equals(SiegeGamerules.SIEGE_DAMAGE.defaultValue())
+					&& Boolean.TRUE.equals(SiegeGamerules.RANDOM_RAIDS.defaultValue())
+					&& Boolean.TRUE.equals(SiegeGamerules.SIEGES.defaultValue()),
 					"the three siege gamerules default on");
 			VillageTestSupport.done(h);
 		});
