@@ -1043,7 +1043,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			note(AREA_BODY, grp, x + 2, y + 2, 8, 8);
 		}
 		int nameW = text(g, name, x + 12, y + 2, 100, WHITE, AREA_BODY, grp);
-		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 4 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
+		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 12 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
 		Component status = Component.translatable(HeartTexts.key("status." + b.status().name().toLowerCase(Locale.ROOT)));
 		int color = switch (b.status()) {
 			case VALID -> GREEN;
