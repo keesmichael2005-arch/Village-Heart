@@ -260,6 +260,10 @@ public final class SimulationRun implements Host {
 	}
 
 	private void setup() {
+		// random raids and zombie sieges stay off unless the scenario opts in (M25 3.12, 3.17). siege_damage stays on.
+		boolean threatsOn = scenario != null && scenario.threats();
+		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.RANDOM_RAIDS, threatsOn, server);
+		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.SIEGES, threatsOn, server);
 		// the simulated owner stands near the bell until the Heart exists, then at the Heart
 		BlockPos stand = SimWorld.heartSpot(level, bell).orElse(bell.below());
 		player = SimPlayer.join(server, level, stand);

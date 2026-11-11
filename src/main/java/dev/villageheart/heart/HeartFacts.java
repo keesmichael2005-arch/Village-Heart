@@ -222,6 +222,7 @@ public final class HeartFacts {
 		if (state.threats().raid().isEmpty() && state.threats().pending().isPresent()) {
 			extra.add(dev.villageheart.core.raid.RaidAlerts.pending());
 		}
+		state.threats().siege().filter(r -> r.spawned() > 0).ifPresent(r -> extra.add(dev.villageheart.core.siege.SiegeAlerts.siege(r.left())));
 		java.util.List<dev.villageheart.core.heart.DeathRow> deaths = new java.util.ArrayList<>();
 		for (dev.villageheart.core.death.DeathEntry e : state.deaths().recent(dev.villageheart.core.heart.HeartLimits.MAX_DEATH_ROWS)) {
 			deaths.add(new dev.villageheart.core.heart.DeathRow(e.name(), e.jobId(), e.cause(), e.day(), e.duringRaid()));

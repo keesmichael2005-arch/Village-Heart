@@ -18,6 +18,7 @@ class ScenarioParserTest {
 		assertEquals(0, s.actions().get(0).day());
 		assertEquals(3, s.assertions().size());
 		assertNull(s.seed());
+		assertFalse(s.threats());
 	}
 
 	private static String doc(String name, String days, String action, String assertion) {
@@ -49,5 +50,13 @@ class ScenarioParserTest {
 		assertEquals(7L, s.seed());
 		assertEquals("time set day", s.actions().get(0).fields().get("command"));
 		assertEquals(24005L, s.actions().get(0).dueTick());
+		assertFalse(s.threats());
+	}
+
+	@Test
+	void threatsFlag() {
+		Scenario on = ScenarioParser.parse("x", "{\"schema\":1,\"name\":\"x\",\"default_days\":1,\"threats\":true,\"actions\":[],\"assertions\":[]}");
+		assertTrue(on.threats());
+		bad("x", "{\"schema\":1,\"name\":\"x\",\"default_days\":1,\"threats\":\"yes\",\"actions\":[],\"assertions\":[]}", "threats");
 	}
 }

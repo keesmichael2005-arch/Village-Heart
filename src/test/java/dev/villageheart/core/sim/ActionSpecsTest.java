@@ -25,7 +25,9 @@ class ActionSpecsTest {
 				+ "{\"action\":\"raid\",\"day\":1,\"tick\":100,\"omen\":3,\"scaled\":false},"
 				+ "{\"action\":\"golems\",\"count\":1},"
 				+ "{\"action\":\"top_up_villagers\",\"adults\":4,\"at\":[2,2]},"
-				+ "{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":2}"));
+				+ "{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":2},"
+				+ "{\"action\":\"siege\",\"day\":2,\"zombies\":8},"
+				+ "{\"action\":\"threats\",\"random_raids\":true,\"sieges\":false}"));
 	}
 
 	@Test void typosNameTheField() {
@@ -49,5 +51,11 @@ class ActionSpecsTest {
 		bad("{\"action\":\"top_up_villagers\",\"adults\":4}", "at");
 		bad("{\"action\":\"worker_level\",\"job\":\"wizard\",\"level\":2}", "unknown job wizard");
 		bad("{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":4}", "level");
+		bad("{\"action\":\"siege\",\"zombies\":8}", "day");
+		bad("{\"action\":\"siege\",\"day\":1}", "zombies");
+		bad("{\"action\":\"siege\",\"day\":1,\"zombies\":0}", "zombies");
+		bad("{\"action\":\"siege\",\"day\":1,\"zombies\":21}", "zombies");
+		bad("{\"action\":\"threats\",\"random_raids\":true}", "sieges");
+		bad("{\"action\":\"threats\",\"random_raids\":\"yes\",\"sieges\":true}", "random_raids");
 	}
 }

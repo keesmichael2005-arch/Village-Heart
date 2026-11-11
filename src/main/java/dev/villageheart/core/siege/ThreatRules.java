@@ -23,9 +23,12 @@ public final class ThreatRules {
 
 	/** A test asks for the next roll to succeed. It stays set until a roll is actually allowed. */
 	private static boolean forceRaid;
+	private static boolean forceSiege;
 	/** A test shortens the grace and the gap. Null uses {@link Balance}. */
 	private static Integer graceForTest;
 	private static Integer gapForTest;
+	private static Integer siegeGraceForTest;
+	private static Integer siegeGapForTest;
 
 	/** The next allowed raid roll succeeds, whatever the seeded chance was. */
 	public static void forceRoll() { forceRaid = true; }
@@ -33,6 +36,19 @@ public final class ThreatRules {
 	public static boolean raidForced() { return forceRaid; }
 
 	public static void clearRaidForce() { forceRaid = false; }
+
+	/** The next allowed siege roll succeeds, whatever the seeded chance was. */
+	public static void forceSiege() { forceSiege = true; }
+
+	public static boolean siegeForced() { return forceSiege; }
+
+	public static void clearSiegeForce() { forceSiege = false; }
+
+	/** Siege grace and gap of 0 let a brand-new village roll. Cleared with {@link #clearForTest()}. */
+	public static void siegeGraceForTest(int grace, int gap) {
+		siegeGraceForTest = grace;
+		siegeGapForTest = gap;
+	}
 
 	/** Grace and gap of 0 let a brand-new village roll. Cleared with {@link #clearForTest()}. */
 	public static void graceAndGapForTest(int grace, int gap) {
@@ -42,8 +58,11 @@ public final class ThreatRules {
 
 	public static void clearForTest() {
 		forceRaid = false;
+		forceSiege = false;
 		graceForTest = null;
 		gapForTest = null;
+		siegeGraceForTest = null;
+		siegeGapForTest = null;
 	}
 
 	public static boolean mayRollRaid(Tier tier, int ageDays, int daysSinceRaid, boolean tracked, boolean pending, Gates gates) {
@@ -56,8 +75,10 @@ public final class ThreatRules {
 	}
 
 	public static boolean mayRollSiege(Tier tier, int ageDays, int daysSinceSiege, int daysSinceRaid, boolean tracked, boolean pending, Gates gates) {
-		if (tier == Tier.HAMLET || ageDays < Balance.SIEGE_GRACE_DAYS) return false;
-		if (daysSinceSiege != ThreatState.NO_DAY && daysSinceSiege < Balance.SIEGE_GAP_DAYS) return false;
+		int grace = siegeGraceForTest == null ? Balance.SIEGE_GRACE_DAYS : siegeGraceForTest;
+		int gap = siegeGapForTest == null ? Balance.SIEGE_GAP_DAYS : siegeGapForTest;
+		if (tier == Tier.HAMLET || ageDays < grace) return false;
+		if (daysSinceSiege != ThreatState.NO_DAY && daysSinceSiege < gap) return false;
 		if (daysSinceRaid != ThreatState.NO_DAY && daysSinceRaid < Balance.THREAT_REST_DAYS) return false;
 		if (tracked || pending || gates.peaceful() || !gates.sieges() || !gates.mobSpawning()) return false;
 		return true;

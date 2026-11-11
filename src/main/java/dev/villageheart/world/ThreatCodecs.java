@@ -232,7 +232,8 @@ public final class ThreatCodecs {
 	}
 
 	private record RawThreat(Optional<RaidRecord> raid, Optional<RaidSummary> lastRaid, Optional<PendingRaid> pending, Optional<SiegeRecord> siege,
-			Optional<SiegeRecord> lastSiege, int lastRaidEndDay, int lastSiegeDay, int lastRewardDay, RawRolls rolls, DefenceDamage damage) {}
+			Optional<SiegeRecord> lastSiege, int lastRaidEndDay, int lastSiegeDay, int lastRewardDay, RawRolls rolls, int pendingSiegeDay,
+			DefenceDamage damage) {}
 
 	public static final Codec<ThreatState> THREATS = RecordCodecBuilder.<RawThreat>create(i -> i.group(
 			lenientOptional(RAID, "raid").forGetter(RawThreat::raid),
@@ -244,12 +245,13 @@ public final class ThreatCodecs {
 			Codec.INT.optionalFieldOf("last_siege_day", ThreatState.NO_DAY).forGetter(RawThreat::lastSiegeDay),
 			Codec.INT.optionalFieldOf("last_reward_day", ThreatState.NO_DAY).forGetter(RawThreat::lastRewardDay),
 			lenient(ROLLS, "last_rolled_day", new RawRolls(ThreatState.NO_DAY, ThreatState.NO_DAY)).forGetter(RawThreat::rolls),
+			Codec.INT.optionalFieldOf("pending_siege_day", ThreatState.NO_DAY).forGetter(RawThreat::pendingSiegeDay),
 			lenient(DAMAGE, "damage", DefenceDamage.EMPTY).forGetter(RawThreat::damage)
 	).apply(i, RawThreat::new)).xmap(
 			r -> new ThreatState(r.raid(), r.lastRaid(), r.pending(), r.siege(), r.lastSiege(), r.lastRaidEndDay(), r.lastSiegeDay(), r.lastRewardDay(),
-					r.rolls().raid(), r.rolls().siege(), r.damage()),
+					r.rolls().raid(), r.rolls().siege(), r.pendingSiegeDay(), r.damage()),
 			t -> new RawThreat(t.raid(), t.lastRaid(), t.pending(), t.siege(), t.lastSiege(), t.lastRaidEndDay(), t.lastSiegeDay(), t.lastRewardDay(),
-					new RawRolls(t.lastRaidRollDay(), t.lastSiegeRollDay()), t.damage()));
+					new RawRolls(t.lastRaidRollDay(), t.lastSiegeRollDay()), t.pendingSiegeDay(), t.damage()));
 
 	/** Sorted ground-relative positions, for the defence-site codec. */
 	public static List<Long> sortedSet(java.util.Set<Long> in) {

@@ -42,6 +42,7 @@ public final class VillageTestSupport {
 		dev.villageheart.raid.VillageRaids.clearForTests();
 		dev.villageheart.raid.ThreatScheduler.clearForTests();
 		dev.villageheart.core.siege.Threat.clearForce();
+		dev.villageheart.siege.VanillaSiege.clear();
 		dev.villageheart.raid.RaidNotices.setSinkForTest(null);
 		dev.villageheart.raid.RaiderKills.clearForTests();
 		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);

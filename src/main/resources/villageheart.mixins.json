@@ -11,6 +11,7 @@
 		"RaidGroups",
 		"RaidsView",
 		"NodeEvaluatorAccess",
+		"VillageSiegeMixin",
 		"VillagerBrainMixin",
 		"WalkNodeEvaluatorMixin"
 	],

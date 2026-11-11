@@ -26,6 +26,12 @@ public final class SiegeAlerts {
 		return Optional.of(new Line(text, false));
 	}
 
+	/** "Zombie siege! %s zombies left", while a siege has spawned. */
+	public static AlertLine siege(int left) {
+		return new AlertLine(AlertCode.SIEGE, Severity.DANGER,
+				new TextLine(ALERT + "siege", "Zombie siege! %s zombies left", List.of(Integer.toString(Math.max(0, left)))));
+	}
+
 	/** The Overview row for the same counts. Empty when nothing is cracked or breached. */
 	public static Optional<AlertLine> alert(int breached, int cracked, boolean threat, boolean hasBuilder) {
 		Optional<Line> line = line(breached, cracked, threat, hasBuilder);

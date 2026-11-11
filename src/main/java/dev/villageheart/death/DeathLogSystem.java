@@ -69,10 +69,16 @@ public final class DeathLogSystem {
 			boolean inClaim, ServerLevel level) {
 		VillageClaims.data(server).update(s -> {
 			boolean duringRaid = s.threats().raid().isPresent();
+			boolean duringSiege = s.threats().siege().filter(r -> r.spawned() > 0).isPresent();
 			var deaths = s.deaths().appendUnlessSameLoss(new DeathEntry(0, villager.getUUID(), villager.getName().getString(),
-					worker.map(WorkerData::jobId).orElse(""), cause, byMob, level.getGameTime(), day(level), inClaim, duringRaid, false));
-			var raidRecord = inClaim && duringRaid ? RaidTracker.onVillagerDeath(s.threats().raid()) : s.threats().raid();
-			return s.withDeaths(deaths).withRaid(raidRecord);
+					worker.map(WorkerData::jobId).orElse(""), cause, byMob, level.getGameTime(), day(level), inClaim, duringRaid, duringSiege));
+			var next = s.withDeaths(deaths);
+			if (inClaim && duringRaid) next = next.withRaid(RaidTracker.onVillagerDeath(next.threats().raid()));
+			if (inClaim && duringSiege) {
+				next = next.withThreats(next.threats().withSiege(next.threats().siege()
+						.map(r -> r.withVillagerDeaths(r.villagerDeaths() + 1))));
+			}
+			return next;
 		});
 	}
 

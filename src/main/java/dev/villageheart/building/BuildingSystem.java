@@ -10,6 +10,7 @@ import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.ClaimArea;
 import dev.villageheart.core.building.Reason;
 import dev.villageheart.core.building.Verdict;
+import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.room.RoomScan;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.world.VillageSystem;
@@ -61,6 +62,16 @@ public final class BuildingSystem implements VillageSystem {
 	public static int pendingForTests(MinecraftServer server) { return runtime(server).pending.size(); }
 
 	public static int priorityQueuedForTests(MinecraftServer server) { return runtime(server).schedule.pendingPriority(); }
+
+	/** True when a scanned room occupies this block. A siege will not spawn inside one. */
+	public static boolean insideRoom(MinecraftServer server, int x, int y, int z) {
+		BuildingRuntime rt = runtime;
+		if (rt == null || rt.server != server) return false;
+		Pos p = new Pos(x, y, z);
+		for (var scan : rt.rawScans.values()) if (scan.occupies(p)) return true;
+		for (var scan : rt.lastEnclosed.values()) if (scan.occupies(p)) return true;
+		return false;
+	}
 
 	// ---- hooks from MarkerBlock ------------------------------------------------------------------
 

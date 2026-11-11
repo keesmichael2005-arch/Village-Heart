@@ -45,7 +45,9 @@ public final class SimActions {
 			Map.entry("raid", RaidSim::raid),
 			Map.entry("golems", RaidSim::golems),
 			Map.entry("top_up_villagers", RaidSim::topUp),
-			Map.entry("worker_level", RaidSim::workerLevel));
+			Map.entry("worker_level", RaidSim::workerLevel),
+			Map.entry("siege", SimActions::siege),
+			Map.entry("threats", SimActions::threats));
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");
@@ -90,5 +92,18 @@ public final class SimActions {
 
 	private static void hang(SimulationRun ctx, dev.villageheart.core.sim.ScenarioAction a) throws InterruptedException {
 		while (true) Thread.sleep(1000);
+	}
+
+	/** Starts a siege now with the given count. The 3.12 spawn rule applies; the roll and the size rule do not. */
+	private static void siege(SimulationRun ctx, dev.villageheart.core.sim.ScenarioAction a) {
+		int zombies = ((Number) a.fields().get("zombies")).intValue();
+		dev.villageheart.siege.ZombieSiege.startNow(ctx.server(), zombies);
+	}
+
+	private static void threats(SimulationRun ctx, dev.villageheart.core.sim.ScenarioAction a) {
+		boolean raids = Boolean.TRUE.equals(a.fields().get("random_raids"));
+		boolean sieges = Boolean.TRUE.equals(a.fields().get("sieges"));
+		ctx.level().getGameRules().set(dev.villageheart.siege.SiegeGamerules.RANDOM_RAIDS, raids, ctx.server());
+		ctx.level().getGameRules().set(dev.villageheart.siege.SiegeGamerules.SIEGES, sieges, ctx.server());
 	}
 }

@@ -98,6 +98,11 @@ public final class ActionSpecs {
 				if (JobType.byId(job).isEmpty()) throw new IllegalArgumentException("job: unknown job " + job);
 				integer(f, "level", -1, 1, 3);
 			}
+			case "siege" -> integer(f, "zombies", -1, 1, 20);
+			case "threats" -> {
+				bool(f, "random_raids");
+				bool(f, "sieges");
+			}
 			case "night_spawn" -> {
 				String mob = str(f, "mob");
 				if (!mob.contains(":")) throw new IllegalArgumentException("mob must be a namespaced entity id: " + mob);
@@ -107,6 +112,10 @@ public final class ActionSpecs {
 			}
 			default -> { }
 		}
+	}
+
+	private static void bool(Map<String, Object> f, String k) {
+		if (!(f.get(k) instanceof Boolean)) throw new IllegalArgumentException(k + " must be true or false");
 	}
 
 	private static String str(Map<String, Object> f, String k) {

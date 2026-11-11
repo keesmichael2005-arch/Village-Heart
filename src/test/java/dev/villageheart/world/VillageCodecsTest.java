@@ -471,7 +471,7 @@ class VillageCodecsTest {
 		for (int i = 0; i < Balance.MAX_DAMAGED_CELLS; i++) cracks.put((long) i, 1 + (i % (Balance.HP_STONE - 1)));
 		List<UUID> zombies = List.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
 		ThreatState threats = new ThreatState(Optional.of(raid()), Optional.empty(), Optional.of(new PendingRaid(4, 5000)),
-				Optional.of(new SiegeRecord(9, zombies, 3, 1, 0)), Optional.empty(), 2, ThreatState.NO_DAY, ThreatState.NO_DAY, 3, 4,
+				Optional.of(new SiegeRecord(9, zombies, 3, 1, 0)), Optional.empty(), 2, ThreatState.NO_DAY, ThreatState.NO_DAY, 3, 4, 9,
 				new DefenceDamage(cracks, List.of()));
 		VillageState v = VillageState.founded(new HeartLocation("minecraft:overworld", 1, 2, 3), OWNER, "a", 4).withThreats(threats);
 		assertEquals(v, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v)));

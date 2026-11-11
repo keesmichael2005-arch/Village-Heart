@@ -25,6 +25,7 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.economy.Treasury;
 import dev.villageheart.mixin.RaidAccessor;
 import dev.villageheart.siege.SiegeGamerules;
+import dev.villageheart.siege.ZombieSiege;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.worker.guard.GuardAttachments;
 import dev.villageheart.world.VillageClaims;
@@ -51,7 +52,7 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Rolls a random raid once a day, starts it once a player has been near, adds the extra raiders, and pays a victory
- * (docs/plans/M25.md 3.13, 3.13a, 3.14). Siege spawning is step 17; the clock still remembers that it rolled.
+ * (docs/plans/M25.md 3.13, 3.13a, 3.14). The same tick asks {@link ZombieSiege} to roll and to spawn.
  */
 public final class ThreatScheduler implements VillageSystem {
 	public static final ThreatScheduler INSTANCE = new ThreatScheduler();
@@ -65,6 +66,7 @@ public final class ThreatScheduler implements VillageSystem {
 	private static int loadedStreak;
 	private static boolean lateRaid;
 	private static boolean lateSiege;
+	private static boolean clearUnspawned;
 
 	private ThreatScheduler() {}
 
@@ -73,9 +75,18 @@ public final class ThreatScheduler implements VillageSystem {
 		loadedStreak = 0;
 		lateRaid = false;
 		lateSiege = false;
+		clearUnspawned = false;
 		warnings = 0;
 		ThreatRules.clearForTest();
+		ZombieSiege.clearForTests();
 	}
+
+	/** The siege wrote its first zombie, so dawn must not treat the roll as unspawned. */
+	public static void noteSiegeSpawned() {
+		if (clock != null) clock = clock.withSiegeSpawned(true);
+	}
+
+	public static ServerLevel levelOf(MinecraftServer server, HeartLocation heart) { return level(server, heart); }
 
 	@Override
 	public void tick(MinecraftServer server, VillageState village) {
@@ -100,6 +111,10 @@ public final class ThreatScheduler implements VillageSystem {
 		if (threats.pending().isPresent()) tryStart(server, level, village, threats);
 		else loadedStreak = 0;
 		spawnExtras(server, level, village);
+		boolean forcedSiege = ThreatRules.siegeForced();
+		ZombieSiege.onTick(server, level, village, lateSiege || forcedSiege, clearUnspawned);
+		if (!forcedSiege) lateSiege = false;
+		clearUnspawned = false;
 	}
 
 	/** A random victory pays the treasury once. {@code record} is the raid that just closed. */
@@ -125,6 +140,7 @@ public final class ThreatScheduler implements VillageSystem {
 		if (clock == null) {
 			lateRaid = threats.lastRaidRollDay() != day && time >= Balance.RAID_ROLL_TICK;
 			lateSiege = threats.lastSiegeRollDay() != day && time >= Balance.SIEGE_ROLL_TICK;
+			clearUnspawned = false;
 			clock = new ThreatClock(day, time, lateRaid ? day : threats.lastRaidRollDay(), lateSiege ? day : threats.lastSiegeRollDay(),
 					threats.siege().isPresent());
 		} else {
@@ -132,6 +148,7 @@ public final class ThreatScheduler implements VillageSystem {
 			clock = step.clock();
 			lateRaid = step.raidRoll();
 			lateSiege = step.siegeRoll();
+			clearUnspawned = step.clearUnspawnedSiege();
 		}
 		if (clock.lastRaidRollDay() != threats.lastRaidRollDay() || clock.lastSiegeRollDay() != threats.lastSiegeRollDay()) {
 			VillageClaims.data(level.getServer()).update(s -> s.withThreats(s.threats().withRollDays(clock.lastRaidRollDay(), clock.lastSiegeRollDay())));
