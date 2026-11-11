@@ -906,3 +906,20 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `scripts/verify.sh --fast` at eb4b866 was red. Layer 1's GameTest run failed only `market_game_tests_strike_stops_sales_income_settles` ("at its stall" at tick 1827); the following layer 2 run did not fail it. Layer 2 failed `gateEdgeOfClaim` (0 of 5 villagers in the world at tick 8) and `golemWithoutIronWaits` (timed out at tick 6002, health 40, 9 blocks from the spot, 3 ingots still in the chest). Both smith tests then passed alone. The edge test now waits until every spawn cell on both pads is entity-ticking; the gate assertions are the same. A later full-suite layer 1 still saw 4 of 5 villagers when only the pad centres were checked.
 - `scripts/verify.sh --fast` at a7c118f exit 0. Layer 1 and layer 2 each "All 418 required tests passed". Perf worst-batch median 2581 us.
 - `scripts/verify.sh` at 79826b6 exit 0. Layer 1 and layer 2 each "All 418 required tests passed". Layer 4 green (42 screenshots, lost wakeups rescued 2, one leaked in-flight close cleared). Perf worst-batch median 2623 us. origin/dev is still c7f109b, so no second merge. The unloaded-chunk half of T-L2-5k is not done (the Mine is invalidated by pulling a wall). Blockers: none.
+- GitHub refused the PR into `dev` ("must be a collaborator"). Branch `m19` is pushed. Title and description, for whoever can open it:
+
+### PR title
+
+TASK 2: Smith: on-demand tools, guard gear, iron golems
+
+### PR description
+
+Status: TASK 2 Smith, branch `m19`, done. Last verify `scripts/verify.sh` exit 0 at `79826b6` (docs-only follow-up after that).
+
+The smith crafts tools and guard gear only when a slot is missing or worn out, at the best tier the village can afford, and never as a spare. Guards start on a wooden sword. Iron golems are built from 36 ingots and a carved pumpkin, capped at one per five villagers, repaired below half health, and vanilla golem spawning is off inside the claim. Nobody attacks creepers. Rules as built are in DESIGN §5.7. Tests are in TESTING.md under "Smith GameTests". Deviations are in docs/plans/M19.md section 8. ROADMAP boxes are not ticked.
+
+The unloaded-chunk half of T-L2-5k is not covered: the 32×32 yard stays loaded, and a mine far enough to unload is outside the claim. The test pulls a Mine wall instead, which makes the marker invalid and pauses the committed pickaxe.
+
+`scripts/verify.sh` at `79826b6` (2026-11-11T11:19:08Z), exit 0. Layer 1 and layer 2 each "All 418 required tests passed". GameTest-ran gate, L3 script self-test, model-log gate and 2-player log gate passed. Layer 4 green: lost wakeups rescued 2, one leaked in-flight close cleared, world-load timeout fix installed, no villageheart model warnings, 2-player session clean. Screenshots 0000 through 0041, including `0037_smithy_golem.png`. Perf worst-batch median 2623 us; 16x16x8 2292 us; stockpile spill 1415 us; snapshot 278 us; full-storage deposit 243 us; village ticker idle tick mean 9.345E-4 ms.
+
+`0037_smithy_golem.png`: open oak Smithy at noon, two iron golems in the doorway (the new one pale, the one at 20 health dark-cracked and vine-covered), smithy marker on the back wall between their heads. The blacksmith and the lit furnace are behind the golems. The client checks for the lit furnace, the blacksmith profession, two golems and HIGH crackiness ran before the south wall was opened.
