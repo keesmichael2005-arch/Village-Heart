@@ -2,6 +2,6 @@
   "parent": "villageheart:block/marker_plaque",
   "textures": {
     "front": "villageheart:block/marker/barracks_valid",
-    "edge": "minecraft:block/stripped_oak_log"
+    "edge": "villageheart:block/marker_edge"
   }
 }
