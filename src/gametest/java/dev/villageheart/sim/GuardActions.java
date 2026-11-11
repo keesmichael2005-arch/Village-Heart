@@ -61,7 +61,8 @@ public final class GuardActions {
 	 * walker. Solid cobblestone, not wall blocks (an unconnected wall block is a 4-pixel post a zombie walks between). A torch on top every 6 blocks.
 	 * The wall is two blocks above the flattened site, and higher where the natural ground just outside is higher: its top is always at least
 	 * {@link #WALL_CLEARANCE} blocks above the outside ground (M26 prep: on seed 1 the ground west of the site is a block up, so a two-high wall
-	 * was a one-block step from outside and the scripted zombies walked over it).
+	 * was a one-block step from outside and the scripted zombies walked over it). The ground in front of the gate is cut down to the site's level
+	 * ({@link #digGateApproach}): a mob one block up in front of a fence gate steps over it.
 	 */
 	public static void wallRing(Host ctx, ScenarioAction a) {
 		ServerLevel level = ctx.level();
@@ -71,6 +72,7 @@ public final class GuardActions {
 		int w = ((Number) size.get(0)).intValue(), d = ((Number) size.get(1)).intValue();
 		int gateX = num(a, "gate", w / 2);
 		int y = site.getY();
+		int dug = digGateApproach(level, site, d, gateX);
 		int cells = 0, raised = 0, maxRaise = 0;
 		for (int x = 0; x < w; x++) {
 			for (int z = 0; z < d; z++) {
@@ -96,8 +98,30 @@ public final class GuardActions {
 				cells++;
 			}
 		}
-		VillageHeart.LOG.info("[sim] wall ring {}x{} at {}: {} cells, gate at x+{}, {} cells raised for higher ground outside (up to +{})", w, d,
-				site.toShortString(), cells, gateX, raised, maxRaise);
+		VillageHeart.LOG.info("[sim] wall ring {}x{} at {}: {} cells, gate at x+{}, {} cells raised for higher ground outside (up to +{}), {} gate approach blocks dug",
+				w, d, site.toShortString(), cells, gateX, raised, maxRaise, dug);
+	}
+
+	/**
+	 * The ground in front of the gate (3 wide, 2 deep, outside the south edge) is cut down to the site's level: a fence gate is 1.5 high, so a
+	 * mob standing one block up in front of it steps over it (seed 1: the ground there is a block up). Walkers step down to the gate and through.
+	 */
+	static int digGateApproach(ServerLevel level, BlockPos site, int d, int gateX) {
+		int dug = 0;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = 0; dz <= 1; dz++) {
+				int x = site.getX() + gateX + dx, z = site.getZ() + d + dz;
+				for (int y = site.getY() + 1; y <= site.getY() + 1 + MAX_GROUND_STEP; y++) {
+					BlockPos p = new BlockPos(x, y, z);
+					if (level.getBlockState(p).isAir()) continue;
+					set(level, p, Blocks.AIR.defaultBlockState());
+					dug++;
+				}
+				BlockPos floor = new BlockPos(x, site.getY(), z);
+				if (!level.getBlockState(floor).isSolidRender()) set(level, floor, Blocks.GRASS_BLOCK.defaultBlockState());
+			}
+		}
+		return dug;
 	}
 
 	/** A wall's top must be this many blocks above the ground a mob stands on outside it (a zombie steps up one block, a fence's 1.5 stops it). */

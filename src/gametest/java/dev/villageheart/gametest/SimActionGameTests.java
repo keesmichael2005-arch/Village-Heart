@@ -438,16 +438,17 @@ public class SimActionGameTests {
 	 * {@code wall_ring} where the natural ground outside the west wall is one block above the site (as on seed 1): the wall there is raised so its
 	 * top is {@code WALL_CLEARANCE} above that ground, the wall on flat ground stays two high, and a zombie on the higher ground cannot plan a path
 	 * to a cell inside. Before the fix the two-high wall was a one-block step from outside: {@code defended_walled} logged scripted zombies inside
-	 * the ring with its only gate closed.
+	 * the ring with its only gate closed. The ground in front of the gate is one up as well: it is dug down, so the closed gate stops a zombie.
 	 */
 	@GameTest(environment = "villageheart-gametest:sim_wall_ring_uneven", structure = YARD, skyAccess = true, maxTicks = 400)
 	public void wallRingRisesOverHigherGround(GameTestHelper h) {
 		WorkerTestSupport.begin(h);
-		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[1];
+		net.minecraft.world.entity.monster.zombie.Zombie[] z = new net.minecraft.world.entity.monster.zombie.Zombie[2];
 		BuildingTestSupport.begin(h).thenExecute(() -> {
 			sweepVillagers(h);
 			LumberTestSupport.grass(h, 0, 0, 31, 31);
 			for (int x = 0; x <= 3; x++) for (int zz = 2; zz <= 21; zz++) h.setBlock(new BlockPos(x, 0, zz), Blocks.GRASS_BLOCK); // ground one up, west
+			for (int x = 11; x <= 17; x++) for (int zz = 20; zz <= 25; zz++) h.setBlock(new BlockPos(x, 0, zz), Blocks.GRASS_BLOCK); // and in front of the gate
 			BlockPos site = h.absolutePos(new BlockPos(4, -1, 4));
 			Host host = new Host() {
 				public ServerLevel level() { return h.getLevel(); }
@@ -460,6 +461,9 @@ public class SimActionGameTests {
 			z[0] = h.spawn(EntityType.ZOMBIE, new BlockPos(1, 1, 12));
 			z[0].setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(Items.IRON_HELMET));
 			z[0].setPersistenceRequired(); // with its AI: a no-AI mob in mid-air plans from the wrong start node
+			z[1] = h.spawn(EntityType.ZOMBIE, new BlockPos(14, 1, 24)); // on the higher ground, two cells out from the gate (x 4 + 10)
+			z[1].setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(Items.IRON_HELMET));
+			z[1].setPersistenceRequired();
 		}).thenIdle(5).thenExecute(() -> {
 			h.assertTrue(z[0].getBlockX() < h.absolutePos(new BlockPos(4, 0, 0)).getX(), "the zombie is still outside: " + h.relativePos(z[0].blockPosition()));
 			for (int zz = 5; zz <= 18; zz++) {
@@ -471,7 +475,14 @@ public class SimActionGameTests {
 			}
 			net.minecraft.world.level.pathfinder.Path path = z[0].getNavigation().createPath(h.absolutePos(new BlockPos(5, 0, 12)), 0);
 			h.assertTrue(path == null || !path.canReach(), "a zombie on the higher ground cannot plan a path over the wall: " + path);
+			for (int x = 13; x <= 15; x++) {
+				for (int zz = 20; zz <= 21; zz++) h.assertTrue(h.getBlockState(new BlockPos(x, 0, zz)).isAir(), "the gate approach is dug down at " + x + ", " + zz);
+			}
+			h.assertTrue(h.getBlockState(new BlockPos(14, 0, 19)).getBlock() instanceof net.minecraft.world.level.block.FenceGateBlock, "the gate");
+			net.minecraft.world.level.pathfinder.Path viaGate = z[1].getNavigation().createPath(h.absolutePos(new BlockPos(14, 0, 16)), 0);
+			h.assertTrue(viaGate == null || !viaGate.canReach(), "a zombie in front of the gate cannot plan a path over it: " + viaGate);
 			z[0].discard();
+			z[1].discard();
 			VillageTestSupport.done(h);
 			WorkerTestSupport.end(h);
 		});
