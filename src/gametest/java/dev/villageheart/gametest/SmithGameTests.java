@@ -14,10 +14,12 @@ import static dev.villageheart.gametest.SmithTestSupport.walkBlocks;
 import dev.villageheart.block.JobBlocks;
 import dev.villageheart.building.Buildings;
 import dev.villageheart.core.Balance;
+import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingRequirements;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.heart.HeartTexts;
 import dev.villageheart.core.gear.CraftTier;
 import dev.villageheart.core.gear.GearCraft;
 import dev.villageheart.core.gear.GearNeed;
@@ -460,6 +462,96 @@ public class SmithGameTests {
 			h.assertValueEqual(1L, crafts, "the pause did not start a second pickaxe");
 			VillageTestSupport.done(h);
 		});
+	}
+
+	// ---- T-L2-5l --------------------------------------------------------------------------------------
+
+	/**
+	 * A lumberjack already making a stone axe keeps that craft when a smith is hired. The smith takes the other lumberjack's
+	 * slot, and that lumberjack never starts one of their own.
+	 *
+	 * The second lumberjack is hired in the same tick as the smith. Hired earlier, with nobody serving, they start a fetch of
+	 * their own, and a fetch already walking is not cancelled when a smith arrives.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_self_takeover", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void smithTakesOverFromSelfCraft(GameTestHelper h) {
+		Villager[] jacks = new Villager[2];
+		Villager[] smith = new Villager[1];
+		long[] hiredAt = {-1};
+		boolean[] jack2Crafted = {false};
+		SelfCraftTestSupport.Sampler sampler = new SelfCraftTestSupport.Sampler();
+		BlockPos treeA = new BlockPos(4, 0, 28);
+		BlockPos treeB = new BlockPos(22, 0, 28);
+		BlockPos secondBlock = BuildingTestSupport.inside(SmithTestSupport.CAMP, 3, 0, 1);
+		h.onEachTick(() -> {
+			sampler.sample(h);
+			if (jacks[1] != null && h.getTick() % 20 == 0 && SelfCraftTestSupport.record(h, jacks[1].getUUID()).isPresent()) jack2Crafted[0] = true;
+		});
+		scene(h).thenExecute(() -> {
+			SelfCraftSwitch.reset();
+			SmithTestSupport.addLumberCamp(h);
+			h.setBlock(secondBlock, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			h.assertValueEqual(2, contents(h, SmithTestSupport.campMarker(), BuildingType.LUMBER_CAMP, BuildingRequirements.CHOPPING_BLOCK), "chopping blocks");
+		}).thenExecute(() -> {
+			clearStonePad(h, treeA);
+			clearStonePad(h, treeB);
+			LumberTestSupport.growOak(h, treeA, 1);
+			LumberTestSupport.growOak(h, treeB, 2);
+			putStore(h, Items.OAK_PLANKS, 10);
+			putStore(h, Items.COBBLESTONE, 6);
+			putStore(h, Items.STICK, 4);
+			setDayTime(h, 1000);
+			jacks[0] = SmithTestSupport.hireLumberjack(h);
+		}).thenWaitUntil(() -> {
+			var rec = SelfCraftTestSupport.record(h, jacks[0].getUUID());
+			h.assertTrue(rec.isPresent() && rec.get().craft().recipeId().equals("minecraft:stone_axe"), "no stone axe self-craft yet");
+			h.assertValueEqual("Making a stone axe", activityWords(h, jacks[0]), "status");
+		}).thenExecute(() -> {
+			smith[0] = hire(h);
+			jacks[1] = SmithTestSupport.hireLumberjack(h);
+			hiredAt[0] = h.getTick();
+		}).thenWaitUntil(() -> h.assertTrue(GearOrders.heldBy(smith[0].getUUID()).isPresent(), "the smith has not ordered")
+		).thenExecute(() -> {
+			var order = GearOrders.heldBy(smith[0].getUUID()).orElseThrow();
+			var self = SelfCraftTestSupport.record(h, jacks[0].getUUID()).orElseThrow();
+			HeartLocation camp = BuildingTestSupport.loc(h, SmithTestSupport.campMarker());
+			h.assertTrue(h.getTick() - hiredAt[0] <= 200, "the smith ordered after " + (h.getTick() - hiredAt[0]) + " ticks");
+			h.assertFalse(order.key().equals(self.craft().key()), "the smith took the self-crafter's key");
+			h.assertTrue(order.key().building().equals(camp) && order.key().need() == GearNeed.AXE, "the order is the camp's other axe: " + order.key());
+			h.assertValueEqual(1L, GearOrders.openOf(camp, GearNeed.AXE).stream().filter(o -> o.holder().equals(smith[0].getUUID())).count(), "one smith order");
+			h.assertTrue(SelfCraftTestSupport.record(h, jacks[1].getUUID()).isEmpty(), "lumberjack 2 started a self-craft");
+		}).thenWaitUntil(() -> {
+			h.assertTrue(sampler.finished(jacks[0].getUUID()), "the self-craft has not finished");
+			h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.STONE_AXE), "axes in the camp");
+			h.assertValueEqual(0, GearOrders.size(), "an order is still open");
+		}).thenExecute(() -> {
+			int clock = sampler.clock(jacks[0].getUUID());
+			h.assertTrue(clock >= 4800 - 20 && clock <= 4800 + 100, "the self-craft clock: " + clock + " " + sampler.log);
+			h.assertValueEqual("minecraft:stone_axe", sampler.recipeOf(jacks[0].getUUID()), "lumberjack 1 made a stone axe");
+			h.assertFalse(jack2Crafted[0], "lumberjack 2 got a self-craft");
+			h.assertFalse(sampler.committed(jacks[1].getUUID()), "lumberjack 2 committed: " + sampler.log);
+			h.assertValueEqual(0, chestCount(h, SmithTestSupport.campChest(), Items.WOODEN_AXE), "a wooden axe");
+			h.assertValueEqual(0L, count(h, Items.COBBLESTONE), "cobble left");
+			h.assertValueEqual(0L, count(h, Items.STICK), "sticks left");
+			log("self-craft clock " + clock + " smith ordered at " + hiredAt[0]);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** The paved yard is stone at y = 0. A tree needs that cell clear, the way the lumber tests grow one on grass. */
+	private static void clearStonePad(GameTestHelper h, BlockPos base) {
+		for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) {
+			BlockPos p = base.offset(dx, 0, dz);
+			if (p.getX() < 0 || p.getZ() < 0 || p.getX() > 31 || p.getZ() > 31) continue;
+			if (h.getBlockState(p).is(Blocks.STONE)) h.setBlock(p, Blocks.AIR);
+		}
+	}
+
+	private static String activityWords(GameTestHelper h, Villager v) {
+		var row = HeartTestSupport.snapshot(h, Rank.OWNER).villagers().stream().filter(r -> r.id().equals(v.getUUID())).findFirst().orElseThrow();
+		return HeartTexts.EN.get(HeartTexts.activityKey(row.activity(), row.jobId()));
 	}
 
 	// ---- T-L2-5b --------------------------------------------------------------------------------------
