@@ -196,14 +196,18 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(byId.values());
 	}
 
-	/** A recorded lamp post or watchtower (M21). */
+	/** A recorded defence (M21, M25). Length, opened and seen are omitted when empty so a pre-M25 site still round-trips. */
 	public static final Codec<dev.villageheart.core.defence.DefenceSite> DEFENCE_SITE = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("id").forGetter(dev.villageheart.core.defence.DefenceSite::id),
 			Codec.STRING.fieldOf("blueprint").forGetter(dev.villageheart.core.defence.DefenceSite::blueprintId),
 			HEART_LOCATION.fieldOf("ground").forGetter(dev.villageheart.core.defence.DefenceSite::ground),
 			ROTATION.optionalFieldOf("rotation", Rotation4.NONE).forGetter(dev.villageheart.core.defence.DefenceSite::rotation),
-			Codec.LONG.optionalFieldOf("built_at", 0L).forGetter(dev.villageheart.core.defence.DefenceSite::builtAt)
-	).apply(i, dev.villageheart.core.defence.DefenceSite::new));
+			Codec.LONG.optionalFieldOf("built_at", 0L).forGetter(dev.villageheart.core.defence.DefenceSite::builtAt),
+			Codec.INT.optionalFieldOf("length", 0).forGetter(dev.villageheart.core.defence.DefenceSite::length),
+			Codec.LONG.listOf().optionalFieldOf("opened", java.util.List.of()).forGetter(s -> ThreatCodecs.sortedSet(s.opened())),
+			Codec.LONG.listOf().optionalFieldOf("seen", java.util.List.of()).forGetter(s -> ThreatCodecs.sortedSet(s.seen()))
+	).apply(i, (id, bp, ground, rot, built, length, opened, seen) -> new dev.villageheart.core.defence.DefenceSite(id, bp, ground, rot, built,
+			Math.max(0, length), ThreatCodecs.setOf(opened), ThreatCodecs.setOf(seen))));
 
 	/** The first site wins when two share an id, and at most {@link dev.villageheart.core.Balance#MAX_DEFENCE_SITES} are kept. */
 	private static java.util.List<dev.villageheart.core.defence.DefenceSite> dedupeDefences(java.util.List<dev.villageheart.core.defence.DefenceSite> in) {
@@ -286,7 +290,7 @@ public final class VillageCodecs {
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
 			dev.villageheart.core.tier.TierProgress tierProgress,
-			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts, dev.villageheart.core.siege.ThreatState threats) {}
 
 	/** One saved guard shift (M18): the villager, the shift id and whether it is pinned. */
 	public record GuardShiftEntry(UUID villager, dev.villageheart.core.guard.Shift shift, boolean pinned) {}
@@ -323,7 +327,8 @@ public final class VillageCodecs {
 
 	private record RawB(java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
-			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts,
+			dev.villageheart.core.siege.ThreatState threats) {}
 
 	private static final com.mojang.serialization.MapCodec<RawA> RAW_A = RecordCodecBuilder.mapCodec(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(RawA::heart),
@@ -345,17 +350,18 @@ public final class VillageCodecs {
 			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(RawB::selfCrafts),
 			TIER_PROGRESS.lenientOptionalFieldOf("tier_progress", dev.villageheart.core.tier.TierProgress.INITIAL).forGetter(RawB::tierProgress),
 			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(RawB::smokerHeat),
-			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts)
+			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts),
+			ThreatCodecs.lenient(ThreatCodecs.THREATS, "threats", dev.villageheart.core.siege.ThreatState.EMPTY).forGetter(RawB::threats)
 	).apply(i, RawB::new));
 
 	private static final Codec<Raw> RAW = Codec.mapPair(RAW_A, RAW_B).codec().xmap(
 			pair -> new Raw(pair.getFirst().heart(), pair.getFirst().owner(), pair.getFirst().ownerName(), pair.getFirst().claimedAt(), pair.getFirst().ranks(),
 					pair.getFirst().known(), pair.getFirst().treasury(), pair.getFirst().tier(), pair.getFirst().buildings(), pair.getFirst().workers(),
 					pair.getSecond().treeTasks(), pair.getSecond().builds(), pair.getSecond().defences(), pair.getSecond().selfCrafts(),
-					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts()),
+					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts(), pair.getSecond().threats()),
 			r -> com.mojang.datafixers.util.Pair.of(new RawA(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), r.ranks(), r.known(), r.treasury(), r.tier(),
 					r.buildings(), r.workers()),
-					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts())));
+					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts(), r.threats())));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
@@ -368,13 +374,13 @@ public final class VillageCodecs {
 			// a map that does not match the records is brought in line once, here
 			var shifts = dev.villageheart.core.guard.ShiftBalancer.rebalance(guards, saved);
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts, r.threats()));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
 			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), v.tierProgress(), heatList(v.smokerHeat()),
-			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList())));
+			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList(), v.threats())));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(

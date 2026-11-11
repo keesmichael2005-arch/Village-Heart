@@ -2,6 +2,7 @@ package dev.villageheart.core.defence;
 
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.Blueprints;
+import dev.villageheart.core.blueprint.DefenceBlueprints;
 import dev.villageheart.core.blueprint.Placement;
 import dev.villageheart.core.room.Pos;
 import java.util.ArrayList;
@@ -55,6 +56,14 @@ public final class Defences {
 		return out;
 	}
 
-	/** True for the blueprints that are recorded when finished. */
-	public static boolean recorded(String blueprintId) { return DefenceSpecs.of(blueprintId).isPresent(); }
+	/**
+	 * True for a defence blueprint that is recorded when finished. Walls and gates are recorded (M25) even though
+	 * {@link DefenceSpecs#of} stays empty for them: no key cell, no patrol point, and a missing block does not drop the site.
+	 */
+	public static boolean recorded(String blueprintId) {
+		return switch (blueprintId) {
+			case DefenceBlueprints.WALL_ID, DefenceBlueprints.GATE_ID, DefenceBlueprints.LAMP_POST_ID, DefenceBlueprints.WATCHTOWER_ID -> true;
+			default -> false;
+		};
+	}
 }

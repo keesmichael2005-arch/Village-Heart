@@ -232,6 +232,7 @@ from there instead of hard-coding them.
   `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` rows (verified: docs/reviews/M12-r1.md and M12-r2.md). Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
+- Track B step 9 on `m25-walls` (not this milestone done): walls and gates are recorded (no patrol point, cap 128), threat state saves, gamerules `siege_damage` / `random_raids` / `sieges` default on. Raid tracking, shelter and the death log are track A.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged

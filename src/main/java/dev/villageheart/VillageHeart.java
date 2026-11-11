@@ -52,6 +52,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:guards", dev.villageheart.worker.guard.GuardSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:gates", dev.villageheart.defence.GateKeeper.INSTANCE);
+		dev.villageheart.siege.SiegeGamerules.register();
 		LOG.info("Village Heart loaded");
 	}
 }

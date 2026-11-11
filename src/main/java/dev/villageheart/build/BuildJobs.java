@@ -104,7 +104,12 @@ public final class BuildJobs {
 		VillageClaims.data(server).update(v -> {
 			VillageState next = v.withoutBuild(job.id());
 			if (!recorded) return next;
-			VillageState withSite = next.withDefence(new DefenceSite(job.id(), job.blueprintId(), job.ground(), job.rotation(), now));
+			var draft = new DefenceSite(job.id(), job.blueprintId(), job.ground(), job.rotation(), now, job.params().length(), java.util.Set.of(), java.util.Set.of());
+			java.util.Set<Long> seen = new java.util.LinkedHashSet<>();
+			for (var cell : dev.villageheart.core.defence.DefenceCells.of(draft))
+				seen.add(dev.villageheart.core.defence.DefenceCells.relative(draft.ground(), cell.pos()));
+			VillageState withSite = next.withDefence(new DefenceSite(draft.id(), draft.blueprintId(), draft.ground(), draft.rotation(), draft.builtAt(),
+					draft.length(), java.util.Set.of(), seen));
 			if (withSite == next && next.defence(job.id()).isEmpty()) {
 				VillageHeart.LOG.info("Defence site cap ({}) reached: {} at {} is not a patrol point", Balance.MAX_DEFENCE_SITES, job.blueprintId(), job.ground());
 			}

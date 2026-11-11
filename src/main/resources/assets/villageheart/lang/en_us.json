@@ -375,5 +375,8 @@
 	"message.villageheart.market.reserves_set": "Keeping %s days of food, %s of each item",
 	"message.villageheart.market.reserves": "Market keeps %s days of food and %s of every other item",
 	"message.villageheart.market.status": "Market: %s sold today, %s merchants, keeps %s days of food and %s of every other item",
-	"message.villageheart.market.bad_reserve": "Reserves must be 0 to 30 days and 0 to 1024 items"
+	"message.villageheart.market.bad_reserve": "Reserves must be 0 to 30 days and 0 to 1024 items",
+	"gamerule.villageheart.siege_damage": "Walls and gates take siege damage",
+	"gamerule.villageheart.random_raids": "Random raids",
+	"gamerule.villageheart.sieges": "Zombie sieges"
 }

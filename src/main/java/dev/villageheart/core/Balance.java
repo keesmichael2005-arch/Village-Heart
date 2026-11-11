@@ -206,8 +206,14 @@ public final class Balance {
 	public static final int GATE_MIN_LENGTH = 5;
 	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
 	public static final int DEFENCE_REFRESH_TICKS = 200;
-	/** Recorded defence sites (patrol points) per village. */
-	public static final int MAX_DEFENCE_SITES = 64;
+	/** Recorded defence sites per village. A site cap, not a wall-length cap (M25: 64 was too small for a ring). */
+	public static final int MAX_DEFENCE_SITES = 128;
+	/** Hit points of one cobblestone defence cell (M25). A crack stores damage 1..HP_STONE-1. */
+	public static final int HP_STONE = 12;
+	/** Hit points of one fence-gate defence cell (M25). Two vindicator hits open it. */
+	public static final int HP_GATE = 8;
+	/** Cracked cells plus breaches kept for one village. Past this, the least-damaged crack is dropped. */
+	public static final int MAX_DAMAGED_CELLS = 4096;
 	// ---- farmer (M10) ----
 	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
 	public static final int FARM_RADIUS = 24;
