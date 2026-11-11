@@ -22,11 +22,14 @@ import dev.villageheart.core.smith.SmithDecision;
 import dev.villageheart.core.smith.SmithKind;
 import dev.villageheart.core.smith.SmithRecipe;
 import dev.villageheart.core.smith.SmithRecipes;
+import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.golem.GolemGate;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.worker.gear.ToolStacks;
+import dev.villageheart.worker.job.WorkStats;
 import dev.villageheart.worker.job.WorkerStatuses;
 import dev.villageheart.worker.smith.SmithRuntime;
 import dev.villageheart.worker.smith.SmithyLayout;
@@ -353,6 +356,61 @@ public class SmithGameTests {
 			h.assertValueEqual(0L, count(h, Items.STICK), "sticks");
 			VillageTestSupport.done(h);
 		});
+	}
+
+	// ---- T-L2-5b --------------------------------------------------------------------------------------
+
+	/**
+	 * A miner that really hauls, with a fresh stone pickaxe and iron in Storage. The smith does not upgrade a working tool.
+	 * The worn line (20 remaining) is 12 hauls away, so a day that hauls at most 11 never reaches it.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_working_pick", structure = YARD, skyAccess = true, maxTicks = 10600)
+	public void workingPickaxeNotReplaced(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		long[] hauls0 = {0};
+		long[] delivered0 = {0};
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.mineChest()));
+			chest.setItem(0, new ItemStack(Items.STONE_PICKAXE));
+			putStore(h, Items.IRON_INGOT, 30);
+			putStore(h, Items.STICK, 4);
+			putStore(h, Items.COBBLESTONE, 3);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+			hauls0[0] = WorkStats.get("miner", "hauls");
+			delivered0[0] = WorkStats.get("smith", "delivered");
+			log("working pickaxe, day 1000");
+		}).thenExecuteFor(10000, () -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			boolean craft = units.stream().anyMatch(u -> u.kind().equals("COMMIT") || u.kind().equals("CRAFT"));
+			boolean delivered = WorkStats.get("smith", "delivered") > delivered0[0];
+			if (craft || delivered) h.assertTrue(pickWorn(h), "a craft or delivery while the stone pickaxe was not worn");
+		}).thenExecute(() -> {
+			long hauls = WorkStats.get("miner", "hauls") - hauls0[0];
+			log("hauls " + hauls + " day " + (h.getLevel().getDayTime() % 24000) + " hint " + SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()));
+			h.assertTrue(hauls >= 1 && hauls <= 11, "hauls " + hauls);
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("CRAFT") || u.kind().equals("COMMIT")), "a craft happened: " + units);
+			h.assertValueEqual(30L, count(h, Items.IRON_INGOT), "iron");
+			h.assertValueEqual(4L, count(h, Items.STICK), "sticks");
+			h.assertValueEqual(3L, count(h, Items.COBBLESTONE), "cobble");
+			h.assertTrue(SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()) == SmithDecision.Hint.NO_WORK, "hint");
+			h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE), "the stone pickaxe is gone");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static boolean pickWorn(GameTestHelper h) {
+		var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.mineChest()));
+		for (int i = 0; i < chest.getContainerSize(); i++) {
+			ItemStack s = chest.getItem(i);
+			if (s.is(Items.STONE_PICKAXE)) return ToolStacks.worn(s, JobType.MINER);
+		}
+		return false;
 	}
 
 	// ---- T-L2-5g --------------------------------------------------------------------------------------
