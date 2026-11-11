@@ -137,7 +137,14 @@ public class SmithGameTests {
 			// the chunks have to tick once before they will accept entities; a forced chunk is not in the entity tracker on the tick it was loaded
 			SmithTestSupport.force(level, near, 16);
 			SmithTestSupport.force(level, far, 16);
-		}).thenIdle(5).thenExecute(() -> {
+		}).thenWaitUntil(() -> {
+			// A forced chunk does not accept entities on the tick it loads. Under a full suite that can take longer than five ticks.
+			ServerLevel level = h.getLevel();
+			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
+			h.assertTrue(level.isPositionEntityTicking(new BlockPos(heart.x() + 84, heart.y(), heart.z()))
+					&& level.isPositionEntityTicking(new BlockPos(heart.x() + 100, heart.y(), heart.z())),
+					"the far chunks are not ticking yet");
+		}).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
 			BlockPos near = new BlockPos(heart.x() + 84, heart.y(), heart.z());
