@@ -46,13 +46,9 @@ final class P4ClientTests {
 			srv.runCommand("time set noon");
 			srv.runCommand("weather clear");
 			srv.runCommand("gamemode creative @a");
-			// a fill command refuses more than 32768 blocks, so the pad is laid in strips
-			for (int x = -80; x < 240; x += 8) {
-				int x2 = Math.min(239, x + 7);
-				srv.runCommand("fill " + x + " " + (y - 2) + " -20 " + x2 + " " + (y - 2) + " 260 minecraft:dirt");
-				srv.runCommand("fill " + x + " " + (y - 1) + " -20 " + x2 + " " + (y - 1) + " 260 minecraft:grass_block");
-				srv.runCommand("fill " + x + " " + y + " -20 " + x2 + " " + (y + 12) + " 260 minecraft:air");
-			}
+			srv.runCommand("recipe give @a *");
+			srv.runCommand("effect give @a minecraft:night_vision infinite 0 true");
+			context.waitTicks(80);
 			srv.runCommand("setblock 0 " + y + " 0 minecraft:bell");
 			srv.runCommand("setblock -2 " + y + " 0 villageheart:village_heart");
 			context.waitTicks(10);
@@ -73,8 +69,8 @@ final class P4ClientTests {
 			for (String id : ids) {
 				int x = -60 + (n % 6) * 40;
 				int z = 30 + (n / 6) * 40;
-				if (id.equals("watchtower")) shootWatchtower(context, sp, srv, x, y - 1, z);
-				else shoot(context, srv, id, x, y - 1, z, "built_" + id);
+				if (id.equals("watchtower")) shootWatchtower(context, sp, srv, x, y, z);
+				else shoot(context, srv, id, x, y, z, "built_" + id, true);
 				if (id.equals("kitchen")) slopeShot(context, srv, 80, y, 200);
 				n++;
 			}
@@ -86,21 +82,31 @@ final class P4ClientTests {
 	}
 
 	private static void slopeShot(ClientGameTestContext context, TestServerContext srv, int x, int y, int z) {
-		// the south half of the footprint is three blocks lower, so the dirt fill is visible under the cobble
-		srv.runCommand("fill " + (x - 2) + " " + (y - 4) + " " + z + " " + (x + 5) + " " + (y - 1) + " " + (z + 4) + " minecraft:air");
-		srv.runCommand("fill " + (x - 2) + " " + (y - 5) + " " + z + " " + (x + 5) + " " + (y - 5) + " " + (z + 4) + " minecraft:stone");
-		shoot(context, srv, "kitchen", x, y - 1, z, "slope_foundation");
-		look(context, srv, x + 2, y - 2, z + 8, x + 1, y - 1, z + 2);
+		pad(context, srv, x, y, z);
+		// south of the anchor is three blocks lower, so the dirt courses show under the cobble in daylight
+		srv.runCommand("fill " + (x - 1) + " " + (y - 4) + " " + z + " " + (x + 4) + " " + (y - 1) + " " + (z + 4) + " minecraft:air");
+		srv.runCommand("fill " + (x - 1) + " " + (y - 5) + " " + z + " " + (x + 4) + " " + (y - 5) + " " + (z + 4) + " minecraft:stone");
+		shoot(context, srv, "kitchen", x, y, z, "slope_foundation", false);
+		look(context, srv, x + 10, y + 2, z + 8, x + 1, y - 1, z + 2);
 		context.waitTicks(5);
 		context.takeScreenshot("slope_foundation_side");
 	}
 
+	/** A small solid pad. The player is teleported first so the chunk is loaded (a fill in an unloaded chunk does nothing). */
+	private static void pad(ClientGameTestContext context, TestServerContext srv, int x, int y, int z) {
+		srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
+		context.waitTicks(20);
+		srv.runCommand("fill " + (x - 12) + " " + (y - 3) + " " + (z - 12) + " " + (x + 12) + " " + (y - 3) + " " + (z + 12) + " minecraft:stone");
+		srv.runCommand("fill " + (x - 12) + " " + (y - 2) + " " + (z - 12) + " " + (x + 12) + " " + (y - 2) + " " + (z + 12) + " minecraft:dirt");
+		srv.runCommand("fill " + (x - 12) + " " + (y - 1) + " " + (z - 12) + " " + (x + 12) + " " + (y - 1) + " " + (z + 12) + " minecraft:grass_block");
+		srv.runCommand("fill " + (x - 12) + " " + y + " " + (z - 12) + " " + (x + 12) + " " + (y + 14) + " " + (z + 12) + " minecraft:air");
+	}
+
 	private static void shootWatchtower(ClientGameTestContext context, TestSingleplayerContext sp, TestServerContext srv, int x, int y, int z) {
-		srv.runCommand("tp @a " + x + " " + (y + 8) + " " + z);
-		context.waitTicks(15);
+		pad(context, srv, x, y, z);
 		String id = srv.computeOnServer(server -> {
 			var bp = resolve("watchtower");
-			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y, z), Rotation4.NONE, server.getPlayerList().getPlayers().get(0).getUUID());
+			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y - 1, z), Rotation4.NONE, server.getPlayerList().getPlayers().get(0).getUUID());
 			SiteGround.prepare(server.overworld(), bp, job);
 			BuildJobs.advance(server, job.id(), 40);
 			BuildSystem.showGhost(server);
@@ -121,8 +127,7 @@ final class P4ClientTests {
 	}
 
 	private static void ghost(ClientGameTestContext context, TestSingleplayerContext sp, TestServerContext srv, int y) {
-		srv.runCommand("tp @a 160 " + (y + 6) + " 20");
-		context.waitTicks(15);
+		pad(context, srv, 160, y, 20);
 		srv.computeOnServer(server -> {
 			var player = server.getPlayerList().getPlayers().get(0);
 			var bp = Blueprints.byId("kitchen").orElseThrow();
@@ -131,21 +136,20 @@ final class P4ClientTests {
 			BuildSystem.showGhost(server);
 			ItemStack stack = BlueprintItem.of(bp);
 			player.setItemInHand(InteractionHand.MAIN_HAND, stack);
-			BlueprintUse.click(player, server.overworld(), player.getMainHandItem(), new BlockPos(160, y - 1, 40), false);
+			BlueprintUse.click(player, server.overworld(), player.getMainHandItem(), new BlockPos(168, y - 1, 28), false);
 			return 0;
 		});
 		context.waitTicks(20);
 		look(context, srv, 168, y + 6, 28, 160, y + 2, 23);
 		sp.getClientWorld().waitForChunksRender();
 		context.takeScreenshot("ghost_half_kitchen");
-		look(context, srv, 168, y + 4, 48, 160, y + 1, 40);
+		look(context, srv, 176, y + 4, 36, 168, y + 1, 28);
 		context.waitTicks(10);
 		context.takeScreenshot("ghost_preview");
 	}
 
 	private static void quill(ClientGameTestContext context, TestServerContext srv, int y) {
-		srv.runCommand("tp @a 160 " + (y + 6) + " 80");
-		context.waitTicks(15);
+		pad(context, srv, 160, y, 80);
 		String saved = srv.computeOnServer(server -> {
 			var player = server.getPlayerList().getPlayers().get(0);
 			var bp = Blueprints.SMALL_HOUSE;
@@ -161,16 +165,19 @@ final class P4ClientTests {
 		if (saved.startsWith("unfinished") || saved.contains(" ") || !saved.startsWith("saved_")) {
 			throw new AssertionError("quill did not save: " + saved);
 		}
-		shoot(context, srv, saved, 180, y - 1, 80, "quill_saved");
+		shoot(context, srv, saved, 180, y, 80, "quill_saved", true);
 	}
 
-	private static void shoot(ClientGameTestContext context, TestServerContext srv, String blueprint, int x, int y, int z, String shot) {
-		srv.runCommand("tp @a " + x + " " + (y + 6) + " " + z);
-		context.waitTicks(15);
+	private static void shoot(ClientGameTestContext context, TestServerContext srv, String blueprint, int x, int y, int z, String shot, boolean prepareGround) {
+		if (prepareGround) pad(context, srv, x, y, z);
+		else {
+			srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
+			context.waitTicks(10);
+		}
 		String result = srv.computeOnServer(server -> {
 			var bp = resolve(blueprint);
 			if (bp == null) return "missing";
-			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y, z), Rotation4.NONE, params(blueprint),
+			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y - 1, z), Rotation4.NONE, params(blueprint),
 					server.getPlayerList().getPlayers().get(0).getUUID());
 			var adv = BuildJobs.advance(server, job.id(), Integer.MAX_VALUE);
 			return adv.toString();
