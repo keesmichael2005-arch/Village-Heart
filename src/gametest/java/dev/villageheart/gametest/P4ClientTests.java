@@ -219,7 +219,7 @@ final class P4ClientTests {
 			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y - 1, z), Rotation4.NONE, params(blueprint),
 					server.getPlayerList().getPlayers().get(0).getUUID());
 			var adv = BuildJobs.advance(server, job.id(), Integer.MAX_VALUE);
-			return adv.toString();
+			return adv + " cobble=" + Stockpiles.count(server, Items.COBBLESTONE) + " dirt=" + Stockpiles.count(server, Items.DIRT);
 		});
 		if (blueprint.startsWith("vanilla") && !result.contains("finished=true")) {
 			FAILURES.add(blueprint + " " + result);
@@ -245,26 +245,36 @@ final class P4ClientTests {
 		return id.equals("wall_segment") || id.equals("gate") ? new BlueprintParams(6) : BlueprintParams.NONE;
 	}
 
-	/** Tops Storage up to this blueprint's cost. Adding the full cost every time fills the chests and later cobble never lands. */
+	/** Tops the Storage chests up to this blueprint's cost. Writes the slots directly, the same way the GameTests do. */
 	private static void stockFor(net.minecraft.server.level.ServerLevel level, BlockPos chest, Blueprint bp, int extraDirt) {
 		var server = level.getServer();
 		for (var line : bp.materials().lines()) {
 			Item item = itemFor(line.material());
 			if (item == null) continue;
 			int left = line.count() + 4 - (int) Math.min(Integer.MAX_VALUE, Stockpiles.count(server, item));
-			while (left > 0) {
-				int n = Math.min(64, left);
-				int stored = Stockpiles.deposit(level, chest, new ItemStack(item, n));
-				if (stored <= 0) break;
-				left -= stored;
-			}
+			put(level, chest, item, left);
 		}
 		int dirt = extraDirt - (int) Math.min(Integer.MAX_VALUE, Stockpiles.count(server, Items.DIRT));
-		while (dirt > 0) {
-			int n = Math.min(64, dirt);
-			int stored = Stockpiles.deposit(level, chest, new ItemStack(Items.DIRT, n));
-			if (stored <= 0) break;
-			dirt -= stored;
+		put(level, chest, Items.DIRT, dirt);
+	}
+
+	private static void put(net.minecraft.server.level.ServerLevel level, BlockPos origin, Item item, int count) {
+		int left = count;
+		for (int dz = 0; dz < 3 && left > 0; dz++) for (int dx = 0; dx < 6 && left > 0; dx++) {
+			if (!(level.getBlockEntity(origin.offset(dx, 0, dz)) instanceof net.minecraft.world.Container c)) continue;
+			for (int i = 0; i < c.getContainerSize() && left > 0; i++) {
+				ItemStack slot = c.getItem(i);
+				if (slot.isEmpty()) {
+					int n = Math.min(item.getDefaultMaxStackSize(), left);
+					c.setItem(i, new ItemStack(item, n));
+					left -= n;
+				} else if (slot.is(item) && slot.getCount() < slot.getMaxStackSize()) {
+					int n = Math.min(slot.getMaxStackSize() - slot.getCount(), left);
+					slot.grow(n);
+					left -= n;
+				}
+			}
+			c.setChanged();
 		}
 	}
 
