@@ -23,9 +23,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.EntityTracker;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.level.block.Blocks;
 
@@ -254,8 +254,13 @@ public class GrowthCourtshipGameTests {
 			h.assertTrue(v[0].getBrain().isActive(Activity.IDLE) && v[1].getBrain().isActive(Activity.IDLE), "both are idle");
 			h.assertFalse(v[0].isSleeping() || v[1].isSleeping(), "both are awake");
 		}).thenExecute(() -> {
+			// A full suite lets the courtship aim them at each other during the idle wait. The stamp has to sit on a
+			// different target (a stroll), which is what a villager actually carries into the morning.
 			long stale = h.getLevel().getGameTime() - 5000;
-			for (Villager x : v) x.getBrain().setMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE, stale);
+			for (Villager x : v) {
+				x.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(x.blockPosition().offset(2, 0, 0), 0.5F, 1));
+				x.getBrain().setMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE, stale);
+			}
 		}).thenIdle(40).thenExecute(() -> {
 			License l = licence(h).orElseThrow(() -> h.assertionException("the licence is still there: " + describe(h)));
 			h.assertTrue(l.state() == LicenceState.APPROACHING || l.state() == LicenceState.SEEDED,
