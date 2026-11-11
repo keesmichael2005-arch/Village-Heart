@@ -620,9 +620,12 @@ public class SmithGameTests {
 		});
 	}
 
-	/** Glass across the yard just north of the Smithy door, so the smith and the penned villagers stay behind it. */
+	/**
+	 * Glass across the yard just north of the Smithy door, two high. The marker hangs at y=3 on that row, so the wall stops at y=2
+	 * and the Smithy stays valid. The smith and the penned villagers are on the far side of it.
+	 */
 	private static void sealNorth(GameTestHelper h, boolean close) {
-		for (int x = 0; x <= 31; x++) for (int y = 1; y <= 3; y++) {
+		for (int x = 0; x <= 31; x++) for (int y = 1; y <= 2; y++) {
 			BlockPos p = new BlockPos(x, y, 3);
 			if (close) h.setBlock(p, Blocks.GLASS);
 			else if (h.getBlockState(p).is(Blocks.GLASS)) h.setBlock(p, Blocks.AIR);
