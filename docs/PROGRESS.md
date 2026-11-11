@@ -986,3 +986,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Plurals: `core/Plural` used by every emerald count and "merchant"; `_one` lang keys removed. `PluralTest`, `WageAlertsTest`, `MarketTextsTest`, `LangCoverageTest` updated.
 - Sim tier source: GameTest `simCollectorReadsTheVillageTier` reads the real `SimMetricsCollector.collect`.
 - `verify.sh --fast` exit 0 (391 GameTests). Next: full verify, then `release-prep`. Open: "Paid %s striking workers" still has no singular.
+
+## 2026-11-11: backlog-small review round 2 (verifier)
+- Verdict FAIL, 2 fix items (`docs/reviews/backlog-small-r2.md`). Merged `origin/dev`; the client-test and PROGRESS conflicts were resolved by keeping both sides.
+- All three round-1 items are fixed, and each fix's test goes red on its mutation: the repeated hunter give-up, `Plural`, and the real sim tier source.
+- Full `scripts/verify.sh` exit 1 at 36cbdf5. Layer 1's GameTest run failed `twoHuntersOneGround` at 590 ticks (bound 450). Layer 2 (391/391), Layer 4 and perf are green.
+- Fix 1: a hunter jammed behind a hidden (NoAI) hunter just past 6 blocks neither arrives nor steps aside, so it waits out the 200-tick stall.
+- Fix 2: no GameTest pins `HunterJob`'s mover-only arrival; the `blockerMoves = blocking != null` mutant stays green.
+- Next: builder fixes the two items. Blockers: none.
