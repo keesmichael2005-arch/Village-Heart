@@ -137,7 +137,8 @@ final class DefenceClientTests {
 						if (!a.finished()) return j.blueprintId() + " not finished: " + a;
 					}
 					var village = VillageClaims.current(server).orElseThrow();
-					return village.defences().size() == 3 && BuildJobs.list(server).isEmpty() ? "ok" : "defences " + village.defences().size();
+					// M25 records every finished defence: wall, gate, wall, two lamp posts, watchtower. The pictures are unchanged.
+					return village.defences().size() == 6 && BuildJobs.list(server).isEmpty() ? "ok" : "defences " + village.defences().size();
 				});
 				if (!built.equals("ok")) throw new AssertionError("the section was not built: " + built);
 				srv.runCommand("time set 12800");

@@ -18,12 +18,7 @@ import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.WorldClaim;
 import dev.villageheart.core.building.BuildingStatus;
-import dev.villageheart.core.raid.RaidOrigin;
-import dev.villageheart.core.raid.RaidOutcome;
-import dev.villageheart.core.raid.RaidPlan;
-import dev.villageheart.core.raid.RaidRecord;
-import dev.villageheart.core.raid.RaidSummary;
-import dev.villageheart.core.raid.ThreatState;
+import dev.villageheart.core.siege.ThreatState;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DynamicOps;
@@ -202,14 +197,18 @@ public final class VillageCodecs {
 		return java.util.List.copyOf(byId.values());
 	}
 
-	/** A recorded lamp post or watchtower (M21). */
+	/** A recorded defence (M21, M25). Length, opened and seen are omitted when empty so a pre-M25 site still round-trips. */
 	public static final Codec<dev.villageheart.core.defence.DefenceSite> DEFENCE_SITE = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("id").forGetter(dev.villageheart.core.defence.DefenceSite::id),
 			Codec.STRING.fieldOf("blueprint").forGetter(dev.villageheart.core.defence.DefenceSite::blueprintId),
 			HEART_LOCATION.fieldOf("ground").forGetter(dev.villageheart.core.defence.DefenceSite::ground),
 			ROTATION.optionalFieldOf("rotation", Rotation4.NONE).forGetter(dev.villageheart.core.defence.DefenceSite::rotation),
-			Codec.LONG.optionalFieldOf("built_at", 0L).forGetter(dev.villageheart.core.defence.DefenceSite::builtAt)
-	).apply(i, dev.villageheart.core.defence.DefenceSite::new));
+			Codec.LONG.optionalFieldOf("built_at", 0L).forGetter(dev.villageheart.core.defence.DefenceSite::builtAt),
+			Codec.INT.optionalFieldOf("length", 0).forGetter(dev.villageheart.core.defence.DefenceSite::length),
+			Codec.LONG.listOf().optionalFieldOf("opened", java.util.List.of()).forGetter(s -> ThreatCodecs.sortedSet(s.opened())),
+			Codec.LONG.listOf().optionalFieldOf("seen", java.util.List.of()).forGetter(s -> ThreatCodecs.sortedSet(s.seen()))
+	).apply(i, (id, bp, ground, rot, built, length, opened, seen) -> new dev.villageheart.core.defence.DefenceSite(id, bp, ground, rot, built,
+			Math.max(0, length), ThreatCodecs.setOf(opened), ThreatCodecs.setOf(seen))));
 
 	/** The first site wins when two share an id, and at most {@link dev.villageheart.core.Balance#MAX_DEFENCE_SITES} are kept. */
 	private static java.util.List<dev.villageheart.core.defence.DefenceSite> dedupeDefences(java.util.List<dev.villageheart.core.defence.DefenceSite> in) {
@@ -370,154 +369,6 @@ public final class VillageCodecs {
 		return new dev.villageheart.core.tier.TierProgress(Math.max(0, r.fedStreak()), r.lastDinnerDay(), Math.max(0, r.bestDawnTreasury()));
 	}, p -> new RawProgress(p.fedStreak(), p.lastDinnerDay(), p.bestDawnTreasury()));
 
-	private static final Codec<RaidOrigin> RAID_ORIGIN = Codec.STRING.comapFlatMap(
-			id -> RaidOrigin.byId(id).map(DataResult::success).orElseGet(() -> DataResult.error(() -> "Unknown raid origin " + id)),
-			RaidOrigin::id);
-	private static final Codec<RaidOutcome> RAID_OUTCOME = Codec.STRING.comapFlatMap(
-			id -> RaidOutcome.byId(id).map(DataResult::success).orElseGet(() -> DataResult.error(() -> "Unknown raid outcome " + id)),
-			RaidOutcome::id);
-
-	private record RawPlan(int omen, int extraVindicators, int extraRavagers, int waveCap, boolean early) {}
-
-	private static final Codec<RaidPlan> RAID_PLAN = RecordCodecBuilder.<RawPlan>create(i -> i.group(
-			Codec.INT.optionalFieldOf("omen", 1).forGetter(RawPlan::omen),
-			Codec.INT.optionalFieldOf("extra_vindicators", 0).forGetter(RawPlan::extraVindicators),
-			Codec.INT.optionalFieldOf("extra_ravagers", 0).forGetter(RawPlan::extraRavagers),
-			Codec.INT.optionalFieldOf("wave_cap", 0).forGetter(RawPlan::waveCap),
-			Codec.BOOL.optionalFieldOf("early", false).forGetter(RawPlan::early)
-	).apply(i, RawPlan::new)).flatXmap(r -> {
-		try {
-			return DataResult.success(new RaidPlan(r.omen(), r.extraVindicators(), r.extraRavagers(), r.waveCap(), r.early()));
-		} catch (IllegalArgumentException e) {
-			return DataResult.error(e::getMessage);
-		}
-	}, p -> DataResult.success(new RawPlan(p.omen(), p.extraVindicators(), p.extraRavagers(), p.waveCap(), p.early())));
-
-	/** The first half of a saved raid. Flat keys, joined with {@link #RAID_B} by {@code Codec.mapPair}. */
-	private record RaidA(int vanillaId, RaidOrigin origin, RaidPlan plan, long startedAt, int startDay, int villagersAtStart,
-			int guardsAtStart, int guardsQualified, int guardsWounded, int guardsUnloaded) {}
-
-	private record RaidB(int wavesTotal, int wavesSpawned, int raidersAlive, boolean betweenWaves, int villagerDeaths, int raidersKilled,
-			int extrasForWave, int extraRaidersKilled, long allGuardsOnDutyAt) {}
-
-	private static final com.mojang.serialization.MapCodec<RaidA> RAID_A = RecordCodecBuilder.mapCodec(i -> i.group(
-			Codec.INT.fieldOf("vanilla_id").forGetter(RaidA::vanillaId),
-			RAID_ORIGIN.fieldOf("origin").forGetter(RaidA::origin),
-			RAID_PLAN.optionalFieldOf("plan", RaidPlan.VANILLA).forGetter(RaidA::plan),
-			Codec.LONG.optionalFieldOf("started_at", 0L).forGetter(RaidA::startedAt),
-			Codec.INT.optionalFieldOf("start_day", 1).forGetter(RaidA::startDay),
-			Codec.INT.optionalFieldOf("villagers_at_start", 0).forGetter(RaidA::villagersAtStart),
-			Codec.INT.optionalFieldOf("guards_at_start", 0).forGetter(RaidA::guardsAtStart),
-			Codec.INT.optionalFieldOf("guards_qualified_at_start", 0).forGetter(RaidA::guardsQualified),
-			Codec.INT.optionalFieldOf("guards_wounded_at_start", 0).forGetter(RaidA::guardsWounded),
-			Codec.INT.optionalFieldOf("guards_unloaded_at_start", 0).forGetter(RaidA::guardsUnloaded)
-	).apply(i, RaidA::new));
-
-	private static final com.mojang.serialization.MapCodec<RaidB> RAID_B = RecordCodecBuilder.mapCodec(i -> i.group(
-			Codec.INT.optionalFieldOf("waves_total", 0).forGetter(RaidB::wavesTotal),
-			Codec.INT.optionalFieldOf("waves_spawned", 0).forGetter(RaidB::wavesSpawned),
-			Codec.INT.optionalFieldOf("raiders_alive", 0).forGetter(RaidB::raidersAlive),
-			Codec.BOOL.optionalFieldOf("between_waves", false).forGetter(RaidB::betweenWaves),
-			Codec.INT.optionalFieldOf("villager_deaths", 0).forGetter(RaidB::villagerDeaths),
-			Codec.INT.optionalFieldOf("raiders_killed", 0).forGetter(RaidB::raidersKilled),
-			Codec.INT.optionalFieldOf("extras_for_wave", 0).forGetter(RaidB::extrasForWave),
-			Codec.INT.optionalFieldOf("extra_raiders_killed", 0).forGetter(RaidB::extraRaidersKilled),
-			Codec.LONG.optionalFieldOf("all_guards_on_duty_at", -1L).forGetter(RaidB::allGuardsOnDutyAt)
-	).apply(i, RaidB::new));
-
-	private static final Codec<RaidRecord> RAID_RECORD = Codec.mapPair(RAID_A, RAID_B).codec().flatXmap(pair -> {
-		try {
-			RaidA a = pair.getFirst();
-			RaidB b = pair.getSecond();
-			return DataResult.success(new RaidRecord(a.vanillaId(), a.origin(), a.plan(), a.startedAt(), a.startDay(), a.villagersAtStart(),
-					a.guardsAtStart(), a.guardsQualified(), a.guardsWounded(), a.guardsUnloaded(), b.wavesTotal(), b.wavesSpawned(),
-					b.raidersAlive(), b.betweenWaves(), b.villagerDeaths(), b.raidersKilled(), b.extrasForWave(), b.extraRaidersKilled(),
-					b.allGuardsOnDutyAt()));
-		} catch (IllegalArgumentException e) {
-			return DataResult.error(e::getMessage);
-		}
-	}, r -> DataResult.success(Pair.of(
-			new RaidA(r.vanillaId(), r.origin(), r.plan(), r.startedAt(), r.startDay(), r.villagersAtStart(), r.guardsAtStart(),
-					r.guardsQualifiedAtStart(), r.guardsWoundedAtStart(), r.guardsUnloadedAtStart()),
-			new RaidB(r.wavesTotal(), r.wavesSpawned(), r.raidersAlive(), r.betweenWaves(), r.villagerDeaths(), r.raidersKilled(),
-					r.extrasForWave(), r.extraRaidersKilled(), r.allGuardsOnDutyAt()))));
-
-	private static final Codec<RaidSummary> RAID_SUMMARY = RecordCodecBuilder.<RaidSummary>create(i -> i.group(
-			Codec.INT.optionalFieldOf("start_day", 1).forGetter(RaidSummary::startDay),
-			Codec.LONG.optionalFieldOf("started_at", 0L).forGetter(RaidSummary::startedAt),
-			Codec.LONG.optionalFieldOf("ended_at", 0L).forGetter(RaidSummary::endedAt),
-			RAID_OUTCOME.fieldOf("outcome").forGetter(RaidSummary::outcome),
-			RAID_ORIGIN.fieldOf("origin").forGetter(RaidSummary::origin),
-			Codec.INT.optionalFieldOf("waves_spawned", 0).forGetter(RaidSummary::wavesSpawned),
-			Codec.INT.optionalFieldOf("waves_total", 0).forGetter(RaidSummary::wavesTotal),
-			Codec.INT.optionalFieldOf("villagers_at_start", 0).forGetter(RaidSummary::villagersAtStart),
-			Codec.INT.optionalFieldOf("villagers_at_end", 0).forGetter(RaidSummary::villagersAtEnd),
-			Codec.INT.optionalFieldOf("villager_deaths", 0).forGetter(RaidSummary::villagerDeaths),
-			Codec.INT.optionalFieldOf("raiders_killed", 0).forGetter(RaidSummary::raidersKilled),
-			Codec.INT.optionalFieldOf("reward", 0).forGetter(RaidSummary::reward)
-	).apply(i, RaidSummary::new)).flatXmap(s -> {
-		try {
-			return DataResult.success(s);
-		} catch (IllegalArgumentException e) {
-			return DataResult.error(e::getMessage);
-		}
-	}, DataResult::success);
-
-	/** A value that will not parse becomes empty (one WARN). The rest of the village is kept. */
-	private static <A> Codec<Optional<A>> dropBad(Codec<A> inner, String what) {
-		return new Codec<>() {
-			@Override public <T> DataResult<Pair<Optional<A>, T>> decode(DynamicOps<T> ops, T input) {
-				try {
-					DataResult<Pair<A, T>> parsed = inner.decode(ops, input);
-					if (parsed.result().isEmpty()) {
-						LOG.warn("Village save: unreadable {} dropped ({})", what, parsed.error().map(e -> e.message()).orElse("?"));
-						return DataResult.success(Pair.of(Optional.empty(), input));
-					}
-					return DataResult.success(Pair.of(Optional.of(parsed.result().get().getFirst()), parsed.result().get().getSecond()));
-				} catch (RuntimeException e) {
-					LOG.warn("Village save: unreadable {} dropped ({})", what, e.getMessage());
-					return DataResult.success(Pair.of(Optional.empty(), input));
-				}
-			}
-
-			@Override public <T> DataResult<T> encode(Optional<A> value, DynamicOps<T> ops, T prefix) {
-				return value.isEmpty() ? DataResult.success(prefix) : inner.encode(value.get(), ops, prefix);
-			}
-		};
-	}
-
-	private record RawThreats(Optional<RaidRecord> raid, Optional<RaidSummary> lastRaid) {}
-
-	private static final Codec<RawThreats> RAW_THREATS = RecordCodecBuilder.create(i -> i.group(
-			dropBad(RAID_RECORD, "raid").optionalFieldOf("raid", Optional.empty()).forGetter(RawThreats::raid),
-			dropBad(RAID_SUMMARY, "last_raid").optionalFieldOf("last_raid", Optional.empty()).forGetter(RawThreats::lastRaid)
-	).apply(i, RawThreats::new));
-
-	/**
-	 * Tracked raid and last raid (M25). A threats value that will not parse becomes empty (one WARN) and the village is kept.
-	 * A bad {@code raid} or {@code last_raid} drops only that value.
-	 */
-	public static final Codec<ThreatState> THREATS = new Codec<>() {
-		@Override public <T> DataResult<Pair<ThreatState, T>> decode(DynamicOps<T> ops, T input) {
-			try {
-				DataResult<Pair<RawThreats, T>> parsed = RAW_THREATS.decode(ops, input);
-				if (parsed.result().isEmpty()) {
-					LOG.warn("Village save: unreadable threats dropped ({})", parsed.error().map(e -> e.message()).orElse("?"));
-					return DataResult.success(Pair.of(ThreatState.EMPTY, input));
-				}
-				RawThreats t = parsed.result().get().getFirst();
-				return DataResult.success(Pair.of(new ThreatState(t.raid(), t.lastRaid()), parsed.result().get().getSecond()));
-			} catch (RuntimeException e) {
-				LOG.warn("Village save: unreadable threats dropped ({})", e.getMessage());
-				return DataResult.success(Pair.of(ThreatState.EMPTY, input));
-			}
-		}
-
-		@Override public <T> DataResult<T> encode(ThreatState input, DynamicOps<T> ops, T prefix) {
-			return RAW_THREATS.encode(new RawThreats(input.raid(), input.lastRaid()), ops, prefix);
-		}
-	};
-
 	// RecordCodecBuilder.group takes at most 16 fields. The village has 19 components (M25 adds death_log and threats on RAW_B).
 	// The keys are read by two map codecs joined with Codec.mapPair: both read the same flat compound, so the save format stays flat.
 	private record RawA(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
@@ -550,7 +401,7 @@ public final class VillageCodecs {
 			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(RawB::smokerHeat),
 			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts),
 			DEATH_LOG.optionalFieldOf("death_log", dev.villageheart.core.death.DeathLog.EMPTY).forGetter(RawB::deaths),
-			THREATS.optionalFieldOf("threats", ThreatState.EMPTY).forGetter(RawB::threats)
+			ThreatCodecs.lenient(ThreatCodecs.THREATS, "threats", ThreatState.EMPTY).forGetter(RawB::threats)
 	).apply(i, RawB::new));
 
 	private static final Codec<Raw> RAW = Codec.mapPair(RAW_A, RAW_B).codec().xmap(

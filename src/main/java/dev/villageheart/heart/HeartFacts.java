@@ -10,6 +10,7 @@ import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.Requirements;
 import dev.villageheart.core.building.Verdict;
 import dev.villageheart.core.heart.ActivityKind;
+import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.NeedsFlags;
 import dev.villageheart.core.heart.RowStatus;
@@ -20,6 +21,7 @@ import dev.villageheart.core.heart.VillageFacts.JobFact;
 import dev.villageheart.core.heart.VillageFacts.StockFacts;
 import dev.villageheart.core.heart.VillageFacts.StockItemFact;
 import dev.villageheart.core.heart.VillageFacts.VillagerFact;
+import dev.villageheart.core.siege.SiegeAlerts;
 import dev.villageheart.core.stock.StockSnapshot;
 import dev.villageheart.core.worker.JobSlots;
 import dev.villageheart.core.worker.JobType;
@@ -153,7 +155,10 @@ public final class HeartFacts {
 				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
-				default -> activityOf(v);
+				default -> {
+					var repair = dev.villageheart.core.heart.RepairActivity.of(dev.villageheart.worker.build.WallRepair.line(v.getUUID()));
+					yield repair.isPresent() ? repair.get() : activityOf(v);
+				}
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
 					status == WorkerStatus.WORKPLACE_INVALID, false, false, true,
@@ -218,11 +223,21 @@ public final class HeartFacts {
 		for (dev.villageheart.core.death.DeathEntry e : state.deaths().recent(dev.villageheart.core.heart.HeartLimits.MAX_DEATH_ROWS)) {
 			deaths.add(new dev.villageheart.core.heart.DeathRow(e.name(), e.jobId(), e.cause(), e.day(), e.duringRaid()));
 		}
+		extra.addAll(defenceAlerts(state));
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
 				villagers, jobs, buildings, stock(server, state, adults, babies), extra, members(server, state), builds(server),
 				dev.villageheart.core.economy.WageRules.bill(levels), strikers, tierInputs.population(),
 				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress()), deaths,
 				state.deaths().nextSeq()));
+	}
+
+	/** Damaged walls, when any cell is cracked or breached. */
+	private static List<AlertLine> defenceAlerts(VillageState state) {
+		var damage = state.threats().damage();
+		boolean builder = false;
+		for (WorkerRecord w : state.workers()) if (JobType.BUILDER.id().equals(w.jobId())) builder = true;
+		return SiegeAlerts.alert(damage.breached().size(), damage.cracked().size(), state.threats().underAttack(), builder)
+				.map(List::of).orElse(List.of());
 	}
 
 	/** The builds in progress, oldest first (M20). */

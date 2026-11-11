@@ -6,10 +6,21 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import dev.villageheart.core.*;
+import dev.villageheart.core.defence.DefenceSite;
+import dev.villageheart.core.raid.RaidOrigin;
+import dev.villageheart.core.raid.RaidPlan;
+import dev.villageheart.core.raid.RaidRecord;
+import dev.villageheart.core.siege.DefenceDamage;
+import dev.villageheart.core.siege.PendingRaid;
+import dev.villageheart.core.siege.SiegeRecord;
+import dev.villageheart.core.siege.ThreatState;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -415,7 +426,7 @@ class VillageCodecsTest {
 
 	/** Raid and last raid (M25, T-L1-7). A missing key is empty; a bad raid drops the raid and keeps the village. */
 	@Test void raidRoundTripAndABadRaid() {
-		assertEquals(dev.villageheart.core.raid.ThreatState.EMPTY, dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}")).threats());
+		assertEquals(ThreatState.EMPTY, dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}")).threats());
 		assertFalse(keys(enc(VillageCodecs.VILLAGE_STATE, full())).contains("threats"));
 
 		var plan = new dev.villageheart.core.raid.RaidPlan(2, 4, 1, 0, false);
@@ -445,12 +456,79 @@ class VillageCodecsTest {
 		assertEquals("a", badOutcome.ownerName());
 
 		VillageState badThreats = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"threats\":[]}"));
-		assertEquals(dev.villageheart.core.raid.ThreatState.EMPTY, badThreats.threats());
+		assertEquals(ThreatState.EMPTY, badThreats.threats());
 		assertEquals("a", badThreats.ownerName());
 
 		VillageState badPlan = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE
 				+ ",\"threats\":{\"raid\":{\"vanilla_id\":1,\"origin\":\"test\",\"plan\":{\"omen\":9}}}}"));
 		assertTrue(badPlan.threats().raid().isEmpty());
 		assertEquals("a", badPlan.ownerName());
+	}
+
+	/** T-L1-13. A bad damage array drops the damage and keeps the village. */
+	@Test void threatsRoundTripAndABadDamageArrayDropsOnlyTheDamage() {
+		Map<Long, Integer> cracks = new LinkedHashMap<>();
+		for (int i = 0; i < Balance.MAX_DAMAGED_CELLS; i++) cracks.put((long) i, 1 + (i % (Balance.HP_STONE - 1)));
+		List<UUID> zombies = List.of(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+		ThreatState threats = new ThreatState(Optional.of(raid()), Optional.empty(), Optional.of(new PendingRaid(4, 5000)),
+				Optional.of(new SiegeRecord(9, zombies, 3, 1, 0)), Optional.empty(), 2, ThreatState.NO_DAY, ThreatState.NO_DAY, 3, 4,
+				new DefenceDamage(cracks, List.of()));
+		VillageState v = VillageState.founded(new HeartLocation("minecraft:overworld", 1, 2, 3), OWNER, "a", 4).withThreats(threats);
+		assertEquals(v, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v)));
+		assertEquals(Balance.MAX_DAMAGED_CELLS, v.threats().damage().size());
+
+		JsonObject saved = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject();
+		saved.getAsJsonObject("threats").getAsJsonObject("damage").add("cracked", json("[1,2,3]"));
+		int before = ThreatCodecs.loadWarnings;
+		VillageState odd = dec(VillageCodecs.VILLAGE_STATE, saved);
+		assertEquals(before + 1, ThreatCodecs.loadWarnings);
+		assertTrue(odd.threats().damage().isEmpty());
+		assertEquals(threats.pending(), odd.threats().pending());
+		assertEquals(threats.siege(), odd.threats().siege());
+		assertEquals(v.heart(), odd.heart());
+
+		Map<Long, Integer> many = new LinkedHashMap<>();
+		List<Long> breaches = new ArrayList<>();
+		for (int i = 0; i < 10; i++) breaches.add(10_000L + i);
+		for (int i = 0; i < 4990; i++) many.put(20_000L + i, i < 904 ? 1 : 11);
+		VillageState over = v.withThreats(threats.withDamage(new DefenceDamage(many, breaches)));
+		before = ThreatCodecs.loadWarnings;
+		VillageState capped = dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, over));
+		assertEquals(before + 1, ThreatCodecs.loadWarnings);
+		assertEquals(Balance.MAX_DAMAGED_CELLS, capped.threats().damage().size());
+		for (long b : breaches) assertTrue(capped.threats().damage().isBreached(b), "breach " + b);
+		assertEquals(0, capped.threats().damage().damageAt(20_000L));
+		assertEquals(11, capped.threats().damage().damageAt(20_000L + 904));
+
+		List<Long> tooManyBreaches = new ArrayList<>();
+		for (int i = 0; i < Balance.MAX_DAMAGED_CELLS + 1; i++) tooManyBreaches.add((long) i);
+		before = ThreatCodecs.loadWarnings;
+		VillageState breachCap = dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE,
+				v.withThreats(threats.withDamage(new DefenceDamage(Map.of(), tooManyBreaches)))));
+		assertEquals(before + 1, ThreatCodecs.loadWarnings);
+		assertEquals(Balance.MAX_DAMAGED_CELLS, breachCap.threats().damage().breached().size());
+		assertFalse(breachCap.threats().damage().isBreached(Balance.MAX_DAMAGED_CELLS));
+		assertTrue(breachCap.threats().damage().isBreached(0));
+
+		JsonObject site = enc(VillageCodecs.DEFENCE_SITE, new DefenceSite(OWNER, "wall_segment", v.heart(), dev.villageheart.core.blueprint.Rotation4.NONE, 8L,
+				10, Set.of(5L), Set.of(9L))).getAsJsonObject();
+		site.remove("length");
+		site.remove("opened");
+		site.remove("seen");
+		DefenceSite old = dec(VillageCodecs.DEFENCE_SITE, site);
+		assertEquals(0, old.length());
+		assertTrue(old.opened().isEmpty() && old.seen().isEmpty());
+
+		saved.getAsJsonObject("threats").add("raid", json("{\"vanilla_id\":1,\"origin\":\"nope\"}"));
+		saved.getAsJsonObject("threats").getAsJsonObject("damage").add("cracked", json("[]"));
+		before = ThreatCodecs.loadWarnings;
+		VillageState droppedRaid = dec(VillageCodecs.VILLAGE_STATE, saved);
+		assertTrue(droppedRaid.threats().raid().isEmpty());
+		assertEquals(threats.pending(), droppedRaid.threats().pending());
+		assertEquals(before + 1, ThreatCodecs.loadWarnings);
+	}
+
+	private static RaidRecord raid() {
+		return new RaidRecord(7, RaidOrigin.RANDOM, new RaidPlan(1, 0, 0, 2, true), 100L, 4, 6, 2, 2, 0, 0, 2, 1, 3, false, 0, 1, 0, 0, -1L);
 	}
 }

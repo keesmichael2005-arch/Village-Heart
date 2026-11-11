@@ -14,7 +14,7 @@ import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.death.DeathLog;
 import dev.villageheart.core.raid.RaidRecord;
 import dev.villageheart.core.raid.RaidSummary;
-import dev.villageheart.core.raid.ThreatState;
+import dev.villageheart.core.siege.ThreatState;
 import dev.villageheart.core.defence.DefenceSite;
 import dev.villageheart.core.guard.GuardShift;
 import dev.villageheart.core.guard.Shift;
@@ -530,6 +530,15 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (defences.size() >= Balance.MAX_DEFENCE_SITES || defence(d.id()).isPresent()) return this;
 		List<DefenceSite> next = new ArrayList<>(defences);
 		next.add(d);
+		return withDefences(next);
+	}
+
+	/** Replaces the site with this id. A no-op when the village has no such site. */
+	public VillageState replaceDefence(DefenceSite d) {
+		Objects.requireNonNull(d, "defence");
+		if (defence(d.id()).isEmpty()) return this;
+		List<DefenceSite> next = new ArrayList<>();
+		for (DefenceSite s : defences) next.add(s.id().equals(d.id()) ? d : s);
 		return withDefences(next);
 	}
 

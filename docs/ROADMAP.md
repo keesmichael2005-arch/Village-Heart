@@ -233,6 +233,11 @@ from there instead of hard-coding them.
 
 ## M25: Raids and alerts
 - Track A (`m25`): steps 1–8 are in (through the raid harness: 3.7 metrics, `raid` / `golems` / `top_up_villagers` / `worker_level`, and the summary's Raid section). Full `scripts/verify.sh` at `af4a1dd` exited 0 (399 GameTests, Layer 4 passed). Not ticked; steps 9–19 are later tracks.
+- Track B step 9 on `m25-walls` (not this milestone done): walls and gates are recorded (no patrol point, cap 128), threat state saves, gamerules `siege_damage` / `random_raids` / `sieges` default on. Raid tracking, shelter and the death log are track A.
+- Track B step 12 on `m25-walls`: a ravager or vindicator in the tracked raid breaks the wall or gate in front of it and walks through. Fast verify 394/394 at `1ae6cfe`.
+- Track B step 13 on `m25-walls`: at night a zombie with no target is lured to a walled village and breaks a way in. A skeleton, a spider, daytime, a trench, an open gap and a short wall stay as the plan says. Fast verify 402/402 at `0d2cc08`. Creepers are step 14.
+- Track B step 14 on `m25-walls`: a creeper with no target lights beside a wall and the blast hits defence cells only. A creeper chasing a player keeps the vanilla crater. A trench is not a place to light. Guards and iron golems do not hunt it. Fast verify 407/407 at `196391d`.
+- Track B step 15 on `m25-walls`: the builder repairs breached gates and stone, then cracks, from Storage, and a tracked raid puts hired workers in shelter. The Heart lists a raid, a siege, and damaged walls. `GuardSystem.feed` is unchanged. Fast verify 411/411 at `07cdca8`.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged

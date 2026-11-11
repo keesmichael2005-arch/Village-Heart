@@ -23,9 +23,9 @@ public final class VillageThreats {
 		previous = RaidCheck.setSource(VillageThreats::forGuards);
 	}
 
-	/** A raid is tracked. A siege joins this when the wall track adds one. */
+	/** A raid is tracked or a siege is running. */
 	public static boolean underAttack(MinecraftServer server) {
-		return VillageClaims.current(server).map(v -> v.threats().raid().isPresent()).orElse(false);
+		return VillageClaims.current(server).map(v -> v.threats().underAttack()).orElse(false);
 	}
 
 	/**
@@ -41,7 +41,7 @@ public final class VillageThreats {
 	}
 
 	public static boolean forGuards(ServerLevel level, VillageState village) {
-		if (village.threats().raid().isPresent()) return true;
+		if (village.threats().underAttack()) return true;
 		return previous.underRaid(level, village);
 	}
 }

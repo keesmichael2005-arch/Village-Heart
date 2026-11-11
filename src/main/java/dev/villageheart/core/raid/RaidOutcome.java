@@ -11,7 +11,7 @@ public enum RaidOutcome {
 
 	public static Optional<RaidOutcome> byId(String id) {
 		if (id == null) return Optional.empty();
-		for (RaidOutcome o : values()) if (o.id().equals(id)) return Optional.of(o);
+		for (RaidOutcome o : values()) if (o.id().equals(id) || o.name().equalsIgnoreCase(id)) return Optional.of(o);
 		return Optional.empty();
 	}
 }

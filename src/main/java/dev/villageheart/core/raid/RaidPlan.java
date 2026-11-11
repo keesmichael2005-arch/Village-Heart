@@ -8,6 +8,9 @@ public record RaidPlan(int omen, int extraVindicators, int extraRavagers, int wa
 	/** A test or Bad Omen raid: omen 1, no extras, vanilla waves. */
 	public static final RaidPlan VANILLA = new RaidPlan(1, 0, 0, 0, false);
 
+	/** The same plan. The wall track named the unset plan {@code NONE}. */
+	public static final RaidPlan NONE = VANILLA;
+
 	public RaidPlan {
 		if (omen < 1 || omen > 5) throw new IllegalArgumentException("omen must be 1..5: " + omen);
 		if (extraVindicators < 0 || extraRavagers < 0 || waveCap < 0) {

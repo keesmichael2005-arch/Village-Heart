@@ -137,7 +137,9 @@ class VillageGuardShiftsTest {
 				dev.villageheart.core.raid.RaidPlan.VANILLA, 10L, 1, 4, 2, 2, 0, 0, 1, 0, 0, false, 0, 0, 0, 0, -1L);
 		var last = new dev.villageheart.core.raid.RaidSummary(1, 10L, 20L, dev.villageheart.core.raid.RaidOutcome.STOPPED,
 				dev.villageheart.core.raid.RaidOrigin.TEST, 0, 1, 4, 4, 0, 0, 0);
-		calls.put("withThreats", s -> s.withThreats(new dev.villageheart.core.raid.ThreatState(java.util.Optional.of(raid), java.util.Optional.of(last))));
+		calls.put("withThreats", s -> s.withThreats(dev.villageheart.core.siege.ThreatState.EMPTY
+				.withRaid(java.util.Optional.of(raid)).withLastRaid(java.util.Optional.of(last))
+				.withPending(Optional.of(new dev.villageheart.core.siege.PendingRaid(3, 4000)))));
 		calls.put("withRaid", s -> s.withRaid(java.util.Optional.of(raid)));
 		calls.put("withLastRaid", s -> s.withLastRaid(java.util.Optional.of(last)));
 		// the names that rebuild the guard map on purpose are tested above

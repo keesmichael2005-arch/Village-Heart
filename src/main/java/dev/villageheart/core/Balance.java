@@ -217,8 +217,49 @@ public final class Balance {
 	public static final int GATE_MIN_LENGTH = 5;
 	/** Ticks between two checks that the recorded lamp posts and watchtowers still stand. */
 	public static final int DEFENCE_REFRESH_TICKS = 200;
-	/** Recorded defence sites (patrol points) per village. */
-	public static final int MAX_DEFENCE_SITES = 64;
+	/** Recorded defence sites per village. A site cap, not a wall-length cap (M25: 64 was too small for a ring). */
+	public static final int MAX_DEFENCE_SITES = 128;
+	/** Hit points of one cobblestone defence cell (M25). A crack stores damage 1..HP_STONE-1. */
+	public static final int HP_STONE = 12;
+	/** Hit points of one fence-gate defence cell (M25). Two vindicator hits open it. */
+	public static final int HP_GATE = 8;
+	/** Cracked cells plus breaches kept for one village. Past this, the least-damaged crack is dropped. */
+	public static final int MAX_DAMAGED_CELLS = 4096;
+	/** Creeper breach: the target cell and the one above or below it. The splash uses {@link #CREEPER_RADIUS}. */
+	public static final int CREEPER_CORE_DAMAGE = 16;
+	/** Splash radius of a breaching creeper, in blocks. A powered creeper uses the wider radius; the hole stays two cells. */
+	public static final int CREEPER_RADIUS = 3;
+	public static final int CREEPER_RADIUS_POWERED = 6;
+	public static final int CRACK_RESEND_TICKS = 200;
+	public static final int DAMAGE_FLUSH_TICKS = 200;
+	/** Seen wall and gate cells before zombies are lured. One wall piece is not an enclosure. */
+	public static final int LURE_MIN_WALL_CELLS = 150;
+	public static final int MAX_LURED = 24;
+	public static final int LURE_RADIUS = 112;
+	public static final int LURE_REPATH_TICKS = 60;
+	public static final int LURE_NIGHT_START = 13000;
+	public static final int LURE_NIGHT_END = 23000;
+	public static final int MAX_SIEGE_PATHS_PER_TICK = 2;
+	public static final int CREEPER_SEEK_RADIUS = 24;
+	public static final int SIEGE_GRACE_DAYS = 5;
+	public static final int SIEGE_GAP_DAYS = 3;
+	public static final int THREAT_REST_DAYS = 2;
+	public static final int RAID_GRACE_DAYS = 7;
+	public static final int RAID_GAP_DAYS = 5;
+	public static final int RAID_LOADED_TICKS = 600;
+	public static final int THREAT_PLAYER_RANGE = 96;
+	public static final int RAID_ROLL_TICK = 1000;
+	public static final int SIEGE_ROLL_TICK = 13000;
+	public static final int PENDING_START_MIN = 2000;
+	public static final int PENDING_START_MAX = 11000;
+	public static final int EARLY_RAID_WAVES = 2;
+	public static final int RAID_FULL_GUARDS = 4;
+	public static final int REWARD_CAP = 40;
+	public static final int SIEGE_SPAWN_MIN = 32;
+	public static final int SIEGE_SPAWN_PAD = 12;
+	public static final int BREACH_NOTICE_TICKS = 1200;
+	/** The builder repairs a breach before it starts a new build. */
+	public static final boolean REPAIR_BEFORE_BUILDS = true;
 	// ---- farmer (M10) ----
 	/** Crops within this many blocks (xz, Euclidean) of the Farmhouse composter, and within +-FARM_DY in y. */
 	public static final int FARM_RADIUS = 24;

@@ -55,12 +55,19 @@ class DefencesTest {
 	}
 
 	@Test
-	void wallsAndGatesAreNotRecorded() {
+	void wallsAndGatesAreRecordedButHaveNoPatrolPoint() {
+		// M25 records every finished defence. A wall still has no key cell and no patrol point (T-L1-14).
 		assertTrue(DefenceSpecs.of("wall_segment").isEmpty());
 		assertTrue(DefenceSpecs.of("gate").isEmpty());
 		assertTrue(DefenceSpecs.of("small_house").isEmpty());
+		assertTrue(Defences.recorded("wall_segment"));
+		assertTrue(Defences.recorded("gate"));
 		assertTrue(Defences.recorded("lamp_post"));
 		assertTrue(Defences.recorded("watchtower"));
+		assertFalse(Defences.recorded("small_house"));
+		DefenceSite wall = new DefenceSite(new UUID(3, 1), "wall_segment", GROUND, Rotation4.NONE, 1, 10, java.util.Set.of(), java.util.Set.of());
+		assertTrue(Defences.patrolPoint(wall, p -> true).isEmpty());
+		assertTrue(Defences.keys(wall).isEmpty());
 	}
 
 	@Test

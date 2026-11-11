@@ -975,3 +975,75 @@ Track A of M25: the death log, raid tracking, worker shelter, the Heart raid lin
 
 M25 is not ticked on the roadmap. Steps 9-19 belong to later tracks.
 ```
+## 2026-11-11: M25 track B step 9 (gamerules, threat state, recording)
+- Branch `m25-walls`. Three gamerules, category MOBS, default on: `villageheart:siege_damage`, `villageheart:random_raids`, `villageheart:sieges`.
+- `ThreatState` is saved as `threats` after `guard_shifts`. The raid records are the plan's shape and nothing fills them yet (track A owns the tracker). A bad damage array or a bad raid drops that value, keeps the village, and warns once. 5000 damage entries on disk keep 4096, breaches first.
+- A finished wall or gate is recorded with its length and the cells the build placed. It has no patrol point and no key block, so a missing block does not drop it. The site cap is 128. `DefenceClientTests` now expects 6 sites for the walled section (wall, gate, wall, two lamps, tower). The screenshots are the same pictures; they get a look when the full verify runs.
+- Tests: T-L1-13 `VillageCodecsTest`, T-L1-14 `DefencesRecordedTest`, T-L2-13 `SiegeGameTests.wallIsRecorded`. The two village-state sweeps that reflect over `with*` now include `withThreats`.
+- `scripts/verify.sh --fast` before the sweep fix: L1 red on those two sweeps; the dedicated GameTest run passed 386/386. One GameTest inside `build` (`gate_game_tests_mobs_still_cannot_pass_the_gate`) failed once while unit tests ran beside it, and passed in the dedicated run. Not changed. Fast verify after the fix, at `4af3ef4`: exit 0 (L1 green, L2 386/386, perf green).
+- Deviations: docs/plans/M25.md section 8. Next: step 10, the pure siege rules.
+
+## 2026-11-11: M25 track B step 10 (siege rules)
+- Pure rules: hit points and the hit table, creeper splash, breach choice, lure and its 24 slots, threat score, item value, raid scale, young-village raid plan, roll and start rules, siege size, repair order, the threat clock, the slow-scan rule, and the damage sentences.
+- L1 for those rules passed: 29 tests, 0 failures (`DefenceCellsTest`, `WallHpTest`, `SiegeHitsTest`, `DefenceDamageTest`, `BreachChoiceTest`, `LureTest`, `ThreatTest`, `ItemValueTest`, `RaidScaleTest`, `ThreatRollTest`, `ThreatRulesTest`, `SiegeRulesTest`, `RepairPlannerTest`, `ThreatClockTest`, `RewardTest`, `DefenceScanTest`, `RaidPlanTest`, `SiegeAlertsTest`).
+- Decisions, in docs/plans/M25.md section 8: defence cells in the threat score divide as integers; siege spawns use `max(outermost, 32) + 12` (outermost 10 → 44); a Hamlet's random raid is the young-village plan.
+- The alert-code order (RAID, SIEGE, DEFENCE_DAMAGED) is step 15. `SiegeAlerts` has the two sentences and the "(no builder)" variant.
+- `scripts/verify.sh --fast` at `d06cb14`: exit 0 (L1 green, L2 386/386, perf green).
+- Next: step 11, siege damage glue.
+
+## 2026-11-11: M25 track B step 11 (siege damage glue, in progress)
+- `SiegeDamage.hit` cracks and breaks a recorded cell, sends the destruction stage, writes a breach through at once, and flushes cracks on demand and every 200 ticks. A player break opens the cell. The slow scan is one tenth of the sites. A missing watchtower key that is in the breached set does not drop the site.
+- L2, each run alone and passed (1 required test): `siegeDamageHitsCracksAndBreaks` (T-L2-14), `nonDefenceBlocksNeverDamaged` (T-L2-15; hit and blast are called directly, the lured zombie and the breacher creeper arrive in steps 13 and 14), `playerOpenedCellIsLeftAlone` (T-L2-16), `siegeDamageGamerule` (T-L2-36 zombie half; the creeper half is step 14), `watchtowerBreachKeepsSite` (T-L2-40 site and patrol point).
+- `scripts/verify.sh --fast` at `4c0f97d`: exit 0 (L1 green, L2 391/391, perf green).
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, in progress)
+- `MobGoalsAccessor`, `SiegeGoals` on entity load (one of each goal), `PathBudget` (2 paths a tick), `BreachGoal` for a ravager and a vindicator in the tracked raid. `TrackedRaids.track` stores the vanilla raid id; track A still owns the tracker.
+- Zombie lure, zombie breach, and creeper breach are installed so a reload cannot double them, and their `canUse` stays false until steps 13 and 14.
+- Tests written, not yet run: T-L2-17 `ravagerBreaksWallInTwoHits`, T-L2-18 `vindicatorChopsGate`, T-L2-19 `goalsInstalledOnce`.
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, tests green alone)
+- Each of T-L2-17, T-L2-18 and T-L2-19 passed alone (1 required test). A tracked raid needs an occupied village bell and a difficulty above Peaceful, or vanilla stops it on the first tick. The ring is wide so the south wall is the closest face to the bell. The ravager stands on the south edge of the block in front of that wall. Both raiders target the villager inside, and they walk through once the opening is clear.
+- Fast verify at `25f01f7` failed L2: `ravager_breaks_wall_in_two_hits` reached 4000 ticks with the attack cell still at 0 (the goal had started). The suite keeps earlier raids and occupied bells, and `createOrExtendRaid` then centres on a neighbour. One block of drift also opens the next column. `track` now isolates the centre, and the test holds the raider on the attack block until that cell is open.
+- Fast verify at `1ae6cfe` is green: L1, L2 394/394, L3 self-test, perf.
+- Step 13 is in progress: `LureSlots`, `VillageLureGoal`, and the zombie `BreachGoal`. Lure GameTests are in `SiegeLureGameTests`.
+- The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.
+
+## 2026-11-11: M25 track B step 13 (zombie lure and breach)
+- `LureSlots` admits up to 24 zombies (siege tag first, then distance). `VillageLureGoal` walks a partial path up to the wall and hands off. `BreachGoal` then hits for a zombie that holds a slot, or whose target stands in the claim.
+- Each lure GameTest passed alone (1 required test): T-L2-20 `zombieBehindClosedWallBreaks`, T-L2-21 `skeletonStaysVanilla`, T-L2-22 `lureOffByDay`, T-L2-23 `noWallsNoLure`, T-L2-24 `lureBudgetCaps`, T-L2-37 `trenchInFrontOfWall` (zombie half), T-L2-38 `openGapIsUsed`, T-L2-39 `partialWallNoLure`.
+- The gate sits on the north wall. A south gate's eye-level air lets the zombie see a villager and take a target before it hits. The beside-the-wall bound is 1200 ticks: the specified wander arrived in 794, and 600 is a straight walk. "Never had a target" is checked until the zombie is beside the wall.
+- `scripts/verify.sh --fast` at `0d2cc08`: exit 0 (L1 green, L2 402/402, L3 self-test, perf).
+- Next: step 14, creeper breach. The builder repair of T-L2-40 stays in step 15.
+
+## 2026-11-11: M25 track B step 14 (creeper breach)
+- `CreeperBreachGoal` walks a creeper that holds a lure slot to the nearest wall or gate and lights it beside the cell. `CreeperExplodeMixin` spends that blast on defence cells. A creeper with a target keeps the vanilla explosion. Creepers share the 24 lure slots with the zombies.
+- Each creeper GameTest passed alone (1 required test): T-L2-25 `creeperBreachesWall`, T-L2-25b `nobodyHuntsTheBreacher`, T-L2-26 `breachSparesHousesBehindWall`, T-L2-27 `vanillaCreeperStillVanilla`, T-L2-36 `siegeDamageGameruleCreeper`, T-L2-37 `trenchInFrontOfWall` (zombie and creeper). The trench was run twice more after the stand fix and passed both times.
+- A stand has to be outside the ring, with its feet on the ground the wall was built on. The trench bottom is lower than that, so a creeper that drops in does not light. T-L2-27 plans the repair with `RepairPlanner.next`; the builder is step 15.
+- `scripts/verify.sh --fast` at `196391d`: exit 0 (L1 green, L2 407/407, L3 self-test, perf).
+- Next: step 15, builder repairs and the DEFENCE_DAMAGED alert. The builder repair of T-L2-40 stays there.
+
+## 2026-11-11: M25 track B step 15 (alerts, repairs not started)
+- `AlertCode` appends `RAID`, `SIEGE`, `DEFENCE_DAMAGED`. The Heart snapshot lists them in that order, ahead of the older alerts. A cracked or breached wall adds the damage line, including the "(no builder)" and the danger wording during a raid or a siege.
+- `SiegeAlertsTest` covers the lines, the args, and that order. `LangCoverageTest` covers the three new strings.
+- The builder still does not walk over to repair. T-L2-28, T-L2-29, T-L2-30, T-L2-44 and the builder half of T-L2-40 are not written.
+
+## 2026-11-11: M25 track B step 15 (builder repairs)
+- `WallRepair` runs from `BuilderWork` before a new build. A hired builder in `WORK` fetches cobblestone or a fence gate from Storage, walks to a stand, and places the blueprint block. A heavy crack spends one cobblestone and leaves the block. A light crack is free. A cell with another entity or a solid block that is not the blueprint block is skipped. Each action is 20 ticks at level 1 and grants block-placed XP. `SiegeDamage.repair` clears the cell and flushes, so the Heart line drops. The sentence is "Repairing" or "Repairs need N more fence gate" / "cobblestone". A missing watchtower ladder is repaired after the wall cells, which is the builder half of T-L2-40.
+- Shelter for this step is the activity `villageheart:shelter` plus `ShelterDuringThreat`, for a hired worker who is not a guard while a raid or a siege is tracked. `TrackedRaids.holdWaves` keeps the vanilla raid from spawning a group, and `TrackedRaids.stop` ends it. Beds, doors, and the death log stay with track A. `GuardSystem.feed` is unchanged. T-L2-44 holds the guard with `setNoAi` so a patrol cannot leave the 10-block bubble.
+- The first breach says "The wall of %s was breached" at most once per 1200 ticks, and the last repair says "The walls of %s are repaired".
+- Tests, each passed alone and in the suite: T-L2-28 `builderRepairsWithStorageCobblestone`, T-L2-29 `breachStaysOpenWithoutMaterial`, T-L2-30 `noRepairDuringThreat`, T-L2-44 `rationDoesNotRefillBesideAnEnemy`, and the builder half of T-L2-40 `watchtowerBreachKeepsSite`.
+- `PathBudget` serves a mob that was refused a search before one that searched last tick. The cap stays at 2. Without that, the same two mobs took both tokens every tick and `zombieBehindClosedWallBreaks` waited until tick 2922 for its first hit. The first-hit bound is 2000.
+- `build` no longer runs the GameTest suite. Fabric had wired it into `check`, and that run discovered the tests in a different order from `gradlew runGameTest`. `scripts/verify.sh` still runs the suite once, as layer 2.
+- `scripts/verify.sh --fast` at `07cdca8`: exit 0 (L1 green, L2 411/411, L3 self-test, perf).
+- Deviations: docs/plans/M25.md section 8. Next for this track: merge `dev`, then the full verify. Steps 16–19 stay with the orchestrator.
+
+## 2026-11-11: M25 track B full verify
+- `origin/dev` was already contained in `m25-walls` (`c7f109b`). The merge was already up to date.
+- `scripts/verify.sh` at `e2dbfb4`: exit 0. L1 green, L2 411/411, L3 self-test, L4 client tests and the three NetworkSynchronizer checks green (1 lost wakeup rescued, 0 disconnect leaks), model log and the 2-player session clean, perf green. Screenshots of the walled section, the closed gate, and the watchtower show the cobblestone wall, the fence gate, and the shaft with its ladder.
+- Steps 9–15 are on `m25-walls`. Steps 16–19 stay with the orchestrator.
+
+## 2026-11-11: TASK 9 merge of track A and track B
+- `m25-full` starts at `origin/m25` (`190fa1d`) and merges `origin/m25-walls` (`8e3b0a2`). `origin/dev` (`c7f109b`) is already an ancestor of both.
+- One `villageheart:shelter` activity, using track A's beds and doors. A running siege shelters the same way as a nearby raid. `ShelterDuringThreat` is gone. `VillageState` keeps the death log and uses the siege `ThreatState`. `AlertCode` stays append-only. The Heart row for a builder whose repair line is "Repairing" is the new `ActivityKind.REPAIRING`. "Repairs need …" stays "Needs materials". The siege sentence on the Heart waits for step 17.
+- Unit tests (`./gradlew --no-daemon test`) passed on the merged tree. GameTests are next (`scripts/verify.sh --fast`).
+- Decisions: docs/plans/M25.md section 8, "Track A + track B".

@@ -81,9 +81,8 @@ class VillageStateTierTest {
 		if (t == Map.class) return Map.of(new UUID(3, 3), new dev.villageheart.core.guard.GuardShift(dev.villageheart.core.guard.Shift.DAY, true)); // withGuardShifts (M18)
 		if (t == dev.villageheart.core.death.DeathLog.class) return dev.villageheart.core.death.DeathLog.EMPTY.append(
 				new dev.villageheart.core.death.DeathEntry(0, new UUID(8, 8), "Ada", "farmer", "minecraft:zombie", true, 10, 1, true, false, false));
-		if (t == dev.villageheart.core.raid.ThreatState.class) return new dev.villageheart.core.raid.ThreatState(java.util.Optional.of(
-				new dev.villageheart.core.raid.RaidRecord(1, dev.villageheart.core.raid.RaidOrigin.TEST, dev.villageheart.core.raid.RaidPlan.VANILLA,
-						10L, 1, 4, 2, 2, 0, 0, 1, 0, 0, false, 0, 0, 0, 0, -1L)), java.util.Optional.empty());
+		if (t == dev.villageheart.core.siege.ThreatState.class) return dev.villageheart.core.siege.ThreatState.EMPTY.withPending(
+				java.util.Optional.of(new dev.villageheart.core.siege.PendingRaid(3, 4000))); // withThreats (M25)
 		throw new AssertionError("add a fixture for " + t.getName() + " to VillageStateTierTest.arg");
 	}
 

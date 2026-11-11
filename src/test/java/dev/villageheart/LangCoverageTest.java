@@ -51,6 +51,12 @@ class LangCoverageTest {
 		for (int strikers : new int[] {1, 3}) {
 			for (var a : dev.villageheart.core.economy.WageAlerts.of(0, 5, strikers)) assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());
 		}
+		for (var a : new dev.villageheart.core.heart.AlertLine[] {
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, false, true).orElseThrow(),
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, false, false).orElseThrow(),
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, true, true).orElseThrow() }) {
+			assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());
+		}
 	}
 
 	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */

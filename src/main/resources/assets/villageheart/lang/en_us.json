@@ -106,6 +106,9 @@
 	"gui.villageheart.heart.alert.strike_one": "1 worker is on strike: deposit emeralds at the Heart",
 	"gui.villageheart.heart.alert.strike": "%s workers are on strike: deposit emeralds at the Heart",
 	"gui.villageheart.heart.alert.treasury_short": "Treasury short: %s of %s emeralds for tomorrow's wages",
+	"gui.villageheart.heart.alert.defence_damaged": "Walls damaged: %s broken, %s cracked",
+	"gui.villageheart.heart.alert.defence_damaged_no_builder": "Walls damaged: %s broken, %s cracked (no builder)",
+	"gui.villageheart.heart.alert.defence_breached": "Wall breached! %s holes",
 	"gui.villageheart.heart.tab.overview": "Overview",
 	"gui.villageheart.heart.tab.villagers": "Villagers",
 	"gui.villageheart.heart.tab.buildings": "Buildings",
@@ -292,6 +295,7 @@
 	"gui.villageheart.heart.activity.treasury_full": "Treasury full",
 	"gui.villageheart.heart.activity.sheltering": "Sheltering",
 	"gui.villageheart.heart.activity.no_shelter": "No shelter",
+	"gui.villageheart.heart.activity.repairing": "Repairing",
 	"gui.villageheart.heart.building.house": "House",
 	"gui.villageheart.heart.building.storage": "Storage",
 	"gui.villageheart.heart.building.farmhouse": "Farmhouse",
@@ -396,5 +400,8 @@
 	"message.villageheart.market.reserves_set": "Keeping %s days of food, %s of each item",
 	"message.villageheart.market.reserves": "Market keeps %s days of food and %s of every other item",
 	"message.villageheart.market.status": "Market: %s sold today, %s merchants, keeps %s days of food and %s of every other item",
-	"message.villageheart.market.bad_reserve": "Reserves must be 0 to 30 days and 0 to 1024 items"
+	"message.villageheart.market.bad_reserve": "Reserves must be 0 to 30 days and 0 to 1024 items",
+	"gamerule.villageheart.siege_damage": "Walls and gates take siege damage",
+	"gamerule.villageheart.random_raids": "Random raids",
+	"gamerule.villageheart.sieges": "Zombie sieges"
 }

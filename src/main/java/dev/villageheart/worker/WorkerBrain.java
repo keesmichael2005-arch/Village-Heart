@@ -101,9 +101,13 @@ public final class WorkerBrain {
 		return activityFor(level.getDayTime());
 	}
 
-	/** Hired non-guards go indoors while the village is under attack, except a sleeper who already has a home and a worker who is away. */
+	/**
+	 * Hired non-guards go indoors while a tracked raid is still within reach, or a siege is running.
+	 * A sleeper who already has a home stays in bed, and a worker who is away stays on the trip.
+	 */
 	private static boolean shouldShelter(Villager v, ServerLevel level) {
-		return RaidActivity.shelter(VillageThreats.nearRaid(level, v.blockPosition()), DaySchedule.phaseAt(level.getDayTime()),
+		boolean siege = dev.villageheart.world.VillageClaims.current(level.getServer()).map(s -> s.threats().siege().isPresent()).orElse(false);
+		return RaidActivity.shelter(VillageThreats.nearRaid(level, v.blockPosition()) || siege, DaySchedule.phaseAt(level.getDayTime()),
 				AwayTrips.isAway(v), Housing.home(v).isPresent());
 	}
 
@@ -193,13 +197,13 @@ public final class WorkerBrain {
 				look(),
 				p(99, new UpdateWorkerActivity())));
 
-		brain.addActivity(SHELTER, ImmutableList.of(
-				p(2, new ShelterBehaviour()),
-				p(99, new UpdateWorkerActivity())));
 		brain.addActivity(Activity.PANIC, VillagerGoalPackages.getPanicPackage(profession, SPEED));
 		brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.RAID, VillagerGoalPackages.getRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.HIDE, VillagerGoalPackages.getHidePackage(profession, SPEED));
+		brain.addActivity(SHELTER, ImmutableList.of(
+				p(2, new ShelterBehaviour()),
+				p(99, new UpdateWorkerActivity())));
 		brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
 		brain.setDefaultActivity(Activity.IDLE);
 		Activity start = villager.level() instanceof ServerLevel sl ? activityFor(villager, sl) : activityFor(villager.level().getDayTime());

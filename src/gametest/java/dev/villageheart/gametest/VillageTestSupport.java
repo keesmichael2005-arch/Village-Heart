@@ -78,6 +78,12 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.guard.GuardGear.resetForTests();
 		dev.villageheart.worker.guard.PatrolPoints.invalidate();
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
+		dev.villageheart.siege.SiegeDamage.resetForTests();
+		dev.villageheart.siege.BreachNotices.resetForTests();
+		dev.villageheart.worker.build.WallRepair.resetForTests();
+		dev.villageheart.siege.PathBudget.resetForTests();
+		dev.villageheart.siege.LureSlots.resetForTests();
+		dev.villageheart.siege.TrackedRaids.restoreDifficulty(server);
 		dev.villageheart.market.Markets.clearRuntime(); // M22
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
@@ -131,10 +137,15 @@ public final class VillageTestSupport {
 
 	/** Like {@link #player(GameTestHelper, String, GameType)} with a custom ServerPlayer subclass. Tracked and removed by reset. */
 	public static ServerPlayer player(GameTestHelper h, String name, GameType mode, PlayerFactory factory) {
+		return player(h, name, mode, factory, null);
+	}
+
+	/** {@code connection} records packets when a test subclasses {@link Connection}. Null builds a plain one. */
+	public static ServerPlayer player(GameTestHelper h, String name, GameType mode, PlayerFactory factory, Connection connection) {
 		MinecraftServer server = h.getLevel().getServer();
 		GameProfile profile = new GameProfile(UUID.randomUUID(), name);
 		ServerPlayer p = factory.create(server, h.getLevel(), profile);
-		Connection conn = new Connection(PacketFlow.SERVERBOUND);
+		Connection conn = connection == null ? new Connection(PacketFlow.SERVERBOUND) : connection;
 		new EmbeddedChannel(conn);
 		server.getPlayerList().placeNewPlayer(conn, p, CommonListenerCookie.createInitial(profile, false));
 		p.setGameMode(mode);

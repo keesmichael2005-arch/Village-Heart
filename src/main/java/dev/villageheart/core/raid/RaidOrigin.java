@@ -11,7 +11,7 @@ public enum RaidOrigin {
 
 	public static Optional<RaidOrigin> byId(String id) {
 		if (id == null) return Optional.empty();
-		for (RaidOrigin o : values()) if (o.id().equals(id)) return Optional.of(o);
+		for (RaidOrigin o : values()) if (o.id().equals(id) || o.name().equalsIgnoreCase(id)) return Optional.of(o);
 		return Optional.empty();
 	}
 }
