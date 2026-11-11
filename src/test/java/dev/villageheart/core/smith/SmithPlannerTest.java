@@ -147,6 +147,13 @@ class SmithPlannerTest {
 		SmithDecision blocked = decide(f);
 		assertFalse(blocked instanceof SmithDecision.FetchAndDeliver);
 		assertFalse(blocked instanceof SmithDecision.StartCraft);
+		// The planks were spent making the axe that bounced off a full chest. Storage still holds it, so it is carried, not abandoned.
+		f.deliveryBlocked = Set.of();
+		f.materials = planks(0);
+		f.storageTools = List.of("minecraft:wooden_axe");
+		SmithDecision spent = decide(f);
+		assertInstanceOf(SmithDecision.FetchAndDeliver.class, spent);
+		assertEquals("minecraft:wooden_axe", ((SmithDecision.FetchAndDeliver) spent).itemId());
 	}
 
 	@Test

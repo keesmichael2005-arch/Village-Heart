@@ -19,6 +19,7 @@ import dev.villageheart.core.smith.SmithDecision.Hint;
 import dev.villageheart.core.smith.SmithFacts.RepairJob;
 import dev.villageheart.core.smith.SmithFacts.Trip;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +96,8 @@ public final class SmithPlanner {
 	}
 
 	private static Optional<SmithDecision> takeOrder(SmithFacts f, Set<Urgency> classes) {
+		Optional<SmithDecision> stored = deliverStored(f, classes);
+		if (stored.isPresent()) return stored;
 		Map<CampNeed, List<OpenOrder>> open = new HashMap<>();
 		for (var e : f.openByCamp.entrySet()) open.put(e.getKey(), new ArrayList<>(e.getValue()));
 		for (int guard = 0; guard < 8; guard++) {
@@ -117,6 +120,48 @@ public final class SmithPlanner {
 			hold(open, key);
 		}
 		return Optional.empty();
+	}
+
+	/**
+	 * A tool already in Storage is carried over even when the stockpile can no longer afford a new one (the camp chest was full, so the
+	 * axe just made is sitting in Storage and the planks are gone).
+	 */
+	private static Optional<SmithDecision> deliverStored(SmithFacts f, Set<Urgency> classes) {
+		List<GearDemand> sorted = new ArrayList<>(f.demands);
+		sorted.sort(Comparator.comparingInt((GearDemand d) -> d.urgency().rank())
+				.thenComparing(d -> d.key().building().dimension())
+				.thenComparingInt(d -> d.key().building().x())
+				.thenComparingInt(d -> d.key().building().y())
+				.thenComparingInt(d -> d.key().building().z())
+				.thenComparingInt(d -> d.key().slot()));
+		for (GearDemand d : sorted) {
+			if (!classes.contains(d.urgency()) || d.state() == SlotState.UNKNOWN) continue;
+			if (f.deliveryBlocked.contains(d.key())) continue;
+			CampNeed camp = new CampNeed(d.key().building(), d.key().need());
+			List<OpenOrder> open = f.openByCamp.getOrDefault(camp, List.of());
+			int slots = 0;
+			for (GearDemand other : f.demands)
+				if (other.key().building().equals(camp.building()) && other.key().need() == camp.need()) slots++;
+			if (open.size() >= slots) continue;
+			boolean taken = false;
+			for (OpenOrder o : open) if (o.key().equals(d.key())) taken = true;
+			if (taken || !lowestFree(d, open)) continue;
+			String item = bestStored(f, d.key().need());
+			if (item != null && endsBy(f, f.walkTicks, Balance.SMITH_DONE_BY))
+				return Optional.of(new SmithDecision.FetchAndDeliver(d.key(), item));
+		}
+		return Optional.empty();
+	}
+
+	/** True when no open order uses a lower slot than this demand. */
+	private static boolean lowestFree(GearDemand d, List<OpenOrder> open) {
+		for (int s = 0; s < d.key().slot(); s++) {
+			OrderKey lower = new OrderKey(d.key().building(), d.key().need(), s);
+			boolean used = false;
+			for (OpenOrder o : open) if (o.key().equals(lower)) used = true;
+			if (!used) return false;
+		}
+		return true;
 	}
 
 	/** A blocked or time-gated key is set aside for this pass only, so a later demand of the same class can still be taken. */
