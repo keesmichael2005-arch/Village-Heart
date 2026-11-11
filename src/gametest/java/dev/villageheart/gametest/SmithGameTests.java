@@ -648,8 +648,8 @@ public class SmithGameTests {
 			setDayTime(h, 1000);
 			jacks[0] = SmithTestSupport.hireLumberjack(h);
 			jacks[1] = SmithTestSupport.hireLumberjack(h);
-			smiths[0] = hire(h);
-			smiths[1] = hire(h);
+			smiths[0] = hireEitherFurnace(h);
+			smiths[1] = hireEitherFurnace(h);
 			log("two smiths, two lumberjacks");
 		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes in the camp")
 		).thenExecute(() -> {
@@ -1437,6 +1437,17 @@ public class SmithGameTests {
 	private static boolean leasesAxe(GameTestHelper h, Villager jack) {
 		return CampTools.lease(h.getLevel().getServer(), jack, ToolKind.AXE, null) instanceof CampTools.Held held
 				&& held.lease().stack().is(Items.IRON_AXE);
+	}
+
+	/** Either blast furnace. {@link SmithTestSupport#hire} insists on the first one, and the second smith takes the other. */
+	private static Villager hireEitherFurnace(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, SmithTestSupport.spawnSpot());
+		var r = Workers.hire(h.getLevel(), v, JobType.BLACKSMITH, java.util.Optional.of(BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())));
+		h.assertTrue(r instanceof dev.villageheart.worker.HireResult.Hired, "the smith was hired: " + r);
+		var data = v.getAttached(WorkerAttachments.WORKER);
+		h.assertTrue(data != null && SmithyLayout.smithyAt(h.getLevel().getServer(), data.jobBlock()).isPresent(),
+				"job block " + (data == null ? null : data.jobBlock()));
+		return v;
 	}
 
 	private static boolean craftAt(GameTestHelper h, Villager smith) {
