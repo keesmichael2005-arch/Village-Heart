@@ -2,16 +2,18 @@ package dev.villageheart.core.raid;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import org.junit.jupiter.api.Test;
 
 class RaiderRecallTest {
 	@Test
 	void aRaiderThatDoesNotCloseOnTheHeartIsBroughtToTheGate() {
-		assertTrue(RaiderRecall.recall(true, 200, 40, 0), "the ledge group never walks in");
-		assertFalse(RaiderRecall.recall(true, 200, 40, 1), "one at the gate is already a fight");
-		assertFalse(RaiderRecall.recall(true, 199, 40, 0), "still inside the stall window");
-		assertFalse(RaiderRecall.recall(true, 200, 24, 0), "already at the gate");
-		assertFalse(RaiderRecall.recall(false, 400, 80, 0), "a dead raider is not moved");
+		long stall = Balance.RAIDER_RECALL_STALL;
+		assertTrue(RaiderRecall.recall(true, stall, 40, 0), "the ledge group never walks in");
+		assertFalse(RaiderRecall.recall(true, stall, 40, 1), "one at the gate is already a fight");
+		assertFalse(RaiderRecall.recall(true, stall - 1, 40, 0), "still inside the stall window");
+		assertFalse(RaiderRecall.recall(true, stall, 24, 0), "already at the gate");
+		assertFalse(RaiderRecall.recall(false, stall + 100, 80, 0), "a dead raider is not moved");
 	}
 
 	@Test

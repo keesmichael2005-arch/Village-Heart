@@ -164,12 +164,13 @@ public final class Balance {
 	/** A guard does not walk out to a raid raider farther than this. Recall brings that raider to the gate. */
 	public static final int GUARD_HOME_FIGHT = 32;
 	/**
-	 * A raider that has not closed this many blocks on the Heart is stalled. After {@link #RAIDER_RECALL_STALL} ticks,
+	 * A raider that has not closed this many blocks on the Heart is stalled. After {@link #RAIDER_RECALL_STALL} ticks
+	 * (long enough that a raider still walking in is not pulled into the first fight),
 	 * and while it is still farther than {@link #RAIDER_RECALL_NEAR_GATE} from the nearest gate, it is placed
 	 * {@link #RAIDER_RECALL_OUTSIDE} blocks outside that gate. One raider per {@link #RAIDER_RECALL_GAP} ticks.
 	 */
 	public static final int RAIDER_RECALL_CLOSE = 4;
-	public static final int RAIDER_RECALL_STALL = 200;
+	public static final int RAIDER_RECALL_STALL = 12000;
 	public static final int RAIDER_RECALL_NEAR_GATE = 24;
 	/** Do not bring another raider while this many are already within {@link #RAIDER_RECALL_NEAR_GATE} of a gate. */
 	public static final int RAIDER_RECALL_AT_GATE = 1;
