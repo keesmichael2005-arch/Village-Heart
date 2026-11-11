@@ -215,7 +215,8 @@ public final class SmithJob {
 
 	private static void apply(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st, SmithDecision d, long now) {
 		st.returning = false;
-		st.blockedHint = "";
+		// A full chest keeps its hint until the backoff ends. The next plan would otherwise wipe it on the following tick.
+		if (st.blockedUntil.isEmpty()) st.blockedHint = "";
 		switch (d) {
 			case SmithDecision.Yield y -> {
 			}

@@ -301,6 +301,51 @@ public class SmithGameTests {
 		});
 	}
 
+	// ---- T-L2-5j --------------------------------------------------------------------------------------
+
+	/**
+	 * A camp chest full of dirt cannot take the axe. It goes to Storage once, the smith stays away for the backoff, and the axe is
+	 * delivered only after a slot is free and the backoff has passed.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_full_chest", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void fullCampChestBacksOff(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		long[] failedAt = {0};
+		boolean[] hinted = {false};
+		BlockPos camp = SmithTestSupport.campChest();
+		scene(h).thenExecute(() -> SmithTestSupport.addLumberCamp(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			fillChest(h, camp, Items.DIRT);
+			putStore(h, Items.OAK_PLANKS, 5);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireLumberjack(h);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> {
+			h.assertValueEqual(1L, count(h, Items.WOODEN_AXE), "the axe is in Storage");
+			h.assertValueEqual(0, chestCount(h, camp, Items.WOODEN_AXE), "the full camp took none");
+		}).thenExecute(() -> {
+			failedAt[0] = h.getLevel().getDayTime();
+			freeChestSlot(h, camp, 0);
+		}).thenExecuteFor(Balance.SMITH_DELIVERY_BACKOFF - 1, () -> {
+			h.assertValueEqual(0, chestCount(h, camp, Items.WOODEN_AXE), "no delivery during the backoff");
+			h.assertValueEqual(1L, count(h, Items.WOODEN_AXE), "still the one axe in Storage");
+			BlockPos target = SmithRuntime.get(h.getLevel().getServer()).state(smith[0].getUUID()).walk.target();
+			h.assertFalse(h.absolutePos(camp).equals(target), "the smith walked to the camp again");
+			if ("Lumber Camp chest is full".equals(SmithRuntime.blockedHint(h.getLevel().getServer(), smith[0].getUUID()))) hinted[0] = true;
+		}).thenExecute(() -> {
+			h.assertTrue(hinted[0], "hint Lumber Camp chest is full");
+			h.assertTrue(h.getLevel().getDayTime() < failedAt[0] + Balance.SMITH_DELIVERY_BACKOFF, "the backoff was still running");
+		}).thenWaitUntil(() -> h.assertValueEqual(1, chestCount(h, camp, Items.WOODEN_AXE), "the axe arrives after the backoff")
+		).thenExecute(() -> {
+			h.assertTrue(h.getLevel().getDayTime() >= failedAt[0] + Balance.SMITH_DELIVERY_BACKOFF - 1, "delivered before the backoff ended");
+			h.assertValueEqual(0L, count(h, Items.WOODEN_AXE), "Storage gave the axe up");
+			long crafts = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("CRAFT")).count();
+			h.assertValueEqual(1L, crafts, "the full chest did not make a second axe");
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-4b --------------------------------------------------------------------------------------
 
 	/** A hired cook keeps two coal. A third coal is enough for eight ingots and no more. */
@@ -631,7 +676,6 @@ public class SmithGameTests {
 	public void twoLumberjacksTwoSmithsShareACamp(GameTestHelper h) {
 		Villager[] smiths = new Villager[2];
 		Villager[] jacks = new Villager[2];
-		int[] seen = {0};
 		BlockPos secondFurnace = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 1);
 		BlockPos secondAnvil = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 2);
 		BlockPos secondBlock = BuildingTestSupport.inside(SmithTestSupport.CAMP, 3, 0, 1);
@@ -656,13 +700,11 @@ public class SmithGameTests {
 			smiths[1] = hireEitherFurnace(h);
 			standAtFurnace(h, smiths[0]);
 			standAtFurnace(h, smiths[1]);
-			log("two smiths, two lumberjacks");
 		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes in the camp")
 		).thenExecute(() -> {
 			h.assertValueEqual(1L, craftUnits(h, smiths[0]), "the first smith's axe");
 			h.assertValueEqual(1L, craftUnits(h, smiths[1]), "the second smith's axe");
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
-			log("two axes, one from each smith, day " + Math.floorMod(h.getLevel().getDayTime(), 24000L));
 			GearOrders.reset();
 			resetCamp(h);
 			putStore(h, Items.IRON_INGOT, 6);
@@ -674,24 +716,11 @@ public class SmithGameTests {
 			setDayTime(h, now - day + 24000L + 1000L);
 			standAtFurnace(h, smiths[0]);
 			standAtFurnace(h, smiths[1]);
-		}).thenExecuteFor(500, () -> { }).thenExecute(() -> {
-			log("part2 morning " + part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L))
-					+ " carried " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
-					+ smiths[1].getInventory().countItem(Items.IRON_INGOT));
-		}).thenWaitUntil(() -> {
-			long dayNow = Math.floorMod(h.getLevel().getDayTime(), 24000L);
-			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), part2(h, smiths, dayNow));
-		}).thenExecute(() -> {
-			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
-			log("second smith fired mid-craft");
-		}).thenWaitUntil(() -> {
-			seen[0]++;
-			String state = part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L));
-			if (seen[0] % 2000 == 1) log("after fire " + state);
-			h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption " + state);
-		}).thenExecute(() -> {
+		}).thenWaitUntil(() -> h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), "both crafts committed")
+		).thenExecute(() -> h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired")
+		).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption")
+		).thenExecute(() -> {
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both still lease an axe");
-			log("adopted craft delivered, two axes");
 			VillageTestSupport.done(h);
 		});
 	}
@@ -699,6 +728,18 @@ public class SmithGameTests {
 	private static int craftProgress(GameTestHelper h) {
 		HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
 		return VillageClaims.current(h.getLevel().getServer()).flatMap(v -> v.smithCraft(furnace)).map(c -> c.craft().progress()).orElse(-1);
+	}
+
+	private static void fillChest(GameTestHelper h, BlockPos rel, net.minecraft.world.item.Item item) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+		for (int i = 0; i < box.getContainerSize(); i++) box.setItem(i, new ItemStack(item, item.getDefaultMaxStackSize()));
+		box.setChanged();
+	}
+
+	private static void freeChestSlot(GameTestHelper h, BlockPos rel, int slot) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+		box.setItem(slot, ItemStack.EMPTY);
+		box.setChanged();
 	}
 
 	private static void resetCamp(GameTestHelper h) {
@@ -1480,31 +1521,6 @@ public class SmithGameTests {
 		h.assertTrue(data != null && SmithyLayout.smithyAt(h.getLevel().getServer(), data.jobBlock()).isPresent(),
 				"job block " + (data == null ? null : data.jobBlock()));
 		return v;
-	}
-
-	private static String part2(GameTestHelper h, Villager[] smiths, long day) {
-		var server = h.getLevel().getServer();
-		var a = SmithRuntime.get(server).state(smiths[0].getUUID());
-		var b = SmithRuntime.get(server).state(smiths[1].getUUID());
-		BlockPos chest = h.absolutePos(SmithTestSupport.campChest());
-		String walk = a.walk.target() == null ? "-" : a.walk.target().toShortString() + " " + a.walk.reason();
-		return "crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
-				+ " modes " + a.mode + " " + b.mode + " hints " + a.hint + " " + b.hint
-				+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size()
-				+ " campAxes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE)
-				+ " storeAxes " + count(h, Items.IRON_AXE)
-				+ " heldAxes " + smiths[0].getInventory().countItem(Items.IRON_AXE) + "/"
-				+ smiths[1].getInventory().countItem(Items.IRON_AXE)
-				+ " heldIron " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
-				+ smiths[1].getInventory().countItem(Items.IRON_INGOT)
-				+ " saved " + VillageClaims.current(h.getLevel().getServer()).map(v -> v.smithCrafts().size()).orElse(-1)
-				+ " units " + craftUnits(h, smiths[0]) + "/" + craftUnits(h, smiths[1])
-				+ " trip " + Workers.tripRunning(smiths[0])
-				+ " pos " + smiths[0].blockPosition().toShortString()
-				+ " chest " + chest.toShortString()
-				+ " walk " + walk
-				+ " to " + a.deliverTo
-				+ " prog " + (int) a.progressAcc;
 	}
 
 	private static boolean craftAt(GameTestHelper h, Villager smith) {
