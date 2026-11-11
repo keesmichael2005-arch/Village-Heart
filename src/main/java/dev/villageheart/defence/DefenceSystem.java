@@ -43,6 +43,9 @@ public final class DefenceSystem implements VillageSystem {
 				if (level.getChunkSource().getChunkNow(p.getX() >> 4, p.getZ() >> 4) == null) continue;
 				String id = BuiltInRegistries.BLOCK.getKey(level.getBlockState(p).getBlock()).toString();
 				if (!id.equals(key.blockId())) {
+					// A breached shaft counts as the key still being there, so a broken watchtower stays a patrol point.
+					long packed = dev.villageheart.core.room.Pos.pack(p.getX(), p.getY(), p.getZ());
+					if (dev.villageheart.siege.SiegeDamage.isBreached(server, packed)) continue;
 					gone.add(s);
 					break;
 				}

@@ -19,6 +19,14 @@ public record DefenceSite(UUID id, String blueprintId, HeartLocation ground, Rot
 		this(id, blueprintId, ground, rotation, builtAt, 0, Set.of(), Set.of());
 	}
 
+	public DefenceSite withOpened(Set<Long> opened) {
+		return new DefenceSite(id, blueprintId, ground, rotation, builtAt, length, opened, seen);
+	}
+
+	public DefenceSite withSeen(Set<Long> seen) {
+		return new DefenceSite(id, blueprintId, ground, rotation, builtAt, length, opened, seen);
+	}
+
 	public DefenceSite {
 		Objects.requireNonNull(id, "id");
 		Objects.requireNonNull(blueprintId, "blueprintId");

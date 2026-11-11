@@ -914,3 +914,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - The alert-code order (RAID, SIEGE, DEFENCE_DAMAGED) is step 15. `SiegeAlerts` has the two sentences and the "(no builder)" variant.
 - `scripts/verify.sh --fast` at `d06cb14`: exit 0 (L1 green, L2 386/386, perf green).
 - Next: step 11, siege damage glue.
+
+## 2026-11-11: M25 track B step 11 (siege damage glue, in progress)
+- `SiegeDamage.hit` cracks and breaks a recorded cell, sends the destruction stage, writes a breach through at once, and flushes cracks on demand and every 200 ticks. A player break opens the cell. The slow scan is one tenth of the sites. A missing watchtower key that is in the breached set does not drop the site.
+- L2 so far: `SiegeGameTests.siegeDamageHitsCracksAndBreaks` (T-L2-14) is written and not yet run. Still to come: T-L2-15, T-L2-16, the zombie half of T-L2-36, T-L2-40, then fast verify.
+- The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.

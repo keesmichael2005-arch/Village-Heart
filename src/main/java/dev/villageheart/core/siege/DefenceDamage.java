@@ -28,6 +28,26 @@ public record DefenceDamage(Map<Long, Integer> cracked, List<Long> breached) {
 
 	public boolean isBreached(long packed) { return breached.contains(packed); }
 
+	/** Adds a breach and drops any crack at the same cell. */
+	public DefenceDamage withBreach(long packed) {
+		if (isBreached(packed)) return this;
+		java.util.Map<Long, Integer> cracks = new LinkedHashMap<>(cracked);
+		cracks.remove(packed);
+		java.util.List<Long> holes = new ArrayList<>(breached);
+		holes.add(packed);
+		return new DefenceDamage(cracks, holes);
+	}
+
+	/** Drops a crack and a breach at this cell. A missing cell returns this. */
+	public DefenceDamage without(long packed) {
+		if (!isBreached(packed) && !cracked.containsKey(packed)) return this;
+		java.util.Map<Long, Integer> cracks = new LinkedHashMap<>(cracked);
+		cracks.remove(packed);
+		java.util.List<Long> holes = new ArrayList<>();
+		for (long hole : breached) if (hole != packed) holes.add(hole);
+		return new DefenceDamage(cracks, holes);
+	}
+
 	/**
 	 * One hit on a cell. A breached cell is unchanged. An unbreakable cell stops at {@code hp - 1}. At {@code hp} a breakable cell
 	 * becomes a breach and its crack is cleared.

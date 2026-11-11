@@ -520,6 +520,15 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		return withDefences(next);
 	}
 
+	/** Replaces the site with this id. A no-op when the village has no such site. */
+	public VillageState replaceDefence(DefenceSite d) {
+		Objects.requireNonNull(d, "defence");
+		if (defence(d.id()).isEmpty()) return this;
+		List<DefenceSite> next = new ArrayList<>();
+		for (DefenceSite s : defences) next.add(s.id().equals(d.id()) ? d : s);
+		return withDefences(next);
+	}
+
 	/** Remove the site; a no-op when there is none. */
 	public VillageState withoutDefence(UUID id) {
 		if (defence(id).isEmpty()) return this;
