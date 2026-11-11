@@ -26,6 +26,7 @@ class DefendedScenarioTest {
 		assertTrue(s.actions().stream().anyMatch(a -> a.type().equals("training_yard")));
 		assertTrue(s.assertions().stream().anyMatch(x -> x.contains("work.guard.kills") && x.contains("15")));
 		assertTrue(s.assertions().stream().anyMatch(x -> x.contains("deaths.mobs") && x.contains("<= 1")));
+		assertTrue(s.villageSiege(), "vanilla's zombie siege stays on unless a scenario turns it off");
 	}
 
 	@Test
@@ -69,13 +70,26 @@ class DefendedScenarioTest {
 		assertEquals(plain.defaultDays(), walled.defaultDays());
 		assertEquals(1, walled.actions().stream().filter(a -> a.type().equals("wall_ring")).count(), "one wall ring (with one gate)");
 		assertEquals(1, walled.actions().stream().filter(a -> a.type().equals("lamps")).count());
+		assertEquals(1, walled.actions().stream().filter(a -> a.type().equals("move_in")).count(), "the old village is brought inside the ring");
+		assertTrue(walled.villageSiege(), "the walled run still has vanilla's siege, so the wall is what changes");
 		var spawns = walled.actions().stream().filter(a -> a.type().equals("night_spawn")).toList();
 		assertEquals(9, spawns.size());
 		for (var sp : spawns) assertTrue(sp.fields().containsKey("outside"), "every zombie is placed outside the wall");
-		// everything else is defended's: dropping the two additions leaves the same action types in the same order
-		var types = walled.actions().stream().map(a -> a.type()).filter(t -> !t.equals("wall_ring") && !t.equals("lamps")).toList();
+		// everything else is defended's: dropping the three additions leaves the same action types in the same order
+		var types = walled.actions().stream().map(a -> a.type()).filter(t -> !t.equals("wall_ring") && !t.equals("lamps") && !t.equals("move_in")).toList();
 		assertEquals(plain.actions().stream().map(a -> a.type()).toList(), types);
-		assertTrue(plain.actions().stream().noneMatch(a -> a.type().equals("wall_ring")), "defended stays the harsh case: no walls");
+		assertTrue(plain.actions().stream().noneMatch(a -> a.type().equals("wall_ring") || a.type().equals("move_in")), "defended stays the harsh case: no walls");
+	}
+
+	@Test
+	void defendedNoSiegeIsDefendedWithTheSiegeOff() throws Exception {
+		Scenario plain = ScenarioParser.parse("defended", Files.readString(Path.of("sim/scenarios/defended.json")));
+		Scenario quiet = ScenarioParser.parse("defended_nosiege", Files.readString(Path.of("sim/scenarios/defended_nosiege.json")));
+		assertEquals(plain.actions(), quiet.actions(), "the same actions, so the siege flag is the only difference");
+		assertEquals(plain.assertions(), quiet.assertions(), "the same assertions, unchanged");
+		assertEquals(plain.defaultDays(), quiet.defaultDays());
+		assertTrue(plain.villageSiege());
+		assertFalse(quiet.villageSiege(), "vanilla's zombie siege is off inside the claim");
 	}
 
 	@Test
@@ -86,6 +100,9 @@ class DefendedScenarioTest {
 		bad("wall_ring", Map.of("size", List.of(44L, 32L), "gate", 500L), "gate");
 		ActionSpecs.validate("lamps", Map.of("size", List.of(44L, 32L)));
 		bad("lamps", Map.of("size", List.of(44L, 32L), "spacing", 1L), "spacing");
+		ActionSpecs.validate("move_in", Map.of("size", List.of(44L, 32L)));
+		bad("move_in", Map.of(), "size");
+		bad("move_in", Map.of("size", List.of(44L)), "size");
 		ActionSpecs.validate("night_spawn", Map.of("mob", "minecraft:zombie", "count", 3L, "outside", List.of(44L, 32L)));
 		bad("night_spawn", Map.of("mob", "minecraft:zombie", "count", 3L, "outside", List.of(44L)), "outside");
 	}

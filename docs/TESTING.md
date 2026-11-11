@@ -181,6 +181,14 @@ empty slot and could not fill it: `night`, `no_free_villager`, `no_building`, `r
 are not logged (a census drop with no row is a villager that left the radius or died outside it).
 `wall_ring` builds each wall column `WALL_CLEARANCE` (2) above the natural ground just outside it and digs the gate approach down to the site's level
 (L2 `SimActionGameTests.wallRingRisesOverHigherGround`): on seed 1 the ground is a block up along 80 of 148 wall cells and in front of the gate.
+`move_in` (only `defended_walled`) runs after the wall and the lamps: it drops every bed, job site and bell that is not strictly inside the ring
+and inside the claim, puts a bed and a floor bell on open grass inside when the houses are short, and teleports every villager in the claim onto
+a bed inside (L2 `moveInPutsVillagersInsideTheRing`). A `night_spawn` with `outside` then stands in a band 3–8 blocks (Chebyshev) outside that
+rectangle, on any side including the gate, instead of on the 12..`radius` disc around the Heart (L1 `OutsideBandTest`, L2
+`nightSpawnOutsideStandsOutsideTheRing`). `radius` is still parsed and is not used for placement when `outside` is set.
+`village_siege` (default true) is a harness flag, not a gamerule. `defended_nosiege` sets it false: the sim replaces the level's `VillageSiege`
+with a wrapper that does not tick while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart (L2
+`villageSiegeSuppressedInsideClaim`). Natural monster spawning is unchanged, and the main mod has no siege rule.
 
 ## Markers, generated assets and the model-log gate (M3+)
 - **Generated assets.** Everything for markers and job blocks (blockstates, models, item definitions, loot tables, recipes, recipe-unlock
@@ -411,9 +419,10 @@ are not logged (a census drop with no row is a villager that left the radius or 
 - **Layer 3**: `scripts/simulate.sh defended` (the starter village + a Barracks with two guards + a Training Yard + 27 scripted zombies). New actions
   `tier`, `training_yard`, `night_spawn`; `prefab` words `grindstone` and `target`; two `hire ... replace` actions keep two guards on the roll.
   `scripts/simulate.sh defended_walled` is the realistic twin: the same village and assertions, plus `wall_ring` (a two-high cobblestone wall on the
-  edge of the site with ONE oak fence gate that workers and guards open), `lamps` (fence posts with torches every 7 blocks) and the zombies placed
-  `outside` the wall (`night_spawn` field). `defended` stays the harsh case (wooden kit, no walls). Both run unseeded 5 times for a verdict (the result
-  varies run to run). New actions have `ActionSpecs` field checks and `DefendedScenarioTest` entries.
+  edge of the site with ONE oak fence gate that workers and guards open), `lamps` (fence posts with torches every 7 blocks), `move_in` (the vanilla
+  village is brought inside the ring) and the zombies placed in the 3–8 band `outside` the wall. `defended` stays the harsh case (wooden kit, no walls).
+  `scripts/simulate.sh defended_nosiege` is `defended` with `"village_siege": false` (same actions and assertions). All three run unseeded; the result
+  varies run to run. New actions have `ActionSpecs` field checks and `DefendedScenarioTest` entries.
   The re-hire hook waits for the morning (no guard is hired at night). Per-day numbers worth reading: `deaths.mobs`, `work.guard.kills`, `duty_samples`,
   `employed`, `ration_items`/`ration_points`/`food_eaten` (food the guards took and ate), `retreats`, `guards_night`/`guards_day` (the shift counts).
 

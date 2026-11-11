@@ -43,6 +43,15 @@ class ScenarioParserTest {
 	}
 
 	@Test
+	void villageSiegeFlag() {
+		String body = "{\"schema\":1,\"name\":\"x\",\"default_days\":2,\"actions\":[{\"action\":\"claim\"}],\"assertions\":[]";
+		assertTrue(ScenarioParser.parse("x", body + "}").villageSiege(), "omitted means the siege stays on");
+		assertTrue(ScenarioParser.parse("x", body + ",\"village_siege\":true}").villageSiege());
+		assertFalse(ScenarioParser.parse("x", body + ",\"village_siege\":false}").villageSiege());
+		bad("x", body + ",\"village_siege\":\"no\"}", "village_siege");
+	}
+
+	@Test
 	void fieldsAndSeed() {
 		Scenario s = ScenarioParser.parse("x", "{\"schema\":1,\"name\":\"x\",\"default_days\":2,\"seed\":7,\"actions\":["
 				+ "{\"action\":\"command\",\"command\":\"time set day\",\"day\":2,\"tick\":5}],\"assertions\":[]}");
