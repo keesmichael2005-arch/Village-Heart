@@ -232,7 +232,7 @@ from there instead of hard-coding them.
   `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` rows (verified: docs/reviews/M12-r1.md and M12-r2.md). Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
-- Track A (`m25`): steps 1–8 are in (through the raid harness: 3.7 metrics, `raid` / `golems` / `top_up_villagers` / `worker_level`, and the summary's Raid section). The step 8 pin test and `raidGolemsAndGuardLevel` passed; a full verify of this step is not run yet. Not ticked; the milestone is not done.
+- Track A (`m25`): steps 1–8 are in (through the raid harness: 3.7 metrics, `raid` / `golems` / `top_up_villagers` / `worker_level`, and the summary's Raid section). Full `scripts/verify.sh` at `af4a1dd` exited 0 (399 GameTests, Layer 4 passed). Not ticked; steps 9–19 are later tracks.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged
