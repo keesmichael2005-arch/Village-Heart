@@ -4,8 +4,10 @@
 	"package": "dev.villageheart.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"AbstractFurnaceBlockEntityAccessor",
+		"NodeEvaluatorAccess",
 		"VillagerBrainMixin",
-		"AbstractFurnaceBlockEntityAccessor"
+		"WalkNodeEvaluatorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

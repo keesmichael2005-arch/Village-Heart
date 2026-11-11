@@ -170,15 +170,18 @@ from there instead of hard-coding them.
 - **L4**: Villagers tab row "Making a stone pickaxe" (screenshot looked at)
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
-- Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health 20/30/40). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
+- Owner decision 2026-11-11: M18 is accepted as built, as the intended HARD start. L3 `defended` is 1 of 5 unseeded (deaths/kills 3/14, 6/20, 0/18, 6/17, 5/20) and `defended_walled` 0 of 5 (3/10, 1/1, 3/6, 3/6, 1/11) with their assertions unchanged: both are balance targets for M26 (tools, armour, golems, walls, lights make the village stronger later), not M18 gates. The duel test asserts only that a wooden-sword guard wins. See docs/plans/M18.md section 8.
+- Status (builder, 2026-11-09): built on branch `m18` incl. fence-gate opening for hired workers and guards, redesigned in round 3 by the owner (wooden sword start, level 1 = 20 health, food rations and no free healing, nights only below 4 guards, then one day guard per four, seniors on nights, one training day, no night hire, wake on death; archers not built). Not ticked: the verifier ticks. See docs/plans/M18.md section 8 and docs/PROGRESS.md.
+- Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health by level: see DESIGN 5.6, 20/30/40 as of M18 r3). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
 - [ ] §5.6: shifts with auto-balance, off-shift sleep in Barracks beds (night shift sleeps by day), patrol, combat,
       Training Yard XP, level perks for health and damage, best gear from the stockpile, raid call-up
-- **L1**: shift balancing. Gear ranking. Max health by level (20/30/40)
+- **L1**: shift balancing (1-3 guards all nights, one day guard per four from the 4th, seniors on nights, the newest takes the day slot). Gear ranking. Max health by level (20/30/40). Ration and heal maths, training qualification, the no-night-hire rule
 - **L2**: a night-shift guard is asleep in a Barracks bed at tick 6000 and patrolling at tick 18000
 - **L2**: a zombie spawned in the claim at night is killed by a guard within 60 s, and no villager dies
 - **L2**: an iron chestplate in Storage → the guard wears it at shift start
 - **L2**: a guard sparring at the Training Yard gains XP. At level 2 the max health is 30
+- **L2** (M18 r3 owner redesign): a new guard starts with a wooden sword, no armour and 20 health, trains one day (status Training) and fights that night; a hurt guard eats from its ration to heal and does not heal without food; a guard that dies wakes the off-duty guards; no guard is hired at night; seniors take the nights; a guard below half health falls back behind a healthy one, eats and rejoins
 - **L3**: scenario `defended` (starter + Barracks with 2 guards), 10 days: villager deaths from mobs ≤ 1
 
 ## M19: Blacksmith / Smithy

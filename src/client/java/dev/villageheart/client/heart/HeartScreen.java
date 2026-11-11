@@ -364,6 +364,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
 	}
 
+	/** GUI coordinates of the middle of the first button of the action bar (the guard's Shift button in the Villagers tab); null when none. */
+	public int[] firstActionCentre() {
+		if (actionWidgets.isEmpty()) return null;
+		AbstractWidget w = actionWidgets.get(0);
+		return new int[] {w.getX() + w.getWidth() / 2, w.getY() + w.getHeight() / 2};
+	}
+
 	/** The labels of the buttons of the action bar, left to right (for tests: the Overview's treasury bar). */
 	public List<String> actionLabels() {
 		List<String> out = new ArrayList<>();
@@ -432,6 +439,12 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			VillagerRow r = selectedRow();
 			if (r == null) return;
 			if (r.isWorker()) {
+				if (r.shift().isGuard() && allows(Permission.SET_GUARD_SHIFT)) {
+					UUID sid = r.id();
+					int next = r.shift().nextChoice();
+					addAction(Button.builder(Component.translatable(HeartTexts.key("shift.button"), Component.translatable(HeartTexts.key("shift.choice." + (r.shift().pinned() ? (r.shift() == dev.villageheart.core.heart.GuardShiftView.DAY_PINNED ? 1 : 2) : 0)))),
+							b -> ClientPlayNetworking.send(new dev.villageheart.heart.net.SetGuardShiftPayload(menu.containerId, sid, next))).bounds(MARGIN + 76, y, 110, 20).build());
+				}
 				if (allows(Permission.FIRE)) {
 					UUID id = r.id();
 					addAction(Button.builder(Component.translatable(HeartTexts.key("fire")),
@@ -924,6 +937,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 		}
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
+				: v.shift().isGuard() ? Component.translatable(HeartTexts.key("shift." + v.shift().langId())).append(" - ").append(Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId())))
 				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
 		boolean warn = v.workplaceInvalid() && v.isWorker() || dev.villageheart.core.heart.ActivityWarnings.isWarning(v.activity());
 		int actColor = warn ? RED : GREY;

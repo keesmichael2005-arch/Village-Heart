@@ -15,7 +15,7 @@ public final class ScenarioParser {
 	}
 
 	/** Must match the keys of dev.villageheart.sim.SimActions (gametest source set). */
-	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire");
+	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire", "tier", "training_yard", "night_spawn", "wall_ring", "lamps");
 
 	public static Scenario parse(String fileName, String json) {
 		Map<String, Object> m;

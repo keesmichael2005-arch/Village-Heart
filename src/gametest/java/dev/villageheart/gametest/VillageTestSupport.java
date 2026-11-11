@@ -65,6 +65,13 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.job.AwayTrips.clearForTests();
 		dev.villageheart.worker.mine.MinerJob.clearForTests();
 		dev.villageheart.worker.hunt.HunterRuntime.resetForTests();
+		dev.villageheart.worker.guard.GuardSystem.resetForTests();
+		dev.villageheart.worker.guard.GuardRuntime.resetForTests();
+		dev.villageheart.worker.guard.GuardCombat.resetForTests();
+		dev.villageheart.worker.guard.GuardAlarm.resetForTests();
+		dev.villageheart.worker.guard.GuardGear.resetForTests();
+		dev.villageheart.worker.guard.PatrolPoints.invalidate();
+		dev.villageheart.defence.GateKeeper.resetForTests(server);
 		dev.villageheart.market.Markets.clearRuntime(); // M22
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener

@@ -77,6 +77,8 @@ class VillageStateTierTest {
 		if (t == DefenceSite.class) return new DefenceSite(new UUID(1, 1), "lamp_post", new HeartLocation(DIM, 5, 64, 6), Rotation4.CLOCKWISE_90, 77L);
 		if (t == SelfCraft.class) return new SelfCraft(new UUID(4, 4), new GearCraft("minecraft:stone_pickaxe",
 				new OrderKey(new HeartLocation(DIM, 5, 64, 5), GearNeed.AXE, 0), 0, List.of()), false);
+		if (t == java.util.Optional.class) return java.util.Optional.of(dev.villageheart.core.guard.Shift.DAY); // withGuardPin (M18)
+		if (t == Map.class) return Map.of(new UUID(3, 3), new dev.villageheart.core.guard.GuardShift(dev.villageheart.core.guard.Shift.DAY, true)); // withGuardShifts (M18)
 		throw new AssertionError("add a fixture for " + t.getName() + " to VillageStateTierTest.arg");
 	}
 

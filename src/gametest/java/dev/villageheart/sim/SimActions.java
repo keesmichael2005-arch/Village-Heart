@@ -26,17 +26,22 @@ public final class SimActions {
 	/** Action type ids implemented here; must equal ScenarioParser.ACTION_TYPES. */
 	public static java.util.Set<String> actionTypes() { return ALL.keySet(); }
 
-	static final Map<String, SimAction> ALL = Map.of(
-			"claim", SimActions::claim,
-			"command", SimActions::command,
-			"fail", (ctx, a) -> { throw new IllegalStateException("scenario fail action"); },
-			"crash", (ctx, a) -> crashRequested = true,
-			"hang", SimActions::hang,
-			"site", StarterActions::site,
-			"prefab", StarterActions::prefab,
-			"field", StarterActions::field,
-			"grove", StarterActions::grove,
-			"hire", StarterActions::hire);
+	static final Map<String, SimAction> ALL = Map.ofEntries(
+			Map.entry("claim", SimActions::claim),
+			Map.entry("command", SimActions::command),
+			Map.entry("fail", (SimAction) (ctx, a) -> { throw new IllegalStateException("scenario fail action"); }),
+			Map.entry("crash", (SimAction) (ctx, a) -> crashRequested = true),
+			Map.entry("hang", SimActions::hang),
+			Map.entry("site", StarterActions::site),
+			Map.entry("prefab", StarterActions::prefab),
+			Map.entry("field", StarterActions::field),
+			Map.entry("grove", StarterActions::grove),
+			Map.entry("hire", StarterActions::hire),
+			Map.entry("tier", GuardActions::tier),
+			Map.entry("training_yard", GuardActions::trainingYard),
+			Map.entry("night_spawn", GuardActions::nightSpawn),
+			Map.entry("wall_ring", GuardActions::wallRing),
+			Map.entry("lamps", GuardActions::lamps));
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");

@@ -51,6 +51,9 @@ public final class HeartNetwork {
 		PayloadTypeRegistry.playC2S().register(SetRankPayload.TYPE, SetRankPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(TransferOwnershipPayload.TYPE, TransferOwnershipPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(TreasuryActionPayload.TYPE, TreasuryActionPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(SetGuardShiftPayload.TYPE, SetGuardShiftPayload.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(SetGuardShiftPayload.TYPE, (p, ctx) -> HeartActions.handle(ctx.player(),
+				p.containerId(), new HeartAction.SetGuardShift(p.villager(), p.choice())));
 		PayloadTypeRegistry.playC2S().register(SetReservesPayload.TYPE, SetReservesPayload.CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(SetReservesPayload.TYPE, (p, ctx) -> HeartActions.handle(ctx.player(),
 				p.containerId(), p.action()));

@@ -133,6 +133,55 @@ public final class Balance {
 	/** A building with no enclosed scan yet protects its containers within this many blocks (Chebyshev) of its marker. */
 	public static final int GUARD_FALLBACK_RADIUS = 16;
 
+	// ---- guards (M18) ----
+	public static final double GUARD_BASE_DAMAGE = 1.0;
+	/** Max health by level 1..3 (M18 r3 owner design: a level 1 guard has the vanilla 20, more only from levelling; tunable for M26) and bonus melee damage. */
+	public static final double[] GUARD_LEVEL_HEALTH = {20, 30, 40};
+	public static final double[] GUARD_LEVEL_DAMAGE = {0, 1, 2};
+	public static final int DAY_DUTY_START = 0;
+	public static final int NIGHT_DUTY_START = 12000;
+	public static final int GUARD_DUTY_TICKS = 12000;
+	public static final int GUARD_OFF_TICKS = 1000;
+	public static final int GUARD_SIGHT = 24;
+	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
+	public static final int GUARD_SCAN_TICKS = 10;
+	public static final double GUARD_CHASE_SPEED = 0.6;
+	public static final int GUARD_ATTACK_COOLDOWN = 20;
+	public static final int GUARD_GIVE_UP_TICKS = 200;
+	public static final double GUARD_WOUNDED_BELOW = 0.3;
+	public static final double GUARD_HEALED_AT = 0.8;
+	/** Food ration (M18 r3): nutrition points a guard carries, the level below which it refills, ticks per bite, health per point eaten. */
+	public static final int GUARD_RATION_CAP = 12;
+	public static final int GUARD_RATION_REFILL_BELOW = 6;
+	public static final int GUARD_EAT_TICKS = 40;
+	public static final double GUARD_HEAL_PER_POINT = 1.0;
+	/** A guard falls back below this fraction of its health, to a guard with at least GUARD_ALLY_HEALTHY_AT, and fights again at GUARD_HEALED_AT. */
+	public static final double GUARD_RETREAT_BELOW = 0.5;
+	public static final double GUARD_ALLY_HEALTHY_AT = 0.7;
+	/** A guard eats only with no hostile within this many blocks. */
+	public static final int GUARD_EAT_SAFE_DISTANCE = 10;
+	/** Day time at which a new guard's one training day ends (dusk), and the day time from which guards are not hired (night). */
+	public static final int GUARD_TRAINING_END = 12000;
+	public static final int GUARD_NO_HIRE_FROM = 12000;
+	/** Sparring ticks (at speed 1.0) that make one SPAR unit (1 XP). */
+	public static final int SPAR_TICKS_PER_XP = 40;
+	public static final int GEAR_RECHECK_TICKS = 1200;
+	/** Gear with less durability left than this fraction is left for repair (shared with M19a). */
+	public static final double GEAR_MIN_DURABILITY = 0.1;
+	/** The guard alarm (a hostile hurt a villager in the claim) stays up this long after the last attack or hostile that hunts a villager. */
+	public static final int GUARD_ALARM_HOLD_TICKS = 600;
+	public static final int PATROL_DWELL_TICKS = 100;
+	public static final int PATROL_SKIP_TICKS = 1200;
+
+	// ---- gates (M18) ----
+	/** A hostile mob within this many blocks of a closed gate keeps workers from opening it (an engaged guard may). */
+	public static final int GATE_HOSTILE_RANGE = 8;
+	/** A gate a villager opened stays open at least this long, and is closed at the latest after the longer limit (a safety net). */
+	public static final int GATE_MIN_OPEN_TICKS = 5;
+	public static final int GATE_MAX_OPEN_TICKS = 400;
+	/** The keeper looks at the gates it opened every this many ticks. */
+	public static final int GATE_KEEPER_TICKS = 5;
+
 	// ---- builder and blueprints (M20) ----
 	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
 	public static final double BUILD_TICKS_PER_BLOCK = 20;
@@ -246,7 +295,6 @@ public final class Balance {
 	/** Work ticks at level 1 to make a tool yourself, per CraftTier (tunable; never indexed by ordinal). */
 	public static final int SELF_WOODEN_TICKS = 2400, SELF_STONE_TICKS = 4800;
 	/** A tool is worn when less than this share of its durability is left (tunable). */
-	public static final double GEAR_MIN_DURABILITY = 0.1;
 	/** The cancel check of every saved self-craft runs this often. */
 	public static final int SELF_CANCEL_CHECK_TICKS = 100;
 	/** Progress of a self-craft is saved this often. */

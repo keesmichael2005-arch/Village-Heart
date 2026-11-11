@@ -70,7 +70,13 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 	 */
 	public record VillagerFact(UUID id, String customName, int hiringIndex, String jobId, String vanillaProfession, int level,
 			int xp, NeedsFlags needs, ActivityKind activity, boolean workplaceInvalid, boolean nitwit, boolean hasTraded,
-			boolean loaded) {
+			boolean loaded, GuardShiftView shift) {
+		/** A villager that is no guard (the shape before M18). */
+		public VillagerFact(UUID id, String customName, int hiringIndex, String jobId, String vanillaProfession, int level, int xp, NeedsFlags needs,
+				ActivityKind activity, boolean workplaceInvalid, boolean nitwit, boolean hasTraded, boolean loaded) {
+			this(id, customName, hiringIndex, jobId, vanillaProfession, level, xp, needs, activity, workplaceInvalid, nitwit, hasTraded, loaded, GuardShiftView.NONE);
+		}
+
 		public VillagerFact {
 			Objects.requireNonNull(id, "id");
 			Objects.requireNonNull(customName, "customName");
@@ -78,6 +84,7 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 			Objects.requireNonNull(vanillaProfession, "vanillaProfession");
 			Objects.requireNonNull(needs, "needs");
 			Objects.requireNonNull(activity, "activity");
+			Objects.requireNonNull(shift, "shift");
 		}
 
 		public boolean worker() { return hiringIndex >= 0; }

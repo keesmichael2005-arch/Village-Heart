@@ -189,8 +189,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [x] (M15 r1 fix) side-by-side cleanup in finally for assertion failures. [ ] Timeout cleanup and a public cure path for T-L2-11 are still open
 
 ## From M21
-- [ ] **BLOCKING for M18 (guards): register the defence patrol points.** M18 step 6 must add `dev.villageheart.defence.Defences::patrolPoints` (a `List<BlockPos>` for the claimed village: finished Lamp Posts and Watchtowers, one walkable cell each) as a source of its `PatrolPoints.of(server)`. M21 could not do it (M18 not merged); until then guards do not patrol at defences. M21's T-L2-7 asserts the M21 side only
-- [ ] Villagers cannot open fence gates (vanilla `InteractWithDoor` handles doors only): a wall ring with only gates cuts workers off; a later milestone could add gate opening to villager pathing
+- [x] (done in M18 step 6: `PatrolPoints.register(Defences::patrolPoints)`, T-L2-17 `guardPatrolsLampPost`) **BLOCKING for M18 (guards): register the defence patrol points.** M18 step 6 must add `dev.villageheart.defence.Defences::patrolPoints` (a `List<BlockPos>` for the claimed village: finished Lamp Posts and Watchtowers, one walkable cell each) as a source of its `PatrolPoints.of(server)`. M21 could not do it (M18 not merged); until then guards do not patrol at defences. M21's T-L2-7 asserts the M21 side only
+- [x] (done in M18, human decision 2026-11-09: path tweak `WalkNodeEvaluatorMixin`, `GateTraffic`, `GateKeeper`; tests in `GateGameTests`) Villagers cannot open fence gates (vanilla `InteractWithDoor` handles doors only): a wall ring with only gates cuts workers off; a later milestone could add gate opening to villager pathing
 - [ ] Two builders working on two touching defence builds at once are untested (T-L2-9 runs three touching walls with the instant builder only)
 - [ ] Walls are level at the start's height (no terrain following); a hilly village needs several segments. A `heights` list in `BlueprintParams` would allow a sloped wall
 - [ ] The lamp test is time-warped (the day time is set per sample), not a real night of 11 000 ticks; the live spawner is not exercised (needs a player; random)
@@ -305,6 +305,22 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] M13 plan T-L2-10 (c) full Storage and (d) invalid Kitchen were never built
 - [x] (orchestrator: verify.sh now runs L4 under `flock /tmp/villageheart-l4.lock`, one client at a time per machine) PRIORITY (infra): L4 "Timeout loading world" under load 10-14 (5/5 failures for the M13-r1 verifier) — raise the client world-load timeout or serialize full verify.sh runs across worktrees
 
+## From M18-r1
+- [ ] `GateKeeper` is a `VillageSystem`, so it only ticks while a village is claimed. A fence gate that a worker opened stays open if the Heart is removed meanwhile. Fix: close the ledger's gates on unclaim, or tick the keeper without a village
+- [ ] Gate "reload" is proven only with `GateKeeper.forgetAgesForTests` and the L1 `GateLedgerTest` codec. No L2 does a real save/reload of `villageheart_gates` while a gate is open
+- [ ] Two gate cases have no test: the keeper closing an open gate when a zombie comes near while a worker passes (the hostile branch of `GateRules.shouldClose`, at L2), and a zombie failing to walk through a gate that a worker holds open
+- [ ] Static per-guard maps are never cleared: `GuardRuntime.STATES` (no `forget` on fire or unload), `GateKeeper.OPENED_AT` and `GuardSystem.BEDS` survive `SERVER_STOPPING` and a singleplayer world switch. This leaks memory and leaves stale trip/claim state for a re-hired guard
+- [ ] `ShiftBalancer` min-move rule: when the night guard dies, the one remaining (unpinned) day guard stays on DAY and nobody guards at night, because 1 against 0 counts as balanced. Consider: an empty night shift takes an unpinned day guard
+- [ ] A freshly hired and pinned guard can start in the wrong activity for up to 20 ticks. `GuardBrain.install` picks the activity before `withGuardPin` runs (trace: a DAY-pinned guard in `[core, rest]` at time 2000)
+- [ ] `VillageCodecs.RAW` is now at 16 of 16 fields (M14 `tier_progress` + M18 `guard_shifts`). M13's `smoker_heat` must do the `Codec.mapPair` split: keep the keys flat and test that a pre-split save decodes. This replaces the "From M14" line that put the split on M18
+- [ ] (carried from M14-r1) No test exercises the guard count in `TierFacts.inputs`. With M18 merged, an L2 can hire 2 guards and check the Town guard goal
+- [ ] `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload` failed once in 3 L2 runs during M18-r1 ("progress after the evening: 4004.0", bound >= 4100). Nothing in M18 touches the self-craft path by inspection, so check it on dev for a timing flake
+- [ ] `JobSiteReservations.evictHomeClaimants` scans the villagers within 64 blocks of every held Barracks bed on every reservation pass. Fine at v1 sizes; batch per Barracks if beds grow
+## From M18-r2
+- [ ] A guard that falls back below half health still counts as engaged, so `GatePaths.mayPass` ignores the hostile near a wall gate and `GateKeeper` holds the gate open for it. A wounded guard outside the wall can lead the zombie chasing it through the gate. Fix: a retreating guard does not count as engaged for gates. Add an L2 with a guard outside the ring and a healthy ally inside
+- [ ] `GuardAlarm.refresh` keeps the alarm up while any in-claim hostile targets a villager. A zombie outside a wall, but inside the claim, keeps every guard on duty and walking toward an unreachable `spot` all night. Consider: only a hostile with a path to a villager, or a cap on the hold
+- [ ] Sim `hire ... replace` re-hires a dead guard at once, mid-fight. In `defended` failure mode A, four fresh guards were fed in one by one and slain or zombified. Consider waiting until the alarm ends or dawn, as a player would
+- [ ] `guard_on_duty.png` shows the sleeping night guard from the foot of the bed (robe and apron only). A side view, or a camera at the bed's side, would read better
 ## From M22-r1
 - [ ] Merchant strike gate: `WorkGate.mayWork` in `MerchantJob.tick` is untested alone (speed 0 masks it), yet it is the only guard for a pending sale held after a SHORT/STOPPED attempt; add a test where a pending unit is held when a strike starts
 - [ ] The per-stall cap (`SalesLedger.byStall`, the fire/re-hire exploit) is tested at L1 only; add an L2 case: a capped merchant is fired and another villager is hired at the same stall the same day
@@ -333,7 +349,17 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] L4 "Timeout loading world" still seen at load 10 despite the flock (other Gradle jobs compete).
 Fix root causes; never loosen a bound without a written reason.
 
+## From M18 round 3
+- [ ] A retreating guard still counts as engaged for gates (r2 note): it may lead the zombie through a gate. Fix: not engaged while `GuardCombat.retreating`.
+- [ ] Guard ration withdrawal is remote (no walk to Storage); a walk would be more honest, and would need a trip state like the gear trip.
+- [ ] A zombie outside the wall but inside the claim keeps the alarm up all night (r2 note).
+- [ ] The `SERVER_STOPPING`/`SERVER_STARTING` listeners of `GuardAlarm` have no GameTest (only `reset()` does).
+- [ ] Duel intent: with a better sword than wood (stone or iron) a level-1 guard should beat one zombie with at least 50 % of its max health; add a test when guards get better swords by default.
 ## Post-v1 idea (human, 2026-11-10): guard roles for big "castle" villages
 - With 20+ guards per shift, guards need roles, not one shared patrol loop: **gate guards** (stand at a gate post), **wall/tower posts** (stand on a Watchtower or wall walk), **inside rovers**, and **patrol routes the player sets** (e.g. a Patrol Marker item placed in order, or a route on the Heart screen). Possibly squads with a leader.
 - v1 keeps M18 as built: every on-duty guard walks the shared loop (Heart, door points, Lamp Posts, Watchtowers) and the alarm gathers them.
 - Note (human): the start should be hard and the player should help defend; players often sleep through nights, so sieges/raids (M25) matter for the daytime threat.
+
+## From M18 close-out (for M26)
+- [ ] Sims: log every villager death (who, what killed it, inside or outside the wall, day and tick). Then find out why `defended_walled` loses 1 to 3 villagers a run while the zombies are placed outside the wall (zombies through the gate, workers outside, natural spawns, fire?). Also find out why `defended` run 4 hired no replacement guard from day 7 to day 10 (employed stayed 2, duty_samples 0).
+- [ ] Balance target (M26): `defended` and `defended_walled` pass their unchanged assertions (deaths.mobs <= 1, kills >= 15) once tools, armour, golems, walls and lights exist.

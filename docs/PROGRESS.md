@@ -316,6 +316,16 @@ Next: BUILD M8 steps 1-3 now; steps 4+ once M7 is on dev. Top risk: M7's API mov
 - Step 11 docs. Screenshots looked at: `heart_ranks.png`, `heart_ranks_confirm.png`, `mp_ranks.png`, and the four M8 shots with the new tab bar.
 - **Blocked / next:** step 9 (`onlyOwnerCanWithdraw`, plan T-L2-6) and a deposit/withdraw step in the 2-player session need M12 on dev. ROADMAP not ticked (orchestrator).
 
+## 2026-11-07: M18 plan (guards), branch m18-plan
+- Plan: docs/plans/M18.md, 13 steps. Guard brain without panic/bell/raid hiding. Combat is a mod behaviour plus vanilla `doHurtTarget` after registering `ATTACK_DAMAGE` on villagers (`FabricDefaultAttributeRegistry`), because villager brains lack the attack memories.
+- Day sleep uses vanilla `SleepInBed` (no time check), with REST driven by a pure `GuardSchedule` (night shift: sleep 0-11000, duty 12000-24000).
+- Barracks beds are reserved through the M7 POI pass (HOME eviction). Gear is worn (sword visible, armour invisible) and handed back to the Barracks chest off shift.
+- Level perks are permanent attribute modifiers. Guards heal while asleep, and a wounded guard retreats to its bed.
+- Shift pins are saved in `VillageState`; the Heart screen gets a `SetGuardShift` action gated by `SET_GUARD_SHIFT`. L3 `defended` sits on M11's `starter`.
+- Assumes M9 (WalkTo, without relying on its give-up timings), M11, M15 (else a minimal Leveling) and M12 (strike = no duty).
+- Critique: my session never answered; the orchestrator ran a fresh critic (1 BLOCKER, 10 MAJOR, 9 MINOR), all 20 taken (plan section 7): combat in CORE with a DEFEND override, night OFF after duty, auto shifts stored, real-raid L2, HOME/ticket fixes, scripted threat in `defended`.
+- Top risk: L3 `defended` (≤ 1 mob death in 10 unseeded days) depends on the unbuilt M11 harness and on vanilla villager night behaviour.
+
 ## 2026-11-07: M14 plan (tiers and unlocks), branch m14-plan
 - Plan: docs/plans/M14.md, 6 steps. Pure `core.tier` (`TierGoals.evaluate(tier, inputs, progress)`, `TierProgress` fed streak / last counted dinner / best dawn treasury, `TierDawn.run`, `TierRules.levelCap/levelFor`, `Population.count`).
 - `VillageState.tierProgress` (saved as lenient `tier_progress`); fed streak updated at M11's dinner (`Tiers.onDinner`, everyone fed = fed day, anything else resets); tier checked at M12's dawn (`VillageDawn` listener, after wages, one step per dawn, never down).
@@ -754,6 +764,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Mutations: input dupe and fuel-free cooking are red; no reservations, ignoring hunger/strike, no cook XP all green; an always-false probe in `noFuelNothingCooked`'s 3000-tick sample stays green (`thenWaitUntil` swallows assertion failures).
 - Next: 4 must-fix items and 7 BACKLOG items in `docs/reviews/M13-r1.md`; one green L4 run with the screenshots looked at.
 
+## 2026-11-09: M18 plan refreshed against dev (planner)
+- docs/plans/M18.md section 9: every assumption row checked on dev (M9-M12, M15-M17, M20, M21 built; M13, M14, M19a not). Real signatures (WalkTo with `now`, M15 `WorkXp.award`: 5 XP a kill), M12 strikes and a 64-emerald treasury for `defended`. Fold-ins: register `Defences::patrolPoints` in step 6 (BLOCKING M21 item, T-L2-17); closed fence gates skip a point (T-L2-18); door points keep a guard (a hired worker, never nudged by backlog-2) out of doorways; the `starter` flake (M11-r5) is a step-12 precondition; RAW reaches 16 fields with M13+M19a+M14 (split with `Codec.mapPair`). Guard design unchanged.
 ## 2026-11-09: sim-area (builder): the L3 sim models a player's ticking area
 - Problem (M11-r5 BACKLOG 1): the sim force-loaded only ±6 chunks around the village START chunk; a worker that strolled or fled past the edge froze for good (r5 run 1: farmer at x 752, `not_ticking` 530), so `starter 10` failed ~1 in 4.
 - Fix: (a) the static square is centred on the HEART after the claim (`SimWorld.recentre`), radius `core.sim.SimArea.staticRadiusChunks(CLAIM_RADIUS)` = 6 (claim from any spot of the Heart's chunk, plus one chunk); same chunks on seed 1. (b) every 20 ticks each loaded hired worker gets a non-persistent loading+simulation ticket (`SimTickets.WORKER`, registered as `villageheart-gametest:sim_worker`) that entity-ticks its chunk and 2 around it, reference-counted per chunk (`SimArea.Follower`). Why (b): it is what a nearby player does (simulation distance where the action is), it covers any seed and any wander, and it never teleports or rescues anyone.
@@ -772,6 +784,14 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
   1. The "Needs axe (no wood/room)" rows are grey, not red (`HeartScreen` warn colour).
   2. No L1 test fails if `TierChoice` prefers wooden over stone.
 - 10 BACKLOG items, among them: a WORN lumberjack should defer its craft to the afternoon (`LUMBER_LAST_FELL`; the cost is about 25-30 % of felling, not 45 %). Notes: `docs/reviews/M19a-r1.md`.
+
+## 2026-11-09: M18 build (guards) incl. fence-gate opening
+- Branch `m18`, steps 1-13 of docs/plans/M18.md plus the human-decided gate opening (plan section 8 lists every deviation; DESIGN 5.6 "Rules as built (M18)" and section 12 "Gate opening").
+- Full `scripts/verify.sh` exit 0 at d4294a5: L1 build+unit green; L2 "All 324 required tests passed"; L3 script self-test, model-log and 2-player gates green; L4 green (screenshots `guard_on_duty.png`, `heart_villagers_guards.png` looked at); perfTest green (idle village tick mean ~0.0015 ms).
+- L3 `defended` (10 days, unseeded) does NOT pass reliably: runs gave deaths.mobs 5 / kills 1 (guards all slain on night 1, no free villager to re-hire), deaths 2 / kills 15 (one assertion failed), deaths 5 / kills 3. 0 of 3 clean passes. Guards (20 HP, one on night duty) lose to 3 zombies at once; see the report for the options (third guard, armour in the kit, both shifts called when a villager is attacked). The assertions were not loosened.
+- Flakes seen: `guardBrainHasNoPanic` once (guard in guard_off, cause unknown; the failure message now prints phase/needs/hp), L4 "Timeout loading world" under machine load.
+- Next: orchestrator decision on the `defended` balance; M25 plugs into `RaidCheck.setSource` and `PatrolPoints`.
+
 ## 2026-11-09: M14 plan refreshed against dev (planner)
 - docs/plans/M14.md section 8: assumptions re-checked on dev (M11, M12, M15 built). The wages-off dawn is done by M12; the dinner hook moves into `Dinner.serve` (real fed count); hooks and helpers follow dev; new 3.6a folds in BACKLOG M15-r1 ("needs a Town" after a tier-up). No design change. Ready to build; top risk is the VillageState/RAW merge with M13 and M19a (RAW reaches 16 fields).
 
@@ -782,6 +802,12 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Full `scripts/verify.sh` exit 0 at 7d1a91c: L1 ok; "All 309 required tests passed"; zero-test gates, L3 self-test, model-log gates ok; L4 ok (lost wakeups rescued 1, leaks 0); perf ok. L4 timed out loading the world twice under machine load (load avg 10), then passed. No L3 sim run (M14 has no scenario).
 - Next: verifier. Blockers: none. M13 will take RAW field 16; M18 must split with `Codec.mapPair`.
 
+## 2026-11-09: M18 review r1 (verifier): FAIL
+- Merged origin/dev (M14) into m18. There were code conflicts in `VillageState` and `VillageCodecs` (tierProgress + guardShifts; RAW is now 16/16) and in `fabric.mod.json`. Fix-up `3c2ae4a` adds the two reflection-sweep entries the merge needed.
+- `verify.sh` exit 1. The L1 failures were the merge sweeps, now fixed. L2: `guardBrainHasNoPanic` failed (guard slain). Every other step was green. L2 reruns: 1 pass, and 1 failure in an M19a test (BACKLOG).
+- `defended` 10 days: 0/2 clean (deaths.mobs 7 and 5, kills 2 and 3).
+- 6 fix items: the alarm for `defended`; re-targeting an attacker while engaged; the `guardBrainHasNoPanic` fixture; unhired villagers vacuous in the gate test; no test for Barracks-bed eviction of hired workers; the night guard missing from its bed in `guard_on_duty.png`.
+- 10 BACKLOG items. Notes: `docs/reviews/M18-r1.md`.
 ## 2026-11-09: M22 merchant and market (builder)
 - Built on branch m22 (from dev c581834 + m22-plan). Core `core.market` (price table, surplus, planner, ledger, caps, reserves, saved state), `WorldClaim.market` + lenient `market` save key (WORLD_CLAIM 7 of 16 fields; `VillageState` untouched, so M13/M18 keep their field), glue `market.Markets` (view, `trySell` the only writer of sales), `MerchantJob`/`MerchantWork` in the MERCHANT behaviour list, `VillageCensus.headcount`, `Permission.SET_RESERVES`, `HeartAction.SetReserves` + `SetReservesPayload` + `Rejection.BAD_RESERVE`, `StockLine.forSale` and the market figures on `Stock`, the Stockpile tab's market line, green counts and reserve bar, `/villageheart market`.
 - Orchestrator decision applied: a village-wide cap of 32 emeralds a day on top of 8 / 12 / 16 per merchant (and per stall).
@@ -811,6 +837,11 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - L3: `starter_cook 10` PASS (4.60 vs B 3.1394, 80 cook items); `starter 10` PASS (3.15, the baseline reproduces). The re-capture was forced by dev's `starter.json` change (hash guard) and is legitimate.
 - Next: merge m13 into dev. Blockers: none.
 
+## 2026-11-09: M18 review r1 fixes (builder)
+- Items 2-6 done: GuardCombat re-targets a different attacker (`guardSwitchesToTheMobThatHurtsIt`); `guardBrainHasNoPanic` fixture moved out of sight (passed 5 of 5 alone, and in 3 full L2 runs); `mobsStillCannotPassTheGate` also asks the unhired villager after the zombie is gone; `barracksBedEvictsHiredWorker` and `brokenGrindstoneKeepsTheGuardOnDuty` added; `guard_on_duty.png` now shows the night guard asleep in its bed (it goes to bed by itself, then is frozen; server and client positions asserted within 1.5 blocks of its assigned bed).
+- Item 1: the guard ALARM is built (`GuardAlarm`, `GuardSchedule.phase(..., alarm, ...)`, 600-tick hold, raised by a hostile hurting a villager in the claim or hunting one within 24 blocks of a guard; wounded first) with L1 rows and L2 `alarmWakesSleepingGuardsAndTheyReturn`. `defended` is still 0 of 3 with the alarm alone (deaths.mobs 6 / 6 / 7, kills 3 / 3 / 3, duty_samples 0 on one day in each run: all guards dead, no free villager to re-hire). Reported to the orchestrator before any balance change.
+- Merged origin/dev (M13): VillageCodecs RAW split into two map codecs (flat keys), `guardShifts` last; test `splitCodecKeepsEveryKeyFlatAndReadsOldSaves`.
+- Full verify at fafda8f: L1, L2 (353 tests), L3 self-test, perf green; L4 first failed with "Timeout loading world" (machine load) and passed (40 screenshots) when rerun alone under the flock on the same head.
 ## 2026-11-09: M22 review round 2 (verifier)
 - Verdict PASS, 0 must-fix, 4 BACKLOG items ("From M22-r2"); M22 ticked. Review: `docs/reviews/M22-r2.md`. Head: merge `e6fbbf5` (origin/m22 `0d48acc` + origin/dev `f6fbf1d`).
 - Correction: the builder's "merge M13" `8f97020` merged dev before M13 landed, so M13 met M22 only now. Code conflicts (Workers.forget, Balance, ActivityKind/WorkerStatus, gametest fabric.mod.json) were resolved by keeping both sides, with M13's `NEEDS_FUEL` before M22's `DAILY_LIMIT`/`TREASURY_FULL`.
@@ -818,3 +849,34 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - verify.sh: L1 and L2 each "All 341 required tests passed"; L4 timed out loading a world at load 5-10 (known flake), then was green at load 3.7 (39 screenshots, all gates 0). `two_hunters_one_ground` failed once in a standalone build (load flake candidate, BACKLOG).
 - No GameTest discards the result of `VillageTestSupport.reload(server)`.
 - Next: merge m22 into dev. Blockers: none.
+
+## 2026-11-09: M18 r1, `defended` (orchestrator-directed diagnosis and levers)
+- Diagnosis: `guardBeatsOneZombie` (level-1 guard, iron sword, iron helmet, one helmeted zombie, flat ground, daylight) logs 4 hits of 6.0 at 21-27 ticks (cooldown 20), and the zombie lands 3-4 hits of ~2.9: the guard wins in ~96 ticks and loses 8-12 of 20 health. Damage, rate and reach are vanilla's, so it is not a bug: a 20-health guard dies to the third zombie (about 9 health each, no regeneration awake). Scripted threat: 3 zombies per night (27 in all); natural spawns are not counted separately (kills >= 15 counts any hostile).
+- Per-lever `defended` runs (unseeded, 3 each, assertions unchanged): alarm only 0/3 (deaths.mobs 6/6/7, kills 3/3/3); + a (armour kit: 2 iron chestplates, 2 iron helmets) 0/3 (deaths 2/0/4, kills 12/9/17); + b (gather at the alarm spot, fall back toward a healthy guard below half health) 2/3 (the third: deaths 8, kills 4); + c (guard max health 30/40/50) 3/3 (deaths 1/1/0, kills 17/23/15, duty_samples always >= 100).
+- Verify at 4dfa87d (includes the M22 merge): L1, L2 (369 tests), L3 self-test, perf green; L4 timed out loading the first world at machine load 6-12 in 4 tries and passed (41 screenshots) at load < 4.
+
+## 2026-11-09: M18 review round 2 (verifier)
+- Verdict FAIL, 7 fix items, 4 BACKLOG items ("From M18-r2"). Review: `docs/reviews/M18-r2.md`. Head: merge `e8e237b` (origin/m18 `2b8aac0` + origin/dev `455e2bf`, LOOP_STATE only).
+- Full verify exit 0 (L2: 369 passed, L4 first try, 41 screenshots). Mutations: alarm (L1 and the L2 wake and return), retarget, bed eviction, grindstone, sleeper position and the codec split are all red. The unhired-villager gate assertion is still green with `isHired` = any adult villager.
+- `defended`: 1 of 5 at the head (deaths 7/0/6/1/7, kills 6/12/9/32/4) and 1 of 3 at `47b7994` (deaths 0/6/6, kills 17/2/42). A fresh guard is hired at 20 of 30 health (`onHired` does not heal). `guardBrainHasNoPanic` passed 9 of 10 alone. The static `GuardAlarm` state leaks across worlds.
+- Next: the builder fixes the 7 items. Blockers: none.
+
+
+## 2026-11-10: M18 round 3 (owner redesign of the guards, r2 items)
+- Built (details in docs/plans/M18.md section 8 items 10-11, DESIGN 5.6): wooden sword and no armour at hire; level 1 = 20 health, 30/40 at levels 2/3 (`Balance.GUARD_LEVEL_HEALTH`); no free regeneration (the sleep heal is gone), a food ration withdrawn from Storage and eaten to heal (`GuardRation`, `GuardRations`); retreat below 50 % behind a healthy guard, eat, rejoin at 80 %; shifts by seniority with most guards on nights (`ShiftBalancer.assign`); wake on a guard's death; no guard hired at night (`HireRefusal.GUARD_AT_NIGHT`, the sim re-hire waits for the morning); one training day with status "Training" (`GuardTraining`); `GuardAlarm.reset` on server start and stop, spot kept with its dimension; archers not built.
+- Tests: L1 `ShiftBalancerTest` (rewritten for the new rule), `GuardRationTest` (new), `GuardScheduleTest`, `GuardPerksTest`, codec tests; L2 12 new GameTests (training, trainee sparring, eating, no food no heal, refill from Storage, death wake, no night hire, seniors, retreat and eat, alarm reset, fire and re-hire); L4 `heart_villagers_guards` shows "Night shift - Training" (looked at), `guard_on_duty` shows the wooden sword.
+- Mutations (all red): ShiftBalancer seniority order and day count, `GuardRation.bite`, `GuardTraining.mayHire` and `qualifiesAt`, the trainee schedule override, the death wake, the night-hire rule, the seniority re-rank, free healing in `GuardRations.bite`, the retreat bite, `GatePaths.isHired` = any adult villager (3 of 3 runs after the rewrite of `mobsStillCannotPassTheGate`: one-shot rule check on all gate cells plus the path from the hired worker's own spot). Not testable in a GameTest: removing the `SERVER_STOPPING` listener (the reset itself is tested).
+- A test-only clock trap found on the way: hiring a guard in a test that jumped the day time forward and back left the guards stuck inside the Barracks (alarm test 2 of 6 green); the helper now switches the night-hire rule off with `Workers.nightGuardHireForTests` instead of moving the clock.
+- **Duel (r2 item 3): RED, reported not weakened.** `guardBeatsOneZombie`: level-1 guard, wooden sword (damage 4.0 = base 1.0 + 3), no armour, one helmeted zombie: the guard needs 5 hits (153 ticks), the zombie lands 5 hits of 3.0, the guard ends with 5.0 of 20 health (bound 10). The only failing test in `scripts/verify.sh` (L1, L3 self-test, L4 41+ screenshots, perf green). Levers for the owner: `Balance.GUARD_BASE_DAMAGE` (1.0), the sword, or the bound.
+- Panic control (r2 item 5): not reproduced in 300 warm rounds (max 38 ticks); the control is penned now and the failure message prints its hostile memory, distance and line of sight. Cause unproven.
+- **`defended` (assertions unchanged, unseeded, 10 days): 0 of 5.** Run: deaths.mobs / kills / failed assertions. 1: 3 / 20 / deaths. 2: 3 / 12 / deaths, kills, duty_samples day 8 = 27. 3: 3 / 16 / deaths. 4: 4 / 17 / deaths. 5: 2 / 11 / deaths, kills. Per day numbers are in the report to the orchestrator. Every run has 1 night guard and 1 day guard (2 guards = 1 + 1); the deaths come in pairs on one night (day 8 of run 1, day 8 of run 2, day 3 of run 3, day 9 of run 4, day 5 of run 5). Guards took 168-230 ration points a run and ate 117-197 (food days left stayed above 8: no starvation). I stopped as instructed and changed no assertion.
+- Next: the owner decides the duel numbers and the `defended` bars. Blockers: the duel test is red by design of the rule.
+
+## 2026-11-10: M18 round 3b (owner shift rule, duel bound, defended_walled)
+- Shift rule (owner): 1-3 guards all work nights, from the 4th guard one day guard per four (`floor(n/4)`), seniors on nights, the newest takes the open day slot, the pin still overrides. L1 `ShiftBalancerTest` (n = 1..12), L2 `seniorGuardsTakeTheNights` (4 guards), `threeGuardsAllWorkNights`, `daytimeAlarmWakesTheSleepingNightGuardsAndTheyGoBackToBed` (no day guard: all asleep at noon, a zombie hurts a villager, they wake, kill it, go back to bed). Mutations red: `dayCount` n/4 -> n/3, seniority order, the seniority re-rank, `GuardAlarm.active` = false.
+- Duel bound: `guardBeatsOneZombie` asserts the guard wins with at least 25 % of max health (5 of 20) while it has only a wooden sword (reason in the test and TESTING); 50 % for better swords is a BACKLOG idea.
+- New scenario `defended_walled` (actions `wall_ring`, `lamps`, `night_spawn ... outside`), assertions identical to `defended`; `defended` untouched.
+- `defended` unseeded x5: 1 of 5 (run 3 passes: deaths 0, kills 18). Runs: deaths/kills 3/14, 6/20, 0/18, 6/17, 5/20. `defended_walled` unseeded x5: 0 of 5: deaths/kills 3/10, 1/1, 3/6, 3/6, 1/11. Full numbers in the report to the orchestrator.
+
+## 2026-11-11: M18 close-out
+- Owner accepted the guards as built (hard start). `guardBeatsOneZombie` now asserts only that the wooden-sword guard wins. `defended` 1/5 and `defended_walled` 0/5 are recorded in ROADMAP and plan section 8 as M26 balance targets, assertions unchanged. BACKLOG: sim death log, why walled loses villagers, why run 4 hired nobody.

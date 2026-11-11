@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /** A change a player asks for through the Heart screen. M18 adds SetGuardShift. */
 public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire, HeartAction.Recheck, HeartAction.SetRank,
-		HeartAction.Transfer, HeartAction.Deposit, HeartAction.Withdraw, HeartAction.SetReserves {
+		HeartAction.Transfer, HeartAction.Deposit, HeartAction.Withdraw, HeartAction.SetReserves, HeartAction.SetGuardShift {
 	Permission permission();
 
 	/** Checked by the gate after the village checks and before the permission: a value no honest client sends. */
@@ -48,6 +48,17 @@ public sealed interface HeartAction permits HeartAction.Assign, HeartAction.Fire
 
 		@Override public Optional<Rejection> malformed() {
 			return amount >= 1 && amount <= Balance.MAX_WITHDRAW ? Optional.empty() : Optional.of(Rejection.BAD_AMOUNT);
+		}
+	}
+
+	/** Pin a guard to a shift (M18): {@code choice} 0 auto (keeps the side it is on), 1 day, 2 night. Any int decodes; only 0..2 pass the gate. */
+	record SetGuardShift(UUID villager, int choice) implements HeartAction {
+		public SetGuardShift { Objects.requireNonNull(villager, "villager"); }
+
+		@Override public Permission permission() { return Permission.SET_GUARD_SHIFT; }
+
+		@Override public Optional<Rejection> malformed() {
+			return choice >= 0 && choice <= 2 ? Optional.empty() : Optional.of(Rejection.BAD_SHIFT);
 		}
 	}
 
