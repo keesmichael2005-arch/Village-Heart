@@ -927,4 +927,5 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 
 - Screenshots: M23 has no visual change. Layer 4 wrote the existing 41 shots, `0000_village_heart_placed.png` through `0040_mp_ranks.png`. No new shot to describe.
 - `scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions, 10/10 days). Growth log: day 1 licensed and a baby, day 2 licensed and a baby, days 3–5 `NO_FREE_BED`, day 6 licensed and a baby, days 7–10 `NO_FREE_BED`. No `TOO_FAR`, no lapse. Population 8 → 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie; the starter assertions do not mention that death.
-- ROADMAP checkbox left unticked for the orchestrator. Doubts: the new test freezes the brains; the live-brain morning is covered by `one_birth_per_day`, which passed the full suite. Next: one more `--fast` at this docs head, then the PR into `dev`.
+- ROADMAP checkbox left unticked for the orchestrator. Doubts: the new test freezes the brains; the live-brain morning is covered by `one_birth_per_day`, which passed the full suite.
+- Trailing `scripts/verify.sh --fast` at `6fed83d` exit 0 (402 GameTests in both layers, perf within caps: worst 2638 us, 16x16x8 1289 us, spill 1466 us, snapshot 300 us, deposit 294 us, idle tick 8.2e-4 ms). Next: the PR into `dev`.
