@@ -335,3 +335,8 @@ Fix root causes; never loosen a bound without a written reason.
 - [x] (flake-fix) `sim_action_game_tests_forced_chunk_grows_without_player` timed out at tick 2202 of 2200: async chunk promotion, now pre-generated.
 - [x] (flake-fix 2) `WalkTo` arrival tolerance removed at the root; all callers audited.
 - [ ] `hunter_game_tests_two_hunters_one_ground` took 970 ticks vs bound 450 at load 8 (M22 review); not reproduced in 6 loaded runs and 2 full runs. Likely mechanism: the second hunter stalls behind the first at the ground (`WalkTo` stall rule -> UNREACHABLE -> `unreachableAt` retry delay), costing one retry of about 500 ticks. If it recurs, the test's +460 diagnostics line shows decisions and positions.
+
+## Post-v1 idea (human, 2026-11-10): guard roles for big "castle" villages
+- With 20+ guards per shift, guards need roles, not one shared patrol loop: **gate guards** (stand at a gate post), **wall/tower posts** (stand on a Watchtower or wall walk), **inside rovers**, and **patrol routes the player sets** (e.g. a Patrol Marker item placed in order, or a route on the Heart screen). Possibly squads with a leader.
+- v1 keeps M18 as built: every on-duty guard walks the shared loop (Heart, door points, Lamp Posts, Watchtowers) and the alarm gathers them.
+- Note (human): the start should be hard and the player should help defend; players often sleep through nights, so sieges/raids (M25) matter for the daytime threat.
