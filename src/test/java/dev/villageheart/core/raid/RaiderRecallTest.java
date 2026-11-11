@@ -23,12 +23,4 @@ class RaiderRecallTest {
 		assertNull(RaiderRecall.nearestGate(640, 70, 850, new int[0]));
 	}
 
-	@Test
-	void theRaiderIsPlacedBesideTheGuardTowardTheGate() {
-		double[] at = RaiderRecall.besideGuard(660, 70, 864, 681, 855);
-		double dx = at[0] - 660, dz = at[2] - 864;
-		assertEquals(2, Math.sqrt(dx * dx + dz * dz), 0.05);
-		assertTrue(at[0] > 660, "toward the east gate, two blocks from the guard");
-		assertEquals(70, at[1], 0.01);
-	}
 }

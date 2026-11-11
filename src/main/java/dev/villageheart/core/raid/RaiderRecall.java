@@ -4,7 +4,8 @@ import dev.villageheart.core.Balance;
 
 /**
  * A raider that never walks toward the Heart holds its wave until the raid stops (M25 step 19).
- * It is placed just outside the nearest gate, not inside the ring, and the guard is not moved onto it.
+ * Bringing it to the gate or to a guard either let it walk back out or killed the village.
+ * It is killed where it stands.
  */
 public final class RaiderRecall {
 	private RaiderRecall() {}
@@ -35,13 +36,4 @@ public final class RaiderRecall {
 		return new int[] { gates[best], gates[best + 1], gates[best + 2] };
 	}
 
-	/**
-	 * Two blocks from the guard, toward the gate. The raider is in melee with that guard. Placing it outside the gate
-	 * let it walk back to the ledge and hold the wave.
-	 */
-	public static double[] besideGuard(int gx, int gy, int gz, int gateX, int gateZ) {
-		double dx = gateX - gx, dz = gateZ - gz;
-		double h = Math.max(Math.sqrt(dx * dx + dz * dz), 0.1);
-		return new double[] { gx + dx / h * 2, gy, gz + dz / h * 2 };
-	}
 }

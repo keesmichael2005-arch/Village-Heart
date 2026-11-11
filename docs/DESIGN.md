@@ -587,9 +587,8 @@ Babies are normal vanilla villagers and can be hired as adults.
   walks to the nearest gate when that path does not close at least 12 blocks and the raider is already within 32 blocks.
   A guard does not start a chase farther than that. A longer step is walked.
   A raider that has not closed 4 blocks on the Heart for 12000 ticks, and is still more than 24 blocks from the nearest
-  gate, is placed 2 blocks from the nearest guard, toward that gate, one raider every 40 ticks, and only while no
-  raider is already within 16 blocks of a guard. The guard is not moved onto the pack, and the
-  raider is not dropped inside the ring. The walk out to a gate still
+  gate, is killed where it stands, one raider every 40 ticks, and only while no raider is already within 16 blocks of
+  a guard. Bringing that raider to the gate or to a guard either left the wave held or killed the village. The walk out to a gate still
   counts as closing, and a kill inside that margin counts as the guard's.
   As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
   valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.

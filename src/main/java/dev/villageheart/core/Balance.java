@@ -166,8 +166,8 @@ public final class Balance {
 	/**
 	 * A raider that has not closed this many blocks on the Heart is stalled. After {@link #RAIDER_RECALL_STALL} ticks
 	 * (long enough that a raider still walking in is not pulled into the first fight),
-	 * and while it is still farther than {@link #RAIDER_RECALL_NEAR_GATE} from the nearest gate, it is placed two blocks
-	 * from the nearest guard. One raider per {@link #RAIDER_RECALL_GAP} ticks.
+	 * and while it is still farther than {@link #RAIDER_RECALL_NEAR_GATE} from the nearest gate, it is killed where it
+	 * stands. One raider per {@link #RAIDER_RECALL_GAP} ticks. Bringing it in killed the village; leaving it held the wave.
 	 */
 	public static final int RAIDER_RECALL_CLOSE = 4;
 	public static final int RAIDER_RECALL_STALL = 12000;

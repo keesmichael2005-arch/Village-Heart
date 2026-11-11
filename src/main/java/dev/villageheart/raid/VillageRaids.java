@@ -173,16 +173,11 @@ public final class VillageRaids implements VillageSystem {
 		}
 		STALLS.keySet().retainAll(live);
 		if (chosen == null || chosenGate == null || now < nextRecallAt) return;
-		Villager guard = nearestGuard(level, village, chosen);
-		if (guard == null) return;
-		double[] at = RaiderRecall.besideGuard(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(), chosenGate[0], chosenGate[2]);
 		Entity body = chosen;
 		while (body.getVehicle() != null) body = body.getVehicle();
-		body.teleportTo(at[0], at[1], at[2]);
-		if (body instanceof LivingEntity living) living.fallDistance = 0;
+		if (body instanceof LivingEntity living) living.kill(level);
 		nextRecallAt = now + Balance.RAIDER_RECALL_GAP;
-		double ndx = body.getX() - heart.x(), ndz = body.getZ() - heart.z();
-		STALLS.put(chosen.getId(), new Stall(Math.sqrt(ndx * ndx + ndz * ndz), now));
+		STALLS.remove(chosen.getId());
 	}
 
 	/** Raiders already in a guard's reach. Another one is not added to that fight. */
@@ -201,21 +196,6 @@ public final class VillageRaids implements VillageSystem {
 			}
 		}
 		return n;
-	}
-
-	private static Villager nearestGuard(ServerLevel level, VillageState village, Raider raider) {
-		Villager best = null;
-		double bestD = Double.MAX_VALUE;
-		for (WorkerRecord w : village.workers()) {
-			if (!JobType.GUARD.id().equals(w.jobId())) continue;
-			if (!(level.getEntity(w.villager()) instanceof Villager g) || !g.isAlive()) continue;
-			double d = g.distanceToSqr(raider);
-			if (d < bestD) {
-				bestD = d;
-				best = g;
-			}
-		}
-		return best;
 	}
 
 	private static int[] gateCells(VillageState village) {
