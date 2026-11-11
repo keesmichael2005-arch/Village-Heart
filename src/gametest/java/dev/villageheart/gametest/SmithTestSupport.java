@@ -315,6 +315,14 @@ public final class SmithTestSupport {
 		return n;
 	}
 
+	/** Item entities of this kind lying on the ground within 100 blocks of the test (dropped, not stored). */
+	public static long groundCount(GameTestHelper h, Item item) {
+		long n = 0;
+		AABB box = new AABB(h.absolutePos(BlockPos.ZERO)).inflate(100);
+		for (ItemEntity it : h.getLevel().getEntities(EntityType.ITEM, box, e -> e.getItem().is(item))) n += it.getItem().getCount();
+		return n;
+	}
+
 	public static Villager villagerAt(ServerLevel level, BlockPos feet) {
 		Villager v = EntityType.VILLAGER.create(level, EntitySpawnReason.COMMAND);
 		if (v == null) throw new IllegalStateException("no villager");

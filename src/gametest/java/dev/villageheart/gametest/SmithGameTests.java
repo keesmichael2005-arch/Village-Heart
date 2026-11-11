@@ -280,6 +280,8 @@ public class SmithGameTests {
 			h.assertTrue(count(h, Items.RAW_IRON) == 0 && count(h, Items.RAW_COPPER) == 0 && count(h, Items.RAW_GOLD) == 0, "no raw ore left");
 			h.assertTrue(count(h, Items.COAL) == 0, "coal left " + count(h, Items.COAL));
 			h.assertValueEqual(800, bank(h), "heat left in the furnace");
+			h.assertValueEqual(0L, SmithTestSupport.groundCount(h, Items.IRON_INGOT) + SmithTestSupport.groundCount(h, Items.COPPER_INGOT)
+					+ SmithTestSupport.groundCount(h, Items.GOLD_INGOT), "smelted ingots lying on the ground (duplicated)");
 			h.assertTrue(sawLit[0], "the furnace was lit while smelting");
 			h.assertFalse(lit(h), "the furnace is dark once the ore is gone");
 			VillageTestSupport.done(h);
@@ -426,6 +428,7 @@ public class SmithGameTests {
 			long finish = units.stream().filter(u -> u.kind().equals("CRAFT")).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
 			log("stone pick commit " + commit + " finish " + finish + " delta " + (finish - commit) + " took " + (h.getTick() - t0[0]));
 			h.assertTrue(finish - commit >= 1200 - 20, "commit to finish was " + (finish - commit));
+			h.assertValueEqual(0L, SmithTestSupport.groundCount(h, Items.STONE_PICKAXE), "stone pickaxes lying on the ground (duplicated)");
 			h.assertValueEqual(4L, count(h, Items.OAK_PLANKS), "planks were not used");
 			h.assertValueEqual(0L, count(h, Items.COBBLESTONE), "cobble");
 			h.assertValueEqual(0L, count(h, Items.STICK), "sticks");

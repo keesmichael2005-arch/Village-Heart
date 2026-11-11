@@ -1500,10 +1500,17 @@ public final class SmithJob {
 
 	private static void give(Villager v, String id, int n) {
 		if (n <= 0) return;
-		ItemStack stack = new ItemStack(SmithCatalog.item(id), n);
-		v.getInventory().addItem(stack);
-		if (!stack.isEmpty() && v.level() instanceof ServerLevel level)
-			Containers.dropItemStack(level, v.getX(), v.getY(), v.getZ(), stack);
+		keepOrDrop(v, new ItemStack(SmithCatalog.item(id), n));
+	}
+
+	/**
+	 * Puts the stack in the smith's inventory and drops what does not fit. {@code SimpleContainer.addItem} adds a copy and returns the
+	 * leftover without shrinking its argument, so only the returned stack says what is still unplaced.
+	 */
+	private static void keepOrDrop(Villager v, ItemStack stack) {
+		if (stack.isEmpty()) return;
+		ItemStack rest = v.getInventory().addItem(stack);
+		if (!rest.isEmpty() && v.level() instanceof ServerLevel level) Containers.dropItemStack(level, v.getX(), v.getY(), v.getZ(), rest);
 	}
 
 	private static int freeSlots(Villager v) {
