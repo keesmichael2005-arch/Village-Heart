@@ -16,16 +16,30 @@ class HuntApproachTest {
 	private static final double CLOSEST = Balance.HUNT_ENTRY_CLOSEST;
 
 	@Test
-	void touchingNearTheMarkerArrivesEvenWhenTheWalkGivesUp() {
-		assertEquals(Choice.ARRIVE, HuntApproach.choose(6.0, CLOSEST, true, true));
-		assertEquals(Choice.ARRIVE, HuntApproach.choose(3.0, CLOSEST, true, false));
+	void aMovingNeighbourNearTheMarkerArrivesEvenWhenTheWalkGivesUp() {
+		assertEquals(Choice.ARRIVE, HuntApproach.choose(6.0, CLOSEST, true, true, true, 0));
+		assertEquals(Choice.ARRIVE, HuntApproach.choose(3.0, CLOSEST, true, true, false, 0));
 	}
 
 	@Test
-	void aJamFartherOutYieldsInsteadOfTheLongRetry() {
-		assertEquals(Choice.YIELD, HuntApproach.choose(12.0, CLOSEST, true, true));
-		assertEquals(Choice.UNREACHABLE, HuntApproach.choose(12.0, CLOSEST, false, true));
-		assertEquals(Choice.WALK, HuntApproach.choose(12.0, CLOSEST, false, false));
+	void aBystanderNearTheMarkerDoesNotCountAsArrived() {
+		assertEquals(Choice.WALK, HuntApproach.choose(3.0, CLOSEST, false, true, false, 0), "a still or NoAI villager is not a hunter who is out");
+		assertEquals(Choice.YIELD, HuntApproach.choose(3.0, CLOSEST, false, true, true, 0));
+		assertEquals(Choice.UNREACHABLE, HuntApproach.choose(3.0, CLOSEST, false, true, true, 1));
+	}
+
+	@Test
+	void aJamFartherOutYieldsOnceInsteadOfTheLongRetry() {
+		assertEquals(Choice.YIELD, HuntApproach.choose(12.0, CLOSEST, true, true, true, 0));
+		assertEquals(Choice.YIELD, HuntApproach.choose(12.0, CLOSEST, false, true, true, 0));
+		assertEquals(Choice.UNREACHABLE, HuntApproach.choose(12.0, CLOSEST, false, false, true, 0));
+		assertEquals(Choice.WALK, HuntApproach.choose(12.0, CLOSEST, false, false, false, 0));
+	}
+
+	@Test
+	void aRepeatedGiveUpIsAnUnreachableGroundEvenWithANeighbour() {
+		assertEquals(Choice.UNREACHABLE, HuntApproach.choose(12.0, CLOSEST, false, true, true, HuntApproach.MAX_JAM_GIVE_UPS));
+		assertEquals(Choice.UNREACHABLE, HuntApproach.choose(12.0, CLOSEST, true, true, true, HuntApproach.MAX_JAM_GIVE_UPS + 3), "far from the marker a mover is not an arrival");
 	}
 
 	@Test

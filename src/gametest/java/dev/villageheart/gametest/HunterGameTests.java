@@ -409,15 +409,14 @@ public class HunterGameTests {
 	}
 
 	/**
-	 * A hunter who cannot move because another hunter (not away) fills the only way out used to be told the ground was
-	 * unreachable and then waited {@code HUNTER_RETRY_TICKS} (600). That wait, on top of the 200-tick walk stall, is the
-	 * 970-tick {@code twoHuntersOneGround} failure. A jam is not a missing ground.
+	 * A ground that is really cut off is still reported when a villager stands beside the hunter. The wall closes the yard at z=12 and a
+	 * NoAI villager stands next to the walker, so the walk gives up beside a neighbour that never moves. One give-up is read as a jam (the
+	 * hunter steps around once); the second, with nothing changed, is {@code SITE_UNREACHABLE}.
 	 */
-	@GameTest(environment = "villageheart-gametest:hunt_jam", structure = YARD, skyAccess = true, maxTicks = 600)
-	public void jamIsNotAnUnreachableGround(GameTestHelper h) {
+	@GameTest(environment = "villageheart-gametest:hunt_jam", structure = YARD, skyAccess = true, maxTicks = 1100)
+	public void wallWithABystanderIsStillUnreachable(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[2];
-		// a wall across the yard, south of the marker, so the walk cannot arrive and is not within HUNT_ENTRY_CLOSEST
 		BlockPos blocker = new BlockPos(16, 0, 10), walker = new BlockPos(15, 0, 10);
 		GameTestSequence seq = scene(h, true).thenExecute(() -> {
 			lightYard(h);
@@ -429,21 +428,66 @@ public class HunterGameTests {
 			var b = h.absolutePos(blocker);
 			v[0].teleportTo(b.getX() + 0.5, b.getY(), b.getZ() + 0.5);
 			v[0].setNoAi(true);
-			h.assertFalse(AwayTrips.isAway(v[0]), "the blocker is not away");
+			h.assertFalse(AwayTrips.isAway(v[0]), "the bystander is not away");
 			v[1] = hireAt(h, spawnSpot2());
 			var w = h.absolutePos(walker);
 			v[1].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
 			double dist = dev.villageheart.worker.job.WalkTo.distance(v[1], h.absolutePos(GROUND));
 			h.assertTrue(dist > dev.villageheart.core.Balance.HUNT_ENTRY_CLOSEST, "farther than the close-enough arrival: " + dist);
 		});
-		// long enough for the 200-tick stall to fire and the old code to arm the 600-tick retry, and short of that retry ending
-		seq = seq.thenIdle(280);
+		// two walk give-ups (200-tick stall each) and a step aside; the second one must be reported
+		seq = seq.thenWaitUntil(() -> h.assertTrue(status(h, v[1]) == WorkerStatus.SITE_UNREACHABLE,
+				"a cut-off ground beside a NoAI villager must still be reported SITE_UNREACHABLE: status " + status(h, v[1]) + " decision "
+						+ HunterJob.decisionOf(v[1].getUUID()) + " at " + v[1].blockPosition()));
 		seq.thenExecute(() -> {
-			WorkerStatus st = status(h, v[1]);
-			System.out.println("[m17] jamIsNotAnUnreachableGround: status " + st + " decision " + HunterJob.decisionOf(v[1].getUUID())
-					+ " at " + v[1].blockPosition());
-			h.assertTrue(st != WorkerStatus.SITE_UNREACHABLE, "a hunter jammed against another hunter was reported SITE_UNREACHABLE (" + st
-					+ "), which waits 600 ticks before it walks again");
+			System.out.println("[m17] wallWithABystanderIsStillUnreachable: reported at tick " + h.getTick());
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * A reachable ground with a neighbour in the one-block gap of the wall is a jam, not a missing ground: the hunter is never reported
+	 * unreachable and gets out once the neighbour has moved on. The neighbour leaves after the first give-up (tick 300).
+	 */
+	@GameTest(environment = "villageheart-gametest:hunt_jam_gap", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void jamInTheGapIsResolvedWhenTheNeighbourMovesOn(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		boolean[] reported = new boolean[1];
+		long[] t0 = new long[1];
+		BlockPos gap = new BlockPos(15, 0, 12), walker = new BlockPos(15, 0, 10);
+		h.onEachTick(() -> {
+			if (v[1] != null && status(h, v[1]) == WorkerStatus.SITE_UNREACHABLE) reported[0] = true;
+		});
+		GameTestSequence seq = scene(h, true).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			putInChest(h, 1, sword("stone"));
+			for (int x = 0; x <= 31; x++) {
+				if (x == gap.getX()) continue;
+				for (int y = 0; y <= 2; y++) h.setBlock(new BlockPos(x, y, 12), net.minecraft.world.level.block.Blocks.STONE);
+			}
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			var b = h.absolutePos(gap);
+			v[0].teleportTo(b.getX() + 0.5, b.getY(), b.getZ() + 0.5);
+			v[0].setNoAi(true);
+			v[1] = hireAt(h, spawnSpot2());
+			var w = h.absolutePos(walker);
+			v[1].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			t0[0] = h.getTick();
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getTick() - t0[0] >= 300, "the neighbour holds the gap for 300 ticks"));
+		seq = seq.thenExecute(() -> {
+			var away = h.absolutePos(new BlockPos(2, 0, 2));
+			v[0].teleportTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
+		});
+		seq = seq.thenWaitUntil(() -> h.assertTrue(AwayTrips.isAway(v[1]), "the hunter gets out once the gap is free: status " + status(h, v[1]) + " decision "
+				+ HunterJob.decisionOf(v[1].getUUID()) + " at " + v[1].blockPosition()));
+		seq.thenExecute(() -> {
+			System.out.println("[m17] jamInTheGapIsResolvedWhenTheNeighbourMovesOn: out at +" + (h.getTick() - t0[0]));
+			h.assertFalse(reported[0], "a reachable ground was reported SITE_UNREACHABLE");
 			VillageTestSupport.done(h);
 			end(h);
 		});

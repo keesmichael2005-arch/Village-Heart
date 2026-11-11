@@ -66,6 +66,9 @@ public final class HunterJob {
 		long jamAt = Long.MIN_VALUE;
 		/** Until this tick the side-step owns the navigation; {@link #goOut} does not start a new walk. */
 		long yieldUntil;
+		/** Walk give-ups beside a neighbour in a row, and when the last one was. A repeat is a missing ground, not a jam. */
+		int jamGiveUps;
+		long lastGiveUpAt = Long.MIN_VALUE;
 	}
 
 	static void trace(String fmt, Object... args) {
@@ -194,7 +197,12 @@ public final class HunterJob {
 		}
 	}
 
-	/** Another villager close enough to be what this one is pushing against. Away or not: a walking partner jams the same way. */
+	/** A neighbour that will move on by itself: away (hidden in the shaft) or walking. A NoAI or standing bystander is not one. */
+	private static boolean mover(Villager o) {
+		return AwayTrips.isAway(o) || (!o.isNoAi() && !o.getNavigation().isDone());
+	}
+
+	/** Another villager close enough to be what this one is pushing against (the nearest one). */
 	private static Villager blockingVillager(ServerLevel level, Villager v) {
 		Villager best = null;
 		double bestD = Double.MAX_VALUE;
@@ -259,11 +267,12 @@ public final class HunterJob {
 		if (!ws.walk.active() || !ws.walk.target().equals(target)) ws.walk.begin(target, Balance.HUNT_ENTRY_REACH, Balance.HUNT_ENTRY_CLOSEST, now);
 		WalkTo.State st = ws.walk.tick(v, now);
 		Villager blocking = blockingVillager(level, v);
+		boolean blockerMoves = blocking != null && mover(blocking);
 		double dist = WalkTo.distance(v, target);
 		// Touching someone near the marker counts as arrived, whether or not they are already hidden. Farther away, the higher id
 		// steps aside after a short push so the stall (200) and the unreachable retry (600) never start. That retry is what made
 		// two hunters miss the 450-tick bound.
-		if (st == WalkTo.State.WALKING && HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blocking != null, false) == HuntApproach.Choice.ARRIVE) {
+		if (st == WalkTo.State.WALKING && HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blockerMoves, blocking != null, false, ws.jamGiveUps) == HuntApproach.Choice.ARRIVE) {
 			trace("{} @{} blocked near the ground: goes out here", v.getId(), now);
 			st = WalkTo.State.ARRIVED;
 		} else if (st == WalkTo.State.WALKING && HuntApproach.yieldNow(jammedFor(ws, v, blocking, now), blocking != null,
@@ -272,12 +281,16 @@ public final class HunterJob {
 		}
 		if (st == WalkTo.State.WALKING) return;
 		if (st == WalkTo.State.UNREACHABLE) {
-			HuntApproach.Choice choice = HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blocking != null, true);
+			if (ws.lastGiveUpAt != Long.MIN_VALUE && now - ws.lastGiveUpAt > Balance.HUNTER_RETRY_TICKS) ws.jamGiveUps = 0; // an old give-up is forgotten
+			HuntApproach.Choice choice = HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blockerMoves, blocking != null, true, ws.jamGiveUps);
 			if (choice == HuntApproach.Choice.ARRIVE) {
 				trace("{} @{} the walk gave up against a villager near the ground: goes out here", v.getId(), now);
 				st = WalkTo.State.ARRIVED;
 			} else if (choice == HuntApproach.Choice.YIELD) {
-				trace("{} @{} the walk gave up against villager {}: not an unreachable ground", v.getId(), now, blocking == null ? "-" : blocking.getId());
+				trace("{} @{} the walk gave up against villager {}: not an unreachable ground (yet)", v.getId(), now, blocking == null ? "-" : blocking.getId());
+				ws.jamGiveUps++;
+				ws.lastGiveUpAt = now;
+				// A NoAI neighbour is never the one to give way in yieldNow, but the hunter may still step around it once here.
 				if (blocking != null && stepAside(level, v, blocking, ws, now)) return;
 				ws.walk.clear();
 				ws.decision = null; // plan again next tick; do not arm the 600-tick retry
@@ -291,6 +304,7 @@ public final class HunterJob {
 				return;
 			}
 		}
+		ws.jamGiveUps = 0; // arrived: the next give-up starts a new count
 		AwayState as = AwayTrips.state(v);
 		if (!as.progressShaft().equals(Optional.of(ground.loc()))) as = as.withProgress(AwayProgress.ZERO, Optional.of(ground.loc()));
 		// the walk may have been long: the trip must still end in the work phase, else back to the Lodge (nothing is reported)

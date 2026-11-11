@@ -30,8 +30,12 @@ class WageAlertsTest {
 		assertEquals(1, a.size());
 		assertEquals(AlertCode.TREASURY_SHORT, a.get(0).code());
 		assertEquals(Severity.WARNING, a.get(0).severity());
-		assertEquals(List.of("0", "3"), a.get(0).text().args());
+		assertEquals(List.of("0", "3 emeralds"), a.get(0).text().args());
 		assertEquals("Treasury short: 0 of 3 emeralds for tomorrow's wages", a.get(0).text().english());
+	}
+
+	@Test void aBillOfOneEmeraldIsSingular() {
+		assertEquals("Treasury short: 0 of 1 emerald for tomorrow's wages", WageAlerts.of(0, 1, 0).get(0).text().english());
 	}
 
 	@Test void noBillOrEnoughMoneyIsNoAlert() {

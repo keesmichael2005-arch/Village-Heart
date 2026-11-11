@@ -13,9 +13,17 @@ public final class HuntApproach {
 	/** Ticks of being pushed against another villager before the higher id steps aside. Short enough that the 200-tick walk stall never starts. */
 	public static final int YIELD_AFTER = 30;
 
-	public static Choice choose(double distanceToMarker, double closest, boolean touchingVillager, boolean walkFailed) {
-		if (touchingVillager && distanceToMarker <= closest) return Choice.ARRIVE;
-		if (walkFailed && touchingVillager) return Choice.YIELD;
+	/** Walk give-ups beside a neighbour that may be called a jam. The next one in a row is a real unreachable ground. */
+	public static final int MAX_JAM_GIVE_UPS = 1;
+
+	/**
+	 * @param touchingMover   a villager that is away or walking is next to the hunter: it will move on, so "goes out here" is right near the marker
+	 * @param touchingAny     any villager is next to the hunter (a bystander can be NoAI or standing still: it only earns one give-up)
+	 * @param recentGiveUps   give-ups beside a neighbour that this hunter already had in a row (a walk that arrived resets it)
+	 */
+	public static Choice choose(double distanceToMarker, double closest, boolean touchingMover, boolean touchingAny, boolean walkFailed, int recentGiveUps) {
+		if (touchingMover && distanceToMarker <= closest) return Choice.ARRIVE;
+		if (walkFailed && touchingAny && recentGiveUps < MAX_JAM_GIVE_UPS) return Choice.YIELD;
 		if (walkFailed) return Choice.UNREACHABLE;
 		return Choice.WALK;
 	}

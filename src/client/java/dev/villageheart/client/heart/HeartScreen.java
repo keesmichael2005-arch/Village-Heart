@@ -787,9 +787,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		text(g, t("overview.workers", o.workers(), o.workerSlots()), rx, y + 12, colW, WHITE, AREA_BODY, grp2);
 		text(g, o.foodDaysTenths() < 0 ? t("overview.food_none") : t("overview.food", days(o.foodDaysTenths())), rx, y + 24, colW,
 				WHITE, AREA_BODY, grp2);
-		text(g, t("overview.treasury", o.treasury()), rx, y + 36, colW, WHITE, AREA_BODY, grp2);
+		text(g, t("overview.treasury", dev.villageheart.core.Plural.emeralds(o.treasury())), rx, y + 36, colW, WHITE, AREA_BODY, grp2);
 		if (o.wageBill() < 0) text(g, t("overview.wages_none"), rx, y + 48, colW, GREY, AREA_BODY, grp2);
-		else text(g, t("overview.wages", o.wageBill()), rx, y + 48, colW, o.treasury() < o.wageBill() ? RED : GREY, AREA_BODY, grp2);
+		else text(g, t("overview.wages", dev.villageheart.core.Plural.emeralds(o.wageBill())), rx, y + 48, colW, o.treasury() < o.wageBill() ? RED : GREY, AREA_BODY, grp2);
 
 		int ay = Math.max(y + 66, gy + 4);
 		int grp3 = groupCounter++;

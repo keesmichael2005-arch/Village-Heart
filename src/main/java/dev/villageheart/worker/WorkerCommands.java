@@ -66,17 +66,17 @@ public final class WorkerCommands {
 		switch (op) {
 			case "add" -> {
 				var r = Treasury.deposit(source.getServer(), amount, source.getPlayer());
-				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.add", r.accepted(), r.treasuryAfter()), true);
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.add", dev.villageheart.core.Plural.emeralds(r.accepted()), r.treasuryAfter()), true);
 				return r.treasuryAfter();
 			}
 			case "set" -> {
 				int now = Treasury.set(source.getServer(), amount);
-				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.set", now), true);
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.set", dev.villageheart.core.Plural.emeralds(now)), true);
 				return now;
 			}
 			default -> {
 				int now = VillageClaims.current(source.getServer()).orElseThrow().treasury();
-				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.get", now), false);
+				source.sendSuccess(() -> Component.translatable("message.villageheart.treasury.get", dev.villageheart.core.Plural.emeralds(now)), false);
 				return now;
 			}
 		}
