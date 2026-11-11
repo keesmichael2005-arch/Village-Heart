@@ -375,16 +375,18 @@ public class SiegeGameTests {
 	}
 
 	private static void noteBreach(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, boolean[] running, int hit) {
+		if (!h.getBlockState(attackCell()).isAir()) holdAtWall(h, mob);
 		if (breachRunning(mob)) running[0] = true;
 		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 		if (d == hit) saw[0] = hit;
-		h.assertTrue(running[0] || saw[0] == hit || h.getBlockState(attackCell()).isAir(), "BreachGoal has run");
+		h.assertTrue(running[0] || saw[0] == hit || h.getBlockState(attackCell()).isAir(), "BreachGoal has run" + where(h, mob));
 	}
 
 	private static void inside(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, int hit) {
+		if (!h.getBlockState(attackCell()).isAir()) holdAtWall(h, mob);
 		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 		if (d == hit) saw[0] = hit;
-		h.assertTrue(saw[0] == hit, "the first hit was " + hit + ", saw " + saw[0]);
+		h.assertTrue(saw[0] == hit, "the first hit was " + hit + ", saw " + saw[0] + where(h, mob));
 		for (int x = ATTACK_X; x <= ATTACK_X + 1; x++) for (int y = 0; y <= 2; y++) {
 			h.assertTrue(h.getBlockState(rel(x, y, ATTACK_Z)).isAir(), "hole " + x + "," + y);
 		}
@@ -421,6 +423,27 @@ public class SiegeGameTests {
 	 * the cell {@code BreachChoice} aims at (exactly one block toward the goal). Stand on the south edge of that block.
 	 */
 	private static final double RAVAGER_Z_IN_BLOCK = 0.01;
+
+	/**
+	 * Keep the raider on the block in front of the attack cell until that cell is open. A stroll or a melee path moves it
+	 * one block along the wall, and {@code BreachChoice} then opens the next column instead of this one.
+	 */
+	private static void holdAtWall(GameTestHelper h, net.minecraft.world.entity.Mob mob) {
+		BlockPos abs = h.absolutePos(mobSpot());
+		double zIn = mob.getType() == EntityType.RAVAGER ? RAVAGER_Z_IN_BLOCK : 0.5;
+		mob.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + zIn);
+		mob.setDeltaMovement(0, 0, 0);
+		mob.fallDistance = 0;
+	}
+
+	private static String where(GameTestHelper h, net.minecraft.world.entity.Mob mob) {
+		String raid = "";
+		if (mob instanceof net.minecraft.world.entity.raid.Raider raider && raider.getCurrentRaid() != null) {
+			raid = " raid " + VillageTestSupport.rel(h, raider.getCurrentRaid().getCenter())
+					+ " stopped " + raider.getCurrentRaid().isStopped();
+		}
+		return " mob " + VillageTestSupport.rel(h, mob.blockPosition()) + raid + " running " + breachRunning(mob);
+	}
 
 	private static void closedRing(GameTestHelper h, boolean gate) {
 		// The mob stands just outside the structure. Force those chunks so its goals tick, and give it a floor so a stroll cannot drop it off the pad.

@@ -10,9 +10,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.PoiTypeTags;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * Whether a raider belongs to the raid stored on the village. Track A owns the tracker that fills {@code threats.raid}
@@ -50,6 +53,9 @@ public final class TrackedRaids {
 			restoreDifficulty = Difficulty.PEACEFUL;
 			server.setDifficulty(Difficulty.NORMAL, true);
 		}
+		// GameTests share one world. A finished test leaves its raid (found within 96) and its occupied bell (averaged
+		// within 64). Either one puts this raid's centre on somebody else's bell, and the raider then chops the wrong face.
+		isolateCentre(level, center);
 		if (!player.hasEffect(net.minecraft.world.effect.MobEffects.RAID_OMEN)) {
 			player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.RAID_OMEN, 6000));
 		}
@@ -62,5 +68,23 @@ public final class TrackedRaids {
 				false, 0, 0, 0, 0, -1L);
 		VillageClaims.data(server).update(v -> v.withThreats(v.threats().withRaid(Optional.of(record))));
 		return raid;
+	}
+
+	/** {@code getNearbyRaid} compares this value to a distance squared. 96 blocks, same as {@code ServerLevel.getRaidAt}. */
+	private static final int RAID_NEIGHBOUR_SQR = 96 * 96;
+
+	private static void isolateCentre(ServerLevel level, BlockPos center) {
+		for (int n = 0; n < 16; n++) {
+			Raid nearby = level.getRaids().getNearbyRaid(center, RAID_NEIGHBOUR_SQR);
+			if (nearby == null) break;
+			nearby.stop();
+		}
+		var occupied = level.getPoiManager().getInRange(type -> type.is(PoiTypeTags.VILLAGE), center, 64, PoiManager.Occupancy.IS_OCCUPIED).toList();
+		for (var rec : occupied) {
+			BlockPos pos = rec.getPos();
+			if (pos.equals(center)) continue;
+			// Setting the block to air lets vanilla drop the POI. remove() while the block stands logs a mismatch.
+			level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+		}
 	}
 }
