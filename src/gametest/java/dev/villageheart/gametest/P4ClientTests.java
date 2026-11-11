@@ -263,6 +263,16 @@ final class P4ClientTests {
 				left -= stored;
 			}
 		}
+		// whatever chest the scan actually uses, put a stack of the walls in it
+		for (int x = chest.getX() - 4; x <= chest.getX() + 16; x++) for (int z = chest.getZ() - 2; z <= chest.getZ() + 8; z++) {
+			if (level.getBlockEntity(new BlockPos(x, chest.getY(), z)) instanceof net.minecraft.world.Container container) {
+				container.setItem(0, new ItemStack(Items.COBBLESTONE, 64));
+				container.setItem(1, new ItemStack(Items.OAK_PLANKS, 64));
+				container.setItem(2, new ItemStack(Items.OAK_FENCE, 64));
+				container.setItem(3, new ItemStack(Items.DIRT, 64));
+				container.setChanged();
+			}
+		}
 	}
 
 	private static Item itemFor(Material m) {
