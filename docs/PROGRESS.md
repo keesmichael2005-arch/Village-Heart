@@ -900,3 +900,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `ShelterPlanner` picks the worker's own House bed, else the nearest free House bed, else the nearest room door. Ties break by distance, then x, z, y. `RaidActivity.shelter` keeps a worker who is asleep at home in bed. `RaidNotices.audience` is the online owner, stewards and residents.
 - `ActivityKind` appends `SHELTERING` and `NO_SHELTER` (ordinals 32 and 33). The Heart text for both is in now, because every activity needs a lang line.
 - Tests: `ShelterPlannerTest`, `RaidActivityTest`, `RaidFactsTest`, `RaidNoticesTest`. Mutation: sheltering a sleeper who has a home turned `whoShelters` red. Next: step 4, death-log glue.
+
+## 2026-11-11: M25 track A step 4 (death log glue)
+- `DeathLogSystem` logs a hired worker wherever they die, and any other villager only inside the claim. It is registered before `WorkerSystem`. A zombie conversion and the death are one row: vanilla reports the conversion first, so a same-tick death is not appended again.
+- `RaidStart` (start, hold waves, stop raids within a radius) and the gametest accessors. `VillageTestSupport.reset` stops raids within 160 blocks and discards their raiders.
+- L2 `deathLogRecordsCauseAndDay`: a hard conversion is one `zombified` row and the sim collector counts 1; a normal death that does not convert is `minecraft:zombie`; `kill()` is `minecraft:generic_kill`; a cure adds nothing; an unemployed villager outside the claim is skipped; a hired worker outside is logged with `inClaim` false. Mutation: dropping the same-tick check turned `aDeathAfterASameTickConversionIsNotASecondLoss` red (2 rows). Next: step 5, raid watch and call-up.

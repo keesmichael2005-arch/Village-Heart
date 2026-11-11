@@ -586,9 +586,10 @@ Babies are normal vanilla villagers and can be hired as adults.
   The online owner, stewards and residents are the ones who hear a raid.
 - **Hunger and homelessness**: these slow or stop work (§4). Villagers **do not die** of either.
 - Deaths are tracked (cause and day) for the Overview tab and the simulation metrics.
-  As built (M25 step 1): the village keeps the last 32 (cause, day, whether it was in the claim, and whether a raid
-  or a siege was on). A conversion within one tick merges into the death. A witch conversion is lightning. The
-  Overview rows are a later step.
+  As built (M25 steps 1 and 4): the village keeps the last 32 (cause, day, whether it was in the claim, and whether
+  a raid was on). A hired worker is logged wherever they die. Any other villager is logged only inside the claim.
+  A conversion within one tick is the same loss as the death, whichever event arrives first. A witch conversion is
+  lightning. A cure is not a death. The Overview rows are a later step.
 
 ## 9. Progression: village tiers
 

@@ -74,6 +74,18 @@ public record DeathLog(List<DeathEntry> entries, long nextSeq, long inClaimLogge
 		return List.copyOf(out);
 	}
 
+	/**
+	 * A death. When a conversion of the same villager is already in the log within one tick, this is the same loss
+	 * and the conversion row stays. Vanilla reports the conversion before the death.
+	 */
+	public DeathLog appendUnlessSameLoss(DeathEntry draft) {
+		Objects.requireNonNull(draft, "draft");
+		for (DeathEntry e : entries) {
+			if (e.villager().equals(draft.villager()) && DeathCauses.sameLoss(e.gameTime(), draft.gameTime())) return this;
+		}
+		return append(draft);
+	}
+
 	/** The newest {@code n} rows, newest first. */
 	public List<DeathEntry> recent(int n) {
 		if (n <= 0 || entries.isEmpty()) return List.of();

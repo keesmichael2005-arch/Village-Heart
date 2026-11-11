@@ -20,6 +20,17 @@ class DeathLogTest {
 		return new DeathEntry(0, id, name, "farmer", "minecraft:zombie", true, time, 1, inClaim, false, false);
 	}
 
+	@Test void aDeathAfterASameTickConversionIsNotASecondLoss() {
+		DeathLog converted = DeathLog.EMPTY.markConverted(ID, 21, "zombified", "Farmer", "farmer", 1, true, false, false);
+		DeathLog same = converted.appendUnlessSameLoss(row(ID, "Farmer", 21, true));
+		assertEquals(1, same.entries().size());
+		assertEquals("zombified", same.entries().get(0).cause());
+		assertEquals(1, same.nextSeq());
+		DeathLog later = same.appendUnlessSameLoss(row(ID, "Farmer", 23, true));
+		assertEquals(2, later.entries().size());
+		assertEquals("minecraft:zombie", later.entries().get(1).cause());
+	}
+
 	@Test void thirtyThreeAppendsKeepThirtyTwo() {
 		DeathLog log = DeathLog.EMPTY;
 		for (int i = 0; i < 33; i++) log = log.append(row(ID, "n" + i, i, true));
