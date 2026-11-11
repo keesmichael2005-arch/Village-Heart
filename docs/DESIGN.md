@@ -585,7 +585,8 @@ Babies are normal vanilla villagers and can be hired as adults.
   treasury once. A scripted raid does not add those extra raiders. An on-duty guard follows a raider of the
   tracked raid up to 64 blocks past the claim, with or without a sight line. A direct path that stops at the wall
   walks to the nearest gate when that path does not close at least 12 blocks. A longer step is walked.
-  A raider the path cannot reach, already within 32 blocks, is pulled to the guard. The walk out to a gate still
+  When that path cannot reach a raider already within 32 blocks, and the guard is not still walking to a gate, the guard
+  steps to the raider. The raider stays where it is, so it is not dropped among the villagers. The walk out to a gate still
   counts as closing, and a kill inside that margin counts as the guard's.
   As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
   valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.

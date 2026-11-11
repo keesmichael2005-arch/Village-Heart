@@ -52,10 +52,18 @@ public final class GuardChase {
 	}
 
 	/**
-	 * A raider the path cannot reach and that is already within 32 blocks is pulled to the guard: a ledge, or a hole
-	 * under the Heart. A farther raider is walked toward.
+	 * A raider the path cannot reach and that is already within 32 blocks is close enough for the guard to step to it:
+	 * a ledge, or a hole under the Heart. A farther raider is walked toward. The raider is not moved.
 	 */
 	public static boolean pullClose(boolean chase, boolean pathReaches, double horizontal) {
 		return chase && !pathReaches && horizontal <= 32;
+	}
+
+	/**
+	 * The guard steps to that raider only when it is not still walking out through a gate. Moving the raider would drop
+	 * it among the villagers.
+	 */
+	public static boolean stepToRaider(boolean chase, boolean pathReaches, double horizontal, boolean walkingToGate) {
+		return pullClose(chase, pathReaches, horizontal) && !walkingToGate;
 	}
 }

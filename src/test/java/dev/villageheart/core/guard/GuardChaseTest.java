@@ -42,6 +42,14 @@ class GuardChaseTest {
 	}
 
 	@Test
+	void theGuardStepsToACloseRaiderAndDoesNotBringItInsideWhileLeaving() {
+		assertTrue(GuardChase.stepToRaider(true, false, 20, false), "the guard goes to the raider");
+		assertFalse(GuardChase.stepToRaider(true, false, 20, true), "a guard still walking to the gate does not pull the raider in");
+		assertFalse(GuardChase.stepToRaider(true, true, 20, false));
+		assertFalse(GuardChase.stepToRaider(true, false, 40, false));
+	}
+
+	@Test
 	void aRaiderKillInsideTheChaseMarginCounts() {
 		assertTrue(GuardChase.killCounts(true, false));
 		assertTrue(GuardChase.killCounts(false, true));

@@ -314,18 +314,24 @@ public final class GuardCombat {
 				double endDist = path == null || path.getNodeCount() == 0 ? guardDist
 						: Math.sqrt(path.getEndNode().asBlockPos().distSqr(dest));
 				boolean reaches = path != null && path.canReach();
-				if (GuardChase.pullClose(true, reaches, horiz)) {
-					double h = Math.max(horiz, 0.1);
-					target.teleportTo(guard.getX() + dx / h * 2, guard.getY(), guard.getZ() + dz / h * 2);
-					target.fallDistance = 0;
-					path = nav.createPath(target.blockPosition(), 1, pathLen);
-				} else if (GuardChase.useGate(reaches, guardDist, endDist)) {
+				boolean walkingToGate = false;
+				if (GuardChase.useGate(reaches, guardDist, endDist)) {
 					int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
 							dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
 					if (via != null) {
 						Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
-						if (viaPath != null) path = viaPath;
+						if (viaPath != null) {
+							path = viaPath;
+							walkingToGate = true;
+						}
 					}
+				}
+				// the raider stays put: pulling it to a guard still inside the ring dropped ravagers among the villagers
+				if (GuardChase.stepToRaider(true, reaches, horiz, walkingToGate)) {
+					double h = Math.max(horiz, 0.1);
+					guard.teleportTo(target.getX() - dx / h * 2, target.getY(), target.getZ() - dz / h * 2);
+					guard.fallDistance = 0;
+					path = nav.createPath(target.blockPosition(), 1, pathLen);
 				}
 			}
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
