@@ -1637,6 +1637,39 @@ public class SmithGameTests {
 	}
 
 	/**
+	 * An in-place repair marks the chest's chunk for saving. The chunk's unsaved flag is cleared every tick; on each tick where the
+	 * damage changed it must be set again, or the repair would be lost on a save before the chunk is dirtied by something else.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_repair_saved", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void inPlaceRepairMarksTheChunkForSaving(GameTestHelper h) {
+		int[] last = {200};
+		int[] changes = {0};
+		boolean[] missed = {false};
+		scene(h).thenExecute(() -> {
+			ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
+			plate.setDamageValue(200);
+			StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).setItem(0, plate);
+			putStore(h, Items.IRON_INGOT, 5);
+			setDayTime(h, 1000);
+			hire(h);
+		}).thenWaitUntil(() -> {
+			var chunk = h.getLevel().getChunkAt(h.absolutePos(SmithTestSupport.smithyChest()));
+			int d = StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).getItem(0).getDamageValue();
+			if (d != last[0]) {
+				changes[0]++;
+				if (!chunk.isUnsaved()) missed[0] = true;
+				last[0] = d;
+			}
+			chunk.tryMarkSaved();
+			h.assertTrue(d == 20, "damage " + d);
+		}).thenExecute(() -> {
+			h.assertTrue(changes[0] >= 3, "repair steps seen: " + changes[0]);
+			h.assertFalse(missed[0], "a repair step left the chunk unmarked for saving");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
 	 * A player swaps the scanned sword for another damaged item while the smith is at it. The job's iron is not spent on it: the repair
 	 * ends, and the new item is a job of its own (here it needs leather, which the village has none of).
 	 */
