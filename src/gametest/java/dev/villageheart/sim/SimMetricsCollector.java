@@ -69,6 +69,12 @@ public final class SimMetricsCollector {
 
 	public void setCentre(Vec3 centre) { this.centre = centre; }
 
+	/** A resumed run already counted these. The next day records only what happens after {@code gameTime}. */
+	public void resumeAfterReload(long gameTime, long inClaimLogged, Long raidStartedAt, int raidDeaths, int raidKills) {
+		lastInClaimLogged = inClaimLogged;
+		raids.resume(gameTime, raidStartedAt, raidDeaths, raidKills);
+	}
+
 	/** The overworld entity timer for the day about to be recorded. The baseline leaves this empty. */
 	public void setEntityMs(TickStats entityMs) { this.entityMs = entityMs == null ? TickStats.EMPTY : entityMs; }
 

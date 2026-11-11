@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "siege",
-  "description": "M25 T-L3-3: the raid town without the raid, and one siege of 8 zombies on day 2. Reported, not a roadmap gate. Threat rolls stay off; mob spawning stays at the server default.",
+  "description": "M25 T-L3-3: the raid town without the raid, and one siege of 8 zombies on day 2 at tick 18000 (night; the baseline on seed 1 is game time 40, so this is day time 18040). Reported, not a roadmap gate. Threat rolls stay off; the scripted siege still runs. Mob spawning stays at the server default.",
   "default_days": 4,
   "seed": 1,
   "threats": false,
@@ -45,7 +45,7 @@
     {"action": "hire", "day": 1, "tick": 200, "job": "guard", "building": "barracks", "replace": true},
     {"action": "hire", "day": 1, "tick": 200, "job": "guard", "building": "barracks", "replace": true},
     {"action": "worker_level", "day": 1, "tick": 400, "job": "guard", "level": 2},
-    {"action": "siege", "day": 2, "zombies": 8}
+    {"action": "siege", "day": 2, "tick": 18000, "zombies": 8}
   ],
   "assertions": [
     "claimed == 1 on every day",

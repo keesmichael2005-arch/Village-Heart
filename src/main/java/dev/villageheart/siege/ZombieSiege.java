@@ -58,6 +58,8 @@ public final class ZombieSiege {
 	private static int[] counts = new int[0];
 	private static double baseAngle;
 	private static int spawnDistance;
+	/** Set by the siege action. The roll switch stays off in that scenario, and this siege still runs. */
+	private static boolean scripted;
 
 	private ZombieSiege() {}
 
@@ -69,6 +71,7 @@ public final class ZombieSiege {
 		counts = new int[0];
 		baseAngle = 0;
 		spawnDistance = 0;
+		scripted = false;
 	}
 
 	/**
@@ -90,6 +93,7 @@ public final class ZombieSiege {
 		if (village == null) return;
 		ServerLevel level = ThreatScheduler.levelOf(server, village.heart());
 		if (level == null || village.threats().siege().isPresent()) return;
+		scripted = true;
 		begin(server, level, village, Math.max(1, Math.min(20, count)));
 	}
 
@@ -126,8 +130,9 @@ public final class ZombieSiege {
 			SiegeRecord fresh = recount(level, threats.siege().get());
 			int time = ThreatRoll.dayTime(level.getDayTime());
 			int day = ThreatRoll.day(level.getGameTime());
-			boolean rules = !gates(level).peaceful() && gates(level).sieges();
-			boolean over = !rules || time >= Balance.LURE_NIGHT_END || fresh.startDay() < day || fresh.killed() >= fresh.spawned() && nextGroup >= groupTotal;
+			boolean rulesOn = !gates(level).peaceful() && gates(level).sieges();
+			boolean over = dev.villageheart.core.siege.SiegeEnd.over(scripted, rulesOn, time, Balance.LURE_NIGHT_END,
+					fresh.startDay(), day, fresh.killed(), fresh.spawned(), nextGroup, groupTotal);
 			if (over) {
 				end(server, level, fresh);
 				return;
@@ -286,6 +291,7 @@ public final class ZombieSiege {
 		nextGroup = 0;
 		tickingWaits = 0;
 		gap = 0;
+		scripted = false;
 		int day = ThreatRoll.day(level.getGameTime());
 		VillageClaims.data(server).update(s -> s.withThreats(s.threats()
 				.withLastSiege(Optional.of(record))

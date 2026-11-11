@@ -43,6 +43,7 @@ class ThreatScenarioFilesTest {
 		var action = siege.actions().stream().filter(a -> a.type().equals("siege")).toList();
 		assertEquals(1, action.size());
 		assertEquals(2, action.get(0).day());
+		assertEquals(18000, action.get(0).tick(), "tick 0 is dawn on this seed and the siege ends with the night");
 		assertEquals(8, ((Number) action.get(0).fields().get("zombies")).intValue());
 		assertEquals(java.util.List.of(
 				"claimed == 1 on every day",

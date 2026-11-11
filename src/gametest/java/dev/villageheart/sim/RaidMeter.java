@@ -128,21 +128,25 @@ final class RaidMeter {
 	}
 
 	private int[] grow(long start, int deathTotal, int killTotal) {
-		int deaths, kills;
-		if (start != accountedStart) {
-			deaths = deathTotal;
-			kills = killTotal;
-		} else {
-			deaths = Math.max(0, deathTotal - accountedDeaths);
-			kills = Math.max(0, killTotal - accountedKills);
-		}
+		int[] out = dev.villageheart.core.sim.RaidDayWindow.delta(start, deathTotal, killTotal, accountedStart, accountedDeaths, accountedKills);
 		accountedStart = start;
 		accountedDeaths = deathTotal;
 		accountedKills = killTotal;
-		return new int[] {deaths, kills};
+		return out;
 	}
 
-	private boolean inWindow(long at, long gameTime) { return at > prevGameTime && at <= gameTime; }
+	private boolean inWindow(long at, long gameTime) {
+		return dev.villageheart.core.sim.RaidDayWindow.contains(at, prevGameTime, gameTime);
+	}
+
+	/** The reload's first day must not count a raid, or its deaths, that the previous process already recorded. */
+	void resume(long gameTime, Long raidStartedAt, int deaths, int kills) {
+		prevGameTime = gameTime;
+		if (raidStartedAt == null) return;
+		accountedStart = raidStartedAt;
+		accountedDeaths = deaths;
+		accountedKills = kills;
+	}
 
 	private static int ticks(long delta) {
 		if (delta < 0) return 0;

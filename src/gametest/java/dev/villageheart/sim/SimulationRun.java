@@ -312,6 +312,11 @@ public final class SimulationRun implements Host {
 		}
 		player = SimPlayer.join(server, level, heart.below());
 		collector.setCentre(Vec3.atCenterOf(heart));
+		var raid = claim.get().threats().raid();
+		collector.resumeAfterReload(level.getGameTime(), claim.get().deaths().inClaimLogged(),
+				raid.map(dev.villageheart.core.raid.RaidRecord::startedAt).orElse(null),
+				raid.map(dev.villageheart.core.raid.RaidRecord::villagerDeaths).orElse(0),
+				raid.map(dev.villageheart.core.raid.RaidRecord::raidersKilled).orElse(0));
 		resumeLogAt = level.getGameTime() + 400; // the entities of the force-loaded chunks are there a moment later
 		StarterActions.resetStanding();
 		RaidSim.rememberGolems(scenario.actions());
