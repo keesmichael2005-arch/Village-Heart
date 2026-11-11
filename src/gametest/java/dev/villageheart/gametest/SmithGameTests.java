@@ -11,7 +11,12 @@ import static dev.villageheart.gametest.SmithTestSupport.setDayTime;
 import static dev.villageheart.gametest.SmithTestSupport.smithBound;
 import static dev.villageheart.gametest.SmithTestSupport.walkBlocks;
 
+import dev.villageheart.block.JobBlocks;
+import dev.villageheart.building.Buildings;
 import dev.villageheart.core.Balance;
+import dev.villageheart.core.building.BuildingRequirements;
+import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.gear.CraftTier;
 import dev.villageheart.core.gear.GearCraft;
@@ -32,6 +37,8 @@ import dev.villageheart.golem.GolemGate;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.core.job.ToolKind;
+import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.worker.Workers;
 import dev.villageheart.worker.gear.GearOrders;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
 import dev.villageheart.worker.job.CampTools;
@@ -610,6 +617,59 @@ public class SmithGameTests {
 			h.assertTrue(smithCraftsEmpty(h), "a craft came back");
 		}).thenExecute(() -> {
 			log("refund stayed put");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5i --------------------------------------------------------------------------------------
+
+	/**
+	 * Two smiths at two furnaces share one camp: two iron axes, one from each. Fired mid-craft, the other smith adopts the
+	 * saved craft after finishing its own, and both axes still arrive.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_two_smiths", structure = YARD, skyAccess = true, maxTicks = 16000)
+	public void twoLumberjacksTwoSmithsShareACamp(GameTestHelper h) {
+		Villager[] smiths = new Villager[2];
+		Villager[] jacks = new Villager[2];
+		BlockPos secondFurnace = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 1);
+		BlockPos secondBlock = BuildingTestSupport.inside(SmithTestSupport.CAMP, 3, 0, 1);
+		scene(h).thenExecute(() -> {
+			h.setBlock(secondFurnace, Blocks.BLAST_FURNACE);
+			SmithTestSupport.addLumberCamp(h);
+			h.setBlock(secondBlock, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.BLAST_FURNACE), "furnaces");
+			h.assertValueEqual(2, contents(h, SmithTestSupport.campMarker(), BuildingType.LUMBER_CAMP, BuildingRequirements.CHOPPING_BLOCK), "chopping blocks");
+		}).thenExecute(() -> {
+			GearOrders.reset();
+			putStore(h, Items.IRON_INGOT, 6);
+			putStore(h, Items.STICK, 4);
+			setDayTime(h, 1000);
+			jacks[0] = SmithTestSupport.hireLumberjack(h);
+			jacks[1] = SmithTestSupport.hireLumberjack(h);
+			smiths[0] = hire(h);
+			smiths[1] = hire(h);
+			log("two smiths, two lumberjacks");
+		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes in the camp")
+		).thenExecute(() -> {
+			h.assertValueEqual(1L, craftUnits(h, smiths[0]), "the first smith's axe");
+			h.assertValueEqual(1L, craftUnits(h, smiths[1]), "the second smith's axe");
+			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
+			log("two axes, one from each smith");
+			resetCamp(h);
+			putStore(h, Items.IRON_INGOT, 6);
+			putStore(h, Items.STICK, 4);
+			setDayTime(h, 1000);
+		}).thenWaitUntil(() -> {
+			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), "both crafts committed");
+		}).thenExecute(() -> {
+			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
+			log("second smith fired mid-craft");
+		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption")
+		).thenExecute(() -> {
+			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both still lease an axe");
+			log("adopted craft delivered, two axes");
 			VillageTestSupport.done(h);
 		});
 	}
@@ -1351,6 +1411,38 @@ public class SmithGameTests {
 
 	private static int mineOrders(GameTestHelper h) {
 		return GearOrders.openOf(BuildingTestSupport.loc(h, SmithTestSupport.mineMarker()), GearNeed.PICKAXE).size();
+	}
+
+	private static int contents(GameTestHelper h, BlockPos marker, BuildingType type, String key) {
+		HeartLocation want = BuildingTestSupport.loc(h, marker);
+		for (Buildings.BuildingView b : Buildings.valid(h.getLevel().getServer(), type)) {
+			if (VillageClaims.locate(h.getLevel(), b.marker()).equals(want)) return b.latestScan().map(s -> s.count(key)).orElse(0);
+		}
+		return 0;
+	}
+
+	private static int chestCount(GameTestHelper h, BlockPos rel, net.minecraft.world.item.Item item) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+		int n = 0;
+		if (box == null) return 0;
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) n += box.getItem(i).getCount();
+		return n;
+	}
+
+	private static long craftUnits(GameTestHelper h, Villager smith) {
+		return SmithRuntime.unitsOf(h.getLevel().getServer(), smith.getUUID()).stream()
+				.filter(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:iron_axe")).count();
+	}
+
+	private static boolean leasesAxe(GameTestHelper h, Villager jack) {
+		return CampTools.lease(h.getLevel().getServer(), jack, ToolKind.AXE, null) instanceof CampTools.Held held
+				&& held.lease().stack().is(Items.IRON_AXE);
+	}
+
+	private static boolean craftAt(GameTestHelper h, Villager smith) {
+		var data = smith.getAttached(WorkerAttachments.WORKER);
+		if (data == null) return false;
+		return VillageClaims.current(h.getLevel().getServer()).flatMap(v -> v.smithCraft(data.jobBlock())).isPresent();
 	}
 
 	private static boolean smithCraftsEmpty(GameTestHelper h) {
