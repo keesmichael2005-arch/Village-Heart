@@ -417,6 +417,51 @@ public class SmithGameTests {
 		});
 	}
 
+	// ---- T-L2-5k --------------------------------------------------------------------------------------
+
+	/**
+	 * A stone pickaxe that has already been committed keeps going when the Mine cannot be read. Pulling a wall out makes the Mine
+	 * invalid (the census answers unknown, which pauses and never cancels); the wall goes back and the pickaxe still arrives.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_unloaded_camp", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void unloadedCampDoesNotCancel(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		int[] floor = {-1};
+		BlockPos wall = new BlockPos(SmithTestSupport.MINE.getX() + 5, 1, SmithTestSupport.MINE.getZ() + 2);
+		BlockPos wallAbove = wall.above();
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			putStore(h, Items.OAK_PLANKS, 4);
+			putStore(h, Items.STICK, 2);
+			putStore(h, Items.COBBLESTONE, 3);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(craftProgress(h) >= 600, "craft progress " + craftProgress(h))
+		).thenExecute(() -> {
+			floor[0] = craftProgress(h);
+			h.setBlock(wall, Blocks.AIR);
+			h.setBlock(wallAbove, Blocks.AIR);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.INVALID)
+		).thenExecute(() -> floor[0] = craftProgress(h)
+		).thenExecuteFor(400, () -> {
+			int p = craftProgress(h);
+			h.assertTrue(p >= floor[0], "the craft was cancelled or rewound: " + p + " after " + floor[0]);
+			floor[0] = p;
+		}).thenExecute(() -> {
+			h.setBlock(wall, Blocks.OAK_PLANKS);
+			h.setBlock(wallAbove, Blocks.OAK_PLANKS);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenWaitUntil(() -> h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE), "the stone pickaxe arrives")
+		).thenExecute(() -> {
+			long crafts = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("CRAFT")).count();
+			h.assertValueEqual(1L, crafts, "the pause did not start a second pickaxe");
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-5b --------------------------------------------------------------------------------------
 
 	/**
