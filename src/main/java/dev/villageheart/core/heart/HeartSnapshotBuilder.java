@@ -114,14 +114,26 @@ public final class HeartSnapshotBuilder {
 		}
 		alerts.addAll(dev.villageheart.core.economy.WageAlerts.of(f.treasury(), f.wageBill(), f.strikers()));
 		alerts.addAll(f.extraAlerts());
-		// severity first (M12): the cap of MAX_ALERTS must cut a warning, never a strike or an invalid workplace; stable within each severity
-		alerts.sort(Comparator.comparingInt((AlertLine a) -> a.severity() == Severity.DANGER ? 0 : 1));
+		// A raid is first, then a siege, then damaged walls (M25). Everything else stays severity-first (M12): the cap of
+		// MAX_ALERTS must cut a warning, never a strike or an invalid workplace.
+		alerts.sort(Comparator.comparingInt(HeartSnapshotBuilder::alertRank)
+				.thenComparingInt(a -> a.severity() == Severity.DANGER ? 0 : 1));
 		int more = Math.max(0, alerts.size() - HeartLimits.MAX_ALERTS);
 		List<AlertLine> shown = alerts.subList(0, alerts.size() - more);
 
 		return new Overview(HeartLimits.cut(f.ownerName(), HeartLimits.MAX_NAME), f.tier(), f.tierReport().next(), goals(f.tierReport()),
 				f.population(), f.adults(), f.babies(), f.beds(), workers, f.workerSlots(),
 				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), f.wageBill(), shown, more);
+	}
+
+	/** Raid, then siege, then damaged walls, then the alerts that were already here. */
+	private static int alertRank(AlertLine alert) {
+		return switch (alert.code()) {
+			case RAID -> 0;
+			case SIEGE -> 1;
+			case DEFENCE_DAMAGED -> 2;
+			default -> 3;
+		};
 	}
 
 	/** One line per goal of the next tier, in checklist order (M14). Two arguments at most. */

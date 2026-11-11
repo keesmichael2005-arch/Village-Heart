@@ -945,3 +945,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - A stand has to be outside the ring, with its feet on the ground the wall was built on. The trench bottom is lower than that, so a creeper that drops in does not light. T-L2-27 plans the repair with `RepairPlanner.next`; the builder is step 15.
 - `scripts/verify.sh --fast` at `196391d`: exit 0 (L1 green, L2 407/407, L3 self-test, perf).
 - Next: step 15, builder repairs and the DEFENCE_DAMAGED alert. The builder repair of T-L2-40 stays there.
+
+## 2026-11-11: M25 track B step 15 (alerts, repairs not started)
+- `AlertCode` appends `RAID`, `SIEGE`, `DEFENCE_DAMAGED`. The Heart snapshot lists them in that order, ahead of the older alerts. A cracked or breached wall adds the damage line, including the "(no builder)" and the danger wording during a raid or a siege.
+- `SiegeAlertsTest` covers the lines, the args, and that order. `LangCoverageTest` covers the three new strings.
+- The builder still does not walk over to repair. T-L2-28, T-L2-29, T-L2-30, T-L2-44 and the builder half of T-L2-40 are not written.
