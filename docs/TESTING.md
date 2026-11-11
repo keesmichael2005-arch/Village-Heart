@@ -12,6 +12,9 @@ GitHub Actions runs the same script on every push.
 
 Proven at setup: a deliberately broken GameTest fails the run (exit 1), so a green run means something.
 
+## GameTest position helpers
+In 1.21.11 `GameTestHelper.absolutePos(rel)` adds the offset to the structure origin and then runs `StructureTemplate.transform` with the test's rotation (`Mirror.NONE`). `relativePos(abs)` is not the inverse: it transforms the world position with `testRotation.getRotated(Rotation.CLOCKWISE_180)` and only then subtracts the origin. `transform` of `Rotation.NONE` is the identity, and of `CLOCKWISE_180` is `(2*pivotX - x, y, 2*pivotZ - z)`, so on an unrotated test (every test here) `relativePos(absolutePos(rel))` equals `-rel` and `absolutePos(relativePos(abs))` is the point rotated 180° around the origin, not `abs`. Feeding that result to `spawn`, `setBlock` or `getBlockState` (each calls `absolutePos` or `absoluteVec` again) therefore checks the mirrored cell, which is often air, so the assertion passes without looking at the real one. `relativeVec` is a different function: it subtracts the origin first and rotates by the test rotation with no extra 180°, so on an unrotated test it does undo `absoluteVec`; nothing in this suite calls it. Map a world `BlockPos` back with `VillageTestSupport.rel` (subtract `absolutePos(BlockPos.ZERO)` and assert the round trip) or compare world positions produced by `absolutePos`.
+
 ## Layer 4 and Fabric's NetworkSynchronizer (two stalls, two gametest mixins)
 Fabric's client-gametest framework (fabric-client-gametest-api-v1 4.3.5, the newest for 1.21.11) counts in-flight packets so that every
 tick ends with all packets handled. Its `NetworkSynchronizer.waitForPacketHandlers` checks "a packet is in flight and nothing is queued"
@@ -164,6 +167,19 @@ How to extend (each one place + a test):
 Report JSON keys are snake_case and pinned by `MetricsJsonTest.pinnedKeys`.
 Villager AI is not seeded, so runs differ (a night-one zombie attack can kill villagers). Write assertions with slack; never loosen one silently.
 
+**Death log and hire counts (M26 prep).** Every villager death within the claim radius gets a row in `deaths.list` (`day_time`, `name`, `job`,
+`guard`, `damage`, `attacker`, `attacker_origin` = `scripted` (a `night_spawn` mob, entity tag `villageheart_sim_scripted`) | `converted` (a villager
+turned zombie villager) | `natural` (anything else, including vanilla's zombie siege), `pos`, `wall` / `attacker_wall` = `inside` | `wall` | `outside`
+of the scenario's `wall_ring` or "" without one, `zombified`) and in the summary's **Deaths** table; a log line `[sim-death]` too. The summary's
+**Hires** table reads `work.sim.hires`, `work.sim.rehires` and `work.sim.rehire_wait.<job>.<reason>` (100-tick samples in which a standing hire had an
+empty slot and could not fill it: `night`, `no_free_villager`, `no_building`, `refused_<result>`, `error`). The **Hostiles** table reads
+`work.sim.hostile_spawn.<side>` (natural hostile spawns within the claim radius; `[sim-spawn]` lines carry the day time: a burst at 18000 is vanilla's
+`VillageSiege`), `work.sim.hostile_inside.<origin>` (first sighting inside the wall ring; `[sim-breach]` lines carry the gate state) and
+`work.sim.hostile_samples.<origin>` (hostiles present, 100-tick samples). Rendering and JSON are L1 (`DeathLogTest`). Deaths outside the claim radius
+are not logged (a census drop with no row is a villager that left the radius or died outside it).
+`wall_ring` builds each wall column `WALL_CLEARANCE` (2) above the natural ground just outside it and digs the gate approach down to the site's level
+(L2 `SimActionGameTests.wallRingRisesOverHigherGround`): on seed 1 the ground is a block up along 80 of 148 wall cells and in front of the gate.
+
 ## Markers, generated assets and the model-log gate (M3+)
 - **Generated assets.** Everything for markers and job blocks (blockstates, models, item definitions, loot tables, recipes, recipe-unlock
   advancements, the axe-mineable tag and all 16x16 PNGs) is produced from the `core.building` enums by `src/test/java/dev/villageheart/tools/AssetGenerator.java`
@@ -285,7 +301,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
   0.3 blocks: 20 ticks without a hoe, 16 with any hoe (asserted +-1). Everything that involves walking uses `farmBound(units, unitTicks, dist) = units * (unitTicks + 20) + 10 * dist + 200`.
 - **Keep rules**: `FarmJob.testKeepAll` (reset by `VillageTestSupport.reset`) lets a test fill the inventory with items the farmer "keeps" (a full inventory without a trip).
   `SimpleContainer.addItem` puts a whole oversized stack into one empty slot: add stacks of at most 64 (a 200-seed stack lost 136 seeds in the first draft of `depositKeepsSeedsAndFood`).
-  `h.relativePos` does not undo the structure rotation: compare absolute positions (`h.absolutePos(rel)`).
+  World positions map back with `VillageTestSupport.rel` (see "GameTest position helpers"); `h.relativePos` mirrors the offset.
 - **Stale PATH memory.** `WalkTo` publishes its path in the PATH memory so doors open, and the vanilla `MoveToTargetSink` only starts while PATH is **absent**. A walk cut short
   (the work day ended on the way, a trip ended) left PATH behind and the worker never walked to its bed (`workerFollowsDaySchedule` failed with a farmer that idled at its
   composter). `WalkTo.release(villager)` erases it; the job `stop`, idling at the job block and `DepositTrip.stop` call it.
@@ -347,7 +363,7 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 ## Builder GameTests (M20)
 `BuildGameTests` (helpers in `BuildTestSupport`; listed under `fabric-gametest` in `src/gametest/resources/fabric.mod.json`). Rules learned while building M20:
 - **Environment per test** `villageheart-gametest:build_<name>`: JSON with `game_rules` (`minecraft:spawn_mobs` false, `minecraft:advance_weather` false, `minecraft:random_tick_speed` 3, 0 for `clearing`, 100 for `instant_farm`) and `weather` clear. Structure `yard`, `skyAccess = true`. `BuildTestSupport.layout(h, With.X)` cleans and grasses the yard (it is not cleared by the framework), claims, sets the tier to VILLAGE and builds a valid Storage (`STANDARD`: plus a Builder's Hut with a table and torch posts around the site area; `STORAGE_NO_HUT`; `GRID`: a small Storage in the east strip and four sites in a 2 x 2 grid). It resets the builder action listener. End with `VillageTestSupport.done(h)` (it resets the build runtime) and, for builder tests, `WorkerTestSupport.begin/end`.
-- **`GameTestHelper.relativePos` is NOT the inverse of `absolutePos`** for an unrotated test (it turns the offset by 180 degrees): use `BuildTestSupport.rel(h, Pos)`. Our tests are never rotated.
+- **`GameTestHelper.relativePos` is not the inverse of `absolutePos`** (see "GameTest position helpers"): use `VillageTestSupport.rel` or `BuildTestSupport.rel(h, Pos)`. Our tests are never rotated.
 - **The instant builder:** `/villageheart build start <blueprint> <x y z> <rotation>` and `BuildJobs.advance(server, id, n)` run the same placement code as a builder villager (`BuildExecutor`), without walking; `n` counts cursor steps (free steps included): a Small House is 589 steps (246 clear, 172 place, 171 check). The instant tests (T-L2-2a/b/c, 3, 12) put every touched cell through the real site rules (`SiteValidation`).
 - **The item flow** needs a SURVIVAL player (`BuildTestSupport.playerWithRank`): vanilla restores the stack count of a used stack in creative, so "the blueprint is used up" cannot be seen. Click with `BuildingTestSupport.rightClick(h, player, groundRel, Direction.UP, stack)`; the player stands at `PLAYER_SPOT` looking north, so the first click picks CLOCKWISE_180 (the door turns towards the player).
 - **Builder timing** (measured, level 1, the standard site): a Small House takes about 5 200 ticks from the confirm (172 placements at 20 ticks, a fetch of about a stack at a time, the walks round the site); a Farm Plot about 5 900 (81 clears, 121 placements). The roadmap tests assert "before 2 days" (48 000) and log the real numbers (`[m20] ... after N ticks`).
