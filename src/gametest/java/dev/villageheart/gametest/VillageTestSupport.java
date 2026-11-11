@@ -73,6 +73,7 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.guard.PatrolPoints.invalidate();
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
 		dev.villageheart.siege.SiegeDamage.resetForTests();
+		dev.villageheart.siege.PathBudget.resetForTests();
 		dev.villageheart.market.Markets.clearRuntime(); // M22
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener

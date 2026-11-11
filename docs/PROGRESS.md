@@ -919,4 +919,9 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `SiegeDamage.hit` cracks and breaks a recorded cell, sends the destruction stage, writes a breach through at once, and flushes cracks on demand and every 200 ticks. A player break opens the cell. The slow scan is one tenth of the sites. A missing watchtower key that is in the breached set does not drop the site.
 - L2, each run alone and passed (1 required test): `siegeDamageHitsCracksAndBreaks` (T-L2-14), `nonDefenceBlocksNeverDamaged` (T-L2-15; hit and blast are called directly, the lured zombie and the breacher creeper arrive in steps 13 and 14), `playerOpenedCellIsLeftAlone` (T-L2-16), `siegeDamageGamerule` (T-L2-36 zombie half; the creeper half is step 14), `watchtowerBreachKeepsSite` (T-L2-40 site and patrol point).
 - `scripts/verify.sh --fast` at `4c0f97d`: exit 0 (L1 green, L2 391/391, perf green).
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, in progress)
+- `MobGoalsAccessor`, `SiegeGoals` on entity load (one of each goal), `PathBudget` (2 paths a tick), `BreachGoal` for a ravager and a vindicator in the tracked raid. `TrackedRaids.track` stores the vanilla raid id; track A still owns the tracker.
+- Zombie lure, zombie breach, and creeper breach are installed so a reload cannot double them, and their `canUse` stays false until steps 13 and 14.
+- Tests written, not yet run: T-L2-17 `ravagerBreaksWallInTwoHits`, T-L2-18 `vindicatorChopsGate`, T-L2-19 `goalsInstalledOnce`.
 - The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.
