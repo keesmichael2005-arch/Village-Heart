@@ -4,10 +4,15 @@ import static dev.villageheart.gametest.NeedsTestSupport.sweepVillagers;
 
 import dev.villageheart.building.Buildings;
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.sim.OutsideBand;
 import dev.villageheart.core.sim.ScenarioAction;
 import dev.villageheart.core.sim.ScenarioParser;
 import dev.villageheart.core.sim.SimArea;
+import dev.villageheart.core.sim.WallRing;
+import dev.villageheart.sim.GuardActions;
 import dev.villageheart.sim.Host;
+import dev.villageheart.sim.SiegeGate;
+import dev.villageheart.sim.SimMetricsCollector;
 import dev.villageheart.sim.SimTickets;
 import dev.villageheart.sim.StarterActions;
 import dev.villageheart.stock.Stockpiles;
@@ -23,18 +28,28 @@ import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.village.VillageSiege;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BellAttachType;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -485,6 +500,156 @@ public class SimActionGameTests {
 			z[1].discard();
 			VillageTestSupport.done(h);
 			WorkerTestSupport.end(h);
+		});
+	}
+
+	// ---- M26: the walled village is the thing under test, and the siege can be switched off ----
+
+	/**
+	 * {@code move_in}: three villagers and their bed, bell and composter stand outside a 16x12 ring that already holds one bed.
+	 * Afterwards every villager (and their home) is inside, the outside blocks are gone, a bell stands inside, and the grindstone
+	 * that was already inside is still there. Two extra beds have to be placed: one inside bed cannot house three.
+	 */
+	@GameTest(environment = "villageheart-gametest:sim_move_in", structure = YARD, skyAccess = true, maxTicks = 200)
+	public void moveInPutsVillagersInsideTheRing(GameTestHelper h) {
+		WorkerTestSupport.begin(h);
+		Villager[] vs = new Villager[3];
+		h.startSequence().thenExecute(() -> {
+			VillageTestSupport.reset(h);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			BlockState bed = Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.EAST);
+			h.setBlock(new BlockPos(1, 0, 4), bed.setValue(BedBlock.PART, BedPart.FOOT));
+			h.setBlock(new BlockPos(2, 0, 4), bed.setValue(BedBlock.PART, BedPart.HEAD));
+			h.setBlock(new BlockPos(8, 0, 8), bed.setValue(BedBlock.PART, BedPart.FOOT));
+			h.setBlock(new BlockPos(9, 0, 8), bed.setValue(BedBlock.PART, BedPart.HEAD));
+			h.setBlock(new BlockPos(1, 0, 2), Blocks.BELL.defaultBlockState().setValue(BellBlock.ATTACHMENT, BellAttachType.FLOOR).setValue(BellBlock.FACING, Direction.NORTH));
+			h.setBlock(new BlockPos(1, 0, 6), Blocks.COMPOSTER);
+			h.setBlock(new BlockPos(6, 0, 6), Blocks.GRINDSTONE); // a barracks stone inside the ring: it stays
+			vs[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(1, 0, 8));
+			vs[1] = WorkerTestSupport.spawnVillager(h, new BlockPos(1, 0, 10));
+			vs[2] = WorkerTestSupport.spawnVillager(h, new BlockPos(2, 0, 12));
+		}).thenIdle(5).thenExecute(() -> {
+			h.assertTrue(h.getBlockState(new BlockPos(1, 0, 2)).is(Blocks.BELL), "the outside bell is still there before the move");
+			h.assertTrue(h.getBlockState(new BlockPos(9, 0, 8)).is(Blocks.RED_BED), "the inside bed is still there");
+			BlockPos site = h.absolutePos(new BlockPos(4, -1, 4));
+			Host host = new Host() {
+				public ServerLevel level() { return h.getLevel(); }
+				public MinecraftServer server() { return h.getLevel().getServer(); }
+				public BlockPos heart() { return site; }
+				public BlockPos site() { return site; }
+				public void setSite(BlockPos s) { }
+			};
+			GuardActions.moveIn(host, new ScenarioAction("move_in", 0, 0, Map.of("size", List.of(16L, 12L))));
+			WallRing ring = new WallRing(site.getX(), site.getZ(), 16, 12);
+			int heads = 0, bells = 0;
+			for (int x = 4; x <= 19; x++) for (int z = 4; z <= 15; z++) {
+				BlockPos p = new BlockPos(x, 0, z);
+				if (h.getBlockState(p).is(Blocks.RED_BED) && h.getBlockState(p).getValue(BedBlock.PART) == BedPart.HEAD
+						&& WallRing.INSIDE.equals(ring.side(h.absolutePos(p).getX(), h.absolutePos(p).getZ()))) heads++;
+				if (h.getBlockState(p).is(Blocks.BELL)) bells++;
+			}
+			h.assertTrue(heads >= 3, "at least one bed head each: " + heads);
+			h.assertTrue(bells >= 1, "a bell inside the ring");
+			for (Villager v : vs) {
+				h.assertTrue(WallRing.INSIDE.equals(ring.side(v.blockPosition().getX(), v.blockPosition().getZ())),
+						"villager inside, at " + VillageTestSupport.rel(h, v.blockPosition()));
+				var home = v.getBrain().getMemory(MemoryModuleType.HOME);
+				h.assertTrue(home.isPresent(), "home memory");
+				BlockPos bed = home.get().pos();
+				h.assertTrue(WallRing.INSIDE.equals(ring.side(bed.getX(), bed.getZ())), "home inside, at " + bed.toShortString());
+			}
+			h.assertTrue(h.getBlockState(new BlockPos(1, 0, 4)).isAir() && h.getBlockState(new BlockPos(2, 0, 4)).isAir(), "the outside bed is gone");
+			h.assertTrue(h.getBlockState(new BlockPos(1, 0, 2)).isAir(), "the outside bell is gone");
+			h.assertTrue(h.getBlockState(new BlockPos(1, 0, 6)).isAir(), "the outside composter is gone");
+			h.assertTrue(h.getBlockState(new BlockPos(6, 0, 6)).is(Blocks.GRINDSTONE), "the grindstone inside the ring stays");
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
+	 * {@code night_spawn} with {@code outside}: the Heart is at the yard origin and the 10x10 site starts at (18, 18), so the old
+	 * 12..20 disc around the Heart cannot reach the band (the nearest band column is ~23 away). Every zombie must stand in that
+	 * band, strictly outside the rectangle. {@code radius} is still in the action and is not what places them.
+	 */
+	@GameTest(environment = "villageheart-gametest:sim_night_spawn_outside", structure = YARD, skyAccess = true, maxTicks = 100)
+	public void nightSpawnOutsideStandsOutsideTheRing(GameTestHelper h) {
+		h.startSequence().thenExecute(() -> {
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			BlockPos heart = h.absolutePos(new BlockPos(0, -1, 0));
+			BlockPos site = h.absolutePos(new BlockPos(18, -1, 18));
+			Host host = new Host() {
+				public ServerLevel level() { return h.getLevel(); }
+				public MinecraftServer server() { return h.getLevel().getServer(); }
+				public BlockPos heart() { return heart; }
+				public BlockPos site() { return site; }
+				public void setSite(BlockPos s) { }
+			};
+			GuardActions.nightSpawn(host, new ScenarioAction("night_spawn", 1, 14000, Map.of(
+					"mob", "minecraft:zombie", "count", 3L, "radius", 20L, "outside", List.of(10L, 10L))));
+			WallRing ring = new WallRing(site.getX(), site.getZ(), 10, 10);
+			List<Zombie> zeds = h.getLevel().getEntitiesOfClass(Zombie.class,
+					net.minecraft.world.phys.AABB.ofSize(net.minecraft.world.phys.Vec3.atCenterOf(site), 80, 16, 80),
+					z -> z.getTags().contains(SimMetricsCollector.TAG_SCRIPTED));
+			h.assertTrue(zeds.size() == 3, "three scripted zombies, found " + zeds.size());
+			for (Zombie z : zeds) {
+				h.assertTrue(OutsideBand.inBand(site.getX(), site.getZ(), 10, 10, z.getBlockX(), z.getBlockZ()),
+						"in the 3..8 band, at " + VillageTestSupport.rel(h, z.blockPosition()));
+				h.assertTrue(WallRing.OUTSIDE.equals(ring.side(z.getBlockX(), z.getBlockZ())),
+						"outside the rectangle, at " + VillageTestSupport.rel(h, z.blockPosition()));
+				// the old disc cannot reach here: a revert to "12..radius from the Heart" fails this
+				double fromHeart = Math.hypot(z.getX() - (heart.getX() + 0.5), z.getZ() - (heart.getZ() + 0.5));
+				h.assertTrue(fromHeart > 20, "beyond the old radius-20 disc (" + fromHeart + ")");
+				z.discard();
+			}
+			h.succeed();
+		});
+	}
+
+	/**
+	 * {@code village_siege: false}: the level's spawner list holds a raw {@link VillageSiege} before, and the gate after.
+	 * With the player inside, one tick leaves the armed siege untouched (a skipped tick in daylight would have closed it).
+	 * With the player outside, the real tick runs: daylight closes the siege, and a dark world consumes one zombie. The list
+	 * is restored before this returns, so later tests tick the real siege.
+	 */
+	@GameTest(environment = "villageheart-gametest:sim_siege_gate", structure = YARD, skyAccess = true, maxTicks = 200)
+	public void villageSiegeSuppressedInsideClaim(GameTestHelper h) {
+		h.startSequence().thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			SiegeGate.restore(level);
+			VillageTestSupport.reset(h);
+			try {
+				h.assertTrue(SiegeGate.hasRawSiege(level), "a VillageSiege is in the level before the gate");
+				h.assertFalse(SiegeGate.gated(level), "the gate is not already installed");
+				BlockPos centre = h.absolutePos(new BlockPos(8, 0, 8));
+				SiegeGate.suppressInsideClaim(level, centre, 16);
+				h.assertTrue(SiegeGate.gated(level), "the list now holds the gate");
+				h.assertFalse(SiegeGate.hasRawSiege(level), "the raw siege is no longer what the level ticks");
+				VillageSiege siege = SiegeGate.siege(level);
+				SiegeGate.armTonight(siege);
+				ServerPlayer player = VillageTestSupport.player(h, "SiegeGate", GameType.SURVIVAL);
+				h.assertTrue(level.players().size() == 1, "only the test player, found " + level.players().size());
+				player.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
+				level.tickCustomSpawners(true);
+				h.assertTrue(SiegeGate.zombies(siege) == 5, "player inside: zombiesToSpawn stayed 5, is " + SiegeGate.zombies(siege));
+				h.assertTrue("SIEGE_TONIGHT".equals(SiegeGate.stateName(siege)),
+						"player inside: the real tick did not run, state " + SiegeGate.stateName(siege));
+				player.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 80.5);
+				level.tickCustomSpawners(true);
+				if (level.isBrightOutside()) {
+					h.assertTrue("SIEGE_DONE".equals(SiegeGate.stateName(siege)),
+							"player outside: the real tick ran and daylight closed the siege, state " + SiegeGate.stateName(siege));
+				} else {
+					h.assertTrue(SiegeGate.zombies(siege) == 4, "player outside at night: one spawn attempt consumed, left " + SiegeGate.zombies(siege));
+				}
+			} finally {
+				SiegeGate.disarm(level);
+				SiegeGate.restore(level);
+				VillageTestSupport.reset(h);
+			}
+			h.assertFalse(SiegeGate.gated(level), "the gate is gone");
+			h.assertTrue(SiegeGate.hasRawSiege(level), "the raw siege is back");
+			h.succeed();
 		});
 	}
 }
