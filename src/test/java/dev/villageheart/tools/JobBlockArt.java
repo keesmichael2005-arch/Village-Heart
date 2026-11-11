@@ -4,90 +4,168 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Job-block textures (16x16, fully opaque). Chopping Block uses vanilla log textures and has none here. */
+/** Job-block textures, 16x16 and fully opaque. Chopping-block faces are original; the model no longer borrows vanilla logs. */
 public final class JobBlockArt {
 	private JobBlockArt() {}
 
-	private static final int OAK = 0xFFA97C45, OAK_DARK = 0xFF8A6334, OAK_LIGHT = 0xFFBF9355;
-	private static final int PAPER = 0xFF2F5FA3, LINE = 0xFFE9F1FF, LINE_DIM = 0xFF6F94C9;
-	private static final int RED = 0xFFC8382E, WHITE = 0xFFF4F0E6;
+	public static Map<String, BufferedImage> textures() {
+		Map<String, BufferedImage> m = new LinkedHashMap<>();
+		m.put("builders_table_top", tableTop());
+		m.put("builders_table_side", tableSide());
+		m.put("builders_table_front", tableFront());
+		m.put("market_stall_front", stallFront());
+		m.put("market_stall_side", stallSide());
+		m.put("market_stall_awning", awning());
+		m.put("chopping_block_top", ExtraArt.choppingTop());
+		m.put("chopping_block_side", ExtraArt.choppingSide());
+		m.put("chopping_block_handle", ExtraArt.choppingHandle());
+		m.put("chopping_block_head", ExtraArt.choppingHead());
+		return m;
+	}
 
-	private static BufferedImage fill(int argb) {
-		BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-		for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) img.setRGB(x, y, argb);
+	private static BufferedImage tableTop() {
+		BufferedImage img = ArtKit.planks();
+		// a sheet of blueprint paper in a wood frame, with a drawn plan
+		for (int y = 2; y <= 12; y++) for (int x = 2; x <= 13; x++) img.setRGB(x, y, ArtKit.BLUE);
+		for (int i = 3; i <= 12; i++) {
+			img.setRGB(i, 2, ArtKit.BLUE_HI);
+			img.setRGB(2, i, ArtKit.BLUE_HI);
+			img.setRGB(i, 12, ArtKit.BLUE_DK);
+			img.setRGB(13, i, ArtKit.BLUE_DK);
+		}
+		ArtKit.plot(img, 4, 4, new String[] {
+				"l..ll..l",
+				"llllllll",
+				"ll.ll.ll",
+				"llllllll",
+				"lll..lll",
+				"lll..lll"
+		});
+		// brass pins, the same gold as the bell
+		img.setRGB(3, 3, ArtKit.GOLD_HI);
+		img.setRGB(12, 3, ArtKit.GOLD);
+		img.setRGB(3, 11, ArtKit.GOLD_MID);
+		img.setRGB(12, 11, ArtKit.GOLD_DK);
+		// a ruler along the near edge
+		for (int x = 1; x <= 14; x++) img.setRGB(x, 14, x % 2 == 0 ? ArtKit.GOLD : ArtKit.GOLD_DK);
 		return img;
 	}
 
-	private static BufferedImage planks() {
-		BufferedImage img = fill(OAK);
+	private static BufferedImage tableSide() {
+		BufferedImage img = ArtKit.planks();
+		// a drawer
+		for (int x = 3; x <= 12; x++) {
+			img.setRGB(x, 5, ArtKit.OAK_SH);
+			img.setRGB(x, 11, ArtKit.OAK_SH);
+		}
+		for (int y = 5; y <= 11; y++) {
+			img.setRGB(3, y, ArtKit.OAK_SH);
+			img.setRGB(12, y, ArtKit.OAK_SH);
+		}
+		for (int x = 6; x <= 9; x++) img.setRGB(x, 8, ArtKit.GOLD_MID);
+		ArtKit.bevel(img);
+		return img;
+	}
+
+	private static BufferedImage tableFront() {
+		BufferedImage img = ArtKit.planks();
+		// hanging hammer
+		ArtKit.plot(img, 2, 2, new String[] {
+				".iiiiii.",
+				".iIIIIi.",
+				"...CC...",
+				"...CC...",
+				"...CC...",
+				"...CC...",
+				"...aa...",
+				"........",
+				"........",
+				"........"
+		});
+		// a rolled blueprint
+		ArtKit.plot(img, 10, 3, new String[] {
+				".bbbb.",
+				"oblllbo",
+				"oblllbo",
+				"oblllbo",
+				".bobo.",
+				"..g.."
+		});
+		ArtKit.bevel(img);
+		return img;
+	}
+
+	private static BufferedImage stallFront() {
+		BufferedImage img = ArtKit.planks();
+		// rows 0-3 are outside the model's front UV; keep them as the wood rail the awning hangs from
+		for (int y = 0; y < 4; y++) for (int x = 0; x < 16; x++) img.setRGB(x, y, y == 0 ? ArtKit.OAK_HI : ArtKit.OAK_DK);
+		// crate of apples and a crate of emeralds, which is what the player actually sees
+		ArtKit.plot(img, 1, 5, new String[] {
+				"oCCCCCCo",
+				"oCRrRrCo",
+				"oCrRrRCo",
+				"oCRrRrCo",
+				"oCCCCCCo",
+				"oCCCCCCo",
+				"oCyyyyCo",
+				"oCCCCCCo",
+				"oooooooo"
+		});
+		ArtKit.plot(img, 9, 6, new String[] {
+				".oeeeo.",
+				"oeEEEEo",
+				"oeEddEo",
+				".oeEeo.",
+				"..oeo..",
+				".oGGGo.",
+				"oGGGGGo"
+		});
+		return img;
+	}
+
+	private static BufferedImage stallSide() {
+		BufferedImage img = ArtKit.planks();
+		for (int y = 0; y < 4; y++) for (int x = 0; x < 16; x++) img.setRGB(x, y, ArtKit.OAK_DK);
+		for (int y = 4; y < 16; y++) {
+			img.setRGB(2, y, ArtKit.OAK_SH);
+			img.setRGB(13, y, ArtKit.OAK_SH);
+		}
+		return img;
+	}
+
+	private static BufferedImage awning() {
+		BufferedImage img = ArtKit.image(16, 16);
 		for (int y = 0; y < 16; y++) {
 			for (int x = 0; x < 16; x++) {
-				if (y % 4 == 3) img.setRGB(x, y, OAK_DARK);
-				else if (y % 4 == 0 && (x + y / 4 * 5) % 7 != 0) img.setRGB(x, y, OAK_LIGHT);
+				boolean red = (x / 2) % 2 == 0;
+				int c = red ? ArtKit.HEART : ArtKit.CREAM;
+				if (x % 2 == 0) c = ArtKit.lighten(c, 1.12);
+				else c = ArtKit.darken(c, 0.86);
+				if (y == 15) c = ArtKit.darken(c, 0.7);
+				img.setRGB(x, y, c);
 			}
 		}
 		return img;
 	}
 
-	private static void rect(BufferedImage img, int x0, int y0, int x1, int y1, int argb) {
-		for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) img.setRGB(x, y, argb);
-	}
-
-	public static Map<String, BufferedImage> textures() {
-		Map<String, BufferedImage> m = new LinkedHashMap<>();
-
-		// Builder's Table: top is a blueprint sheet with a grid, a drawn plan and a ruler.
-		BufferedImage top = fill(PAPER);
-		for (int i = 0; i < 16; i += 4) for (int j = 0; j < 16; j++) { top.setRGB(i, j, LINE_DIM); top.setRGB(j, i, LINE_DIM); }
-		rect(top, 3, 3, 11, 9, LINE);
-		rect(top, 4, 4, 10, 8, PAPER);
-		for (int x = 4; x <= 10; x++) top.setRGB(x, 6, LINE);
-		for (int y = 4; y <= 8; y++) top.setRGB(7, y, LINE);
-		rect(top, 0, 13, 15, 15, 0xFFE8B04A);
-		for (int x = 0; x < 16; x += 2) top.setRGB(x, 13, 0xFF6B4A12);
-		m.put("builders_table_top", top);
-
-		BufferedImage side = planks();
-		m.put("builders_table_side", side);
-
-		BufferedImage front = planks();
-		// hanging hammer and saw
-		rect(front, 3, 2, 6, 3, 0xFFB8BEC6);
-		rect(front, 4, 4, 5, 11, 0xFF6B4A12);
-		rect(front, 9, 3, 12, 4, 0xFFB8BEC6);
-		rect(front, 9, 5, 12, 11, 0xFFD7DCE0);
-		for (int y = 5; y <= 11; y += 2) front.setRGB(12, y, 0xFF8A9099);
-		rect(front, 9, 12, 12, 13, 0xFF6B4A12);
-		m.put("builders_table_front", front);
-
-		// Market Stall: counter with crates and produce; striped awning.
-		BufferedImage mfront = planks();
-		rect(mfront, 1, 3, 7, 13, 0xFF7A5226);
-		rect(mfront, 2, 4, 6, 7, 0xFFC8382E);
-		rect(mfront, 2, 9, 6, 12, 0xFFE0A030);
-		rect(mfront, 9, 3, 14, 13, 0xFF7A5226);
-		rect(mfront, 10, 4, 13, 7, 0xFF3DDC84);
-		rect(mfront, 10, 9, 13, 12, 0xFF8FBF3A);
-		m.put("market_stall_front", mfront);
-		m.put("market_stall_side", planks());
-
-		BufferedImage awning = fill(WHITE);
-		for (int x = 0; x < 16; x++) if ((x / 2) % 2 == 0) for (int y = 0; y < 16; y++) awning.setRGB(x, y, RED);
-		m.put("market_stall_awning", awning);
-		return m;
-	}
-
-	/** The Blank Marker item (16x16, with a transparent margin). */
+	/** The Blank Marker: an oak plaque with an empty recess and four brass nails, ready for a glyph. */
 	public static BufferedImage blankMarker() {
-		BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-		for (int y = 1; y <= 14; y++) for (int x = 1; x <= 14; x++) {
-			boolean edge = x == 1 || x == 14 || y == 1 || y == 14;
-			img.setRGB(x, y, edge ? 0xFF8A8A8A : 0xFFB89B6A);
-		}
-		for (int y = 4; y <= 11; y++) for (int x = 4; x <= 11; x++) {
-			boolean e = x == 4 || x == 11 || y == 4 || y == 11;
-			if (e) img.setRGB(x, y, 0xFF7A5226);
-		}
-		return img;
+		return ArtKit.icon16(
+				"................",
+				".oooooooooooooo.",
+				".occcccccccccco.",
+				".ocgCCCCCCCCgco.",
+				".ocCooooooooCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCoAAAAAAoCco.",
+				".ocCooooooooCco.",
+				".ocgCCCCCCCCgco.",
+				".occcccccccccco.",
+				".oooooooooooooo.",
+				"................");
 	}
 }

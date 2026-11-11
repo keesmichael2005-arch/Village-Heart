@@ -48,6 +48,53 @@ class GeneratedAssetsTest {
 		}
 	}
 
+	/** The nine textures no model uses live in docs/art-staging, and match the generator. */
+	@Test
+	void stagedFilesMatchGenerator() throws IOException {
+		Path staging = root().getParent().getParent().getParent().resolve("docs/art-staging");
+		Map<String, byte[]> staged = AssetGenerator.staged();
+		assertEquals(9, staged.size());
+		for (Map.Entry<String, byte[]> e : staged.entrySet()) {
+			Path f = staging.resolve(e.getKey());
+			assertTrue(Files.isRegularFile(f), "missing staged file (run ./gradlew genAssets): " + e.getKey());
+			BufferedImage a = ImageIO.read(f.toFile());
+			BufferedImage b = ImageIO.read(new ByteArrayInputStream(e.getValue()));
+			assertEquals(b.getWidth(), a.getWidth(), e.getKey());
+			assertEquals(b.getHeight(), a.getHeight(), e.getKey());
+			for (int y = 0; y < b.getHeight(); y++) for (int x = 0; x < b.getWidth(); x++) {
+				assertEquals(b.getRGB(x, y), a.getRGB(x, y), e.getKey() + " pixel " + x + "," + y);
+			}
+		}
+		try (var stream = Files.walk(staging)) {
+			for (Path p : (Iterable<Path>) stream.filter(Files::isRegularFile)::iterator) {
+				String rel = staging.relativize(p).toString().replace('\\', '/');
+				assertTrue(staged.containsKey(rel), "staged file the generator does not claim: " + rel);
+			}
+		}
+	}
+
+	@Test
+	void guiOutlinesAreLightAndFoodIsALoaf() {
+		for (Map<String, BufferedImage> sprites : java.util.List.of(GuiArt.sprites(), GuiArt.stagedSprites())) {
+			for (Map.Entry<String, BufferedImage> e : sprites.entrySet()) {
+				BufferedImage img = e.getValue();
+				for (int y = 0; y < img.getHeight(); y++) for (int x = 0; x < img.getWidth(); x++) {
+					assertNotEquals(ArtKit.INK, img.getRGB(x, y), e.getKey() + " still uses ink at " + x + "," + y);
+				}
+			}
+		}
+		BufferedImage food = GuiArt.sprites().get("textures/gui/sprites/heart/need_food.png");
+		int minX = food.getWidth(), maxX = 0, minY = food.getHeight(), maxY = 0;
+		for (int y = 0; y < food.getHeight(); y++) for (int x = 0; x < food.getWidth(); x++) {
+			if ((food.getRGB(x, y) >>> 24) == 0) continue;
+			minX = Math.min(minX, x);
+			maxX = Math.max(maxX, x);
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+		}
+		assertTrue(maxX - minX >= (maxY - minY) + 4, "food need should be a wide loaf, not a coin");
+	}
+
 	private static boolean[][] mirror(boolean[][] b) {
 		boolean[][] m = new boolean[10][10];
 		for (int y = 0; y < 10; y++) for (int x = 0; x < 10; x++) m[y][x] = b[y][9 - x];
