@@ -121,7 +121,6 @@ public final class HeartCodecs {
 	private static final StreamCodec<ByteBuf, List<GoalLine>> GOALS = GOAL_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_GOALS));
 	private static final StreamCodec<ByteBuf, List<AlertLine>> ALERTS = ALERT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_ALERTS));
 	private static final StreamCodec<ByteBuf, Optional<Tier>> NEXT_TIER = ByteBufCodecs.optional(TIER);
-	private static final StreamCodec<ByteBuf, Long> LONG = ByteBufCodecs.VAR_LONG;
 	private static final StreamCodec<ByteBuf, DeathRow> DEATH_ROW = codec(
 			buf -> new DeathRow(NAME.decode(buf), NAME.decode(buf), ByteBufCodecs.stringUtf8(HeartLimits.MAX_ID).decode(buf),
 					INT.decode(buf), BOOL.decode(buf)),
