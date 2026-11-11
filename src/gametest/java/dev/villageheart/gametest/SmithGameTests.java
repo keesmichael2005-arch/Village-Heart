@@ -1,6 +1,25 @@
 package dev.villageheart.gametest;
 
+import static dev.villageheart.gametest.SmithTestSupport.bank;
+import static dev.villageheart.gametest.SmithTestSupport.count;
+import static dev.villageheart.gametest.SmithTestSupport.hire;
+import static dev.villageheart.gametest.SmithTestSupport.lit;
+import static dev.villageheart.gametest.SmithTestSupport.log;
+import static dev.villageheart.gametest.SmithTestSupport.putStore;
+import static dev.villageheart.gametest.SmithTestSupport.scene;
+import static dev.villageheart.gametest.SmithTestSupport.setDayTime;
+import static dev.villageheart.gametest.SmithTestSupport.smithBound;
+import static dev.villageheart.gametest.SmithTestSupport.walkBlocks;
+
 import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.gear.CraftTier;
+import dev.villageheart.core.gear.GearNeed;
+import dev.villageheart.core.gear.ToolRecipe;
+import dev.villageheart.core.gear.ToolRecipes;
+import dev.villageheart.core.smith.RepairRules;
+import dev.villageheart.core.smith.SmithKind;
+import dev.villageheart.core.smith.SmithRecipe;
+import dev.villageheart.core.smith.SmithRecipes;
 import dev.villageheart.golem.GolemGate;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
 import dev.villageheart.world.VillageClaims;
@@ -8,10 +27,18 @@ import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -135,6 +162,116 @@ public class SmithGameTests {
 		if (expectGolem) h.assertTrue(found >= 1, "a golem spawns at " + centre);
 		else h.assertTrue(found == 0, "the margin still blocks at " + centre);
 		for (Villager v : pen) v.discard();
+	}
+
+	// ---- T-L2-10 tables -------------------------------------------------------------------------------
+
+	/** Every smith recipe matches the game: crafting grids, blasting cook time 100, coal's burn time, and the repair rule. */
+	@GameTest(environment = "villageheart-gametest:smith_tables", structure = YARD, skyAccess = true, maxTicks = 200)
+	public void smithTablesMatchVanilla(GameTestHelper h) {
+		var level = h.getLevel();
+		ItemStack empty = ItemStack.EMPTY;
+		int crafts = 0;
+		for (SmithRecipe recipe : SmithRecipes.ALL) {
+			if (recipe.kind() != SmithKind.CRAFT) continue;
+			crafts++;
+			ToolRecipe shape = recipe.shape().orElseThrow();
+			if (shape.tier() == CraftTier.WOODEN || shape.tier() == CraftTier.STONE) {
+				h.assertTrue(shape == ToolRecipes.of(shape.need(), shape.tier()), "wooden and stone shapes are the M19a objects: " + shape.outputId());
+			}
+			String headId = headItem(shape);
+			ItemStack x = stack(headId), s = stack("minecraft:stick");
+			List<ItemStack> grid = grid(shape.need(), x, s, empty);
+			ItemStack out = craft(h, grid);
+			h.assertValueEqual(shape.outputId(), BuiltInRegistries.ITEM.getKey(out.getItem()).toString(), "the pattern of " + shape.outputId());
+			ItemStack tool = new ItemStack(out.getItem());
+			h.assertTrue(tool.isValidRepairItem(new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(headId)))),
+					shape.outputId() + " is repaired with " + headId);
+		}
+		h.assertValueEqual(36, crafts, "20 tools and 16 armour pieces");
+		for (SmithRecipe recipe : SmithRecipes.ALL) {
+			if (recipe.kind() != SmithKind.SMELT) continue;
+			var input = new SingleRecipeInput(stack(recipe.inputs().get(0).itemId()));
+			var found = level.getServer().getRecipeManager().getRecipeFor(RecipeType.BLASTING, input, level);
+			h.assertTrue(found.isPresent(), "a blasting recipe for " + recipe.inputs().get(0).itemId());
+			var cooked = found.get().value();
+			h.assertTrue(cooked instanceof AbstractCookingRecipe, "blasting is a cooking recipe");
+			h.assertValueEqual(100, ((AbstractCookingRecipe) cooked).cookingTime(), "blasting cook time of " + recipe.outputId());
+			h.assertTrue(cooked.assemble(input, level.registryAccess()).is(BuiltInRegistries.ITEM.getValue(Identifier.parse(recipe.outputId()))),
+					"the blast furnace makes " + recipe.outputId());
+		}
+		h.assertValueEqual(1600, level.fuelValues().burnDuration(new ItemStack(Items.COAL)), "coal burns for 1600");
+		int max = new ItemStack(Items.IRON_SWORD).getMaxDamage();
+		h.assertValueEqual(0, RepairRules.units(40, max), "40 damage on an iron sword (max " + max + ") is not a whole repair unit");
+		VillageTestSupport.done(h);
+	}
+
+	// ---- T-L2-4 ---------------------------------------------------------------------------------------
+
+	/** 16 raw iron, 2 raw copper, 2 raw gold and 3 coal become ingots. The coal is burned and the furnace goes dark afterwards. */
+	@GameTest(environment = "villageheart-gametest:smith_smelt", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void smeltsRawOre(GameTestHelper h) {
+		long[] t0 = new long[1];
+		boolean[] sawLit = new boolean[1];
+		int bound = smithBound(20, 100, walkBlocks());
+		scene(h).thenExecute(() -> {
+			putStore(h, Items.RAW_IRON, 16);
+			putStore(h, Items.RAW_COPPER, 2);
+			putStore(h, Items.RAW_GOLD, 2);
+			putStore(h, Items.COAL, 3);
+			setDayTime(h, 1000);
+			t0[0] = h.getTick();
+			hire(h);
+			log("smelt bound " + bound + " (walk " + walkBlocks() + ")");
+		}).thenWaitUntil(() -> {
+			if (lit(h)) sawLit[0] = true;
+			h.assertTrue(count(h, Items.IRON_INGOT) == 16 && count(h, Items.COPPER_INGOT) == 2 && count(h, Items.GOLD_INGOT) == 2,
+					"ingots iron " + count(h, Items.IRON_INGOT) + " copper " + count(h, Items.COPPER_INGOT) + " gold " + count(h, Items.GOLD_INGOT));
+		}).thenExecute(() -> {
+			long took = h.getTick() - t0[0];
+			log("smelt took " + took + " bound " + bound + " bank " + bank(h));
+			h.assertTrue(took <= bound, "smelting 20 took " + took + ", bound " + bound);
+			h.assertTrue(count(h, Items.RAW_IRON) == 0 && count(h, Items.RAW_COPPER) == 0 && count(h, Items.RAW_GOLD) == 0, "no raw ore left");
+			h.assertTrue(count(h, Items.COAL) == 0, "coal left " + count(h, Items.COAL));
+			h.assertValueEqual(800, bank(h), "heat left in the furnace");
+			h.assertTrue(sawLit[0], "the furnace was lit while smelting");
+			h.assertFalse(lit(h), "the furnace is dark once the ore is gone");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static ItemStack stack(String id) { return new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(id))); }
+
+	private static String headItem(ToolRecipe shape) {
+		String tag = shape.headTag();
+		if (!tag.startsWith("#")) return tag;
+		return switch (tag) {
+			case "#minecraft:planks" -> "minecraft:oak_planks";
+			case "#minecraft:stone_tool_materials" -> "minecraft:cobblestone";
+			case "#minecraft:copper_tool_materials" -> "minecraft:copper_ingot";
+			case "#minecraft:iron_tool_materials" -> "minecraft:iron_ingot";
+			case "#minecraft:diamond_tool_materials" -> "minecraft:diamond";
+			default -> throw new IllegalStateException(tag);
+		};
+	}
+
+	private static List<ItemStack> grid(GearNeed need, ItemStack x, ItemStack s, ItemStack e) {
+		return switch (need) {
+			case AXE -> List.of(x, x, e, x, s, e, e, s, e);
+			case PICKAXE -> List.of(x, x, x, e, s, e, e, s, e);
+			case HOE -> List.of(x, x, e, e, s, e, e, s, e);
+			case SWORD -> List.of(x, e, e, x, e, e, s, e, e);
+			case HEAD -> List.of(x, x, x, x, e, x, e, e, e);
+			case CHEST -> List.of(x, e, x, x, x, x, x, x, x);
+			case LEGS -> List.of(x, x, x, x, e, x, x, e, x);
+			case FEET -> List.of(e, e, e, x, e, x, x, e, x);
+		};
+	}
+
+	private static ItemStack craft(GameTestHelper h, List<ItemStack> grid) {
+		var found = h.getLevel().recipeAccess().getRecipeFor(RecipeType.CRAFTING, CraftingInput.of(3, 3, grid), h.getLevel());
+		if (found.isEmpty()) return ItemStack.EMPTY;
+		return found.get().value().assemble(CraftingInput.of(3, 3, grid), h.getLevel().registryAccess());
 	}
 
 	/** What the plan requires before every round: at least five want a golem, and nobody has just seen one. */

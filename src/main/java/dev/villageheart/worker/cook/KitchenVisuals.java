@@ -3,7 +3,6 @@ package dev.villageheart.worker.cook;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -18,13 +17,13 @@ public final class KitchenVisuals {
 	public static boolean light(ServerLevel level, BlockPos pos, boolean lit) {
 		if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return false;
 		BlockState state = level.getBlockState(pos);
-		if (!state.is(Blocks.SMOKER) || state.getValue(AbstractFurnaceBlock.LIT) == lit) return false;
+		if (!(state.getBlock() instanceof AbstractFurnaceBlock) || state.getValue(AbstractFurnaceBlock.LIT) == lit) return false;
 		level.setBlock(pos, state.setValue(AbstractFurnaceBlock.LIT, lit), 3);
 		return true;
 	}
 
 	public static boolean isLit(ServerLevel level, BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
-		return state.is(Blocks.SMOKER) && state.getValue(AbstractFurnaceBlock.LIT);
+		return state.getBlock() instanceof AbstractFurnaceBlock && state.getValue(AbstractFurnaceBlock.LIT);
 	}
 }

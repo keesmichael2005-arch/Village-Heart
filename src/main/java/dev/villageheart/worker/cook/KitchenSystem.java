@@ -46,12 +46,16 @@ public final class KitchenSystem implements VillageSystem {
 	}
 
 	private static boolean gone(MinecraftServer server, HeartLocation smoker, boolean anyKitchen) {
-		if (!anyKitchen) return true;
 		ServerLevel level = dev.villageheart.worker.Workers.levelOf(server, smoker);
 		if (level == null) return false;
 		BlockPos pos = new BlockPos(smoker.x(), smoker.y(), smoker.z());
 		if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) return false; // unloaded: unknown, keep
-		return !level.getBlockState(pos).is(Blocks.SMOKER);
+		BlockState state = level.getBlockState(pos);
+		if (state.is(Blocks.SMOKER)) return !anyKitchen;
+		boolean anySmithy = VillageClaims.current(server).map(v -> v.buildings().stream()
+				.anyMatch(b -> b.type().filter(t -> t == dev.villageheart.core.building.BuildingType.SMITHY).isPresent())).orElse(false);
+		if (state.is(Blocks.BLAST_FURNACE)) return !anySmithy;
+		return true;
 	}
 
 	private static void sweep(ServerLevel level, BlockPos pos, CookRuntime rt, long now) {

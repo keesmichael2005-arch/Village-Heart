@@ -111,6 +111,7 @@ public final class Workers {
 		dev.villageheart.worker.hunt.HunterJob.forget(villager.getUUID());
 		dev.villageheart.market.MerchantJob.forget(villager.getUUID());
 		dev.villageheart.worker.cook.CookJob.forget(server, villager.getUUID());
+		dev.villageheart.worker.smith.SmithJob.forget(server, villager.getUUID());
 		dev.villageheart.worker.gear.SelfCraftJob.forget(server, villager.getUUID());
 		if (attached || registered) restoreVanilla(level, villager);
 		return attached || registered;
@@ -213,6 +214,7 @@ public final class Workers {
 		dev.villageheart.worker.hunt.HunterJob.forget(villager);
 		dev.villageheart.market.MerchantJob.forget(villager);
 		dev.villageheart.worker.cook.CookJob.forget(server, villager);
+		dev.villageheart.worker.smith.SmithJob.forget(server, villager);
 		dev.villageheart.worker.gear.SelfCraftJob.forget(server, villager);
 		return true;
 	}

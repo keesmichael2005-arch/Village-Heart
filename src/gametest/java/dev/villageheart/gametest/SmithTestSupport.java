@@ -1,15 +1,30 @@
 package dev.villageheart.gametest;
 
+import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.worker.JobType;
+import dev.villageheart.stock.Stockpiles;
+import dev.villageheart.worker.HireResult;
+import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.worker.Workers;
+import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.world.VillageClaims;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 
 /** Helpers for the smith GameTests (M19). Own environment per test, {@code yard}, sky access. */
@@ -59,6 +74,83 @@ public final class SmithTestSupport {
 				level.setBlock(above, wall ? Blocks.GLASS.defaultBlockState() : Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			}
 		}
+	}
+
+	public static void log(String s) { System.out.println("[m19] " + s); }
+
+	public static final BlockPos SMITHY = new BlockPos(8, 0, 4);
+	public static final BlockPos STORE = new BlockPos(16, 0, 4);
+
+	public static BlockPos smithyMarker() { return BuildingTestSupport.markerPos(SMITHY, 4); }
+
+	public static BlockPos storeMarker() { return BuildingTestSupport.markerPos(STORE, 4); }
+
+	public static BlockPos furnace() { return BuildingTestSupport.inside(SMITHY, 0, 0, 1); }
+
+	public static BlockPos anvil() { return BuildingTestSupport.inside(SMITHY, 2, 0, 1); }
+
+	public static BlockPos smithyChest() { return BuildingTestSupport.inside(SMITHY, 1, 0, 2); }
+
+	public static BlockPos spawnSpot() { return BuildingTestSupport.inside(SMITHY, 1, 0, 0); }
+
+	public static BlockPos storeChest1() { return BuildingTestSupport.inside(STORE, 0, 0, 1); }
+
+	public static BlockPos storeChest2() { return BuildingTestSupport.inside(STORE, 2, 0, 1); }
+
+	/** One-way blocks from the blast furnace to the Storage door. */
+	public static int walkBlocks() {
+		BlockPos a = furnace();
+		BlockPos door = new BlockPos(STORE.getX() + 2, STORE.getY() + 1, STORE.getZ());
+		double dx = a.getX() - door.getX(), dz = a.getZ() - door.getZ();
+		return (int) Math.ceil(Math.sqrt(dx * dx + dz * dz));
+	}
+
+	public static int smithBound(int units, int ticksPerUnit, int dist) { return units * ticksPerUnit + 10 * dist + 400; }
+
+	/** Claim, a Town, a valid Smithy and Storage. Self-made tools are off; the tests that need them turn the switch back on. */
+	public static GameTestSequence scene(GameTestHelper h) {
+		return BuildingTestSupport.begin(h).thenExecute(() -> {
+			SelfCraftSwitch.off();
+			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, true, h.getLevel().getServer());
+			LumberTestSupport.sweepStrayTrees(h, 40);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			BuildingTestSupport.room(h, SMITHY, 4, 4);
+			h.setBlock(furnace(), Blocks.BLAST_FURNACE);
+			h.setBlock(anvil(), Blocks.ANVIL);
+			h.setBlock(smithyChest(), Blocks.CHEST);
+			BuildingTestSupport.room(h, STORE, 4, 4);
+			h.setBlock(storeChest1(), Blocks.CHEST);
+			h.setBlock(storeChest2(), Blocks.CHEST);
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.TOWN);
+			BuildingTestSupport.placeMarker(h, BuildingType.SMITHY, smithyMarker(), Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker(), Direction.NORTH);
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, smithyMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, storeMarker(), dev.villageheart.block.MarkerStatus.VALID);
+		});
+	}
+
+	public static void putStore(GameTestHelper h, Item item, int n) {
+		CookTestSupport.put(h, item, n, storeChest1(), storeChest2());
+	}
+
+	public static long count(GameTestHelper h, Item item) { return Stockpiles.count(h.getLevel().getServer(), item); }
+
+	public static int bank(GameTestHelper h) {
+		return VillageClaims.current(h.getLevel().getServer()).map(s -> s.smokerHeat(BuildingTestSupport.loc(h, furnace()))).orElse(0);
+	}
+
+	public static boolean lit(GameTestHelper h) { return h.getBlockState(furnace()).getValue(AbstractFurnaceBlock.LIT); }
+
+	public static void setDayTime(GameTestHelper h, long t) { h.getLevel().setDayTime(t); }
+
+	public static Villager hire(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, spawnSpot());
+		HireResult r = Workers.hire(h.getLevel(), v, JobType.BLACKSMITH, Optional.of(BuildingTestSupport.loc(h, smithyMarker())));
+		h.assertTrue(r instanceof HireResult.Hired, "the smith was hired: " + r);
+		var data = v.getAttached(WorkerAttachments.WORKER);
+		h.assertTrue(data != null && data.jobBlock().equals(BuildingTestSupport.loc(h, furnace())), "the job block is the blast furnace");
+		return v;
 	}
 
 	public static Villager villagerAt(ServerLevel level, BlockPos feet) {

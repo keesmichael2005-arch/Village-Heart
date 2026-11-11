@@ -8,6 +8,7 @@
 		"NodeEvaluatorAccess",
 		"VillagerBrainMixin",
 		"VillagerGolemSpawnMixin",
+		"IronGolemGoalsMixin",
 		"WalkNodeEvaluatorMixin"
 	],
 	"injectors": {

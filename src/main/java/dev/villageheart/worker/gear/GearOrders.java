@@ -6,6 +6,7 @@ import dev.villageheart.core.gear.GearNeed;
 import dev.villageheart.core.gear.OpenOrder;
 import dev.villageheart.core.gear.OrderKey;
 import dev.villageheart.core.gear.SelfCraft;
+import dev.villageheart.core.smith.SmithCraft;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -67,6 +68,8 @@ public final class GearOrders {
 		List<OpenOrder> out = new ArrayList<>();
 		for (Order o : openOf(building, need)) {
 			int progress = village.selfCraft(o.holder()).map(c -> c.craft().progress()).orElse(0);
+			for (SmithCraft c : village.smithCrafts().values()) if (c.craft().key().equals(o.key())) progress = Math.max(progress, c.craft().progress());
+			if (dev.villageheart.worker.smith.SmithRuntime.carrying(o.key())) progress = Math.max(progress, 1_000_000);
 			out.add(new OpenOrder(o.key(), progress, o.startTick()));
 		}
 		return out;
@@ -82,6 +85,11 @@ public final class GearOrders {
 		for (SelfCraft c : village.selfCrafts()) {
 			if (pending.containsKey(c.worker())) continue;
 			ORDERS.putIfAbsent(c.craft().key(), new Order(c.craft().key(), c.worker(), 0, true));
+		}
+		for (var e : village.smithCrafts().entrySet()) {
+			SmithCraft c = e.getValue();
+			UUID holder = java.util.UUID.nameUUIDFromBytes(("smith-furnace:" + e.getKey()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			ORDERS.putIfAbsent(c.craft().key(), new Order(c.craft().key(), holder, 0, true));
 		}
 	}
 
