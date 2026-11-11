@@ -3,8 +3,9 @@ package dev.villageheart.core.guard;
 /**
  * The pure rules of a raid chase (M25 step 19, plan risk 2). Combat applies them; the tests do not need a world.
  * A guard follows a raider of the tracked raid past the claim. The walk to the only gate can increase the
- * straight-line distance, and a kill in that margin still belongs to the guard. A raider already within 32 blocks
- * is stepped to. A farther raider whose path stops at the wall is walked to the gate closest to that raider.
+ * straight-line distance, and a kill in that margin still belongs to the guard. A direct path that stops at the wall
+ * walks to the gate closest to the raider. A raider that never closes on the Heart is brought to that gate by
+ * {@link dev.villageheart.core.raid.RaiderRecall}, not by moving the guard.
  */
 public final class GuardChase {
 	private GuardChase() {}
@@ -51,19 +52,4 @@ public final class GuardChase {
 		return guardToTarget - pathEndToTarget < 12;
 	}
 
-	/**
-	 * A raider the path cannot reach and that is already within 32 blocks is close enough for the guard to step to it:
-	 * a ledge, or a hole under the Heart. A farther raider is walked toward. The raider is not moved.
-	 */
-	public static boolean pullClose(boolean chase, boolean pathReaches, double horizontal) {
-		return chase && !pathReaches && horizontal <= 32;
-	}
-
-	/**
-	 * The guard steps to that raider only when it is not still walking out through a gate. Moving the raider would drop
-	 * it among the villagers.
-	 */
-	public static boolean stepToRaider(boolean chase, boolean pathReaches, double horizontal, boolean walkingToGate) {
-		return pullClose(chase, pathReaches, horizontal) && !walkingToGate;
-	}
 }

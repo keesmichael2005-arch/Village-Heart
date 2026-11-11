@@ -308,20 +308,12 @@ public final class GuardCombat {
 			Path path = nav.createPath(dest, 1, pathLen);
 			// a 32-block path into the ring ends at the wall; the gate is the way out, and the next path is toward the raider
 			if (f.chase && (path == null || !path.canReach())) {
-				double dx = target.getX() - guard.getX(), dz = target.getZ() - guard.getZ();
-				double horiz = Math.sqrt(dx * dx + dz * dz);
 				double guardDist = Math.sqrt(guard.blockPosition().distSqr(dest));
 				double endDist = path == null || path.getNodeCount() == 0 ? guardDist
 						: Math.sqrt(path.getEndNode().asBlockPos().distSqr(dest));
 				boolean reaches = path != null && path.canReach();
-				// within 32 the guard steps to the raider, even when the path died at a wall. Walking back to the
-				// gate from there leaves the ledge. The raider stays put.
-				if (GuardChase.stepToRaider(true, reaches, horiz, false)) {
-					double h = Math.max(horiz, 0.1);
-					guard.teleportTo(target.getX() - dx / h * 2, target.getY(), target.getZ() - dz / h * 2);
-					guard.fallDistance = 0;
-					path = nav.createPath(target.blockPosition(), 1, pathLen);
-				} else if (GuardChase.useGate(reaches, guardDist, endDist)) {
+				// a stuck raider is brought to the gate by RaiderRecall. The guard is not teleported onto the pack.
+				if (GuardChase.useGate(reaches, guardDist, endDist)) {
 					int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
 							dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
 					if (via != null) {

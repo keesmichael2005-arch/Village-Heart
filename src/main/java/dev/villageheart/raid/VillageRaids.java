@@ -4,11 +4,15 @@ import dev.villageheart.core.Balance;
 import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.defence.DefenceCell;
+import dev.villageheart.core.defence.DefenceIndex;
+import dev.villageheart.core.defence.DefenceKind;
 import dev.villageheart.core.raid.RaidFacts;
 import dev.villageheart.core.raid.RaidOrigin;
 import dev.villageheart.core.raid.RaidPlan;
 import dev.villageheart.core.raid.RaidRecord;
 import dev.villageheart.core.raid.RaidTracker;
+import dev.villageheart.core.raid.RaiderRecall;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.worker.JobType;
@@ -29,7 +33,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.entity.raid.Raider;
@@ -48,7 +54,12 @@ public final class VillageRaids implements VillageSystem {
 	private record Mark(RaidOrigin origin, RaidPlan plan) {}
 
 	private static final Map<Integer, Mark> MARKS = new HashMap<>();
+	private static final Map<Integer, Stall> STALLS = new HashMap<>();
+	private static long nextRecallAt;
 	private static RaidSource source = VillageRaids::realFacts;
+
+	/** Best horizontal distance to the Heart, and the game time that distance was last improved. */
+	private record Stall(double best, long since) {}
 
 	private VillageRaids() {}
 
@@ -61,6 +72,8 @@ public final class VillageRaids implements VillageSystem {
 
 	public static void clearForTests() {
 		MARKS.clear();
+		STALLS.clear();
+		nextRecallAt = 0;
 		source = VillageRaids::realFacts;
 	}
 
@@ -68,6 +81,7 @@ public final class VillageRaids implements VillageSystem {
 	public void tick(MinecraftServer server, VillageState village) {
 		ServerLevel level = level(server, village.heart());
 		if (level == null) return;
+		recallStuck(level, village);
 		RaidFacts facts = source.facts(level, village);
 		RaidTracker.Start start = startOf(level, village, facts);
 		long now = level.getGameTime();
@@ -111,6 +125,76 @@ public final class VillageRaids implements VillageSystem {
 		}
 		if (was.allGuardsOnDutyAt() >= 0 && now.allGuardsOnDutyAt() < 0) now = now.withAllGuardsOnDutyAt(was.allGuardsOnDutyAt());
 		return Optional.of(now);
+	}
+
+	/**
+	 * A raider that is not closing on the Heart is placed just outside the nearest gate, one at a time.
+	 * Leaving it on a ledge holds the wave until vanilla stops the raid.
+	 */
+	private static void recallStuck(ServerLevel level, VillageState village) {
+		if (village.threats().raid().isEmpty()) {
+			STALLS.clear();
+			return;
+		}
+		Raid raid = level.getRaids().get(village.threats().raid().get().vanillaId());
+		if (raid == null || raid.isOver() || raid.isStopped() || raid.isVictory() || raid.isLoss()) {
+			STALLS.clear();
+			return;
+		}
+		int[] gates = gateCells(village);
+		if (gates.length < 3) return;
+		HeartLocation heart = village.heart();
+		long now = level.getGameTime();
+		List<Integer> live = new ArrayList<>();
+		Raider chosen = null;
+		int[] chosenGate = null;
+		double chosenGateDist = -1;
+		for (Raider raider : raid.getAllRaiders()) {
+			if (!raider.isAlive()) continue;
+			live.add(raider.getId());
+			double dx = raider.getX() - heart.x(), dz = raider.getZ() - heart.z();
+			double dist = Math.sqrt(dx * dx + dz * dz);
+			Stall stall = STALLS.get(raider.getId());
+			if (stall == null || dist < stall.best() - Balance.RAIDER_RECALL_CLOSE) {
+				STALLS.put(raider.getId(), new Stall(dist, now));
+				continue;
+			}
+			int[] gate = RaiderRecall.nearestGate(raider.getBlockX(), raider.getBlockY(), raider.getBlockZ(), gates);
+			if (gate == null) continue;
+			double gdx = raider.getX() - gate[0], gdz = raider.getZ() - gate[2];
+			double gateDist = Math.sqrt(gdx * gdx + gdz * gdz);
+			if (!RaiderRecall.recall(true, now - stall.since(), gateDist)) continue;
+			if (gateDist > chosenGateDist) {
+				chosen = raider;
+				chosenGate = gate;
+				chosenGateDist = gateDist;
+			}
+		}
+		STALLS.keySet().retainAll(live);
+		if (chosen == null || chosenGate == null || now < nextRecallAt) return;
+		double[] at = RaiderRecall.outsideGate(chosenGate[0], chosenGate[1], chosenGate[2], heart.x(), heart.z());
+		Entity body = chosen;
+		while (body.getVehicle() != null) body = body.getVehicle();
+		body.teleportTo(at[0], at[1], at[2]);
+		if (body instanceof LivingEntity living) living.fallDistance = 0;
+		nextRecallAt = now + Balance.RAIDER_RECALL_GAP;
+		double ndx = at[0] - heart.x(), ndz = at[2] - heart.z();
+		STALLS.put(chosen.getId(), new Stall(Math.sqrt(ndx * ndx + ndz * ndz), now));
+	}
+
+	private static int[] gateCells(VillageState village) {
+		List<Pos> gates = new ArrayList<>();
+		for (DefenceCell cell : DefenceIndex.of(village.defences()).cells()) {
+			if (cell.kind() == DefenceKind.GATE) gates.add(cell.pos());
+		}
+		int[] out = new int[gates.size() * 3];
+		for (int i = 0; i < gates.size(); i++) {
+			Pos p = gates.get(i);
+			out[i * 3] = p.x();
+			out[i * 3 + 1] = p.y();
+			out[i * 3 + 2] = p.z();
+		}
+		return out;
 	}
 
 	private static RaidTracker.Start startOf(ServerLevel level, VillageState village, RaidFacts facts) {

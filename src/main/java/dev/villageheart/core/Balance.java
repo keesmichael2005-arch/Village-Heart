@@ -161,6 +161,16 @@ public final class Balance {
 	public static final int GUARD_RAID_CHASE = 64;
 	/** Path length while chasing. 32 ends at a wall; 48 is the villager's own required length and reaches a gate. */
 	public static final int GUARD_CHASE_PATH = 48;
+	/**
+	 * A raider that has not closed this many blocks on the Heart is stalled. After {@link #RAIDER_RECALL_STALL} ticks,
+	 * and while it is still farther than {@link #RAIDER_RECALL_NEAR_GATE} from the nearest gate, it is placed
+	 * {@link #RAIDER_RECALL_OUTSIDE} blocks outside that gate. One raider per {@link #RAIDER_RECALL_GAP} ticks.
+	 */
+	public static final int RAIDER_RECALL_CLOSE = 4;
+	public static final int RAIDER_RECALL_STALL = 200;
+	public static final int RAIDER_RECALL_NEAR_GATE = 24;
+	public static final int RAIDER_RECALL_OUTSIDE = 4;
+	public static final int RAIDER_RECALL_GAP = 40;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
 	public static final int GUARD_SCAN_TICKS = 10;
 	public static final double GUARD_CHASE_SPEED = 0.6;
