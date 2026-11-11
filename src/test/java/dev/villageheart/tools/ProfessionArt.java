@@ -71,12 +71,24 @@ public final class ProfessionArt {
 		rect(img, u + D, v + D, u + D + W - 1, v + D + H - 1, art.apron());
 		rect(img, u + D + W, v + D, u + 2 * D + W - 1, v + D + H - 1, shade(art.apron(), 0.85));
 		rect(img, u + 2 * D + W, v + D, u + 2 * D + 2 * W - 1, v + D + H - 1, shade(art.apron(), 0.75));
+		// a fold down the front and a hem, so the robe is not one flat colour. The glyph is stamped after this.
+		int frontX = u + D, frontY = v + D;
+		for (int y = 0; y < H; y++) {
+			double t = y / (double) (H - 1);
+			int fold = shade(art.apron(), 1.08 - t * 0.28);
+			for (int x = 0; x < W; x++) {
+				int c = fold;
+				if (x == 0) c = shade(art.apron(), 1.15);
+				if (x == W - 1 || y == H - 1) c = shade(art.apron(), 0.72);
+				img.setRGB(frontX + x, frontY + y, c);
+			}
+		}
 		// sash around the waist: two rows on every side face
 		for (int dy = 0; dy < 2; dy++) {
 			int y = SASH_Y + dy;
 			rect(img, u, y, u + 2 * D + 2 * W - 1, y, dy == 0 ? art.sash() : shade(art.sash(), 0.8));
 		}
-		// glyph on the chest
+		// glyph on the chest, drawn last so the fold never covers it
 		boolean[][] g = bitmap(job);
 		for (int y = 0; y < 5; y++) for (int x = 0; x < 5; x++) if (g[y][x]) img.setRGB(GLYPH_X + x, GLYPH_Y + y, art.glyph());
 		return img;

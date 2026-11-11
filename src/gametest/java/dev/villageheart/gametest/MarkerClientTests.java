@@ -106,7 +106,7 @@ final class MarkerClientTests {
 		}
 	}
 
-	/** T-L4-2: the Blank Marker, 14 markers and 3 job blocks as inventory icons. */
+	/** T-L4-2: the Blank Marker, the heart, the blueprint, 14 markers and 3 job blocks as inventory icons. */
 	static void markerItems(ClientGameTestContext context) {
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
@@ -114,14 +114,16 @@ final class MarkerClientTests {
 			srv.runCommand("time set noon");
 			srv.runCommand("gamemode survival @a");
 			srv.runCommand("clear @a");
+			srv.runCommand("give @a villageheart:village_heart 1");
 			srv.runCommand("give @a villageheart:blank_marker 1");
+			srv.runCommand("give @a villageheart:blueprint 1");
 			for (BuildingType t : BuildingType.values()) srv.runCommand("give @a villageheart:" + t.markerId() + " 1");
 			for (JobBlockType t : JobBlockType.values()) srv.runCommand("give @a villageheart:" + t.id() + " 1");
 			context.waitTicks(10);
 			List<String> missing = context.computeOnClient(mc -> {
 				List<String> bad = new ArrayList<>();
 				var missingItem = mc.getModelManager().getItemModel(Identifier.fromNamespaceAndPath("villageheart", "no_such_item"));
-				List<String> ids = new ArrayList<>(List.of("blank_marker", "village_heart"));
+				List<String> ids = new ArrayList<>(List.of("blank_marker", "village_heart", "blueprint"));
 				for (BuildingType t : BuildingType.values()) ids.add(t.markerId());
 				for (JobBlockType t : JobBlockType.values()) ids.add(t.id());
 				for (String id : ids) {

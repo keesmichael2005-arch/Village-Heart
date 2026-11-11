@@ -49,16 +49,18 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			toastsClearedBeforeScreenshot(context);
 			return;
 		}
-		toastsClearedBeforeScreenshot(context);
-		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
-			sp.getClientWorld().waitForChunksRender();
-			sp.getServer().runCommand("time set day");
-			sp.getServer().runCommand("execute as @a at @s run setblock ^ ^1 ^3 villageheart:village_heart");
-			sp.getServer().runCommand("execute as @a at @s run setblock ^2 ^1 ^3 minecraft:bell");
-			context.waitTicks(40);
-			sp.getClientWorld().waitForChunksRender();
-			context.takeScreenshot("village_heart_placed");
+		if ("art".equals(System.getProperty("villageheart.l4.only"))) {
+			placedHeart(context);
+			MarkerClientTests.markerWall(context);
+			MarkerClientTests.markerItems(context);
+			HeartScreenClientTests.heartTabs(context);
+			RanksClientTests.ranksTab(context);
+			BuildClientTests.builderFlow(context);
+			MarketClientTests.stockpileReserves(context);
+			return;
 		}
+		toastsClearedBeforeScreenshot(context);
+		placedHeart(context);
 		refusedPlacementKeepsClientItem(context);
 		MarkerClientTests.markerWall(context);
 		MarkerClientTests.markerItems(context);
@@ -102,6 +104,19 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		context.takeScreenshot("toast_cleared");
 		boolean gone = context.computeOnClient(mc -> mc.getToastManager().getToast(net.minecraft.client.gui.components.toasts.SystemToast.class, id) == null);
 		if (!gone) throw new AssertionError("a vanilla toast was still up when the screenshot was taken");
+	}
+
+	/** The Village Heart block in the world, with a bell beside it. */
+	private static void placedHeart(ClientGameTestContext context) {
+		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
+			sp.getClientWorld().waitForChunksRender();
+			sp.getServer().runCommand("time set day");
+			sp.getServer().runCommand("execute as @a at @s run setblock ^ ^1 ^3 villageheart:village_heart");
+			sp.getServer().runCommand("execute as @a at @s run setblock ^2 ^1 ^3 minecraft:bell");
+			context.waitTicks(40);
+			sp.getClientWorld().waitForChunksRender();
+			context.takeScreenshot("village_heart_placed");
+		}
 	}
 
 	/** T-L4-1: a survival player right-clicks a Village Heart onto the ground with no bell near. */
