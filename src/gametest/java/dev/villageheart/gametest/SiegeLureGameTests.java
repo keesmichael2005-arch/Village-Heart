@@ -42,11 +42,11 @@ public class SiegeLureGameTests {
 		long[] t0 = new long[1];
 		boolean[] targeted = new boolean[1];
 		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
-			villager[0] = h.spawn(EntityType.VILLAGER, rel(2, 0, 2));
+			villager[0] = h.spawn(EntityType.VILLAGER, rel(6, 0, 2));
 			villager[0].setNoAi(true);
-			h.spawn(EntityType.VILLAGER, rel(4, 0, 4)).setNoAi(true);
+			h.spawn(EntityType.VILLAGER, rel(5, 0, 4)).setNoAi(true);
 			seeWalls(h);
-			zombie[0] = zombie(h, rel(1, 0, Z0 - 30), false);
+			zombie[0] = zombie(h, rel(6, 0, Z0 - 30), false);
 			h.assertTrue(!zombie[0].getSensing().hasLineOfSight(villager[0]), "no line of sight from outside");
 			t0[0] = h.getTick();
 		});
