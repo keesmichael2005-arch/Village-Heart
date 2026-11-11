@@ -473,6 +473,73 @@ public class SmithGameTests {
 		});
 	}
 
+	// ---- T-L2-5d --------------------------------------------------------------------------------------
+
+	/**
+	 * A pickaxe put in the Mine chest cancels the order. Pending: while the cobble and sticks are still in the smith's hands.
+	 * Committed: once the stone pickaxe craft has 600 ticks behind it. The refund is the same 3 cobble and 2 sticks.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_cancel_order", structure = YARD, skyAccess = true, maxTicks = 12000)
+	public void playerToolCancelsOrder(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		Villager[] miner = new Villager[1];
+		int pending = 2 * Balance.SMITH_CANCEL_CHECK_TICKS + 40;
+		int committed = 2 * Balance.SMITH_CANCEL_CHECK_TICKS + 20;
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			putStore(h, Items.COBBLESTONE, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			miner[0] = SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+			log("cancel: waiting for the fetch");
+		}).thenWaitUntil(() -> {
+			int cobble = smith[0].getInventory().countItem(Items.COBBLESTONE);
+			int sticks = smith[0].getInventory().countItem(Items.STICK);
+			boolean committedCraft = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().anyMatch(u -> u.kind().equals("COMMIT"));
+			h.assertTrue(cobble >= 3 && sticks >= 2 && !committedCraft && craftProgress(h) < 0,
+					"carried cobble " + cobble + " sticks " + sticks + " committed " + committedCraft + " progress " + craftProgress(h));
+		}).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.mineChest()));
+			chest.setItem(0, new ItemStack(Items.IRON_PICKAXE));
+			log("iron pickaxe placed while the smith is carrying the inputs");
+		}).thenExecuteFor(pending, () -> { }).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("COMMIT") || u.kind().equals("CRAFT")), "a craft was committed: " + units);
+			h.assertValueEqual(3L, count(h, Items.COBBLESTONE), "cobble back");
+			h.assertValueEqual(2L, count(h, Items.STICK), "sticks back");
+			log("pending order cancelled");
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.mineChest()));
+			chest.setItem(0, ItemStack.EMPTY);
+			setDayTime(h, 1000);
+		}).thenWaitUntil(() -> h.assertTrue(craftProgress(h) >= 600, "progress " + craftProgress(h))
+		).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.mineChest()));
+			chest.setItem(0, new ItemStack(Items.IRON_PICKAXE));
+			log("iron pickaxe placed at progress " + craftProgress(h));
+		}).thenExecuteFor(committed, () -> { }).thenExecute(() -> {
+			h.assertTrue(craftProgress(h) < 0, "the saved craft is still there, progress " + craftProgress(h));
+			h.assertValueEqual(3L, count(h, Items.COBBLESTONE), "refunded cobble");
+			h.assertValueEqual(2L, count(h, Items.STICK), "refunded sticks");
+			log("committed craft refunded");
+		}).thenExecuteFor(2000, () -> h.assertFalse(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE), "a stone pickaxe was made")
+		).thenExecute(() -> {
+			var lease = CampTools.lease(h.getLevel().getServer(), miner[0], ToolKind.PICKAXE, null);
+			h.assertTrue(lease instanceof CampTools.Held held && held.lease().stack().is(Items.IRON_PICKAXE), "lease " + lease);
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:stone_pickaxe")), "stone pickaxe crafted: " + units);
+			log("miner leases the iron pickaxe");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static int craftProgress(GameTestHelper h) {
+		HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+		return VillageClaims.current(h.getLevel().getServer()).flatMap(v -> v.smithCraft(furnace)).map(c -> c.craft().progress()).orElse(-1);
+	}
+
 	private static void resetCamp(GameTestHelper h) {
 		for (BlockPos rel : new BlockPos[] {SmithTestSupport.campChest(), SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2(), SmithTestSupport.smithyChest()}) {
 			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
