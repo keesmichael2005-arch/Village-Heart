@@ -1,14 +1,24 @@
-# Handoff: 8 owner-run Cursor agents (Grok), 2026-11-11
+# Handoff: ALL remaining v1 work to owner-run Cursor agents (Grok), 2026-11-11
 
-The Claude orchestrator is PAUSED. The owner runs 8 Cursor agents in parallel, one per task below, until they finish or the Cursor
-usage runs out. Then the owner tells the Claude orchestrator "resume": it fetches every branch, runs a Claude Opus review per task
-(`docs/agents/verifier.md`), sends fixes back or merges into `dev`, and finishes M26 and the v1.0 release gate.
+The Claude orchestrator is PAUSED. ALL remaining work is split into 12 tasks in 4 waves. The owner starts every task of a wave in parallel
+(one Cursor agent each) and starts the next wave when the previous wave's tasks have pushed their final work (or opened their PR).
+
+| Wave | Tasks | Starts when |
+|---|---|---|
+| 1 | TASK 1-8 (all independent) | now |
+| 2 | TASK 9 (M25 integration: merge tracks A+B, plan steps 16-19) | TASK 3 and TASK 4 are done |
+| 3 | TASK 10 (v1 integration branch: merge everything) | TASK 1, 2, 5, 6, 8, 9 are done |
+| 4 | TASK 11 (M26 balance) then TASK 12 (v1.0 release gate) | TASK 10 is done; 12 after 11 |
+
+TASK 7 (Blueprints 2) is post-v1 and is NOT merged into the v1 integration branch.
+They run until finished or the Cursor usage runs out. Then the owner tells the Claude orchestrator "resume": it fetches every branch, runs a Claude Opus review per task
+(`docs/agents/verifier.md`), fixes what fails, and merges into `dev`.
 
 ## How to start each agent (the "mega prompt")
 Start 8 Cursor agents on https://github.com/keesmichael2005-arch/Village-Heart (model Grok 4.7, highest effort). Give each one this text,
 changing only the task number:
 
-> You are Cursor agent **TASK N** of 8 working in parallel on the Village Heart Minecraft mod. Check out the repo, run
+> You are Cursor agent **TASK N** of 12 (see the waves table) on the Village Heart Minecraft mod. Check out the repo, run
 > `git fetch origin && git checkout origin/dev -- docs/HANDOFF_GROK.md` (or read it on GitHub, branch `dev`), read the section
 > "Rules for every agent" and the section "TASK N" in `docs/HANDOFF_GROK.md`, and do that task completely, start to finish, without
 > asking questions: decide sensibly and write each decision in the plan's Deviations section or in PROGRESS.md. Work only on your task's
@@ -115,8 +125,39 @@ changing only the task number:
      and report 5 runs, so M26 can compare.
 - Area: `sim/`, sim harness, docs. Do not touch game rules code (M25 changes sieges).
 
+## TASK 9 (wave 2): M25 integration and plan steps 16-19
+- New branch `m25-full`: start from `origin/m25` (TASK 3), merge `origin/m25-walls` (TASK 4) and `origin/dev`. Resolve conflicts so both
+  tracks work together; replace every stub TASK 4 noted in Deviations with TASK 3's real code. `scripts/verify.sh --fast` green.
+- Then build plan steps 16-19 of `docs/plans/M25.md` (random raids + scaling + young-village caps 3.13a + rewards, zombie sieges replacing
+  vanilla VillageSiege inside the claim, the `raid` scenario, L3 runs and docs). Run the L3 scenarios the plan names and record results.
+- Full `scripts/verify.sh` exit 0. Area: everything M25.
+
+## TASK 10 (wave 3): v1 integration branch
+- New branch `v1-integration` from `origin/dev`. Merge, in this order, resolving conflicts carefully (code: make both sides work; docs:
+  keep both): `origin/m23`, `origin/m19`, `origin/m25-full`, `origin/backlog-small`, `origin/m26-scenarios`, `origin/release-prep`.
+  After EACH merge run `scripts/verify.sh --fast` and fix breakage before the next merge (a fix commit per merge, explained).
+- Typical conflicts: `Balance`, `VillageCodecs` RAW_B keys, append-only enums (keep dev's order, then each branch's new values in merge
+  order), `fabric.mod.json` test lists, ROADMAP/PROGRESS/BACKLOG/TESTING.
+- Finish: full `scripts/verify.sh` exit 0, `scripts/simulate.sh starter 10`, `defended 10`, `defended_walled 10`, `raid` once each; record.
+
+## TASK 11 (wave 4): M26 balance pass
+- Branch `m26` from `origin/v1-integration`. Plan `docs/plans/M26.md` (from `origin/m26-plan` if not on the branch) and `docs/M26-bounds.md`
+  (TASK 8). Owner decisions: the `full` 30-day sim may act as a pretend player making choices (standing orders count as no player input);
+  the start is meant to be hard; tune yields too (miner haul tables, lumberjack/farmer/hunter/cook output), builder pace (owner: slower,
+  about 1 block per 3-4 s at level 1), guard numbers, siege/raid sizes. Stay inside the bounds file; every change recorded before/after in
+  PROGRESS with the sim numbers. Goal: the roadmap M26 criteria (`full`, 30 days: reaches Village tier, food never 0 for more than 1 day
+  in a row, treasury never negative, village logic < 1 ms/tick) and `defended`/`defended_walled` passing once tools, armour, golems,
+  walls and lights exist (owner accepted a hard start: a defended Hamlet may lose some villagers, the village must not be wiped out).
+- Full `scripts/verify.sh` exit 0 and all sims recorded.
+
+## TASK 12 (wave 4, after TASK 11): v1.0 release gate
+- Branch `v1-release` from `origin/m26`. Do the "v1.0 release gate" section of `docs/ROADMAP.md`: full verify, every L3 scenario, the
+  2-player test (M24's real client + FakePlayer), build the release jar (`./gradlew --no-daemon build`, jar in `build/libs`), check the jar
+  contains no gametest classes, update CHANGELOG/README/PLAYER_GUIDE for the final state, tick ROADMAP, write `docs/RELEASE_NOTES_v1.0.md`.
+  Do not tag or publish a release: the owner and Claude do that after review.
+
 ---
 
 ## When the owner says "resume" to Claude
-Claude fetches every branch above, reviews TASK 1, 2, then 3+4 merged together (then builds M25 steps 16-19), 5, 6, 8, and 7 last
-(post-v1), merges what passes into `dev`, then runs M26 (balance) and the v1.0 release gate.
+Claude fetches every branch above and reviews them as Opus verifiers (per milestone: M23, M19, M25, M26, the release gate, plus 5, 6, 8
+and 7), fixes what fails, merges the v1 work into `dev`, and tags v1.0 with the owner. Whatever wave was not reached, Claude finishes.
