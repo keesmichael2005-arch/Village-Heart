@@ -258,9 +258,19 @@ final class P4ClientTests {
 	}
 
 	private static void put(net.minecraft.server.level.ServerLevel level, BlockPos origin, Item item, int count) {
+		if (count <= 0) return;
+		java.util.List<net.minecraft.world.Container> chests = new java.util.ArrayList<>();
+		for (var view : dev.villageheart.building.Buildings.valid(level.getServer(), dev.villageheart.core.building.BuildingType.STORAGE)) {
+			var scan = view.latestScan().orElse(null);
+			if (scan == null) continue;
+			for (var p : scan.positions(dev.villageheart.core.building.BuildingRequirements.CHEST)) {
+				var c = dev.villageheart.stock.StorageContainers.at(level, new BlockPos(p.x(), p.y(), p.z()));
+				if (c != null) chests.add(c);
+			}
+		}
+		if (chests.isEmpty() && level.getBlockEntity(origin) instanceof net.minecraft.world.Container c) chests.add(c);
 		int left = count;
-		for (int dz = 0; dz < 3 && left > 0; dz++) for (int dx = 0; dx < 6 && left > 0; dx++) {
-			if (!(level.getBlockEntity(origin.offset(dx, 0, dz)) instanceof net.minecraft.world.Container c)) continue;
+		for (var c : chests) {
 			for (int i = 0; i < c.getContainerSize() && left > 0; i++) {
 				ItemStack slot = c.getItem(i);
 				if (slot.isEmpty()) {
@@ -275,8 +285,8 @@ final class P4ClientTests {
 			}
 			c.setChanged();
 		}
-		if (left <= 0) return;
-		if (level.getBlockEntity(origin) instanceof net.minecraft.world.Container c) {
+		if (left > 0 && !chests.isEmpty()) {
+			var c = chests.get(0);
 			for (int i = c.getContainerSize() - 1; i >= 0 && left > 0; i--) {
 				int n = Math.min(item.getDefaultMaxStackSize(), left);
 				c.setItem(i, new ItemStack(item, n));
