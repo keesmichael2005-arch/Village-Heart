@@ -250,7 +250,7 @@ public class WageGameTests {
 			rich.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.STONE, 64));
 			act(rich, new HeartAction.Withdraw(5));
 			h.assertValueEqual(15, treasury(h), "the full-inventory withdraw still takes from the treasury");
-			h.assertValueEqual(5, VillageTestSupport.emeralds(h, HeartTestSupport.heartPos(h).subtract(h.absolutePos(BlockPos.ZERO)), 8) , "5 emeralds dropped at the Owner's feet");
+			h.assertValueEqual(5, VillageTestSupport.emeralds(h, VillageTestSupport.rel(h, HeartTestSupport.heartPos(h)), 8), "5 emeralds dropped at the Owner's feet");
 			for (int i = 0; i < rich.getInventory().getContainerSize(); i++) rich.getInventory().setItem(i, ItemStack.EMPTY);
 			rich.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
 			for (int i = 0; i < p[0].getInventory().getContainerSize(); i++) p[0].getInventory().setItem(i, ItemStack.EMPTY);

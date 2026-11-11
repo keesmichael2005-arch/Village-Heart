@@ -152,7 +152,7 @@ public class WorkerGameTests {
 	private static String near(GameTestHelper h, Villager v) {
 		StringBuilder sb = new StringBuilder();
 		for (var e : h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, v.getBoundingBox().inflate(8), e -> e != v)) {
-			sb.append(' ').append(e.getType().toShortString()).append('@').append(h.relativePos(e.blockPosition()).toShortString());
+			sb.append(' ').append(e.getType().toShortString()).append('@').append(VillageTestSupport.rel(h, e.blockPosition()).toShortString());
 		}
 		return sb.toString();
 	}
@@ -186,7 +186,7 @@ public class WorkerGameTests {
 		h.onEachTick(() -> {
 			if (v[0] == null || t0[0] < 0 || (h.getTick() - t0[0]) % 20 != 0 || walkTrace.size() > 40) return;
 			var brain = v[0].getBrain();
-			walkTrace.add((h.getTick() - t0[0]) + ":" + h.relativePos(v[0].blockPosition()).toShortString() + (h.getBlockState(doorPos).getValue(DoorBlock.OPEN) ? " open" : " shut")
+			walkTrace.add((h.getTick() - t0[0]) + ":" + VillageTestSupport.rel(h, v[0].blockPosition()).toShortString() + (h.getBlockState(doorPos).getValue(DoorBlock.OPEN) ? " open" : " shut")
 					+ " " + brain.getActiveNonCoreActivity().map(Object::toString).orElse("-")
 					+ (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET) ? " wt" : "")
 					+ (brain.hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.PATH) ? " path" : "")
