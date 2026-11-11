@@ -212,24 +212,13 @@ public class GrowthCourtshipGameTests {
 	/**
 	 * A cannot-reach stamp left by an earlier stroll is about that stroll, not about the courtship walk. It must not lapse the licence
 	 * the moment the morning window opens (that is what dropped day 2 of {@code oneBirthPerDay} in a full suite: approach 0, no seed).
+	 *
+	 * <p>The brains are frozen once they are idle. A live brain in the full suite puts the walk target back on the partner before courtship
+	 * reads the stamp, which makes the stamp look like this walk's own failure. NoAI keeps the stroll target in place.
 	 */
 	@GameTest(environment = "villageheart-gametest:growth_stale_reach", structure = YARD, skyAccess = true, maxTicks = 600)
 	public void staleCannotReachDoesNotEndCourtship(GameTestHelper h) {
 		Villager[] v = new Villager[2];
-		boolean[] pin = {false};
-		double[][] spot = new double[2][3];
-		// hold them 7 apart so the courtship must walk; do not clear CANT_REACH (that stamp is the subject of the test)
-		h.onEachTick(() -> {
-			if (!pin[0] || v[0] == null) return;
-			for (int i = 0; i < 2; i++) {
-				Villager x = v[i];
-				if (!x.isAlive()) continue;
-				if (x.isSleeping()) x.stopSleeping();
-				x.snapTo(spot[i][0], spot[i][1], spot[i][2], 0.0F, 0.0F);
-				x.setDeltaMovement(0, 0, 0);
-				x.resetFallDistance();
-			}
-		});
 		scene(h, 4, 0, 32).thenExecute(() -> {
 			h.getLevel().setDayTime(dayStart(h) + 100);
 			v[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(10, 0, 10));
@@ -241,12 +230,8 @@ public class GrowthCourtshipGameTests {
 			double[] rx = {10.5, 17.5};
 			for (int i = 0; i < 2; i++) {
 				net.minecraft.world.phys.Vec3 p = h.absoluteVec(new net.minecraft.world.phys.Vec3(rx[i], 0, 10.5));
-				spot[i][0] = p.x;
-				spot[i][1] = p.y;
-				spot[i][2] = p.z;
 				v[i].snapTo(p.x, p.y, p.z, i == 0 ? 90.0F : -90.0F, 0.0F);
 			}
-			pin[0] = true;
 			license(h, v[0], v[1]);
 			h.assertTrue(v[0].distanceTo(v[1]) > dev.villageheart.core.Balance.COURTSHIP_SEED_DISTANCE,
 					"the pair starts out of seed range: " + v[0].distanceTo(v[1]));
@@ -254,16 +239,15 @@ public class GrowthCourtshipGameTests {
 			h.assertTrue(v[0].getBrain().isActive(Activity.IDLE) && v[1].getBrain().isActive(Activity.IDLE), "both are idle");
 			h.assertFalse(v[0].isSleeping() || v[1].isSleeping(), "both are awake");
 		}).thenExecute(() -> {
-			// A full suite lets the courtship aim them at each other during the idle wait. The stamp has to sit on a
-			// different target (a stroll), which is what a villager actually carries into the morning.
 			long stale = h.getLevel().getGameTime() - 5000;
 			for (Villager x : v) {
+				x.setNoAi(true); // freeze IDLE; the brain must not replace the stroll target before courtship reads it
 				x.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(x.blockPosition().offset(2, 0, 0), 0.5F, 1));
 				x.getBrain().setMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE, stale);
 			}
 		}).thenIdle(40).thenExecute(() -> {
 			License l = licence(h).orElseThrow(() -> h.assertionException("the licence is still there: " + describe(h)));
-			h.assertTrue(l.state() == LicenceState.APPROACHING || l.state() == LicenceState.SEEDED,
+			h.assertTrue(l.state() == LicenceState.APPROACHING && l.approachTicks() > 0,
 					"a stale cannot-reach does not end the courtship: " + describe(h));
 			end(h);
 		});
