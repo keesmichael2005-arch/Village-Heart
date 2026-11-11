@@ -931,3 +931,9 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Fast verify at `1ae6cfe` is green: L1, L2 394/394, L3 self-test, perf.
 - Step 13 is in progress: `LureSlots`, `VillageLureGoal`, and the zombie `BreachGoal`. Lure GameTests are in `SiegeLureGameTests`.
 - The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.
+
+## 2026-11-11: M25 track B step 13 (zombie lure and breach)
+- `LureSlots` admits up to 24 zombies (siege tag first, then distance). `VillageLureGoal` walks a partial path up to the wall and hands off. `BreachGoal` then hits for a zombie that holds a slot, or whose target stands in the claim.
+- Each lure GameTest passed alone (1 required test): T-L2-20 `zombieBehindClosedWallBreaks`, T-L2-21 `skeletonStaysVanilla`, T-L2-22 `lureOffByDay`, T-L2-23 `noWallsNoLure`, T-L2-24 `lureBudgetCaps`, T-L2-37 `trenchInFrontOfWall` (zombie half), T-L2-38 `openGapIsUsed`, T-L2-39 `partialWallNoLure`.
+- The gate sits on the north wall. A south gate's eye-level air lets the zombie see a villager and take a target before it hits. The beside-the-wall bound is 1200 ticks: the specified wander arrived in 794, and 600 is a straight walk. "Never had a target" is checked until the zombie is beside the wall.
+- Fast verify is next. Creepers are step 14.

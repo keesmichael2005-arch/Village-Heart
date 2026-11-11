@@ -50,6 +50,7 @@ public class SiegeLureGameTests {
 			h.assertTrue(!zombie[0].getSensing().hasLineOfSight(villager[0]), "no line of sight from outside");
 			t0[0] = h.getTick();
 		});
+		// The plan's 600 ticks is a straight walk. The specified 90-degree waypoint from 30 blocks out arrived at 794.
 		seq = seq.thenWaitUntil(() -> {
 			if (zombie[0].getTarget() != null) targeted[0] = true;
 			h.assertTrue(!targeted[0], "the zombie took a target " + zombie[0].getTarget());

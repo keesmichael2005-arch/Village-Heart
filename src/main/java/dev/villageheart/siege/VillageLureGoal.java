@@ -16,8 +16,9 @@ import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Walks a zombie toward the village with no line-of-sight test (docs/plans/M25.md 3.11). A partial path that ends on a
- * defence cell stops this goal so {@link BreachGoal} can take the move flag. Any other partial path waits and tries again.
+ * Walks a zombie toward the village with no line-of-sight test (docs/plans/M25.md 3.11). A blocked path is walked until
+ * the zombie stands next to a defence cell, then this goal stops so {@link BreachGoal} can take the move flag. The last
+ * node of a blocked path is the cell in front of the wall, not the wall itself.
  */
 public final class VillageLureGoal extends Goal {
 	private final Mob mob;
