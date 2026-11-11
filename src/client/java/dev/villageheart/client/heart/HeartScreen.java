@@ -1,5 +1,6 @@
 package dev.villageheart.client.heart;
 
+import dev.villageheart.client.art.ModTextures;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.Balance;
@@ -731,6 +732,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	}
 
 	private void drawTabs(GuiGraphics g, int mx, int my) {
+		int tabIcons = groupCounter++;
 		for (int i = 0; i < TAB_KEYS.length; i++) {
 			int x0 = tabX0() + i * tabW();
 			boolean allowed = tabAllowed(i);
@@ -738,6 +740,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			int bg = selected ? 0xFF4A4A4A : (allowed ? 0xFF303030 : 0xFF1A1A1A);
 			g.fill(x0, 2, x0 + tabW() - 1, TAB_H, bg);
 			if (selected) g.fill(x0, TAB_H - 2, x0 + tabW() - 1, TAB_H, 0xFFFFFFFF);
+			ModTextures.blit(g, ModTextures.TABS[i], x0 + 3, 8, 8);
+			note(AREA_HEADER, tabIcons, x0 + 3, 8, 8, 8);
 			Component label = Component.translatable(HeartTexts.key(TAB_KEYS[i]));
 			int color = !allowed ? DARK_GREY : selected ? WHITE : GREY;
 			int w = Math.min(font.width(label.getString()), tabW() - 6);
@@ -755,7 +759,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int y = bodyTop() + 8;
 		int grp = groupCounter++;
 		text(g, t("overview.title", o.ownerName()), lx, y, colW, GOLD, AREA_BODY, grp);
-		text(g, t("overview.tier", o.tier().displayName()), lx, y + 12, colW, WHITE, AREA_BODY, grp);
+		ModTextures.blit(g, ModTextures.tier(o.tier()), lx, y + 12, 8);
+		note(AREA_BODY, grp, lx, y + 12, 8, 8);
+		text(g, t("overview.tier", o.tier().displayName()), lx + 10, y + 12, colW - 10, WHITE, AREA_BODY, grp);
 		boolean ready = !o.goals().isEmpty() && o.goals().stream().allMatch(dev.villageheart.core.heart.GoalLine::met);
 		text(g, o.nextTier().isPresent() ? t(ready ? "overview.next_tier_ready" : "overview.next_tier", o.nextTier().get().displayName()) : t("overview.top_tier"),
 				lx, y + 24, colW, ready ? GREEN : GREY, AREA_BODY, grp);
@@ -764,16 +770,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		int grpBox = groupCounter++;
 		for (var goal : o.goals()) {
 			if (rows++ >= dev.villageheart.core.heart.HeartLimits.MAX_GOAL_ROWS) break;
-			// a 6 x 6 check box (filled green when met, a grey frame when not), then the label
-			int bx = lx, by = gy + 1;
-			if (goal.met()) g.fill(bx, by, bx + 6, by + 6, 0xFF55FF55);
-			else {
-				g.fill(bx, by, bx + 6, by + 1, GREY);
-				g.fill(bx, by + 5, bx + 6, by + 6, GREY);
-				g.fill(bx, by, bx + 1, by + 6, GREY);
-				g.fill(bx + 5, by, bx + 6, by + 6, GREY);
-			}
-			note(AREA_BODY, grpBox, bx, by, 6, 6);
+			// an 8 x 8 check (met) or an open box, then the label. The text stays at lx + 10, so the icon does not take any of its width.
+			int bx = lx, by = gy;
+			ModTextures.blit(g, goal.met() ? ModTextures.GOAL_MET : ModTextures.GOAL_OPEN, bx, by, 8);
+			note(AREA_BODY, grpBox, bx, by, 8, 8);
 			text(g, text(goal.label()), lx + 10, gy, colW - 50, goal.met() ? GREEN : WHITE, AREA_BODY, grp);
 			gy += 10;
 		}
@@ -803,7 +803,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			int shown = lines <= fit ? o.alerts().size() : Math.max(0, fit - 1);
 			for (int i = 0; i < shown; i++) {
 				AlertLine a = o.alerts().get(i);
-				text(g, text(a.text()), lx, ay, width - 2 * MARGIN, severityColor(a.severity()), AREA_BODY, grp3);
+				ModTextures.blit(g, a.severity() == dev.villageheart.core.heart.Severity.DANGER ? ModTextures.ALERT_DANGER : ModTextures.ALERT_WARNING, lx, ay, 8);
+				note(AREA_BODY, grp3, lx, ay, 8, 8);
+				text(g, text(a.text()), lx + 10, ay, width - 2 * MARGIN - 10, severityColor(a.severity()), AREA_BODY, grp3);
 				ay += 12;
 			}
 			int hidden = o.moreAlerts() + (o.alerts().size() - shown);
@@ -860,9 +862,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		boolean hover = mx >= x && mx < x + w && my >= y && my < y + MEMBER_ROW_H;
 		if (selected) g.fill(x, y, x + w, y + MEMBER_ROW_H - 1, 0x66FFFFFF);
 		else if (hover) g.fill(x, y, x + w, y + MEMBER_ROW_H - 1, 0x33FFFFFF);
-		// a dot: green when the player is on the server now, grey when not
-		g.fill(x + 4, y + 5, x + 9, y + 10, m.online() ? GREEN : DARK_GREY);
-		note(AREA_BODY, grp, x + 4, y + 5, 5, 5);
+		ModTextures.blit(g, ModTextures.rank(m.rank()), x + 3, y + 4, 8);
+		g.fill(x + 8, y + 9, x + 11, y + 12, m.online() ? GREEN : DARK_GREY);
+		note(AREA_BODY, grp, x + 3, y + 4, 8, 8);
 		int color = m.rank() == Rank.OWNER ? GOLD : m.online() ? WHITE : GREY;
 		text(g, Component.literal(m.name()), x + 14, y + 4, 180, color, AREA_BODY, grp);
 		Component rank = Component.translatable(HeartTexts.key("rank." + m.rank().name().toLowerCase(Locale.ROOT)));
@@ -905,7 +907,15 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (selected) g.fill(x, y, x + w, y + ROW_H - 1, 0x66FFFFFF);
 		else if (hover) g.fill(x, y, x + w, y + ROW_H - 1, 0x33FFFFFF);
 		int ty = y + 7;
-		text(g, Component.literal(v.name()), x + 4, ty, 56, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
+		int nameX = x + 4;
+		int nameW = 56;
+		if (v.isWorker() && !v.jobId().isEmpty()) {
+			ModTextures.blit(g, ModTextures.job(v.jobId()), x + 2, y + 7, 8);
+			note(AREA_BODY, grp, x + 2, y + 7, 8, 8);
+			nameX = x + 12;
+			nameW = 48;
+		}
+		text(g, Component.literal(v.name()), nameX, ty, nameW, v.nitwit() ? DARK_GREY : WHITE, AREA_BODY, grp);
 		Component job;
 		if (v.isWorker()) job = t("villagers.level", jobName(v.jobId()), v.level());
 		else if (v.nitwit()) job = t("villagers.nitwit");
@@ -931,9 +941,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 			note(AREA_BODY, grp, bx, by, 40, 5);
 			if (v.needs().known()) {
-				drawNeed(g, Items.BREAD, v.needs().fed(), x + 198, y + 3, grp);
-				drawNeed(g, Items.RED_BED, v.needs().housed(), x + 216, y + 3, grp);
-				drawNeed(g, Items.EMERALD, v.needs().paid(), x + 234, y + 3, grp);
+				drawNeed(g, ModTextures.NEED_FOOD, v.needs().fed(), x + 198, y + 3, grp);
+				drawNeed(g, ModTextures.NEED_BED, v.needs().housed(), x + 216, y + 3, grp);
+				drawNeed(g, ModTextures.NEED_PAY, v.needs().paid(), x + 234, y + 3, grp);
 			}
 		}
 		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
@@ -944,8 +954,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		text(g, act, x + 258, ty, w - 258 - 4, actColor, AREA_BODY, grp);
 	}
 
-	private void drawNeed(GuiGraphics g, net.minecraft.world.item.Item item, boolean met, int x, int y, int grp) {
-		g.renderItem(new ItemStack(item), x, y);
+	private void drawNeed(GuiGraphics g, Identifier icon, boolean met, int x, int y, int grp) {
+		ModTextures.blit(g, icon, x, y, 16);
 		if (!met) {
 			g.fill(x, y, x + 16, y + 16, 0xAA000000);
 			for (int i = 0; i < 16; i++) g.fill(x + i, y + 15 - i, x + i + 2, y + 16 - i, 0xFFFF3333);
@@ -1008,6 +1018,13 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			case CLEARING, BUILDING, CHECKING -> GREEN;
 			default -> YELLOW;
 		};
+		Identifier stateIcon = switch (b.state()) {
+			case WAITING_FOR_BUILDER, NOT_LOADED -> ModTextures.STATUS_WAITING;
+			case CLEARING, BUILDING, CHECKING -> ModTextures.STATUS_PROGRESS;
+			default -> ModTextures.STATUS_BLOCKED;
+		};
+		ModTextures.blit(g, stateIcon, x + 240, y + 1, 8);
+		note(AREA_BODY, grp, x + 240, y + 1, 8, 8);
 		text(g, text(b.status()), x + 250, y + 2, w - 254, color, AREA_BODY, grp);
 		if (!b.missing().isEmpty()) {
 			Component first = text(b.missing().get(0));
@@ -1026,14 +1043,25 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		else if (hover) g.fill(x, y, x + w, y + ROW_H - 1, 0x33FFFFFF);
 		Component name = BuildingType.byId(b.typeId()).isPresent()
 				? Component.translatable(HeartTexts.key("building." + b.typeId())) : Component.literal(b.typeId());
-		int nameW = text(g, name, x + 4, y + 2, 110, WHITE, AREA_BODY, grp);
-		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 4 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
+		if (BuildingType.byId(b.typeId()).isPresent()) {
+			ModTextures.blit(g, ModTextures.building(b.typeId()), x + 2, y + 2, 8);
+			note(AREA_BODY, grp, x + 2, y + 2, 8, 8);
+		}
+		int nameW = text(g, name, x + 12, y + 2, 100, WHITE, AREA_BODY, grp);
+		text(g, t("buildings.coords", b.x(), b.y(), b.z()), x + 12 + nameW + 6, y + 2, 120, GREY, AREA_BODY, grp);
 		Component status = Component.translatable(HeartTexts.key("status." + b.status().name().toLowerCase(Locale.ROOT)));
 		int color = switch (b.status()) {
 			case VALID -> GREEN;
 			case INVALID -> RED;
 			default -> GREY;
 		};
+		Identifier statusIcon = switch (b.status()) {
+			case VALID -> ModTextures.STATUS_VALID;
+			case INVALID -> ModTextures.STATUS_INVALID;
+			case UNCHECKED, DEFERRED -> ModTextures.STATUS_UNCHECKED;
+		};
+		ModTextures.blit(g, statusIcon, x + 240, y + 1, 8);
+		note(AREA_BODY, grp, x + 240, y + 1, 8, 8);
 		text(g, status, x + 250, y + 2, 80, color, AREA_BODY, grp);
 		Component detail = switch (b.detail()) {
 			case WORKER_SLOTS -> t("detail.slots", b.workersHere(), b.detailCount());
