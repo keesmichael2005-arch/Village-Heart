@@ -6,7 +6,6 @@ import dev.villageheart.worker.ModProfessions;
 import dev.villageheart.worker.Workers;
 import dev.villageheart.worker.cook.KitchenVisuals;
 import dev.villageheart.worker.smith.GolemBuilds;
-import dev.villageheart.worker.smith.SmithRuntime;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +74,6 @@ final class SmithClientTests {
 				var smithy = VillageClaims.locate(server.overworld(), marker);
 				GolemBuilds.start(server, smithy);
 				GolemBuilds.progress(server, smithy, 7990);
-				SmithRuntime.get(server).buildOwner.put(smithy, smithId);
 				return result;
 			});
 			if (!hired.startsWith("Hired")) throw new AssertionError("the smith was not hired: " + hired);
