@@ -47,6 +47,15 @@ public final class SiegeDamage {
 		return live == null ? 0 : live.rejected;
 	}
 
+	/** Records a breach at a cell that is already gone, such as a watchtower key a broken shaft took with it. */
+	public static void recordBreach(MinecraftServer server, BlockPos pos) {
+		VillageState village = VillageClaims.current(server).orElse(null);
+		if (village == null) return;
+		Live live = live(server, village);
+		live.damage = live.damage.withBreach(Pos.pack(pos.getX(), pos.getY(), pos.getZ()));
+		flush(server);
+	}
+
 	public static boolean isBreached(MinecraftServer server, long packed) {
 		return damage(server).isBreached(packed);
 	}

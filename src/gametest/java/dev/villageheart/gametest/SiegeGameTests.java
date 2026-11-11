@@ -109,6 +109,168 @@ public class SiegeGameTests {
 		});
 	}
 
+	/** T-L2-15. A hit or a blast changes only a recorded defence cell that still holds its material. A torch, gravel or ladder stops the break. */
+	@GameTest(environment = "villageheart-gametest:siege_non_defence", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void nonDefenceBlocksNeverDamaged(GameTestHelper h) {
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			DefenceCell wall = stoneWall(h);
+			BlockPos wallPos = block(wall);
+			BlockPos wallRel = VillageTestSupport.rel(h, wallPos);
+			var server = h.getLevel().getServer();
+			int before = SiegeDamage.rejected(server);
+			BlockPos fill = rel(2, 0, 4);
+			h.setBlock(fill, net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState());
+			SiegeDamage.hit(server, h.getLevel(), h.absolutePos(fill), SiegeHits.Attacker.ZOMBIE);
+			SiegeDamage.blast(server, h.getLevel(), h.absolutePos(fill), true, false);
+			h.assertTrue(h.getBlockState(fill).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "a filled wall is not a defence");
+			BlockPos planks = rel(4, 0, 4);
+			h.setBlock(planks, net.minecraft.world.level.block.Blocks.OAK_PLANKS.defaultBlockState());
+			SiegeDamage.hit(server, h.getLevel(), h.absolutePos(planks), SiegeHits.Attacker.ZOMBIE);
+			SiegeDamage.blast(server, h.getLevel(), h.absolutePos(planks), false, true);
+			h.assertTrue(h.getBlockState(planks).is(net.minecraft.world.level.block.Blocks.OAK_PLANKS), "a house plank is not a defence");
+			h.setBlock(wallRel, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState());
+			SiegeDamage.hit(server, h.getLevel(), wallPos, SiegeHits.Attacker.ZOMBIE);
+			h.assertTrue(h.getBlockState(wallRel).is(net.minecraft.world.level.block.Blocks.STONE_BRICKS), "a replaced cell is the player's");
+			h.assertTrue(SiegeDamage.rejected(server) > before, "rejected hits " + SiegeDamage.rejected(server));
+			h.setBlock(wallRel, net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState());
+			DefenceCell other = otherStone(h, wall);
+			BlockPos support = block(other);
+			BlockPos supportRel = VillageTestSupport.rel(h, support);
+			h.setBlock(supportRel.above(), net.minecraft.world.level.block.Blocks.GRAVEL.defaultBlockState());
+			h.setBlock(wallRel.south(), net.minecraft.world.level.block.Blocks.WALL_TORCH.defaultBlockState()
+					.setValue(net.minecraft.world.level.block.WallTorchBlock.FACING, net.minecraft.core.Direction.SOUTH));
+			for (int i = 0; i < 20; i++) {
+				SiegeDamage.hit(server, h.getLevel(), wallPos, SiegeHits.Attacker.ZOMBIE);
+				SiegeDamage.hit(server, h.getLevel(), support, SiegeHits.Attacker.ZOMBIE);
+			}
+			h.assertTrue(h.getBlockState(wallRel).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "the torch's block stays");
+			h.assertTrue(h.getBlockState(wallRel.south()).is(net.minecraft.world.level.block.Blocks.WALL_TORCH), "the torch stays");
+			h.assertTrue(h.getBlockState(supportRel).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "the gravel's block stays");
+			h.assertTrue(h.getBlockState(supportRel.above()).is(net.minecraft.world.level.block.Blocks.GRAVEL), "the gravel stays");
+			h.assertTrue(SiegeDamage.damage(server).damageAt(wall.packed()) == 11, "torch support stops at hp-1");
+			h.assertTrue(SiegeDamage.damage(server).damageAt(other.packed()) == 11, "gravel support stops at hp-1");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** T-L2-16. A cell the player breaks is opened: not a breach, not a repair, and it counts again once the material is back. */
+	@GameTest(environment = "villageheart-gametest:siege_player_opened", structure = YARD, skyAccess = true, maxTicks = 800)
+	public void playerOpenedCellIsLeftAlone(GameTestHelper h) {
+		BlockPos[] relPos = new BlockPos[1];
+		long[] packed = new long[1];
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			DefenceCell cell = stoneWall(h);
+			packed[0] = cell.packed();
+			BlockPos pos = block(cell);
+			relPos[0] = VillageTestSupport.rel(h, pos);
+			var player = BuildingTestSupport.owner();
+			player.setGameMode(GameType.CREATIVE);
+			player.teleportTo(pos.getX() + 1.5, pos.getY(), pos.getZ() + 0.5);
+			h.assertTrue(player.gameMode.destroyBlock(pos), "the player breaks the cell");
+			var server = h.getLevel().getServer();
+			var site = VillageClaims.current(server).orElseThrow().defences().get(0);
+			long relative = DefenceCells.relative(site.ground(), cell.pos());
+			h.assertTrue(site.opened().contains(relative), "opened");
+			h.assertTrue(!SiegeDamage.isBreached(server, cell.packed()), "not breached");
+			var plan = dev.villageheart.core.siege.RepairPlanner.next(false, dev.villageheart.core.worker.DayPhase.WORK,
+					java.util.List.of(new dev.villageheart.core.siege.RepairPlanner.Cell(cell.packed(), DefenceKind.STONE, 0, false, true)),
+					VillageClaims.current(server).orElseThrow().heart(), java.util.Map.of(dev.villageheart.core.siege.RepairPlanner.COBBLESTONE, 64));
+			h.assertTrue(plan.isEmpty(), "an opened cell is not planned");
+			h.setBlock(relPos[0], net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState());
+		}).thenIdle(200).thenExecute(() -> {
+			var site = VillageClaims.current(h.getLevel().getServer()).orElseThrow().defences().get(0);
+			h.assertTrue(site.opened().isEmpty(), "the cobblestone counts again: " + site.opened());
+			h.assertTrue(!SiegeDamage.isBreached(h.getLevel().getServer(), packed[0]), "still not a breach");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** T-L2-36, the zombie half. Siege damage ignores mobGriefing, and it stops when the gamerule is turned off. The creeper half is step 14. */
+	@GameTest(environment = "villageheart-gametest:siege_damage_rule", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void siegeDamageGamerule(GameTestHelper h) {
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			DefenceCell cell = stoneWall(h);
+			BlockPos pos = block(cell);
+			var server = h.getLevel().getServer();
+			var rules = h.getLevel().getGameRules();
+			try {
+				rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING, false, server);
+				h.assertTrue(SiegeDamage.hit(server, h.getLevel(), pos, SiegeHits.Attacker.ZOMBIE) == SiegeDamage.Result.APPLIED, "mobGriefing off still damages");
+				int cracked = SiegeDamage.damage(server).damageAt(cell.packed());
+				rules.set(SiegeGamerules.SIEGE_DAMAGE, false, server);
+				h.assertTrue(SiegeDamage.hit(server, h.getLevel(), pos, SiegeHits.Attacker.ZOMBIE) == SiegeDamage.Result.IGNORED, "the gamerule stops the hit");
+				h.assertTrue(SiegeDamage.damage(server).damageAt(cell.packed()) == cracked, "damage stays " + cracked);
+			} finally {
+				rules.set(SiegeGamerules.SIEGE_DAMAGE, true, server);
+				rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING, true, server);
+			}
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
+	 * T-L2-40. A missing watchtower key is dropped, and the same key recorded as a breach keeps the site and its patrol point.
+	 * The builder walking over to replace the shaft is step 15.
+	 */
+	@GameTest(environment = "villageheart-gametest:siege_watchtower_breach", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void watchtowerBreachKeepsSite(GameTestHelper h) {
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.TOWN);
+			BuildTestSupport.stock(h, DefenceTestSupport.towerMaterials(2));
+			BuildTestSupport.startBuild(h, dev.villageheart.core.blueprint.Blueprints.WATCHTOWER, BuildTestSupport.GROUND, dev.villageheart.core.blueprint.Rotation4.NONE);
+			BuildTestSupport.startBuild(h, dev.villageheart.core.blueprint.Blueprints.WATCHTOWER, rel(24, -1, 14), dev.villageheart.core.blueprint.Rotation4.NONE);
+			DefenceTestSupport.advanceAll(h);
+			var server = h.getLevel().getServer();
+			var sites = VillageClaims.current(server).orElseThrow().defences();
+			h.assertTrue(sites.size() == 2, "two towers: " + sites);
+			clearKeys(h, sites.get(0));
+			dev.villageheart.defence.DefenceSystem.refresh(server, VillageClaims.current(server).orElseThrow());
+			h.assertTrue(VillageClaims.current(server).orElseThrow().defences().size() == 1, "a missing key drops the site");
+			breachKeys(h, VillageClaims.current(server).orElseThrow().defences().get(0));
+		}).thenIdle(400).thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			dev.villageheart.defence.DefenceSystem.refresh(server, VillageClaims.current(server).orElseThrow());
+			var left = VillageClaims.current(server).orElseThrow().defences();
+			h.assertTrue(left.size() == 1 && left.get(0).blueprintId().equals("watchtower"), "the breached tower stays: " + left);
+			h.assertTrue(dev.villageheart.defence.Defences.patrolPoints(server).size() == 1, "and it is still a patrol point");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static void clearKeys(GameTestHelper h, DefenceSite site) {
+		for (var key : Defences.keys(site)) {
+			var at = key.at();
+			h.setBlock(VillageTestSupport.rel(h, new BlockPos(at.x(), at.y(), at.z())), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+		}
+	}
+
+	private static void breachKeys(GameTestHelper h, DefenceSite site) {
+		var server = h.getLevel().getServer();
+		for (var key : Defences.keys(site)) {
+			var at = key.at();
+			BlockPos pos = new BlockPos(at.x(), at.y(), at.z());
+			h.setBlock(VillageTestSupport.rel(h, pos), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+			SiegeDamage.recordBreach(server, pos);
+		}
+	}
+
+	private static DefenceCell stoneWall(GameTestHelper h) {
+		BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 64));
+		DefenceTestSupport.startLine(h, "wall_segment", rel(2, -1, 18), rel(11, -1, 18));
+		DefenceTestSupport.advanceAll(h);
+		return DefenceIndex.of(VillageClaims.current(h.getLevel().getServer()).orElseThrow().defences()).cells().stream()
+				.filter(c -> c.kind() == DefenceKind.STONE).findFirst().orElseThrow();
+	}
+
+	private static DefenceCell otherStone(GameTestHelper h, DefenceCell first) {
+		return DefenceIndex.of(VillageClaims.current(h.getLevel().getServer()).orElseThrow().defences()).cells().stream()
+				.filter(c -> c.kind() == DefenceKind.STONE && c.packed() != first.packed()).findFirst().orElseThrow();
+	}
+
+	private static BlockPos block(DefenceCell cell) {
+		return new BlockPos(cell.pos().x(), cell.pos().y(), cell.pos().z());
+	}
+
 	private static final class Capture extends Connection {
 		final List<ClientboundBlockDestructionPacket> packets = new ArrayList<>();
 
