@@ -949,3 +949,9 @@ GitHub refused the pull request (`must be a collaborator`). The branch is on `or
 `docs/M26-bounds.md` is the tunable audit (plan 3.9.4). No balance number changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are left for TASK 11.
 
 Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (kills 9/6/8/2/3, mob deaths 2/3/1/0/0, those mob deaths outside the ring). `defended_nosiege` 2 of 5 (kills 21/17/10/23/21, mob deaths 2/0/0/0/3). No run exited 2. Full `scripts/verify.sh` exit 0 at `cebed9d1`: 388 GameTests, Layer 4 clean, perf within caps (worst 2835 us). `origin/dev` was already an ancestor. No balance value, assertion, or `docs/LOOP_STATE.md` edit.
+
+**release-prep round 1 fixes (docs and metadata only)**
+
+- PLAYER_GUIDE: tool text now matches `JobType` (lumberjack, miner, hunter need their tool; farmer hoe is x1.25). Cook table follows `CookRecipes` order and shows the gain. Population growth added to the intro, the "Coming in v1" list (now five), the tier note, CHANGELOG and README as "in v1, being finished" (DESIGN section 7). Ranks tab wording no longer contradicts the Resident row.
+- Version: CHANGELOG heads "Unreleased (1.0.0)"; README jar name is `village-heart-<version>.jar`. `gradle.properties` stays 0.1.0 until the release gate (TASK 12) bumps it, so `fabric.mod.json` (`${version}`) follows it.
+- `./gradlew --no-daemon build -x test` passes. Next: release gate.

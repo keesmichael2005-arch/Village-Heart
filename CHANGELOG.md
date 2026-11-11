@@ -1,10 +1,10 @@
 # Changelog
 
-## 1.0.0 — 2026-11-11
+## Unreleased (1.0.0)
 
 Player-facing notes for Village Heart on Minecraft 1.21.11. Grouped by what you can do in a village. Numbers match the design: claim radius, wages, dinner, building sizes, and the rest.
 
-Sieges, random raids, wall damage, and the smith are still being built. They are listed at the end and are not playable in this version yet.
+Sieges, random raids, wall damage, the smith, and population growth are in v1, being finished. They are listed at the end and are not playable in this version yet.
 
 ### Claim a village
 
@@ -100,4 +100,5 @@ A lamp post stops natural monster spawns within 12 steps on level ground. A cobb
 - **Sieges.** A siege that draws zombies toward the village is coming in v1.
 - **Random raids.** Raids that start on their own, rather than only from Bad Omen, are coming in v1.
 - **Wall damage.** Mobs breaking walls and gates, and builders repairing them, are coming in v1. Defence blocks do not take damage yet.
+- **Population growth.** At each dawn a free bed, 3 days of food and two fed, housed adults start at most one birth a day. Today only vanilla breeding makes babies, and it still works.
 - **The smith.** Smelting, iron and leather gear, repairs, and iron golems (36 iron and a carved pumpkin) are coming in v1. Until then, workers make their own wooden and stone tools.

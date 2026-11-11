@@ -4,7 +4,7 @@ Village Heart is a Fabric mod for Minecraft 1.21.11. You craft a Village Heart, 
 
 A Minecraft day is 24000 ticks (20 real minutes). Day time 0 is dawn, 6000 is noon, 12000 is dusk, and 18000 is midnight. Where this guide gives a tick, that is the number you see as the day time.
 
-Sieges, random raids, wall damage, and the smith are **coming in v1**. They are still being built. Everything else in this guide is in the game today. The smith, and what those four will add, is collected at the end.
+Sieges, random raids, wall damage, the smith, and population growth are **in v1, being finished**. They are still being built. Everything else in this guide is in the game today. What those five will add is collected at the end.
 
 ## Craft the Heart and claim the village
 
@@ -36,7 +36,7 @@ Several players can run the one village. A new player is a Visitor.
 |---|---|
 | **Owner** (one) | Everything: set ranks, hand the village over, break the Heart, withdraw emeralds |
 | **Steward** | Hire and fire, start blueprints, set guard shifts, deposit emeralds |
-| **Resident** | Open Storage and the chests inside claimed buildings, deposit emeralds, view every tab |
+| **Resident** | Open Storage and the chests inside claimed buildings, deposit emeralds, view every tab (only the Owner can change ranks) |
 | **Visitor** | View the Overview tab. Chests inside claimed rooms stay shut |
 
 The Owner sets ranks on the Ranks tab. The list is players who are online and players the village has already seen, up to 63 people with a rank. The Owner can give the village to a Steward or a Resident. That takes a second click to confirm. The old Owner becomes a Steward. The treasury, buildings, and workers stay as they are.
@@ -174,7 +174,7 @@ A tool in the **building's chest** is the one the worker uses. It stays in that 
 | Netherite | ×4.5 |
 | Gold | ×6.0 |
 
-Some jobs work at half speed with no tool. Others do nothing until they have one. The farmer is separate: no hoe means full speed, and any hoe is a flat ×1.25.
+The lumberjack, miner, and hunter do nothing without their tool. The farmer works at full speed without a hoe; a hoe is ×1.25.
 
 Workers are level 1, 2, or 3. Level 2 is **100 XP**. Level 3 is **300 XP**. Speed is ×1.0, ×1.25, and ×1.5. Hamlet caps them at level 1, Village at 2, Town at 3. XP still banks up to 300 while the tier holds the level back, and the level arrives within a second of the tier-up. Firing wipes level and XP. A rehire starts at level 1 with 0 XP.
 
@@ -236,12 +236,15 @@ Needs a Kitchen, a smoker, a chest, and a crafting table. No tool. They need fue
 
 Recipes, best nutrition gain first:
 
-| Result | Inputs |
-|---|---|
-| Cooked beef, pork, chicken, mutton, rabbit, cod, salmon | the raw item, at the smoker |
-| Baked potato | potato, at the smoker |
-| Bread | 3 wheat, at the crafting table |
-| Beetroot soup | 6 beetroot and a bowl, at the crafting table |
+| Result | Inputs | Nutrition gain |
+|---|---|---|
+| Cooked beef, cooked porkchop | the raw item, at the smoker | +5 |
+| Bread | 3 wheat, at the crafting table | +5 |
+| Cooked chicken, mutton, salmon | the raw item, at the smoker | +4 |
+| Baked potato | potato, at the smoker | +4 |
+| Cooked cod | cod, at the smoker | +3 |
+| Cooked rabbit | rabbit, at the smoker | +2 |
+| Beetroot soup | 6 beetroot and a bowl, at the crafting table | 0 |
 
 The cook stands at the smoker and converts what they are carrying. One item takes **125 ticks** at level 1 before the walk, which is 8 items per in-game hour at the block. With fetching and depositing, expect about 4 or 5 items an hour. A batch is at most 8 items, and soup does not stack, so a batch of soup is smaller. No batch starts unless it can be back in Storage before dinner at 11000. At the end of the work day the cook keeps nothing.
 
@@ -315,7 +318,7 @@ Population is the villagers loaded inside the claim, babies included, plus hired
 
 On the way up, everyone online at Resident or above gets a chat line and a sound, and every building is re-checked.
 
-Babies count toward population and eat half a meal. You can still breed villagers the usual way, with food. A free bed plus spare food does not yet start a birth by itself.
+Babies count toward population and eat half a meal. You can still breed villagers the usual way, with food. Population growth is in v1, being finished: a free bed plus spare food does not yet start a birth by itself.
 
 ## The market
 
@@ -472,7 +475,7 @@ Right-click the claimed Heart.
 - **Villagers.** Name, job, level, XP, the fed / housed / paid icons, and what they are doing. Assign a job, fire, or set a guard's shift.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
-- **Ranks.** Owner only.
+- **Ranks.** Residents and above see the tab; only the Owner can change ranks.
 
 A Visitor receives the Overview only.
 
@@ -480,12 +483,14 @@ The stockpile is the chests and barrels inside valid Storage buildings: chest, t
 
 ## Coming in v1
 
-These four are still being built. They are not in the game yet.
+These five are still being built. They are not in the game yet.
 
 **Sieges.** A siege that draws zombies toward the claimed village is coming in v1. Today, night mobs are vanilla Minecraft, villagers go indoors at night on their own, and night-shift guards patrol.
 
 **Random raids.** Raids that start on their own, scaling with the village, are coming in v1. Today, a vanilla Bad Omen raid that reaches the claim calls your qualified guards on duty. There is no mod raid alert and no mod reward.
 
 **Wall damage.** Mobs breaking walls and gates, cracks, and builders repairing them from Storage, are coming in v1. Today, defence blocks stay until a player breaks them. Lamps still stop natural spawns in their light, and closed gates still stop mobs.
+
+**Population growth.** In v1, being finished: at each dawn, if there is a free bed in a valid House, at least 3 days of food, and two adults who are fed and housed, the village starts at most one birth a day. Today babies come only from vanilla breeding, which still works.
 
 **The smith.** The blacksmith is coming in v1. The plan for that job, once it ships: a Town Smithy with a blast furnace, an anvil, and a chest. The smith smelts raw iron, copper, and gold, makes iron tools, iron armour, and leather armour, repairs gear with ingots, and builds an iron golem from **36 iron ingots** and **1 carved pumpkin** (one day of work, and at most one golem per 5 villagers). A hurt golem will walk to the Smithy for repairs, 25 health per ingot. Until then, lumberjacks, miners, hunters, and farmers make their own wooden and stone tools, and you can still craft the Smithy marker for later. At Hamlet or Village it stays red with "Requires Town tier".
