@@ -114,6 +114,8 @@ public final class SimulationRun implements Host {
 	void onClaimed(BlockPos heartPos) {
 		this.heart = heartPos;
 		collector.setCentre(Vec3.atCenterOf(heartPos));
+		// the owner moves from the bell to the Heart; the siege gate follows so "inside the claim" stays the claim
+		if (scenario != null && !scenario.villageSiege()) SiegeGate.moveCentre(level, heartPos);
 	}
 
 	// ---- startup (onInitialize): never throws ----
@@ -269,6 +271,8 @@ public final class SimulationRun implements Host {
 		// the simulated owner stands near the bell until the Heart exists, then at the Heart
 		BlockPos stand = SimWorld.heartSpot(level, bell).orElse(bell.below());
 		player = SimPlayer.join(server, level, stand);
+		// harness only: there is no vanilla gamerule for VillageSiege. The gate skips it while the owner stands inside the claim.
+		if (!scenario.villageSiege()) SiegeGate.suppressInsideClaim(level, bell, Balance.CLAIM_RADIUS);
 		for (ScenarioAction a : schedule.setupActions()) runAction(a);
 		schedule.markSetupDone();
 		if (heart != null) {
