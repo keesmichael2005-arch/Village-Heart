@@ -44,6 +44,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -572,6 +573,62 @@ public class SmithGameTests {
 		});
 	}
 
+	// ---- T-L2-2c --------------------------------------------------------------------------------------
+
+	/** Combat wins. While the golem is fighting, the repair goal is not running. The repair still happens after the zombie dies. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_fight", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void golemFightsFirst(GameTestHelper h) {
+		IronGolem[] golem = new IronGolem[1];
+		Zombie[] zombie = new Zombie[1];
+		Villager[] smith = new Villager[1];
+		boolean[] sawTarget = {false};
+		boolean[] repairWhileFighting = {false};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.pen(h, 2);
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			putStore(h, Items.IRON_INGOT, 3);
+			setDayTime(h, 2000);
+			smith[0] = hire(h);
+			sealNorth(h, true);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			BlockPos spot = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			BlockPos origin = h.absolutePos(BlockPos.ZERO);
+			BlockPos at = spot.offset(8, 0, 0);
+			golem[0] = summonHurt(h, at, 40f);
+			BlockPos zAt = at.offset(6, 0, 0);
+			zombie[0] = h.spawn(EntityType.ZOMBIE, new BlockPos(zAt.getX() - origin.getX(), zAt.getY() - origin.getY(), zAt.getZ() - origin.getZ()));
+			zombie[0].setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+			log("fight golem " + at + " zombie " + zAt + " spot " + spot);
+		}).thenExecuteFor(2000, () -> {
+			if (golem[0].getTarget() != null) {
+				sawTarget[0] = true;
+				if (repairRunning(golem[0])) repairWhileFighting[0] = true;
+			}
+		}).thenExecute(() -> {
+			h.assertTrue(sawTarget[0], "the golem never targeted the zombie");
+			h.assertFalse(repairWhileFighting[0], "the repair goal ran while the golem had a target");
+			h.assertFalse(zombie[0].isAlive(), "the zombie lived, golem health " + golem[0].getHealth());
+			sealNorth(h, false);
+			log("zombie down, repair goal stayed out of the fight");
+		}).thenWaitUntil(() -> h.assertTrue(golem[0].isAlive() && golem[0].getHealth() > 90f, "health " + golem[0].getHealth())
+		).thenExecute(() -> {
+			long units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("GOLEM_REPAIR")).count();
+			h.assertValueEqual(3L, units, "three repair ingots after the fight");
+			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "three ingots consumed");
+			log("repair after the fight, health " + golem[0].getHealth());
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** Glass across the yard just north of the Smithy door, so the smith and the penned villagers stay behind it. */
+	private static void sealNorth(GameTestHelper h, boolean close) {
+		for (int x = 0; x <= 31; x++) for (int y = 1; y <= 3; y++) {
+			BlockPos p = new BlockPos(x, y, 3);
+			if (close) h.setBlock(p, Blocks.GLASS);
+			else if (h.getBlockState(p).is(Blocks.GLASS)) h.setBlock(p, Blocks.AIR);
+		}
+	}
+
 	// ---- creeper --------------------------------------------------------------------------------------
 
 	/** An iron golem inside the claim does not take a creeper as its target. */
@@ -947,6 +1004,14 @@ public class SmithGameTests {
 	private static boolean hasRepairGoal(IronGolem g) {
 		var goals = ((dev.villageheart.gametest.mixin.MobGoalAccessor) (Object) g).villageheart$goals();
 		for (var wrapped : goals.getAvailableGoals()) if (wrapped.getGoal() instanceof dev.villageheart.golem.SmithyRepairGoal) return true;
+		return false;
+	}
+
+	private static boolean repairRunning(IronGolem g) {
+		var goals = ((dev.villageheart.gametest.mixin.MobGoalAccessor) (Object) g).villageheart$goals();
+		for (var wrapped : goals.getAvailableGoals()) {
+			if (wrapped.getGoal() instanceof dev.villageheart.golem.SmithyRepairGoal && wrapped.isRunning()) return true;
+		}
 		return false;
 	}
 
