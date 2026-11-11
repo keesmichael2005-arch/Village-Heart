@@ -59,10 +59,16 @@ public final class WorkerSystem implements VillageSystem {
 		LevelUpFeedback.register();
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> WorkXp.clear());
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());
+			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) {
+				dev.villageheart.worker.smith.SmithJob.dropCarried(level, v);
+				Workers.fireById(level.getServer(), v.getUUID());
+			}
 		});
 		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, context) -> {
-			if (previous instanceof Villager v && v.level() instanceof ServerLevel level) Workers.fireById(level.getServer(), v.getUUID());
+			if (previous instanceof Villager v && v.level() instanceof ServerLevel level) {
+				dev.villageheart.worker.smith.SmithJob.dropCarried(level, v);
+				Workers.fireById(level.getServer(), v.getUUID());
+			}
 			// unconditional on the namespace, no record lookup: the result of a conversion never keeps a mod profession
 			if (converted instanceof VillagerDataHolder holder && ModProfessions.isModProfession(holder.getVillagerData().profession())) {
 				// level 1 too: the level badge of a worker (M15) must not survive as a vanilla level on the cured villager

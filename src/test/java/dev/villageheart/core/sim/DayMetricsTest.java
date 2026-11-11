@@ -41,9 +41,27 @@ class DayMetricsTest {
 		assertEquals(1.0, f.get("workers.status.needs_tool"));
 		assertEquals(2.0, f.get("workers.status.ok"));
 		assertEquals(30.0, f.get("stockpile.tag.minecraft:logs"));
+		assertEquals(0.0, f.get("golems.vanilla_blocked"));
+		assertEquals(0.0, f.get("golems.in_claim"));
 		for (String k : f.keySet()) assertTrue(MetricNames.isKnown(k), "unknown flattened key " + k);
 		// absent keys read 0 through the table
 		assertFalse(SimFixtures.day(1, 8).flatten().containsKey("work.lumberjack.logs"));
+	}
+
+	@Test
+	void golemSampleAndSmithCountersFlatten() {
+		DayMetrics d = new DayMetrics(1, 100, true, 5, 5, 0, 1, 1, 0, Map.of(), 0, 0, 0, List.of(), TickStats.EMPTY, 0, 0, 0, 0, 0,
+				Map.of("blacksmith.ingots", 8L, "blacksmith.golems_built", 1L, "blacksmith.crafted.stone_pickaxe", 1L), Map.of(), Map.of(),
+				DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO, new DayMetrics.GolemDay(210, 1));
+		Map<String, Double> f = d.flatten();
+		assertEquals(210.0, f.get("golems.vanilla_blocked"));
+		assertEquals(1.0, f.get("golems.in_claim"));
+		assertEquals(8.0, f.get("work.blacksmith.ingots"));
+		assertEquals(1.0, f.get("work.blacksmith.golems_built"));
+		assertEquals(1.0, f.get("work.blacksmith.crafted.stone_pickaxe"));
+		assertTrue(MetricNames.isKnown("golems.vanilla_blocked"));
+		assertTrue(MetricNames.isKnown("golems.in_claim"));
+		assertTrue(MetricNames.isKnown("work.blacksmith.ingots"));
 	}
 
 	@Test

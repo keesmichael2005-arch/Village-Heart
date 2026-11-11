@@ -52,6 +52,8 @@ public final class SimMetricsCollector {
 	private volatile boolean enabled = true;
 	private final List<Pending> pending = new ArrayList<>();
 	private final Set<UUID> seen = new HashSet<>();
+	/** {@link dev.villageheart.golem.GolemGate#blocked()} is cumulative; each day records the increase. */
+	private long lastVanillaBlocked;
 
 	public SimMetricsCollector(ServerLevel level, Vec3 centre, int radius) {
 		this.level = level;
@@ -244,7 +246,22 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay());
+				needsDay(server, village), wageDay(), golemDay(village));
+	}
+
+	/** Vanilla spawns the gate refused since the last sample, and iron golems standing in the claim now. */
+	private DayMetrics.GolemDay golemDay(Optional<VillageState> village) {
+		long blocked = dev.villageheart.golem.GolemGate.blocked();
+		long delta = Math.max(0, blocked - lastVanillaBlocked);
+		lastVanillaBlocked = blocked;
+		if (village.isEmpty()) return new DayMetrics.GolemDay(delta, 0);
+		var v = village.get();
+		int r = Balance.CLAIM_RADIUS;
+		AABB box = new AABB(v.heart().x() - r, v.heart().y() - r, v.heart().z() - r, v.heart().x() + r + 1, v.heart().y() + r + 1,
+				v.heart().z() + r + 1);
+		long inClaim = level.getEntities(EntityType.IRON_GOLEM, box, e -> e.isAlive()
+				&& dev.villageheart.core.ClaimGeometry.inClaim(v.heart(), VillageClaims.locate(level, e.blockPosition()))).size();
+		return new DayMetrics.GolemDay(delta, inClaim);
 	}
 
 	/** The wage runs of the day (reset here, M12). */

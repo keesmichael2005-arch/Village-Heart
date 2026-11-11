@@ -11,18 +11,25 @@ import static dev.villageheart.gametest.SmithTestSupport.setDayTime;
 import static dev.villageheart.gametest.SmithTestSupport.smithBound;
 import static dev.villageheart.gametest.SmithTestSupport.walkBlocks;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.gear.CraftTier;
 import dev.villageheart.core.gear.GearNeed;
 import dev.villageheart.core.gear.ToolRecipe;
 import dev.villageheart.core.gear.ToolRecipes;
 import dev.villageheart.core.smith.RepairRules;
+import dev.villageheart.core.smith.SmithDecision;
 import dev.villageheart.core.smith.SmithKind;
 import dev.villageheart.core.smith.SmithRecipe;
 import dev.villageheart.core.smith.SmithRecipes;
+import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.golem.GolemGate;
+import dev.villageheart.stock.StackKey;
+import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.worker.job.WorkerStatuses;
 import dev.villageheart.worker.smith.SmithRuntime;
+import dev.villageheart.worker.smith.SmithyLayout;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +39,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -270,6 +282,329 @@ public class SmithGameTests {
 			h.assertTrue(finish - commit >= 600 - 20, "commit to finish was " + (finish - commit) + ", wanted >= 580");
 			VillageTestSupport.done(h);
 		});
+	}
+
+	// ---- T-L2-4b --------------------------------------------------------------------------------------
+
+	/** A hired cook keeps two coal. A third coal is enough for eight ingots and no more. */
+	@GameTest(environment = "villageheart-gametest:smith_cook_fuel", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void smithLeavesCookFuel(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> SmithTestSupport.addKitchen(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.kitchenMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			putStore(h, Items.RAW_IRON, 16);
+			putStore(h, Items.COAL, 2);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireCook(h);
+			smith[0] = hire(h);
+			log("cook fuel: two coal reserved");
+		}).thenWaitUntil(() -> {
+			h.assertTrue(SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()) == SmithDecision.Hint.NEEDS_FUEL,
+					"hint " + SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()));
+			h.assertValueEqual(2L, count(h, Items.COAL), "the cook's coal");
+			h.assertValueEqual(0L, count(h, Items.IRON_INGOT), "no ingots while the reserve holds");
+		}).thenExecute(() -> putStore(h, Items.COAL, 1)).thenWaitUntil(() ->
+				h.assertValueEqual(8L, count(h, Items.IRON_INGOT), "eight ingots from the one spare coal")
+		).thenExecute(() -> {
+			h.assertValueEqual(2L, count(h, Items.COAL), "two coal still held for the cook");
+			h.assertValueEqual(8L, count(h, Items.RAW_IRON), "the rest of the ore waits");
+			log("cook fuel left 2 coal, smelted 8");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5 ---------------------------------------------------------------------------------------
+
+	/** A miner with an empty chest gets one stone pickaxe, made slowly, and nothing wooden. */
+	@GameTest(environment = "villageheart-gametest:smith_stone_pick", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void minerWithoutPickaxeGetsStone(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		Villager[] miner = new Villager[1];
+		long[] t0 = {0};
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			putStore(h, Items.OAK_PLANKS, 4);
+			putStore(h, Items.STICK, 2);
+			putStore(h, Items.COBBLESTONE, 3);
+			setDayTime(h, 1000);
+			t0[0] = h.getTick();
+			miner[0] = SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+			log("stone pick bound " + (smithBound(1, 1200, walkBlocks()) + 400));
+		}).thenWaitUntil(() -> {
+			boolean pick = SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE);
+			h.assertTrue(pick, "stone pickaxe in the mine chest");
+			h.assertTrue(WorkerStatuses.get(miner[0].getUUID()) != WorkerStatus.NEEDS_TOOL, "miner still needs a pickaxe");
+		}).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			long crafts = units.stream().filter(u -> u.kind().equals("CRAFT")).count();
+			h.assertValueEqual(1L, crafts, "one craft: " + units);
+			h.assertTrue(units.stream().anyMatch(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:stone_pickaxe")), "the craft is a stone pickaxe");
+			h.assertTrue(units.stream().noneMatch(u -> u.id().equals("minecraft:wooden_pickaxe")), "no wooden pickaxe");
+			long commit = units.stream().filter(u -> u.kind().equals("COMMIT")).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+			long finish = units.stream().filter(u -> u.kind().equals("CRAFT")).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+			log("stone pick commit " + commit + " finish " + finish + " delta " + (finish - commit) + " took " + (h.getTick() - t0[0]));
+			h.assertTrue(finish - commit >= 1200 - 20, "commit to finish was " + (finish - commit));
+			h.assertValueEqual(4L, count(h, Items.OAK_PLANKS), "planks were not used");
+			h.assertValueEqual(0L, count(h, Items.COBBLESTONE), "cobble");
+			h.assertValueEqual(0L, count(h, Items.STICK), "sticks");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5g --------------------------------------------------------------------------------------
+
+	/** An iron axe already in Storage is carried to the camp. The smith does not make another. */
+	@GameTest(environment = "villageheart-gametest:smith_stored_axe", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void storedToolDeliveredNotCrafted(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> SmithTestSupport.addLumberCamp(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			putStore(h, Items.IRON_AXE, 1);
+			putStore(h, Items.IRON_INGOT, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireLumberjack(h);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.campChest(), Items.IRON_AXE), "the stored axe is in the camp")
+		).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("CRAFT")), "no craft: " + units);
+			h.assertValueEqual(3L, count(h, Items.IRON_INGOT), "ingots were not spent");
+			h.assertValueEqual(0L, count(h, Items.IRON_AXE), "the axe left Storage");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-6 ---------------------------------------------------------------------------------------
+
+	/** A damaged chestplate in the Smithy chest is repaired there and never picked up. */
+	@GameTest(environment = "villageheart-gametest:smith_repair_chest", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void repairsInSmithyChest(GameTestHelper h) {
+		boolean[] left = {false};
+		scene(h).thenExecute(() -> {
+			ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
+			plate.setDamageValue(200);
+			var chest = StockpileTestSupport.container(h, SmithTestSupport.smithyChest());
+			chest.setItem(0, plate);
+			putStore(h, Items.IRON_INGOT, 5);
+			setDayTime(h, 1000);
+			hire(h);
+		}).thenWaitUntil(() -> {
+			ItemStack s = StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).getItem(0);
+			if (s.isEmpty() || !s.is(Items.IRON_CHESTPLATE)) left[0] = true;
+			h.assertTrue(s.is(Items.IRON_CHESTPLATE) && s.getDamageValue() == 20, "damage " + (s.isEmpty() ? "empty" : s.getDamageValue()));
+		}).thenExecute(() -> {
+			h.assertFalse(left[0], "the chestplate left the Smithy chest");
+			h.assertValueEqual(2L, count(h, Items.IRON_INGOT), "three ingots spent");
+			log("chestplate repaired to 20");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5f --------------------------------------------------------------------------------------
+
+	/** One guard missing a sword and a chestplate gets the sword first, then the chestplate. Both are slow. */
+	@GameTest(environment = "villageheart-gametest:smith_guard_gear", structure = YARD, skyAccess = true, maxTicks = 12000)
+	public void craftsGuardGear(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		Villager[] guard = new Villager[1];
+		scene(h).thenExecute(() -> SmithTestSupport.addBarracks(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.barracksMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			putStore(h, Items.IRON_INGOT, 10);
+			putStore(h, Items.STICK, 1);
+			setDayTime(h, 1000);
+			guard[0] = SmithTestSupport.hireGuard(h);
+			guard[0].setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+			guard[0].setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+			guard[0].setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
+			guard[0].setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
+			smith[0] = hire(h);
+			log("guard gear: sword then chestplate");
+		}).thenWaitUntil(() -> {
+			int sword = gearSeen(h, guard[0], Items.IRON_SWORD);
+			int chest = gearSeen(h, guard[0], Items.IRON_CHESTPLATE);
+			h.assertTrue(sword >= 1 && chest >= 1, "sword " + sword + " chestplate " + chest);
+		}).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			var crafts = units.stream().filter(u -> u.kind().equals("CRAFT")).toList();
+			h.assertTrue(crafts.size() >= 2, "two crafts: " + units);
+			h.assertTrue(crafts.get(0).id().equals("minecraft:iron_sword"), "sword first, got " + crafts.get(0).id());
+			h.assertTrue(crafts.get(1).id().equals("minecraft:iron_chestplate"), "chestplate second, got " + crafts.get(1).id());
+			for (String id : new String[] {"minecraft:iron_sword", "minecraft:iron_chestplate"}) {
+				long commit = units.stream().filter(u -> u.kind().equals("COMMIT") && u.id().equals(id)).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+				long finish = units.stream().filter(u -> u.kind().equals("CRAFT") && u.id().equals(id)).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+				log(id + " commit " + commit + " finish " + finish + " delta " + (finish - commit));
+				h.assertTrue(finish - commit >= 2400 - 20, id + " commit to finish was " + (finish - commit));
+			}
+			h.assertValueEqual(0L, count(h, Items.IRON_INGOT), "ingots");
+			h.assertValueEqual(0L, count(h, Items.STICK), "sticks");
+			h.assertTrue(guard[0].isAlive(), "the guard is still here");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-1 ---------------------------------------------------------------------------------------
+
+	/** Thirty-six ingots and a carved pumpkin become one player-built iron golem, and the iron is accounted for. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_build", structure = YARD, skyAccess = true, maxTicks = 24400)
+	public void golemFromThirtySixIngots(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		boolean[] sawBuilding = {false};
+		boolean[] sawLit = {false};
+		long[] startDay = {0};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			SmithTestSupport.pen(h, 4);
+			putStore(h, Items.IRON_INGOT, 50);
+			putStore(h, Items.CARVED_PUMPKIN, 2);
+			setDayTime(h, 1000);
+			startDay[0] = h.getLevel().getDayTime();
+			smith[0] = hire(h);
+			h.assertValueEqual(0, SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80), "no golem yet");
+			log("golem build start day " + startDay[0]);
+		}).thenWaitUntil(() -> {
+			if (SmithRuntime.activity(h.getLevel().getServer(), smith[0].getUUID()) == dev.villageheart.core.heart.ActivityKind.BUILDING_GOLEM) sawBuilding[0] = true;
+			if (lit(h)) sawLit[0] = true;
+			h.assertValueEqual(1, SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80), "one golem");
+		}).thenExecute(() -> {
+			long spawnDay = h.getLevel().getDayTime();
+			log("golem spawn day " + spawnDay + " delta " + (spawnDay - startDay[0]) + " building " + sawBuilding[0] + " lit " + sawLit[0]);
+			h.assertTrue(spawnDay - startDay[0] <= 24_000, "spawn took " + (spawnDay - startDay[0]) + " day ticks");
+			h.assertTrue(sawBuilding[0], "the smith was building a golem");
+			h.assertTrue(sawLit[0], "the furnace was lit during the build");
+			IronGolem g = h.getLevel().getEntities(EntityType.IRON_GOLEM, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(80),
+					e -> true).get(0);
+			h.assertTrue(g.isPlayerCreated(), "the golem is player-built");
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker()));
+			h.assertTrue(scan.isPresent(), "the smithy scan");
+			var spot = SmithyLayout.waitSpot(h.getLevel(), scan.get());
+			h.assertTrue(spot.isPresent(), "a wait spot");
+			h.assertTrue(g.blockPosition().distSqr(spot.get()) <= 8 * 8, "golem at " + g.blockPosition() + " spot " + spot.get());
+			h.assertValueEqual(14, SmithTestSupport.ironTotal(h), "iron left");
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.CARVED_PUMPKIN), "one pumpkin left");
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().golemBuilds().isEmpty(), "no build still saved");
+		}).thenExecuteFor(400, () ->
+				h.assertValueEqual(1, SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80), "still one golem")
+		).thenExecute(() -> {
+			h.assertValueEqual(14, SmithTestSupport.ironTotal(h), "iron stayed 14");
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.CARVED_PUMPKIN), "pumpkin stayed 1");
+			h.assertFalse(lit(h), "the furnace is dark after the build");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-8b --------------------------------------------------------------------------------------
+
+	/** Killing the smith while it carries the golem's iron drops that iron. The reservation does not keep it. */
+	@GameTest(environment = "villageheart-gametest:smith_death_drop", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void smithDeathDropsCarried(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.pen(h, 4);
+			putStore(h, Items.IRON_INGOT, 36);
+			putStore(h, Items.CARVED_PUMPKIN, 1);
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> {
+			int iron = smith[0].getInventory().countItem(Items.IRON_INGOT);
+			int pumpkin = smith[0].getInventory().countItem(Items.CARVED_PUMPKIN);
+			int progress = VillageClaims.current(h.getLevel().getServer()).map(v -> v.golemProgress(BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker()))).orElse(-1);
+			h.assertTrue(iron >= 36 && pumpkin >= 1 && progress < 0, "carrying iron " + iron + " pumpkin " + pumpkin + " progress " + progress);
+		}).thenExecute(() -> {
+			smith[0].kill(h.getLevel());
+		}).thenExecute(() -> {
+			h.assertValueEqual(36, SmithTestSupport.ironTotal(h), "the ingots are still in the world");
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.CARVED_PUMPKIN), "the pumpkin is still in the world");
+			h.assertValueEqual(0, Stockpiles.reservations(h.getLevel().getServer()).reservedBy(smith[0].getUUID(), StackKey.of(Items.IRON_INGOT)), "iron reservation");
+			h.assertValueEqual(0, Stockpiles.reservations(h.getLevel().getServer()).reservedBy(smith[0].getUUID(), StackKey.of(Items.CARVED_PUMPKIN)), "pumpkin reservation");
+			log("death dropped the carried golem materials");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-2 ---------------------------------------------------------------------------------------
+
+	/** A golem at 40 health walks to the Smithy and is repaired with exactly three ingots. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_repair", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void damagedGolemRepairedAtSmithy(GameTestHelper h) {
+		IronGolem[] golem = new IronGolem[1];
+		Villager[] smith = new Villager[1];
+		BlockPos[] summoned = new BlockPos[1];
+		boolean[] sawWaiting = {false};
+		boolean[] healFar = {false};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			putStore(h, Items.IRON_INGOT, 10);
+			setDayTime(h, 2000);
+			smith[0] = hire(h);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			BlockPos spot = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			BlockPos origin = h.absolutePos(BlockPos.ZERO);
+			BlockPos at = spot.offset(16, 0, 0);
+			IronGolem g = h.spawn(EntityType.IRON_GOLEM, new BlockPos(at.getX() - origin.getX(), at.getY() - origin.getY(), at.getZ() - origin.getZ()));
+			g.setPlayerCreated(true);
+			g.setHealth(40f);
+			golem[0] = g;
+			summoned[0] = at;
+			log("golem repair summoned at " + at + " spot " + spot);
+		}).thenWaitUntil(() -> {
+			if (golem[0].blockPosition().distSqr(summoned[0]) >= 1 && golem[0].getHealth() <= 40.01f) {
+				var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+				BlockPos spot = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+				if (golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot)) <= 1.5) sawWaiting[0] = true;
+			}
+			if (golem[0].getHealth() > 40.01f && golem[0].blockPosition().distSqr(summoned[0]) < 10 * 10) healFar[0] = true;
+			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
+		}).thenExecute(() -> {
+			long units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("GOLEM_REPAIR")).count();
+			h.assertValueEqual(3L, units, "three repair ingots");
+			h.assertTrue(sawWaiting[0], "the golem waited at the spot before the first heal");
+			h.assertFalse(healFar[0], "a heal happened near where the golem was summoned");
+			h.assertValueEqual(7, SmithTestSupport.ironTotal(h), "three ingots consumed");
+			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
+			log("golem repaired, health " + golem[0].getHealth() + " repair units " + units);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- creeper --------------------------------------------------------------------------------------
+
+	/** An iron golem inside the claim does not take a creeper as its target. */
+	@GameTest(environment = "villageheart-gametest:smith_creeper", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void golemIgnoresCreeper(GameTestHelper h) {
+		IronGolem[] golem = new IronGolem[1];
+		Creeper[] creeper = new Creeper[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), 32);
+			IronGolem g = h.spawn(EntityType.IRON_GOLEM, new BlockPos(4, 0, 20));
+			g.setPlayerCreated(true);
+			Creeper c = h.spawn(EntityType.CREEPER, new BlockPos(10, 0, 20));
+			c.setNoAi(true);
+			golem[0] = g;
+			creeper[0] = c;
+		}).thenExecuteFor(80, () -> {
+			h.assertTrue(!(golem[0].getTarget() instanceof Creeper), "the golem targeted " + golem[0].getTarget());
+			h.assertTrue(creeper[0].isAlive() && !creeper[0].isRemoved(), "the creeper is gone");
+		}).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	/** Storage, the smith's hands and one villager's worn slots. Cheap enough to sample every tick. */
+	private static int gearSeen(GameTestHelper h, Villager who, net.minecraft.world.item.Item item) {
+		int n = (int) count(h, item);
+		for (Villager v : h.getLevel().getEntities(EntityType.VILLAGER, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(48), e -> true)) {
+			n += v.getInventory().countItem(item);
+			for (EquipmentSlot slot : EquipmentSlot.values()) if (v.getItemBySlot(slot).is(item)) n += v.getItemBySlot(slot).getCount();
+		}
+		if (who != null) {
+			// who is already in the villager scan
+		}
+		return n;
 	}
 
 	private static ItemStack stack(String id) { return new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(id))); }

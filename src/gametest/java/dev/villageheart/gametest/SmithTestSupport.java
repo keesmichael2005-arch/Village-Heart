@@ -18,14 +18,20 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 
@@ -61,6 +67,18 @@ public final class SmithTestSupport {
 	public static void releaseForced(ServerLevel level) {
 		for (long key : FORCED) level.setChunkForced((int) (key >> 32), (int) key, false);
 		FORCED.clear();
+	}
+
+	/**
+	 * Stone on the air at the door's ground level (y = 0), north of the Smithy and Storage. A real village path sits level
+	 * with the floor the door stands on; the yard's grass is one block lower, so {@link dev.villageheart.worker.smith.SmithyLayout#waitSpot}
+	 * would otherwise find nothing to stand on.
+	 */
+	public static void pave(GameTestHelper h) {
+		for (int x = 0; x <= 31; x++) for (int z = 0; z <= 3; z++) {
+			BlockPos p = new BlockPos(x, 0, z);
+			if (h.getBlockState(p).isAir()) h.setBlock(p, Blocks.STONE);
+		}
 	}
 
 	/** A stone pad with air above it, glass only on the rim, so a golem has somewhere to stand and the villagers stay put. */
@@ -149,6 +167,7 @@ public final class SmithTestSupport {
 			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.TOWN);
 			BuildingTestSupport.placeMarker(h, BuildingType.SMITHY, smithyMarker(), Direction.NORTH);
 			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker(), Direction.NORTH);
+			pave(h);
 		}).thenWaitUntil(() -> {
 			BuildingTestSupport.assertStatus(h, smithyMarker(), dev.villageheart.block.MarkerStatus.VALID);
 			BuildingTestSupport.assertStatus(h, storeMarker(), dev.villageheart.block.MarkerStatus.VALID);
@@ -183,6 +202,117 @@ public final class SmithTestSupport {
 		var data = v.getAttached(WorkerAttachments.WORKER);
 		h.assertTrue(data != null && data.jobBlock().equals(BuildingTestSupport.loc(h, furnace())), "the job block is the blast furnace");
 		return v;
+	}
+
+	/** A Kitchen that does not overlap the Smithy or Storage. The cook is what keeps the smith off the fuel reserve. */
+	public static final BlockPos KITCHEN = new BlockPos(22, 0, 16);
+
+	public static BlockPos kitchenMarker() { return BuildingTestSupport.markerPos(KITCHEN, 4); }
+
+	public static void addKitchen(GameTestHelper h) {
+		BuildingTestSupport.room(h, KITCHEN, 4, 4);
+		h.setBlock(BuildingTestSupport.inside(KITCHEN, 0, 0, 0), Blocks.SMOKER);
+		h.setBlock(BuildingTestSupport.inside(KITCHEN, 2, 0, 0), Blocks.CRAFTING_TABLE);
+		h.setBlock(BuildingTestSupport.inside(KITCHEN, 0, 0, 2), Blocks.CHEST);
+		h.setBlock(BuildingTestSupport.inside(KITCHEN, 2, 0, 2), Blocks.TORCH);
+		BuildingTestSupport.placeMarker(h, BuildingType.KITCHEN, kitchenMarker(), Direction.NORTH);
+	}
+
+	public static Villager hireCook(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, BuildingTestSupport.inside(KITCHEN, 1, 0, 1));
+		HireResult r = Workers.hire(h.getLevel(), v, JobType.COOK, Optional.of(BuildingTestSupport.loc(h, kitchenMarker())));
+		h.assertTrue(r instanceof HireResult.Hired, "the cook was hired: " + r);
+		return v;
+	}
+
+	/** A Mine plus a linked shaft, clear of the Smithy (x 8..13) and Storage (x 16..21). */
+	public static final BlockPos MINE = new BlockPos(0, 0, 18);
+	public static final int[] SHAFT = {28, 28};
+
+	public static BlockPos mineMarker() { return BuildingTestSupport.markerPos(MINE, 4); }
+
+	public static BlockPos mineChest() { return BuildingTestSupport.inside(MINE, 2, 0, 2); }
+
+	public static BlockPos mineSpawn() { return BuildingTestSupport.inside(MINE, 1, 0, 1); }
+
+	public static void addMine(GameTestHelper h) {
+		BuildingTestSupport.room(h, MINE, 4, 4);
+		h.setBlock(BuildingTestSupport.inside(MINE, 0, 0, 0), Blocks.STONECUTTER);
+		h.setBlock(mineChest(), Blocks.CHEST);
+		h.setBlock(BuildingTestSupport.inside(MINE, 2, 0, 0), Blocks.TORCH);
+		MineTestSupport.buildShaft(h, 0, SHAFT);
+		BuildingTestSupport.placeMarker(h, BuildingType.MINE, mineMarker(), Direction.NORTH);
+		BuildingTestSupport.placeMarker(h, BuildingType.MINESHAFT, MineTestSupport.shaftMarker(0, SHAFT), Direction.SOUTH);
+	}
+
+	public static Villager hireMiner(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, mineSpawn());
+		HireResult r = Workers.hire(h.getLevel(), v, JobType.MINER, Optional.of(BuildingTestSupport.loc(h, mineMarker())));
+		h.assertTrue(r instanceof HireResult.Hired, "the miner was hired: " + r);
+		return v;
+	}
+
+	/** A one-guard Barracks, clear of the Smithy and Storage. */
+	public static final BlockPos BARRACKS = new BlockPos(22, 0, 16);
+
+	public static BlockPos barracksMarker() { return BuildingTestSupport.markerPos(BARRACKS, 4); }
+
+	public static BlockPos barracksChest() { return BuildingTestSupport.inside(BARRACKS, 0, 0, 2); }
+
+	public static void addBarracks(GameTestHelper h) {
+		BuildingTestSupport.room(h, BARRACKS, 4, 4);
+		h.setBlock(BuildingTestSupport.inside(BARRACKS, 0, 0, 0), Blocks.GRINDSTONE);
+		WorkerTestSupport.bed(h, BuildingTestSupport.inside(BARRACKS, 2, 0, 1));
+		h.setBlock(barracksChest(), Blocks.CHEST);
+		h.setBlock(BuildingTestSupport.inside(BARRACKS, 2, 0, 0), Blocks.TORCH);
+		BuildingTestSupport.placeMarker(h, BuildingType.BARRACKS, barracksMarker(), Direction.NORTH);
+	}
+
+	public static Villager hireGuard(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, BuildingTestSupport.inside(BARRACKS, 1, 0, 1));
+		HireResult r = Workers.hire(h.getLevel(), v, JobType.GUARD, Optional.of(BuildingTestSupport.loc(h, barracksMarker())));
+		h.assertTrue(r instanceof HireResult.Hired, "the guard was hired: " + r);
+		return v;
+	}
+
+	/** Unemployed villagers behind an iron door, so they count toward the golem cap and cannot wander out. */
+	public static void pen(GameTestHelper h, int villagers) {
+		BlockPos o = new BlockPos(0, 0, 11);
+		for (int x = 0; x <= 4; x++) for (int z = 0; z <= 4; z++) {
+			boolean wall = x == 0 || x == 4 || z == 0 || z == 4;
+			boolean gate = x == 2 && z == 0;
+			for (int y = 1; y <= 2; y++) if (wall && !gate) h.setBlock(o.offset(x, y, z), Blocks.GLASS);
+			h.setBlock(o.offset(x, 3, z), Blocks.OAK_PLANKS);
+		}
+		BlockPos door = o.offset(2, 1, 0);
+		var iron = Blocks.IRON_DOOR.defaultBlockState().setValue(DoorBlock.FACING, Direction.NORTH);
+		h.setBlock(door, iron.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER));
+		h.setBlock(door.above(), iron.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+		for (int i = 0; i < villagers; i++) WorkerTestSupport.spawnVillager(h, o.offset(1 + (i % 2), 1, 1 + i / 2));
+	}
+
+	/** Iron ingots in building containers, villager inventories, worn slots and item entities around the yard. */
+	public static int ironTotal(GameTestHelper h) { return worldCount(h, net.minecraft.world.item.Items.IRON_INGOT); }
+
+	public static int worldCount(GameTestHelper h, Item item) {
+		ServerLevel level = h.getLevel();
+		BlockPos origin = h.absolutePos(BlockPos.ZERO);
+		int n = 0;
+		for (int x = -2; x <= 40; x++) for (int y = 0; y <= 20; y++) for (int z = -2; z <= 40; z++) {
+			if (level.getBlockEntity(origin.offset(x, y, z)) instanceof Container c) {
+				for (int i = 0; i < c.getContainerSize(); i++) if (c.getItem(i).is(item)) n += c.getItem(i).getCount();
+			}
+		}
+		AABB box = new AABB(origin).inflate(48);
+		for (Villager v : level.getEntities(EntityType.VILLAGER, box, e -> true)) {
+			n += v.getInventory().countItem(item);
+			for (EquipmentSlot slot : EquipmentSlot.values()) {
+				ItemStack worn = v.getItemBySlot(slot);
+				if (worn.is(item)) n += worn.getCount();
+			}
+		}
+		for (ItemEntity it : level.getEntities(EntityType.ITEM, box, e -> e.getItem().is(item))) n += it.getItem().getCount();
+		return n;
 	}
 
 	public static Villager villagerAt(ServerLevel level, BlockPos feet) {

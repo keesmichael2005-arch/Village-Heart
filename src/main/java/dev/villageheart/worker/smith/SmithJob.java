@@ -134,6 +134,35 @@ public final class SmithJob {
 		st.needsPlan = true;
 	}
 
+	/**
+	 * A smith who dies drops the job items it was carrying (ingots, a pumpkin, ore, fuel, gear in transit). Call this while the
+	 * villager still exists, before {@link #forget}.
+	 */
+	public static void dropCarried(ServerLevel level, Villager v) {
+		releaseCarried(level, v, true);
+	}
+
+	/** A smith who is fired hands those same items to Storage, and drops whatever does not fit. */
+	public static void handIn(ServerLevel level, Villager v) {
+		releaseCarried(level, v, false);
+	}
+
+	private static void releaseCarried(ServerLevel level, Villager v, boolean drop) {
+		SmithRuntime.State st = SmithRuntime.get(level.getServer()).workers.get(v.getUUID());
+		if (st == null) return;
+		var inv = v.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack stack = inv.getItem(i);
+			if (stack.isEmpty()) continue;
+			String id = SmithCatalog.id(stack.getItem());
+			if (!st.keep.contains(id) && !st.overnight.contains(id)) continue;
+			inv.setItem(i, ItemStack.EMPTY);
+			ItemStack moving = stack.copy();
+			if (!drop) Stockpiles.deposit(level, v.blockPosition(), moving);
+			if (!moving.isEmpty()) Containers.dropItemStack(level, v.getX(), v.getY(), v.getZ(), moving);
+		}
+	}
+
 	public static void forget(MinecraftServer server, UUID smith) {
 		SmithRuntime rt = SmithRuntime.get(server);
 		SmithRuntime.State st = rt.workers.remove(smith);
@@ -204,6 +233,7 @@ public final class SmithJob {
 			}
 			case SmithDecision.FetchAndDeliver f -> {
 				st.hint = SmithDecision.Hint.OK;
+				st.deliverTo = destinationOf(level.getServer(), f.key());
 				startDeliverFetch(level, v, data, st, f.key(), f.itemId(), now);
 			}
 			case SmithDecision.Craft c -> {
@@ -216,6 +246,7 @@ public final class SmithJob {
 				st.hint = SmithDecision.Hint.OK;
 				st.mode = SmithRuntime.Mode.DELIVER;
 				st.carriedTool = del.key();
+				if (st.deliverTo == null) st.deliverTo = destinationOf(level.getServer(), del.key());
 			}
 			case SmithDecision.BuildGolem b -> {
 				st.hint = SmithDecision.Hint.OK;
@@ -400,12 +431,13 @@ public final class SmithJob {
 			st.needsPlan = true;
 			return;
 		}
-		// One walk smelts the pile (up to a stack), not only the planner's batch of 8. The planner still decides that
-		// smelting is the job; the smith checks for a new demand again once the pile is done.
+		// One walk smelts the pile (up to a stack), not only the planner's batch of 8. Heat still stops at the cook's
+		// reserve: a third coal smelts eight ingots and leaves the two the cook keeps.
 		double speed = Math.max(0.01, WorkSpeed.untooled(data.level(), data.needs()));
 		long day = Math.floorMod(level.getDayTime(), (long) Balance.DAY_TICKS);
-		int room = (int) Math.floor((Balance.SMITH_DONE_BY - day - 200) * speed / Balance.SMITH_SMELT_TICKS);
-		room = Math.min(64, Math.max(step.units(), room));
+		int byTime = (int) Math.floor((Balance.SMITH_DONE_BY - day - 200) * speed / Balance.SMITH_SMELT_TICKS);
+		int byHeat = smeltableUnits(level.getServer(), v, bank(level.getServer(), data.jobBlock()));
+		int room = Math.min(64, Math.min(Math.max(0, byTime), Math.max(0, byHeat)));
 		List<String> raws = new ArrayList<>();
 		raws.add(primary.inputs().get(0).itemId());
 		for (SmithRecipe r : SmithRecipes.ALL) {
@@ -475,7 +507,7 @@ public final class SmithJob {
 		give(v, recipe.outputId(), 1);
 		st.keep.add(recipe.outputId());
 		v.swing(InteractionHand.MAIN_HAND);
-		WorkStats.add(JOB, "items", 1);
+		WorkStats.add(JOB, "ingots", 1);
 		WorkXp.award(v, WorkUnit.ITEM_SMITHED, 1);
 		SmithRuntime.get(level.getServer()).log(new SmithRuntime.Unit(v.getUUID(), now, "SMELT", recipe.outputId()));
 		st.batchLeft--;
@@ -540,8 +572,17 @@ public final class SmithJob {
 		beginFetch(level, v, data, st, want, order.key(), now);
 	}
 
+	private static HeartLocation destinationOf(MinecraftServer server, OrderKey key) {
+		var village = VillageClaims.current(server);
+		if (village.isEmpty()) return key.building();
+		for (GearDemand d : DemandCensus.of(server, village.get()).demands()) if (d.key().equals(key)) return d.destination();
+		return key.building();
+	}
+
 	private static void startDeliverFetch(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st, OrderKey key, String itemId, long now) {
 		st.order = null;
+		if (st.deliverTo == null) st.deliverTo = destinationOf(level.getServer(), key);
+		WorkStats.add(JOB, "orders", 1);
 		st.fetchKey = key;
 		st.fetchToolId = itemId;
 		GearOrders.claim(key, v.getUUID(), now, true);
@@ -628,7 +669,7 @@ public final class SmithJob {
 			st.buildStart = now;
 			st.mode = SmithRuntime.Mode.BUILD;
 			st.walk.release(v);
-			WorkStats.add(JOB, "golems_started", 1);
+			WorkStats.add(JOB, "golem_ingots", Balance.GOLEM_INGOTS);
 			return;
 		}
 		if (st.repairGolem != null && st.order == null) {
@@ -697,6 +738,7 @@ public final class SmithJob {
 		st.mode = order.prerequisites().isEmpty() ? SmithRuntime.Mode.CRAFT : SmithRuntime.Mode.PREREQ;
 		st.walk.release(v);
 		SmithRuntime.get(level.getServer()).log(new SmithRuntime.Unit(v.getUUID(), now, "COMMIT", order.recipe().id()));
+		WorkStats.add(JOB, "orders", 1);
 	}
 
 	private static void resumeCraft(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st) {
@@ -813,7 +855,9 @@ public final class SmithJob {
 		give(v, st.order.recipe().outputId(), st.order.recipe().outputCount());
 		int xp = Math.max(1, need / Balance.SMITH_XP_TICKS);
 		WorkXp.award(v, WorkUnit.ITEM_SMITHED, xp);
-		WorkStats.add(JOB, "crafts", 1);
+		WorkStats.add(JOB, "crafted", 1);
+		WorkStats.add(JOB, "crafted." + st.order.recipe().outputId().substring(st.order.recipe().outputId().indexOf(':') + 1), 1);
+		st.deliverTo = st.order.demand().destination();
 		SmithRuntime.get(level.getServer()).log(new SmithRuntime.Unit(v.getUUID(), now, "CRAFT", st.order.recipe().outputId()));
 		st.carriedTool = st.order.key();
 		st.keep.add(st.order.recipe().outputId());
@@ -842,7 +886,8 @@ public final class SmithJob {
 			st.needsPlan = true;
 			return;
 		}
-		BlockPos chest = firstChest(level.getServer(), key.building());
+		HeartLocation dest = st.deliverTo != null ? st.deliverTo : st.order != null ? st.order.demand().destination() : key.building();
+		BlockPos chest = firstChest(level.getServer(), dest);
 		if (chest == null) {
 			st.retryAt = now + 40;
 			st.mode = SmithRuntime.Mode.IDLE;
@@ -856,6 +901,7 @@ public final class SmithJob {
 			Stockpiles.deposit(level, v.blockPosition(), stack);
 			if (!stack.isEmpty()) v.getInventory().addItem(stack);
 			st.blockedUntil.put(key, now + Balance.SMITH_DELIVERY_BACKOFF);
+			WorkStats.add(JOB, "delivery_failed", 1);
 			st.blockedHint = buildingName(level.getServer(), key.building()) + " chest is full";
 			st.hint = SmithDecision.Hint.NO_WORK;
 			st.keep.remove(itemId);
@@ -871,13 +917,16 @@ public final class SmithJob {
 		GearOrders.release(key);
 		st.keep.remove(itemId);
 		st.overnight.remove(itemId);
+		boolean fromStorage = st.order == null;
 		st.carriedTool = null;
 		st.fetchToolId = null;
 		st.order = null;
+		st.deliverTo = null;
 		st.mode = SmithRuntime.Mode.IDLE;
 		st.needsPlan = true;
 		st.walk.release(v);
 		WorkStats.add(JOB, "delivered", 1);
+		if (fromStorage) WorkStats.add(JOB, "delivered_from_storage", 1);
 	}
 
 	// ---- golems ------------------------------------------------------------------------------------
@@ -893,7 +942,7 @@ public final class SmithJob {
 			st.golemAcc = 0;
 			st.buildStart = now;
 			st.mode = SmithRuntime.Mode.BUILD;
-			WorkStats.add(JOB, "golems_started", 1);
+			WorkStats.add(JOB, "golem_ingots", Balance.GOLEM_INGOTS);
 			return;
 		}
 		Map<String, Integer> want = new HashMap<>();
@@ -933,9 +982,7 @@ public final class SmithJob {
 		int whole = (int) Math.min(st.golemAcc, Balance.GOLEM_BUILD_TICKS);
 		if (whole % Balance.SMITH_CRAFT_SAVE_TICKS == 0) GolemBuilds.progress(level.getServer(), data.building(), whole);
 		if (st.golemAcc < Balance.GOLEM_BUILD_TICKS) return;
-		if ((now + v.getId()) % 100 != 0 && st.waitSpot == null) {
-			// try every tick the first time, then every 100 if the spot was missing
-		}
+		if (st.waitSpot != null && (now + v.getId()) % 100 != 0) return;
 		var scan = SmithyLayout.scan(level.getServer(), data.building());
 		if (scan.isEmpty()) return;
 		Optional<BlockPos> spot = SmithyLayout.waitSpot(level, scan.get());
@@ -943,7 +990,10 @@ public final class SmithJob {
 		st.waitSpot = spot.get();
 		var spawned = SpawnUtil.trySpawnMob(EntityType.IRON_GOLEM, EntitySpawnReason.MOB_SUMMONED, level, spot.get(), 10, 2, 3,
 				SpawnUtil.Strategy.LEGACY_IRON_GOLEM, true);
-		if (spawned.isEmpty() || !(spawned.get() instanceof IronGolem g)) return;
+		if (spawned.isEmpty() || !(spawned.get() instanceof IronGolem g)) {
+			WorkStats.add(JOB, "golem_blocked", 1);
+			return;
+		}
 		g.setPlayerCreated(true);
 		level.playSound(null, g.blockPosition(), SoundEvents.IRON_GOLEM_REPAIR, SoundSource.NEUTRAL, 1f, 1f);
 		if (!GolemBuilds.finish(level.getServer(), data.building())) {
@@ -1008,6 +1058,7 @@ public final class SmithJob {
 		v.swing(InteractionHand.MAIN_HAND);
 		level.playSound(null, g.blockPosition(), SoundEvents.IRON_GOLEM_REPAIR, SoundSource.NEUTRAL, 1f, 1f);
 		WorkXp.award(v, WorkUnit.ITEM_SMITHED, 1);
+		WorkStats.add(JOB, "golem_ingots", 1);
 		SmithRuntime.get(level.getServer()).log(new SmithRuntime.Unit(v.getUUID(), now, "GOLEM_REPAIR", "minecraft:iron_ingot"));
 		st.repairIngotsLeft--;
 	}
@@ -1066,6 +1117,7 @@ public final class SmithJob {
 		stack.setDamageValue(RepairRules.after(stack.getDamageValue(), stack.getMaxDamage(), 1));
 		v.swing(InteractionHand.MAIN_HAND);
 		WorkXp.award(v, WorkUnit.ITEM_SMITHED, 1);
+		WorkStats.add(JOB, "repair_units", 1);
 		SmithRuntime.get(level.getServer()).log(new SmithRuntime.Unit(v.getUUID(), now, "REPAIR", hit.job().itemId()));
 		if (RepairRules.units(stack.getDamageValue(), stack.getMaxDamage()) < 1) finishRepair(level, v, st);
 	}
@@ -1145,6 +1197,7 @@ public final class SmithJob {
 		var saved = VillageClaims.current(level.getServer()).flatMap(vs -> vs.smithCraft(data.jobBlock()));
 		saved.ifPresent(c -> SmithCrafts.refund(level.getServer(), data.jobBlock(), c));
 		if (st.order != null) GearOrders.release(st.order.key());
+		WorkStats.add(JOB, "orders_cancelled", 1);
 		st.order = null;
 		st.keep.clear();
 		st.mode = SmithRuntime.Mode.IDLE;
@@ -1182,6 +1235,7 @@ public final class SmithJob {
 					SmithCrafts.refund(server, craft.getKey(), craft.getValue());
 				}
 				GearOrders.release(key);
+				WorkStats.add(JOB, "orders_cancelled", 1);
 			}
 		}
 	}
@@ -1286,6 +1340,29 @@ public final class SmithJob {
 		VillageClaims.data(server).update(v -> v.withSmokerHeat(furnace, Math.max(0, heat)));
 	}
 
+	/** Ingots the fuel on hand can still smelt, after the hired cook's reserve. */
+	private static int smeltableUnits(MinecraftServer server, Villager v, int bank) {
+		Map<String, Integer> count = new HashMap<>();
+		Map<String, Integer> heat = new HashMap<>();
+		for (var t : Stockpiles.snapshot(server).totals()) {
+			if (!t.key().patch().isEmpty()) continue;
+			int h = SmithCatalog.heatOrZero(t.key().id());
+			if (h <= 0 || t.count() <= 0) continue;
+			count.merge(t.key().id(), (int) Math.min(Integer.MAX_VALUE, t.count()), Integer::sum);
+			heat.put(t.key().id(), h);
+		}
+		for (var e : carried(v).entrySet()) {
+			int h = SmithCatalog.heatOrZero(e.getKey());
+			if (h <= 0) continue;
+			count.merge(e.getKey(), e.getValue(), Integer::sum);
+			heat.put(e.getKey(), h);
+		}
+		boolean cook = false;
+		var village = VillageClaims.current(server);
+		if (village.isPresent()) for (var w : village.get().workers()) if (w.jobId().equals(JobType.COOK.id())) cook = true;
+		return (SmithBatch.availableHeat(count, heat, cook) + Math.max(0, bank)) / FuelTable.HEAT_PER_ITEM;
+	}
+
 	private static int loadFuel(MinecraftServer server, Villager v, WorkerData data, int bank) {
 		Map<String, Integer> have = carried(v);
 		List<String> ids = new ArrayList<>();
@@ -1303,6 +1380,7 @@ public final class SmithJob {
 			if (remove(v, id, 1) == 1) {
 				int h = SmithCatalog.heatOrZero(id);
 				setBank(server, data.jobBlock(), bank + h);
+				WorkStats.add(JOB, "fuel_heat", h);
 				return bank + h;
 			}
 		}

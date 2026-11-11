@@ -1,5 +1,6 @@
 package dev.villageheart.mixin;
 
+import dev.villageheart.golem.IgnoreCreeperGoal;
 import dev.villageheart.golem.SmithyRepairGoal;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.golem.AbstractGolem;
@@ -18,5 +19,7 @@ abstract class IronGolemGoalsMixin extends AbstractGolem {
 	@Inject(method = "registerGoals", at = @At("TAIL"))
 	private void villageheart$smithyRepair(CallbackInfo ci) {
 		this.goalSelector.addGoal(1, new SmithyRepairGoal((IronGolem) (Object) this));
+		// After the nearest-attackable goal, so a creeper picked this tick is dropped before the tick ends.
+		this.targetSelector.addGoal(4, new IgnoreCreeperGoal((IronGolem) (Object) this));
 	}
 }

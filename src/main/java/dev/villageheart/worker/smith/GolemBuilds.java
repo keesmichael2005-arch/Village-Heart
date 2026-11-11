@@ -41,10 +41,15 @@ public final class GolemBuilds {
 	}
 
 	/**
-	 * Returns 36 ingots and the pumpkin. Storage first, then a drop at the marker when that chunk is loaded. The entry is removed
-	 * either way.
+	 * Returns 36 ingots and the pumpkin. Storage first, then a drop at the marker when that chunk is loaded. While the dimension
+	 * is not loaded the entry stays, so the materials are not thrown away.
 	 */
 	public static void refund(MinecraftServer server, HeartLocation smithy) {
+		ServerLevel level = Workers.levelOf(server, smithy);
+		if (level == null) {
+			VillageHeart.LOG.warn("Golem build at {}: the chunk is not loaded, the materials stay saved until it is", smithy);
+			return;
+		}
 		boolean[] had = {false};
 		VillageClaims.data(server).update(v -> {
 			if (v.golemProgress(smithy) < 0) return v;
@@ -52,11 +57,6 @@ public final class GolemBuilds {
 			return v.withoutGolemBuild(smithy);
 		});
 		if (!had[0]) return;
-		ServerLevel level = Workers.levelOf(server, smithy);
-		if (level == null) {
-			VillageHeart.LOG.warn("Golem build at {}: the chunk is not loaded, the materials could not be returned", smithy);
-			return;
-		}
 		BlockPos at = new BlockPos(smithy.x(), smithy.y(), smithy.z());
 		give(level, at, new ItemStack(Items.IRON_INGOT, Balance.GOLEM_INGOTS));
 		give(level, at, new ItemStack(Items.CARVED_PUMPKIN, 1));

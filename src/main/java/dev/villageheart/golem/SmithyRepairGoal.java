@@ -80,7 +80,7 @@ public final class SmithyRepairGoal extends Goal {
 		SmithyRepairs.waitingAt(offer.smithy()).filter(id -> id.equals(golem.getUUID())).ifPresent(id -> SmithyRepairs.release(id));
 		SmithyRepairs.hold(offer.smithy(), golem.getUUID());
 		if (now - lastMove >= 40) {
-			golem.getNavigation().moveTo(offer.spot().getX() + 0.5, offer.spot().getY(), offer.spot().getZ() + 0.5, 0.6);
+			golem.getNavigation().moveTo(offer.spot().getX() + 0.5, offer.spot().getY(), offer.spot().getZ() + 0.5, 0.8);
 			lastMove = now;
 		}
 	}

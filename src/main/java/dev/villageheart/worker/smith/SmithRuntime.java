@@ -52,6 +52,8 @@ public final class SmithRuntime {
 		/** Set while a delivery is waiting out a full chest. Empty otherwise. */
 		public String blockedHint = "";
 		public @Nullable OrderKey carriedTool;
+		/** Where a finished piece is walked to. Guard gear goes to Storage; a tool goes to its camp. */
+		public @Nullable HeartLocation deliverTo;
 		public final Map<OrderKey, Long> blockedUntil = new HashMap<>();
 		public @Nullable GearOrder order;
 		public @Nullable String fetchToolId;
