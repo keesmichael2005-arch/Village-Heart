@@ -154,8 +154,9 @@ public class SiegeRepairGameTests {
 	}
 
 	/**
-	 * T-L2-44. A hurt guard does not eat or refill while a zombie stands 8 blocks away. Once that zombie is 30 blocks off and the
-	 * guard is off duty, the ration grows and then the health does.
+	 * T-L2-44. A hurt guard does not eat or refill while a zombie stands 8 blocks away. The guard's brain is held
+	 * ({@code setNoAi}) so a patrol cannot walk them out of that bubble; feed does not use the brain. Once that zombie is 30
+	 * blocks off and the guard is off duty, the ration grows and then the health does.
 	 */
 	@GameTest(environment = "villageheart-gametest:guards_ration_pin", structure = YARD, skyAccess = true, maxTicks = 2500)
 	public void rationDoesNotRefillBesideAnEnemy(GameTestHelper h) {
@@ -176,8 +177,14 @@ public class SiegeRepairGameTests {
 			guard[0].setHealth(15.0F);
 			dev.villageheart.worker.guard.GuardAttachments.set(guard[0], dev.villageheart.worker.guard.GuardAttachments.get(guard[0]).withRation(2));
 			h.assertTrue(guard[0].getMaxHealth() == 20.0F, "max health " + guard[0].getMaxHealth());
+			// A duty patrol walks out of the 10-block bubble within 100 ticks, and then a refill is the rule working.
+			// The pin is "does not eat beside an enemy", so the guard stays put. Feed does not use the brain.
+			guard[0].setNoAi(true);
+			guard[0].getNavigation().stop();
+			h.getLevel().getServer().setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
 			zombie[0] = h.spawn(EntityType.ZOMBIE, GuardTestSupport.spawnSpot().offset(8, 0, 0));
 			zombie[0].setNoAi(true);
+			zombie[0].setPersistenceRequired();
 			zombie[0].setTarget(null);
 			guard[0].setTarget(null);
 			zombie[0].setHealth(100.0F);
@@ -186,9 +193,14 @@ public class SiegeRepairGameTests {
 		});
 		seq = seq.thenIdle(100).thenExecute(() -> {
 			int ration = dev.villageheart.worker.guard.GuardAttachments.get(guard[0]).ration();
-			h.assertTrue(ration == 2, "ration beside the zombie " + ration);
+			double apart = guard[0].distanceTo(zombie[0]);
+			h.assertTrue(zombie[0].isAlive(), "the zombie is still there");
+			h.assertTrue(ration == 2, "ration beside the zombie " + ration + " at " + apart);
 			h.assertTrue(guard[0].getHealth() == 15.0F, "health beside the zombie " + guard[0].getHealth());
-			BlockPos away = h.absolutePos(GuardTestSupport.spawnSpot().offset(30, 0, 0));
+			// (30, y, 30) is 30 blocks from the spawn and still inside the yard. +30 x walks out of the structure.
+			BlockPos home = h.absolutePos(GuardTestSupport.spawnSpot());
+			guard[0].teleportTo(home.getX() + 0.5, home.getY(), home.getZ() + 0.5);
+			BlockPos away = h.absolutePos(new BlockPos(30, GuardTestSupport.spawnSpot().getY(), 30));
 			zombie[0].teleportTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
 			zombie[0].setTarget(null);
 			guard[0].setTarget(null);
