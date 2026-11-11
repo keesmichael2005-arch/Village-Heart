@@ -238,6 +238,7 @@ from there instead of hard-coding them.
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged
 
 ## M26: Balance pass
+- Prep done on `m26-prep` (2026-11-11): every L3 report has a death log (who, what, where, origin of the attacker, side of the wall), hire and re-hire counts with the reason a slot stayed empty, and hostile spawn/breach counts. `wall_ring` fixed (the wall and the gate were a one-block step on seed 1's higher ground). Findings and proposed changes: `docs/reviews/m26-prep-findings.md` (the largest killer in `defended` is vanilla's zombie siege). No balance number or assertion changed
 - [ ] Run the L3 scenarios and tune the *(tunable)* values. Record the before/after metrics in PROGRESS.md
 - **L3**: scenario `full` (all building types, 12 villagers, starts at Hamlet with a starter kit of resources), 30 days, no player input:
       reaches the Village tier, food days left never 0 for more than 1 day in a row, treasury never negative, village logic mean < 1 ms/tick

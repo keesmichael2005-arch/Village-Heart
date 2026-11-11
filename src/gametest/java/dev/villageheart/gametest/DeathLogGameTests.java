@@ -79,6 +79,8 @@ public class DeathLogGameTests {
 			h.assertValueEqual("zombified", hard.cause(), "one zombified row");
 			h.assertTrue(hard.byMob() && hard.inClaim() && !hard.duringRaid() && !hard.duringSiege(), "flags");
 			h.assertValueEqual(day(level), hard.day(), "day");
+			h.assertValueEqual(hard.cause(), sim.get(0).cause(), "the sim row copies the village log");
+			h.assertTrue(sim.get(0).detail() != null && hard.jobId().equals(sim.get(0).detail().job()), "the sim row keeps the logged job");
 			discardConverted(h);
 
 			level.getServer().setDifficulty(Difficulty.NORMAL, true);
@@ -111,6 +113,22 @@ public class DeathLogGameTests {
 			h.assertTrue(cured != null, "the cure produced a villager");
 			h.assertValueEqual(beforeCure, size(h), "a cure logs nothing");
 			cured.discard();
+
+			collector.setEnabled(true);
+			int beforeWitch = size(h);
+			Villager hexed = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 3, 0, 1));
+			var witch = hexed.convertTo(EntityType.WITCH, ConversionParams.single(hexed, false, false), w -> { });
+			collector.setEnabled(false);
+			h.assertTrue(witch != null, "the villager became a witch");
+			DeathEntry witchRow = rowFor(h, hexed.getUUID());
+			h.assertTrue(witchRow != null && size(h) == beforeWitch + 1, "one log row for the witch");
+			h.assertValueEqual("minecraft:lightning_bolt", witchRow.cause(), "a witch is lightning, not zombified");
+			h.assertTrue(!witchRow.byMob(), "lightning is not a mob death");
+			var simWitch = collector.drainDeaths();
+			h.assertValueEqual(1, simWitch.size(), "the sim records the witch once");
+			h.assertValueEqual(witchRow.cause(), simWitch.get(0).cause(), "the sim follows the log and does not call a witch zombified");
+			h.assertTrue(!simWitch.get(0).byMob(), "the sim agrees lightning is not a mob death");
+			witch.discard();
 
 			int beforeOut = size(h);
 			Villager outsider = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 3, 0, 1));
