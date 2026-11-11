@@ -946,3 +946,32 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - L1 `MetricsJsonTest` and `ActionSpecsTest` passed. Renaming the written key `raid.started` to `begun` turned `pinnedKeys` and the round trip red (the read-back started at 0). Restored.
 - L2 `raidGolemsAndGuardLevel` passed in 1.741 s. The raid is tracked on the village tick after `RaidStart`, so the test waits for that before counting golems, topping adults up to 4 (a second call adds none) and setting the guard to level 2 at 30/30. The first run crashed after a failed assert because the next step read a null guard; the wait is now its own step.
 - Full `scripts/verify.sh` at `af4a1dd` exited 0. Layer 1 and Layer 2 each passed 399 GameTests. Layer 4 passed, including `0041_heart_overview_raid.png` (described under step 7). Lost-wakeup rescues 0, one world close cleared a leaked in-flight count, no model warnings, no 2-player errors. Perf worst-case median 2623 us. `origin/dev` had nothing new to merge. M25 is not ticked: steps 9–19 are other tracks.
+- GitHub refused the pull request (`must be a collaborator`). Title and description, for a PR into `dev`:
+
+```
+TASK 3: M25 track A (steps 1-8)
+
+Track A of M25: the death log, raid tracking, worker shelter, the Heart raid line, and the simulation harness for a raid. Stops after plan step 8. Walls, sieges, and young-village caps are later tracks.
+
+| Task | Branch | State | Last verify |
+| TASK 3 | m25 | done (steps 1-8) | scripts/verify.sh exit 0 at af4a1dd (docs note follows). Layer 1 and Layer 2: 399 GameTests passed. Layer 4 passed. Perf worst-case median 2623 us. |
+
+# Verify run 2026-11-11T09:36:34Z @ af4a1dd
+- Layer 1: build + unit tests passed
+- Layer 2: in-world GameTests passed (399 required tests)
+- GameTest log shows at least one test ran
+- GameTest-ran gate self-test passed
+- Layer 3 script self-test passed
+- Model-log gate self-test passed
+- 2-player session log gate self-test passed
+- Layer 4: client GameTests + screenshots passed
+- Layer 4: NetworkSynchronizer lost-wakeup fix installed (0 rescues)
+- Layer 4: NetworkSynchronizer disconnect-leak fix installed (1 world close cleared)
+- Layer 4: world-load timeout fix installed
+- Client log has no villageheart model warnings
+- 2-player session: no server errors or disconnects
+- Screenshots include 0041_heart_overview_raid.png
+- Perf limits passed (worst-case median 2623 us)
+
+M25 is not ticked on the roadmap. Steps 9-19 belong to later tracks.
+```
