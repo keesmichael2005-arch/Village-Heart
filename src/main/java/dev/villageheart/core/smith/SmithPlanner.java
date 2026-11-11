@@ -6,6 +6,7 @@ import dev.villageheart.core.gear.CampNeed;
 import dev.villageheart.core.gear.CancelCheck;
 import dev.villageheart.core.gear.CraftPlan;
 import dev.villageheart.core.gear.Deficit;
+import dev.villageheart.core.gear.GearDemand;
 import dev.villageheart.core.gear.GearDemandPlanner;
 import dev.villageheart.core.gear.GearInfo;
 import dev.villageheart.core.gear.GearNeed;
@@ -14,6 +15,7 @@ import dev.villageheart.core.gear.ItemCount;
 import dev.villageheart.core.gear.OpenOrder;
 import dev.villageheart.core.gear.OrderKey;
 import dev.villageheart.core.gear.SlotPresence;
+import dev.villageheart.core.gear.SlotState;
 import dev.villageheart.core.gear.Urgency;
 import dev.villageheart.core.smith.SmithDecision.Hint;
 import dev.villageheart.core.smith.SmithFacts.RepairJob;
@@ -96,8 +98,8 @@ public final class SmithPlanner {
 	}
 
 	private static Optional<SmithDecision> takeOrder(SmithFacts f, Set<Urgency> classes) {
-		Optional<SmithDecision> stored = deliverStored(f, classes);
-		if (stored.isPresent()) return stored;
+		Optional<SmithDecision> fromStorage = deliverStored(f, classes);
+		if (fromStorage.isPresent()) return fromStorage;
 		Map<CampNeed, List<OpenOrder>> open = new HashMap<>();
 		for (var e : f.openByCamp.entrySet()) open.put(e.getKey(), new ArrayList<>(e.getValue()));
 		for (int guard = 0; guard < 8; guard++) {
