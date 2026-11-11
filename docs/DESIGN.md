@@ -584,8 +584,9 @@ Babies are normal vanilla villagers and can be hired as adults.
   `villageheart:random_raids` is on (default on). A young village gets a short one. A random victory pays the
   treasury once. A scripted raid does not add those extra raiders. An on-duty guard follows a raider of the
   tracked raid up to 64 blocks past the claim, with or without a sight line. A direct path that stops at the wall
-  walks to the nearest gate first. The walk out to a gate still counts as closing, and a kill inside that margin
-  counts as the guard's.
+  walks to the nearest gate first, and only when that raider is within 48 blocks. A raider still out at the
+  spawn is walked toward. A raider on a ledge the path cannot reach, within 32 blocks and at least 6 up, is pulled
+  down to the guard. The walk out to a gate still counts as closing, and a kill inside that margin counts as the guard's.
   As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
   valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.
   The online owner, stewards and residents are the ones who hear a raid.

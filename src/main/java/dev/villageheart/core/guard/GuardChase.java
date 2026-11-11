@@ -26,6 +26,9 @@ public final class GuardChase {
 	 */
 	public static int[] gateWaypoint(int gx, int gy, int gz, int rx, int ry, int rz, int[] gates, boolean directReaches) {
 		if (directReaches || gates == null || gates.length < 3) return null;
+		// a raider still out at the spawn ring is walked toward; the gate is only for a wall that is in the way
+		long sdx = (long) rx - gx, sdy = (long) ry - gy, sdz = (long) rz - gz;
+		if (sdx * sdx + sdy * sdy + sdz * sdz > 48L * 48L) return null;
 		int best = -1;
 		long bestD = Long.MAX_VALUE;
 		for (int i = 0; i + 2 < gates.length; i += 3) {
@@ -40,5 +43,13 @@ public final class GuardChase {
 		long dx = (long) gates[best] - gx, dy = (long) gates[best + 1] - gy, dz = (long) gates[best + 2] - gz;
 		if (dx * dx + dy * dy + dz * dz <= 4) return null;
 		return new int[] { gates[best], gates[best + 1], gates[best + 2] };
+	}
+
+	/**
+	 * A raider the path cannot reach, close in the horizontal and at least 6 blocks up, is standing on a ledge.
+	 * Combat pulls that raider down to the guard. A far raider is walked toward instead.
+	 */
+	public static boolean pullDown(boolean chase, boolean pathReaches, double horizontal, double dy) {
+		return chase && !pathReaches && horizontal <= 32 && dy >= 6;
 	}
 }

@@ -308,11 +308,21 @@ public final class GuardCombat {
 			Path path = nav.createPath(dest, 1, pathLen);
 			// a 32-block path into the ring ends at the wall; the gate is the way out, and the next path is toward the raider
 			if (f.chase && (path == null || !path.canReach())) {
-				int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
-						dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
-				if (via != null) {
-					Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
-					if (viaPath != null) path = viaPath;
+				double dx = target.getX() - guard.getX(), dz = target.getZ() - guard.getZ();
+				double horiz = Math.sqrt(dx * dx + dz * dz);
+				boolean pulled = path != null && GuardChase.pullDown(true, false, horiz, target.getY() - guard.getY());
+				if (pulled) {
+					double h = Math.max(horiz, 0.1);
+					target.teleportTo(guard.getX() + dx / h * 2, guard.getY(), guard.getZ() + dz / h * 2);
+					target.fallDistance = 0;
+					path = nav.createPath(target.blockPosition(), 1, pathLen);
+				} else {
+					int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
+							dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
+					if (via != null) {
+						Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
+						if (viaPath != null) path = viaPath;
+					}
 				}
 			}
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
