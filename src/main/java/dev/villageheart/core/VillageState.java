@@ -27,7 +27,17 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
 		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
 		List<dev.villageheart.core.gear.SelfCraft> selfCrafts, dev.villageheart.core.tier.TierProgress tierProgress,
-		Map<HeartLocation, Integer> smokerHeat, Map<UUID, GuardShift> guardShifts) {
+		Map<HeartLocation, Integer> furnaceHeat, Map<UUID, GuardShift> guardShifts,
+		Map<HeartLocation, Integer> golemBuilds, Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> smithCrafts) {
+
+	/** Without golem builds and smith crafts (the shape before M19). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences, List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
+			dev.villageheart.core.tier.TierProgress tierProgress, Map<HeartLocation, Integer> furnaceHeat, Map<UUID, GuardShift> guardShifts) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts,
+				tierProgress, furnaceHeat, guardShifts, Map.of(), Map.of());
+	}
 
 	/** Without guard shifts (the shape before M18). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
@@ -102,12 +112,30 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		defences = List.copyOf(defences);
 		Objects.requireNonNull(selfCrafts, "selfCrafts");
 		Objects.requireNonNull(tierProgress, "tierProgress");
-		Objects.requireNonNull(smokerHeat, "smokerHeat");
-		for (var e : smokerHeat.entrySet()) {
-			Objects.requireNonNull(e.getKey(), "smoker");
-			if (e.getValue() == null || e.getValue() < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + e);
+		Objects.requireNonNull(furnaceHeat, "furnaceHeat");
+		for (var e : furnaceHeat.entrySet()) {
+			Objects.requireNonNull(e.getKey(), "furnace");
+			if (e.getValue() == null || e.getValue() < 0) throw new IllegalArgumentException("furnace heat must be >= 0: " + e);
 		}
-		smokerHeat = Map.copyOf(smokerHeat);
+		furnaceHeat = Map.copyOf(furnaceHeat);
+		Objects.requireNonNull(golemBuilds, "golemBuilds");
+		Map<HeartLocation, Integer> golems = new HashMap<>();
+		for (var e : golemBuilds.entrySet()) {
+			Objects.requireNonNull(e.getKey(), "smithy");
+			if (e.getValue() == null || e.getValue() < 0 || e.getValue() > Balance.GOLEM_BUILD_TICKS)
+				throw new IllegalArgumentException("golem progress out of range: " + e);
+			golems.putIfAbsent(e.getKey(), e.getValue());
+		}
+		golemBuilds = Map.copyOf(golems);
+		Objects.requireNonNull(smithCrafts, "smithCrafts");
+		Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> crafts = new java.util.LinkedHashMap<>();
+		for (var e : smithCrafts.entrySet()) {
+			Objects.requireNonNull(e.getKey(), "furnace");
+			Objects.requireNonNull(e.getValue(), "smith craft");
+			if (e.getValue().craft().progress() < 0) throw new IllegalArgumentException("smith progress < 0 at " + e.getKey());
+			crafts.putIfAbsent(e.getKey(), e.getValue());
+		}
+		smithCrafts = Map.copyOf(crafts);
 		Objects.requireNonNull(guardShifts, "guardShifts");
 		guardShifts = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(guardShifts));
 		selfCrafts = List.copyOf(selfCrafts);
@@ -186,7 +214,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
+				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -333,7 +361,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	public VillageState withTierProgress(dev.villageheart.core.tier.TierProgress p) {
 		Objects.requireNonNull(p, "tierProgress");
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, p, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, p, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	public Optional<BuildingRecord> building(HeartLocation marker) {
@@ -406,7 +434,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	private VillageState withWorkersRebalanced(List<WorkerRecord> next) {
 		Map<UUID, GuardShift> shifts = ShiftBalancer.assign(guardRank(next, java.util.Map.of()), guardShifts);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, next, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, shifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, next, treeTasks, builds, defences, selfCrafts, tierProgress, furnaceHeat, shifts, golemBuilds, smithCrafts);
 	}
 
 	/** Pins a guard to a shift, or (empty) back to automatic keeping the side it is on; a no-op for a villager that is no guard. */
@@ -426,7 +454,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	/** Replaces the shift map as given (the codec rebalances on load). */
 	public VillageState withGuardShifts(Map<UUID, GuardShift> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, furnaceHeat, next, golemBuilds, smithCrafts);
 	}
 
 	public List<WorkerRecord> workersAt(HeartLocation building) {
@@ -440,7 +468,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -448,7 +476,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -491,7 +519,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	// ---- defence sites (M21) ----
@@ -519,7 +547,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
 	// ---- self-made tools (M19a) --------------------------------------------------------------------------------------------
@@ -544,33 +572,83 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withSelfCrafts(List<dev.villageheart.core.gear.SelfCraft> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress, smokerHeat, guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress, furnaceHeat, guardShifts, golemBuilds, smithCrafts);
 	}
 
-	// ---- smoker heat (M13) ----
+	// ---- furnace heat (M13 smokers, M19 blast furnaces). The save key stays smoker_heat. ----
 
-	/** The heat banked at a smoker (a Cook's partly used fuel); 0 when none. */
-	public int smokerHeat(HeartLocation smoker) { return smokerHeat.getOrDefault(smoker, 0); }
+	/** The heat bank. {@code smokerHeat()} is the same map, so M13 call sites keep compiling. */
+	public Map<HeartLocation, Integer> smokerHeat() { return furnaceHeat; }
 
-	/** Sets the heat at a smoker; 0 removes the entry. */
-	public VillageState withSmokerHeat(HeartLocation smoker, int heat) {
-		Objects.requireNonNull(smoker, "smoker");
-		if (heat < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + heat);
-		if (smokerHeat(smoker) == heat) return this;
-		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
-		if (heat == 0) next.remove(smoker); else next.put(smoker, heat);
-		return withSmokerHeat(next);
+	/** The heat banked at a furnace; 0 when none. */
+	public int smokerHeat(HeartLocation furnace) { return furnaceHeat.getOrDefault(furnace, 0); }
+
+	/** Sets the heat at a furnace; 0 removes the entry. */
+	public VillageState withSmokerHeat(HeartLocation furnace, int heat) {
+		Objects.requireNonNull(furnace, "furnace");
+		if (heat < 0) throw new IllegalArgumentException("furnace heat must be >= 0: " + heat);
+		if (smokerHeat(furnace) == heat) return this;
+		Map<HeartLocation, Integer> next = new HashMap<>(furnaceHeat);
+		if (heat == 0) next.remove(furnace); else next.put(furnace, heat);
+		return withFurnaceHeat(next);
 	}
 
-	/** Drops the heat of every smoker for which {@code gone} is true. */
+	/** Drops the heat of every furnace for which {@code gone} is true. */
 	public VillageState withoutSmokerHeat(java.util.function.Predicate<HeartLocation> gone) {
-		Map<HeartLocation, Integer> next = new HashMap<>(smokerHeat);
+		Map<HeartLocation, Integer> next = new HashMap<>(furnaceHeat);
 		if (!next.keySet().removeIf(gone)) return this;
-		return withSmokerHeat(next);
+		return withFurnaceHeat(next);
 	}
 
-	private VillageState withSmokerHeat(Map<HeartLocation, Integer> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, next, guardShifts);
+	private VillageState withFurnaceHeat(Map<HeartLocation, Integer> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, next, guardShifts, golemBuilds, smithCrafts);
+	}
+
+	// ---- golems and smith crafts (M19) ----
+
+	public int golemProgress(HeartLocation smithy) { return golemBuilds.getOrDefault(smithy, -1); }
+
+	public VillageState withGolemBuild(HeartLocation smithy, int progress) {
+		Objects.requireNonNull(smithy, "smithy");
+		if (progress < 0 || progress > Balance.GOLEM_BUILD_TICKS) throw new IllegalArgumentException("golem progress out of range: " + progress);
+		if (golemBuilds.getOrDefault(smithy, -1) == progress) return this;
+		Map<HeartLocation, Integer> next = new HashMap<>(golemBuilds);
+		next.put(smithy, progress);
+		return withGolemBuilds(next);
+	}
+
+	public VillageState withoutGolemBuild(HeartLocation smithy) {
+		if (!golemBuilds.containsKey(smithy)) return this;
+		Map<HeartLocation, Integer> next = new HashMap<>(golemBuilds);
+		next.remove(smithy);
+		return withGolemBuilds(next);
+	}
+
+	private VillageState withGolemBuilds(Map<HeartLocation, Integer> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, next, smithCrafts);
+	}
+
+	public java.util.Optional<dev.villageheart.core.smith.SmithCraft> smithCraft(HeartLocation furnace) {
+		return java.util.Optional.ofNullable(smithCrafts.get(furnace));
+	}
+
+	public VillageState withSmithCraft(HeartLocation furnace, dev.villageheart.core.smith.SmithCraft craft) {
+		Objects.requireNonNull(furnace, "furnace");
+		Objects.requireNonNull(craft, "craft");
+		Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> next = new java.util.LinkedHashMap<>(smithCrafts);
+		next.put(furnace, craft);
+		return withSmithCrafts(next);
+	}
+
+	public VillageState withoutSmithCraft(HeartLocation furnace) {
+		if (!smithCrafts.containsKey(furnace)) return this;
+		Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> next = new java.util.LinkedHashMap<>(smithCrafts);
+		next.remove(furnace);
+		return withSmithCrafts(next);
+	}
+
+	private VillageState withSmithCrafts(Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, furnaceHeat, guardShifts, golemBuilds, next);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

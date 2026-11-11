@@ -280,13 +280,84 @@ public final class VillageCodecs {
 		return out;
 	}
 
+	/** A saved golem build. Progress above the build time is clamped; a negative progress drops the entry (the lenient list). */
+	private record GolemBuild(HeartLocation smithy, int progress) {}
+
+	private static final Codec<GolemBuild> GOLEM_BUILD = RecordCodecBuilder.<GolemBuild>create(i -> i.group(
+			HEART_LOCATION.fieldOf("smithy").forGetter(GolemBuild::smithy),
+			Codec.INT.fieldOf("progress").forGetter(GolemBuild::progress)
+	).apply(i, GolemBuild::new)).flatXmap(g -> {
+		if (g.progress() < 0) return DataResult.error(() -> "Negative golem progress " + g.progress() + " at " + g.smithy());
+		int progress = Math.min(g.progress(), dev.villageheart.core.Balance.GOLEM_BUILD_TICKS);
+		if (progress != g.progress()) LOG.warn("Village save: golem build at {} progress {} clamped to {}", g.smithy(), g.progress(), progress);
+		return DataResult.success(new GolemBuild(g.smithy(), progress));
+	}, DataResult::success);
+
+	private static java.util.List<GolemBuild> golemList(java.util.Map<HeartLocation, Integer> builds) {
+		return builds.entrySet().stream().map(e -> new GolemBuild(e.getKey(), e.getValue()))
+				.sorted(java.util.Comparator.comparing(GolemBuild::smithy, VillageState.locationOrder())).toList();
+	}
+
+	private static java.util.Map<HeartLocation, Integer> golemMap(java.util.List<GolemBuild> list) {
+		java.util.Map<HeartLocation, Integer> out = new java.util.LinkedHashMap<>();
+		for (GolemBuild g : list) out.putIfAbsent(g.smithy(), g.progress());
+		return out;
+	}
+
+	private record RawSmithCraft(HeartLocation furnace, String recipe, HeartLocation building, String need, int slot, HeartLocation destination,
+			int progress, java.util.List<dev.villageheart.core.gear.ItemCount> committed, boolean refundPending) {}
+
+	private record SavedSmith(HeartLocation furnace, dev.villageheart.core.smith.SmithCraft craft) {}
+
+	/**
+	 * A saved smith craft. Progress above the recipe's ticks is clamped. A negative progress, an unknown recipe or an unknown need keeps the
+	 * committed items and sets {@code refund_pending}.
+	 */
+	private static final Codec<SavedSmith> SAVED_SMITH = RecordCodecBuilder.<RawSmithCraft>create(i -> i.group(
+			HEART_LOCATION.fieldOf("furnace").forGetter(RawSmithCraft::furnace),
+			Codec.STRING.fieldOf("recipe").forGetter(RawSmithCraft::recipe),
+			HEART_LOCATION.fieldOf("building").forGetter(RawSmithCraft::building),
+			Codec.STRING.fieldOf("need").forGetter(RawSmithCraft::need),
+			Codec.INT.optionalFieldOf("slot", 0).forGetter(RawSmithCraft::slot),
+			HEART_LOCATION.fieldOf("destination").forGetter(RawSmithCraft::destination),
+			Codec.INT.optionalFieldOf("progress", 0).forGetter(RawSmithCraft::progress),
+			ITEM_COUNT.listOf().optionalFieldOf("committed", java.util.List.of()).forGetter(RawSmithCraft::committed),
+			Codec.BOOL.optionalFieldOf("refund_pending", false).forGetter(RawSmithCraft::refundPending)
+	).apply(i, RawSmithCraft::new)).xmap(r -> {
+		java.util.Optional<dev.villageheart.core.smith.SmithRecipe> recipe = dev.villageheart.core.smith.SmithRecipes.byOutput(r.recipe());
+		dev.villageheart.core.gear.GearNeed need = null;
+		for (dev.villageheart.core.gear.GearNeed n : dev.villageheart.core.gear.GearNeed.values()) if (n.name().equalsIgnoreCase(r.need())) need = n;
+		boolean bad = recipe.isEmpty() || need == null || r.progress() < 0 || r.slot() < 0;
+		if (bad) LOG.warn("Village save: bad smith craft at {} ({} / {} / progress {}): refunding it", r.furnace(), r.recipe(), r.need(), r.progress());
+		int cap = recipe.map(dev.villageheart.core.smith.SmithRecipe::ticksPerUnit).orElse(0);
+		int progress = bad ? 0 : Math.min(r.progress(), cap);
+		var craft = new dev.villageheart.core.smith.SmithCraft(new dev.villageheart.core.gear.GearCraft(r.recipe(),
+				new dev.villageheart.core.gear.OrderKey(r.building(), need == null ? dev.villageheart.core.gear.GearNeed.AXE : need, Math.max(0, r.slot())),
+				progress, r.committed()), r.destination(), r.refundPending() || bad);
+		return new SavedSmith(r.furnace(), craft);
+	}, s -> new RawSmithCraft(s.furnace(), s.craft().craft().recipeId(), s.craft().craft().key().building(),
+			s.craft().craft().key().need().name().toLowerCase(Locale.ROOT), s.craft().craft().key().slot(), s.craft().destination(),
+			s.craft().craft().progress(), s.craft().craft().committed(), s.craft().refundPending()));
+
+	private static java.util.List<SavedSmith> smithList(java.util.Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> crafts) {
+		return crafts.entrySet().stream().map(e -> new SavedSmith(e.getKey(), e.getValue()))
+				.sorted(java.util.Comparator.comparing(SavedSmith::furnace, VillageState.locationOrder())).toList();
+	}
+
+	private static java.util.Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> smithMap(java.util.List<SavedSmith> list) {
+		java.util.Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> out = new java.util.LinkedHashMap<>();
+		for (SavedSmith s : list) out.putIfAbsent(s.furnace(), s.craft());
+		return out;
+	}
+
 	/** Unvalidated shape of VillageState, so that invalid values become DataResult errors instead of exceptions. */
 	private record Raw(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers,
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
 			dev.villageheart.core.tier.TierProgress tierProgress,
-			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts,
+			java.util.List<GolemBuild> golemBuilds, java.util.List<SavedSmith> smithCrafts) {}
 
 	/** One saved guard shift (M18): the villager, the shift id and whether it is pinned. */
 	public record GuardShiftEntry(UUID villager, dev.villageheart.core.guard.Shift shift, boolean pinned) {}
@@ -323,7 +394,8 @@ public final class VillageCodecs {
 
 	private record RawB(java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
-			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts,
+			java.util.List<GolemBuild> golemBuilds, java.util.List<SavedSmith> smithCrafts) {}
 
 	private static final com.mojang.serialization.MapCodec<RawA> RAW_A = RecordCodecBuilder.mapCodec(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(RawA::heart),
@@ -345,17 +417,19 @@ public final class VillageCodecs {
 			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(RawB::selfCrafts),
 			TIER_PROGRESS.lenientOptionalFieldOf("tier_progress", dev.villageheart.core.tier.TierProgress.INITIAL).forGetter(RawB::tierProgress),
 			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(RawB::smokerHeat),
-			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts)
+			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts),
+			lenientList(GOLEM_BUILD).optionalFieldOf("golem_builds", java.util.List.of()).forGetter(RawB::golemBuilds),
+			lenientList(SAVED_SMITH).optionalFieldOf("smith_crafts", java.util.List.of()).forGetter(RawB::smithCrafts)
 	).apply(i, RawB::new));
 
 	private static final Codec<Raw> RAW = Codec.mapPair(RAW_A, RAW_B).codec().xmap(
 			pair -> new Raw(pair.getFirst().heart(), pair.getFirst().owner(), pair.getFirst().ownerName(), pair.getFirst().claimedAt(), pair.getFirst().ranks(),
 					pair.getFirst().known(), pair.getFirst().treasury(), pair.getFirst().tier(), pair.getFirst().buildings(), pair.getFirst().workers(),
 					pair.getSecond().treeTasks(), pair.getSecond().builds(), pair.getSecond().defences(), pair.getSecond().selfCrafts(),
-					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts()),
+					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts(), pair.getSecond().golemBuilds(), pair.getSecond().smithCrafts()),
 			r -> com.mojang.datafixers.util.Pair.of(new RawA(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), r.ranks(), r.known(), r.treasury(), r.tier(),
 					r.buildings(), r.workers()),
-					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts())));
+					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts(), r.golemBuilds(), r.smithCrafts())));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
@@ -368,13 +442,14 @@ public final class VillageCodecs {
 			// a map that does not match the records is brought in line once, here
 			var shifts = dev.villageheart.core.guard.ShiftBalancer.rebalance(guards, saved);
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts, golemMap(r.golemBuilds()), smithMap(r.smithCrafts())));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
-			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), v.tierProgress(), heatList(v.smokerHeat()),
-			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList())));
+			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), v.tierProgress(), heatList(v.furnaceHeat()),
+			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList(),
+			golemList(v.golemBuilds()), smithList(v.smithCrafts()))));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(

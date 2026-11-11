@@ -48,6 +48,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.gear.SelfCraftRuntime.resetForTests();
 		dev.villageheart.worker.gear.SelfCraftSwitch.reset();
 		dev.villageheart.worker.gear.SmithService.CURRENT.clear();
+		dev.villageheart.golem.GolemGate.reset();
+		SmithTestSupport.releaseForced(h.getLevel());
 		dev.villageheart.build.BuildRuntime.resetForTests();
 		dev.villageheart.build.BuildersTableActions.reset();
 		dev.villageheart.worker.farm.FarmRuntime.resetForTests();
