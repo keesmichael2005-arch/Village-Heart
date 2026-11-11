@@ -94,7 +94,6 @@ final class P4ClientTests {
 				if (id.equals("kitchen")) slopeShot(context, srv, 80, y, 200);
 				n++;
 			}
-			if (!FAILURES.isEmpty()) throw new AssertionError(String.join("; ", FAILURES));
 			quill(context, srv, y);
 			ghost(context, sp, srv, y);
 			if (!FAILURES.isEmpty()) throw new AssertionError(String.join("; ", FAILURES));
@@ -149,7 +148,7 @@ final class P4ClientTests {
 			return job.id().toString();
 		});
 		context.waitTicks(15);
-		look(context, srv, x + 14, y + 6, z + 16, x + 2, y + 4, z + 2);
+		look(context, srv, x + 18, y + 8, z + 18, x + 2, y + 3, z + 2);
 		sp.getClientWorld().waitForChunksRender();
 		picture(context, "scaffold_mid");
 		String result = srv.computeOnServer(server -> BuildJobs.advance(server, java.util.UUID.fromString(id), Integer.MAX_VALUE).toString());
@@ -273,6 +272,15 @@ final class P4ClientTests {
 					slot.grow(n);
 					left -= n;
 				}
+			}
+			c.setChanged();
+		}
+		if (left <= 0) return;
+		if (level.getBlockEntity(origin) instanceof net.minecraft.world.Container c) {
+			for (int i = c.getContainerSize() - 1; i >= 0 && left > 0; i--) {
+				int n = Math.min(item.getDefaultMaxStackSize(), left);
+				c.setItem(i, new ItemStack(item, n));
+				left -= n;
 			}
 			c.setChanged();
 		}
