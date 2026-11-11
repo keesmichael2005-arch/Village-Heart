@@ -205,6 +205,20 @@ public final class MetricsJson {
 			dm.put("cause", x.cause());
 			dm.put("by_mob", x.byMob());
 			dm.put("game_time", x.gameTime());
+			if (x.detail() != null) {
+				DeathRecord.Detail t = x.detail();
+				dm.put("day_time", t.dayTime());
+				dm.put("name", t.name());
+				dm.put("job", t.job());
+				dm.put("guard", x.guard());
+				dm.put("damage", t.damage());
+				dm.put("attacker", t.attacker());
+				dm.put("pos", List.of((long) t.x(), (long) t.y(), (long) t.z()));
+				dm.put("wall", t.wall());
+				dm.put("attacker_origin", t.origin());
+				dm.put("attacker_wall", t.attackerWall());
+				dm.put("zombified", x.zombified());
+			}
 			list.add(dm);
 		}
 		de.put("list", list);
@@ -304,7 +318,14 @@ public final class MetricsJson {
 		List<DeathRecord> deaths = new ArrayList<>();
 		for (Object o : Json.arr(de.get("list"), "deaths.list")) {
 			Map<String, Object> d = Json.obj(o, "death");
-			deaths.add(new DeathRecord((String) d.get("cause"), (Boolean) d.get("by_mob"), lng(d, "game_time")));
+			DeathRecord.Detail t = null;
+			if (d.containsKey("name")) {
+				List<Object> pos = Json.arr(d.get("pos"), "death.pos");
+				t = new DeathRecord.Detail(lng(d, "day_time"), (String) d.get("name"), (String) d.get("job"), (String) d.get("damage"),
+						(String) d.get("attacker"), ((Number) pos.get(0)).intValue(), ((Number) pos.get(1)).intValue(), ((Number) pos.get(2)).intValue(),
+						(String) d.get("wall"), (String) d.get("attacker_origin"), (String) d.get("attacker_wall"));
+			}
+			deaths.add(new DeathRecord((String) d.get("cause"), (Boolean) d.get("by_mob"), lng(d, "game_time"), t));
 		}
 		return new DayMetrics((int) lng(m, "day"), lng(m, "game_time"), (Boolean) m.get("claimed"),
 				(int) lng(m, "population"), (int) lng(m, "adults"), (int) lng(m, "babies"), (int) lng(m, "employed"),

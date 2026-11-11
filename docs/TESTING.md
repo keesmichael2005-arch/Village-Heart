@@ -169,6 +169,19 @@ How to extend (each one place + a test):
 Report JSON keys are snake_case and pinned by `MetricsJsonTest.pinnedKeys`.
 Villager AI is not seeded, so runs differ (a night-one zombie attack can kill villagers). Write assertions with slack; never loosen one silently.
 
+**Death log and hire counts (M26 prep).** Every villager death within the claim radius gets a row in `deaths.list` (`day_time`, `name`, `job`,
+`guard`, `damage`, `attacker`, `attacker_origin` = `scripted` (a `night_spawn` mob, entity tag `villageheart_sim_scripted`) | `converted` (a villager
+turned zombie villager) | `natural` (anything else, including vanilla's zombie siege), `pos`, `wall` / `attacker_wall` = `inside` | `wall` | `outside`
+of the scenario's `wall_ring` or "" without one, `zombified`) and in the summary's **Deaths** table; a log line `[sim-death]` too. The summary's
+**Hires** table reads `work.sim.hires`, `work.sim.rehires` and `work.sim.rehire_wait.<job>.<reason>` (100-tick samples in which a standing hire had an
+empty slot and could not fill it: `night`, `no_free_villager`, `no_building`, `refused_<result>`, `error`). The **Hostiles** table reads
+`work.sim.hostile_spawn.<side>` (natural hostile spawns within the claim radius; `[sim-spawn]` lines carry the day time: a burst at 18000 is vanilla's
+`VillageSiege`), `work.sim.hostile_inside.<origin>` (first sighting inside the wall ring; `[sim-breach]` lines carry the gate state) and
+`work.sim.hostile_samples.<origin>` (hostiles present, 100-tick samples). Rendering and JSON are L1 (`DeathLogTest`). Deaths outside the claim radius
+are not logged (a census drop with no row is a villager that left the radius or died outside it).
+`wall_ring` builds each wall column `WALL_CLEARANCE` (2) above the natural ground just outside it and digs the gate approach down to the site's level
+(L2 `SimActionGameTests.wallRingRisesOverHigherGround`): on seed 1 the ground is a block up along 80 of 148 wall cells and in front of the gate.
+
 ## Markers, generated assets and the model-log gate (M3+)
 - **Generated assets.** Everything for markers and job blocks (blockstates, models, item definitions, loot tables, recipes, recipe-unlock
   advancements, the axe-mineable tag and all 16x16 PNGs) is produced from the `core.building` enums by `src/test/java/dev/villageheart/tools/AssetGenerator.java`

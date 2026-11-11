@@ -100,6 +100,17 @@ public final class SimulationRun implements Host {
 	@Override public BlockPos site() { return site; }
 	@Override public void setSite(BlockPos site) { this.site = site; }
 
+	/** The scenario's {@code wall_ring} on the ground, or null (no ring, or no site yet): the death log says which side of it a villager fell. */
+	private dev.villageheart.core.sim.WallRing wallRing() {
+		if (site == null) return null;
+		for (ScenarioAction a : scenario.actions()) {
+			if (a.type().equals("wall_ring") && a.fields().get("size") instanceof List<?> size) {
+				return new dev.villageheart.core.sim.WallRing(site.getX(), site.getZ(), ((Number) size.get(0)).intValue(), ((Number) size.get(1)).intValue());
+			}
+		}
+		return null;
+	}
+
 	void onClaimed(BlockPos heartPos) {
 		this.heart = heartPos;
 		collector.setCentre(Vec3.atCenterOf(heartPos));
@@ -192,6 +203,7 @@ public final class SimulationRun implements Host {
 			seed = level.getSeed();
 			collector = new SimMetricsCollector(level, null, Balance.CLAIM_RADIUS);
 			collector.register();
+			collector.setWallRing(this::wallRing);
 			tickets = new SimTickets(level);
 			if (request.resume()) {
 				SimWorld.forceLoad(level, heart != null ? heart : structure);
@@ -318,7 +330,10 @@ public final class SimulationRun implements Host {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
 		if (now % dev.villageheart.core.sim.SimArea.FOLLOW_INTERVAL_TICKS == 0) StarterActions.followWorkers(this, tickets);
-		if (now % 100 == 0) StarterActions.maintain(this);
+		if (now % 100 == 0) {
+			StarterActions.maintain(this);
+			collector.watchRing();
+		}
 		if (resumeLogAt >= 0 && now >= resumeLogAt) {
 			resumeLogAt = -1;
 			logNeeds("resume");
@@ -484,6 +499,7 @@ public final class SimulationRun implements Host {
 				sb.append(a.passed() ? "- PASS " : "- FAIL ").append(a.text()).append(" (").append(a.detail()).append(")\n");
 			}
 			sb.append("\n").append(dev.villageheart.core.sim.SimSummary.table(days));
+			sb.append(dev.villageheart.core.sim.DeathLog.markdown(days));
 			Files.writeString(md, sb.toString(), StandardCharsets.UTF_8);
 		} catch (Throwable t) {
 			VillageHeart.LOG.error("[sim] could not write summary", t);

@@ -38,15 +38,11 @@ public final class SimMetricsCollector {
 
 	private static final class Pending {
 		final UUID id;
-		String cause;
-		boolean byMob;
-		final long time;
+		DeathRecord record;
 
-		Pending(UUID id, String cause, boolean byMob, long time) {
+		Pending(UUID id, DeathRecord record) {
 			this.id = id;
-			this.cause = cause;
-			this.byMob = byMob;
-			this.time = time;
+			this.record = record;
 		}
 	}
 
@@ -65,11 +61,20 @@ public final class SimMetricsCollector {
 
 	public void setCentre(Vec3 centre) { this.centre = centre; }
 
+	private java.util.function.Supplier<dev.villageheart.core.sim.WallRing> wallRing = () -> null;
+
+	/** The scenario's wall ring (or null), read at each death for the log's inside/outside column. */
+	public void setWallRing(java.util.function.Supplier<dev.villageheart.core.sim.WallRing> wallRing) { this.wallRing = wallRing; }
+
 	/** Fabric events cannot be unregistered, so tests switch the handlers off instead. */
 	public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
+	/** Entity tags for the death log's attacker origin: a scenario {@code night_spawn} mob, a villager turned into a zombie villager. */
+	public static final String TAG_SCRIPTED = "villageheart_sim_scripted", TAG_CONVERTED = "villageheart_sim_converted";
+
 	public void register() {
 		ServerLivingEntityEvents.AFTER_DEATH.register(this::onDeath);
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, l) -> onLoad(entity));
 		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, ctx) -> onConversion(previous, converted));
 	}
 
@@ -93,30 +98,124 @@ public final class SimMetricsCollector {
 	public void onDeath(LivingEntity entity, DamageSource source) {
 		if (!enabled || !(entity instanceof Villager) || !inRadius(entity)) return;
 		if (!seen.add(entity.getUUID())) return;
-		String cause = source.getEntity() != null
-				? id(source.getEntity().getType())
-				: source.typeHolder().unwrapKey().map(k -> k.identifier().toString()).orElse("unknown");
-		pending.add(new Pending(entity.getUUID(), cause, source.getEntity() instanceof Enemy, level.getGameTime()));
+		String damage = source.typeHolder().unwrapKey().map(k -> k.identifier().toString()).orElse("unknown");
+		String cause = source.getEntity() != null ? id(source.getEntity().getType()) : damage;
+		net.minecraft.world.entity.Entity by = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
+		DeathRecord r = new DeathRecord(cause, source.getEntity() instanceof Enemy, level.getGameTime(), detail(entity, damage, by));
+		pending.add(new Pending(entity.getUUID(), r));
+		log(r);
+	}
+
+	/** Who died where (the death log, M26 prep). */
+	private DeathRecord.Detail detail(LivingEntity e, String damage, net.minecraft.world.entity.Entity by) {
+		String name = e.hasCustomName() ? e.getCustomName().getString() : dev.villageheart.core.heart.VillagerNames.of(e.getUUID());
+		String job = dev.villageheart.worker.WorkerAttachments.get(e).map(dev.villageheart.core.worker.WorkerData::jobId)
+				.or(() -> VillageClaims.current(level.getServer()).flatMap(v -> v.workers().stream().filter(w -> w.villager().equals(e.getUUID()))
+						.map(w -> w.jobId()).findFirst()))
+				.orElse("");
+		net.minecraft.core.BlockPos p = e.blockPosition();
+		dev.villageheart.core.sim.WallRing ring = wallRing.get();
+		net.minecraft.core.BlockPos bp = by == null ? null : by.blockPosition();
+		return new DeathRecord.Detail(Math.floorMod(level.getDayTime(), 24000L), name, job, damage, by == null ? "" : id(by.getType()),
+				p.getX(), p.getY(), p.getZ(), ring == null ? "" : ring.side(p.getX(), p.getZ()), origin(by),
+				ring == null || bp == null ? "" : ring.side(bp.getX(), bp.getZ()));
+	}
+
+	private static void log(DeathRecord r) {
+		DeathRecord.Detail t = r.detail();
+		dev.villageheart.VillageHeart.LOG.info("[sim-death] {} ({}) cause={} damage={} attacker={} origin={} attacker_wall={} at {} {} {} wall={} day_time={}",
+				t.name(), t.job().isEmpty() ? "-" : t.job(), r.cause(), t.damage(), t.attacker(), t.origin(), t.attackerWall(), t.x(), t.y(), t.z(), t.wall(),
+				t.dayTime());
+	}
+
+	/**
+	 * A hostile mob that appears near the village with no tag and on its first tick is a natural spawn (or, rarely, one loaded from disk with
+	 * a chunk): counted in {@code work.sim.hostile_spawn.<side of the wall ring>} and logged. Zombie villagers are left out (most are converted
+	 * villagers; the conversion event comes after the load).
+	 */
+	private void onLoad(net.minecraft.world.entity.Entity e) {
+		if (!enabled || !(e instanceof Mob m) || !(e instanceof Enemy) || !inRadius(m) || e.tickCount != 0) return;
+		if (m.getType() == EntityType.ZOMBIE_VILLAGER || m.getTags().contains(TAG_SCRIPTED) || m.getTags().contains(TAG_CONVERTED)) return;
+		dev.villageheart.core.sim.WallRing ring = wallRing.get();
+		net.minecraft.core.BlockPos p = e.blockPosition();
+		String side = ring == null ? "none" : ring.side(p.getX(), p.getZ());
+		dev.villageheart.worker.job.WorkStats.add("sim", "hostile_spawn." + side, 1);
+		dev.villageheart.VillageHeart.LOG.info("[sim-spawn] {} at {} {} {} wall={} light={} day_time={}", id(m.getType()), p.getX(), p.getY(), p.getZ(), side,
+				level.getMaxLocalRawBrightness(p), Math.floorMod(level.getDayTime(), 24000L));
+	}
+
+	private final Set<UUID> insideSeen = new HashSet<>();
+
+	/**
+	 * Every 100 ticks: counts the hostiles within the claim radius by origin ({@code work.sim.hostile_samples.<origin>}). In wall-ring
+	 * scenarios, also: a hostile mob seen strictly inside the ring for the first time is counted in
+	 * {@code work.sim.hostile_inside.<origin>} and logged with the state of the ring's fence gates, so the report shows how mobs got in.
+	 */
+	public void watchRing() {
+		if (enabled && centre != null) {
+			// hostiles present within the claim radius, by origin (100-tick samples): a cross-check of the natural spawn count
+			for (Mob m : level.getEntitiesOfClass(Mob.class, AABB.ofSize(centre, 2.0 * radius, 2.0 * radius, 2.0 * radius),
+					x -> x instanceof Enemy && x.isAlive() && inRadius(x))) {
+				dev.villageheart.worker.job.WorkStats.add("sim", "hostile_samples." + origin(m), 1);
+			}
+		}
+		dev.villageheart.core.sim.WallRing ring = wallRing.get();
+		if (!enabled || ring == null) return;
+		AABB box = new AABB(ring.x(), level.getMinY(), ring.z(), ring.x() + ring.w(), level.getMaxY(), ring.z() + ring.d());
+		for (Mob m : level.getEntitiesOfClass(Mob.class, box, x -> x instanceof Enemy && x.isAlive())) {
+			net.minecraft.core.BlockPos p = m.blockPosition();
+			if (!dev.villageheart.core.sim.WallRing.INSIDE.equals(ring.side(p.getX(), p.getZ())) || !insideSeen.add(m.getUUID())) continue;
+			String origin = origin(m);
+			dev.villageheart.worker.job.WorkStats.add("sim", "hostile_inside." + origin, 1);
+			StringBuilder gates = new StringBuilder();
+			for (int x = ring.x(); x < ring.x() + ring.w(); x++) {
+				for (int z = ring.z(); z < ring.z() + ring.d(); z++) {
+					if (!dev.villageheart.core.sim.WallRing.ON_WALL.equals(ring.side(x, z))) continue;
+					for (int dy = 0; dy <= 3; dy++) {
+						net.minecraft.core.BlockPos g = new net.minecraft.core.BlockPos(x, p.getY() - 2 + dy, z);
+						var s = level.getBlockState(g);
+						if (s.getBlock() instanceof net.minecraft.world.level.block.FenceGateBlock) {
+							gates.append(g.toShortString()).append(s.getValue(net.minecraft.world.level.block.FenceGateBlock.OPEN) ? " open " : " closed ");
+						}
+					}
+				}
+			}
+			dev.villageheart.VillageHeart.LOG.info("[sim-breach] {} ({}) inside the wall at {} day_time={} gates: {}", id(m.getType()), origin,
+					p.toShortString(), Math.floorMod(level.getDayTime(), 24000L), gates.isEmpty() ? "none found" : gates.toString().trim());
+		}
+	}
+
+	private String origin(net.minecraft.world.entity.Entity attacker) {
+		if (attacker == null) return "";
+		if (attacker.getTags().contains(TAG_SCRIPTED)) return DeathRecord.SCRIPTED;
+		if (attacker.getTags().contains(TAG_CONVERTED)) return DeathRecord.CONVERTED;
+		return DeathRecord.NATURAL;
 	}
 
 	/** Vanilla fires death and then conversion for one villager lost to a zombie: that is one loss, cause "zombified". */
 	public void onConversion(Mob previous, Mob converted) {
 		if (!enabled || !(previous instanceof Villager) || !inRadius(previous)) return;
+		converted.addTag(TAG_CONVERTED);
 		long now = level.getGameTime();
 		for (Pending p : pending) {
-			if (p.id.equals(previous.getUUID()) && now - p.time <= 1) {
-				p.cause = "zombified";
-				p.byMob = true;
+			if (p.id.equals(previous.getUUID()) && now - p.record.gameTime() <= 1) {
+				p.record = p.record.withCause(DeathRecord.ZOMBIFIED, true);
+				log(p.record);
 				return;
 			}
 		}
-		if (seen.add(previous.getUUID())) pending.add(new Pending(previous.getUUID(), "zombified", true, now));
+		if (seen.add(previous.getUUID())) {
+			// vanilla converts a villager killed by a zombie without a death event: the attacker is the last mob that hurt it
+			DeathRecord r = new DeathRecord(DeathRecord.ZOMBIFIED, true, now, detail(previous, "zombified", previous.getLastHurtByMob()));
+			pending.add(new Pending(previous.getUUID(), r));
+			log(r);
+		}
 	}
 
 	/** Deaths since the last drain. */
 	public List<DeathRecord> drainDeaths() {
 		List<DeathRecord> out = new ArrayList<>();
-		for (Pending p : pending) out.add(new DeathRecord(p.cause, p.byMob, p.time));
+		for (Pending p : pending) out.add(p.record);
 		pending.clear();
 		return out;
 	}
