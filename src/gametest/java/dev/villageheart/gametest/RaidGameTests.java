@@ -33,6 +33,7 @@ import dev.villageheart.core.room.RoomScan;
 import dev.villageheart.gametest.raid.RaidStart;
 import dev.villageheart.mixin.RaidGroups;
 import dev.villageheart.raid.VillageRaids;
+import dev.villageheart.raid.VillageThreats;
 import dev.villageheart.worker.WorkerBrain;
 import dev.villageheart.worker.guard.GuardActivities;
 import dev.villageheart.worker.job.WalkTo;
@@ -556,7 +557,8 @@ public class RaidGameTests {
 
 	private static void assertIndoors(GameTestHelper h, Villager v, RoomScan scan) {
 		Pos feet = new Pos(v.getBlockX(), v.getBlockY(), v.getBlockZ());
-		h.assertTrue(scan.contains(feet), "inside the house at " + feet);
+		h.assertTrue(scan.contains(feet), "inside the house at " + feet + " activity " + v.getBrain().getActiveNonCoreActivity().orElse(null)
+				+ " nearRaid " + VillageThreats.nearRaid(h.getLevel(), v.blockPosition()));
 		h.assertTrue(!h.getLevel().canSeeSky(v.blockPosition()), "the roof hides the sky at " + feet);
 	}
 
