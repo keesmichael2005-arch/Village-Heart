@@ -50,6 +50,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			MarkerClientTests.markerWall(context);
 			MarkerClientTests.markerItems(context);
 			HeartScreenClientTests.heartTabs(context);
+			RanksClientTests.ranksTab(context);
 			BuildClientTests.builderFlow(context);
 			MarketClientTests.stockpileReserves(context);
 			return;
