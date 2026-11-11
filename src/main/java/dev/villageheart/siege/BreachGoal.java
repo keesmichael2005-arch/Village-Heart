@@ -118,7 +118,9 @@ public final class BreachGoal extends Goal {
 		if (!PathBudget.take(server)) return false;
 		lastPathTick = now;
 		Path path = mob.getNavigation().createPath(goal, 1);
-		pathBlocked = path == null || !path.canReach();
+		BlockPos through = path == null ? null : defenceOn(path);
+		// A path that only reaches by stepping on a wall or a gate is not a way through.
+		pathBlocked = path == null || !path.canReach() || through != null;
 		if (!pathBlocked) {
 			pathClose = false;
 			return false;
@@ -127,12 +129,25 @@ public final class BreachGoal extends Goal {
 			pathClose = true;
 			return true;
 		}
-		BlockPos end = path.getNodePos(path.getNodeCount() - 1);
+		BlockPos end = through != null ? through : path.getNodePos(path.getNodeCount() - 1);
 		double dx = mob.getX() - (end.getX() + 0.5);
 		double dy = mob.getY() - end.getY();
 		double dz = mob.getZ() - (end.getZ() + 0.5);
 		pathClose = dx * dx + dy * dy + dz * dz <= 2.25;
 		return pathClose;
+	}
+
+	/** The first path node that stands on a defence cell, or null. */
+	private BlockPos defenceOn(Path path) {
+		var village = VillageClaims.current(((ServerLevel) mob.level()).getServer());
+		if (village.isEmpty()) return null;
+		DefenceIndex index = DefenceIndex.of(village.get().defences());
+		for (int i = 0; i < path.getNodeCount(); i++) {
+			BlockPos pos = path.getNodePos(i);
+			if (index.get(Pos.pack(pos.getX(), pos.getY(), pos.getZ())) != null) return pos;
+			if (index.get(Pos.pack(pos.getX(), pos.getY() - 1, pos.getZ())) != null && i > 0) return pos.below();
+		}
+		return null;
 	}
 
 	private BlockPos goal() {
@@ -201,7 +216,7 @@ public final class BreachGoal extends Goal {
 		if (!PathBudget.take(server)) return false;
 		lastTargetTick = now;
 		Path path = mob.getNavigation().createPath(target, 1);
-		lastTargetReachable = path != null && path.canReach();
+		lastTargetReachable = path != null && path.canReach() && defenceOn(path) == null;
 		return lastTargetReachable;
 	}
 
