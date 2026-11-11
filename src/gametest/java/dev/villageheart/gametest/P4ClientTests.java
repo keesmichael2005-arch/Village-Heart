@@ -36,6 +36,7 @@ final class P4ClientTests {
 	private P4ClientTests() {}
 
 	private static final List<String> FAILURES = new ArrayList<>();
+	private static BlockPos storageChest;
 
 	static void shots(ClientGameTestContext context) {
 		FAILURES.clear();
@@ -69,9 +70,9 @@ final class P4ClientTests {
 				context.waitTicks(1);
 			}
 			if (!"VALID".equals(storage)) throw new AssertionError("storage did not go green: " + storage + " at " + storageMarker);
-			BlockPos chest = new BlockPos(-18, y, 8);
+			storageChest = new BlockPos(-18, y, 8);
 			String stocked = srv.computeOnServer(server -> {
-				stockAll(server.overworld(), chest);
+				stockFor(server.overworld(), storageChest, Blueprints.byId("kitchen").orElseThrow(), 64);
 				return "cobble=" + Stockpiles.count(server, Items.COBBLESTONE)
 						+ " planks=" + Stockpiles.count(server, Items.OAK_PLANKS)
 						+ " fence=" + Stockpiles.count(server, Items.OAK_FENCE)
@@ -138,6 +139,7 @@ final class P4ClientTests {
 		pad(context, srv, x, y, z);
 		String id = srv.computeOnServer(server -> {
 			var bp = resolve("watchtower");
+			stockFor(server.overworld(), storageChest, bp, 32);
 			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y - 1, z), Rotation4.NONE, server.getPlayerList().getPlayers().get(0).getUUID());
 			SiteGround.prepare(server.overworld(), bp, job);
 			BuildJobs.advance(server, job.id(), 40);
@@ -163,6 +165,7 @@ final class P4ClientTests {
 		srv.computeOnServer(server -> {
 			var player = server.getPlayerList().getPlayers().get(0);
 			var bp = Blueprints.byId("kitchen").orElseThrow();
+			stockFor(server.overworld(), storageChest, bp, 16);
 			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(160, y - 1, 20), Rotation4.NONE, player.getUUID());
 			BuildJobs.advance(server, job.id(), 40);
 			BuildSystem.showGhost(server);
@@ -185,6 +188,7 @@ final class P4ClientTests {
 		String saved = srv.computeOnServer(server -> {
 			var player = server.getPlayerList().getPlayers().get(0);
 			var bp = Blueprints.SMALL_HOUSE;
+			stockFor(server.overworld(), storageChest, bp, 32);
 			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(160, y - 1, 80), Rotation4.NONE, player.getUUID());
 			var adv = BuildJobs.advance(server, job.id(), Integer.MAX_VALUE);
 			if (!adv.finished()) return "unfinished " + adv;
@@ -209,6 +213,7 @@ final class P4ClientTests {
 		String result = srv.computeOnServer(server -> {
 			var bp = resolve(blueprint);
 			if (bp == null) return "missing";
+			stockFor(server.overworld(), storageChest, bp, shot.contains("slope") ? 200 : 32);
 			var job = BuildJobs.start(server.overworld(), bp, new BlockPos(x, y - 1, z), Rotation4.NONE, params(blueprint),
 					server.getPlayerList().getPlayers().get(0).getUUID());
 			var adv = BuildJobs.advance(server, job.id(), Integer.MAX_VALUE);
@@ -238,49 +243,25 @@ final class P4ClientTests {
 		return id.equals("wall_segment") || id.equals("gate") ? new BlueprintParams(6) : BlueprintParams.NONE;
 	}
 
-	private static void stockAll(net.minecraft.server.level.ServerLevel level, BlockPos chest) {
-		java.util.Map<Item, Integer> need = new java.util.LinkedHashMap<>();
-		// walls first; dirt last and capped, so it cannot fill Storage before the cobble fits
-		need.put(Items.COBBLESTONE, 768);
-		need.put(Items.OAK_PLANKS, 1400);
-		need.put(Items.OAK_LOG, 400);
-		need.put(Items.OAK_FENCE, 128);
-		need.put(Items.OAK_FENCE_GATE, 32);
-		need.put(Items.OAK_DOOR, 32);
-		need.put(Items.GLASS_PANE, 128);
-		need.put(Items.OAK_STAIRS, 256);
-		need.put(Items.WHITE_BED, 16);
-		need.put(Items.TORCH, 64);
-		need.put(Items.DIRT, 256);
-		List<Blueprint> plans = new ArrayList<>(Blueprints.all());
-		plans.add(Blueprints.SMALL_HOUSE);
-		for (Blueprint bp : plans) {
-			int mult = bp.id().equals("kitchen") ? 2 : 1;
-			for (var line : bp.materials().lines()) {
-				Item item = itemFor(line.material());
-				if (item != null) need.merge(item, line.count() * mult + 8, Integer::sum);
-			}
-		}
-		for (Item item : MarkerBlocks.ITEMS.values()) if (item != null) need.merge(item, 4, Integer::sum);
-		need.put(Items.DIRT, 512);
-		for (var e : need.entrySet()) {
-			int left = e.getValue();
+	/** One blueprint's materials, so a full catalogue cannot crowd the chest before this build's cobble. */
+	private static void stockFor(net.minecraft.server.level.ServerLevel level, BlockPos chest, Blueprint bp, int extraDirt) {
+		for (var line : bp.materials().lines()) {
+			Item item = itemFor(line.material());
+			if (item == null) continue;
+			int left = line.count() + 4;
 			while (left > 0) {
 				int n = Math.min(64, left);
-				int stored = Stockpiles.deposit(level, chest, new ItemStack(e.getKey(), n));
+				int stored = Stockpiles.deposit(level, chest, new ItemStack(item, n));
 				if (stored <= 0) break;
 				left -= stored;
 			}
 		}
-		// whatever chest the scan actually uses, put a stack of the walls in it
-		for (int x = chest.getX() - 4; x <= chest.getX() + 16; x++) for (int z = chest.getZ() - 2; z <= chest.getZ() + 8; z++) {
-			if (level.getBlockEntity(new BlockPos(x, chest.getY(), z)) instanceof net.minecraft.world.Container container) {
-				container.setItem(0, new ItemStack(Items.COBBLESTONE, 64));
-				container.setItem(1, new ItemStack(Items.OAK_PLANKS, 64));
-				container.setItem(2, new ItemStack(Items.OAK_FENCE, 64));
-				container.setItem(3, new ItemStack(Items.DIRT, 64));
-				container.setChanged();
-			}
+		int dirt = extraDirt;
+		while (dirt > 0) {
+			int n = Math.min(64, dirt);
+			int stored = Stockpiles.deposit(level, chest, new ItemStack(Items.DIRT, n));
+			if (stored <= 0) break;
+			dirt -= stored;
 		}
 	}
 
