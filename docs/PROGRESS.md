@@ -904,19 +904,30 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege` (only `SPAWN_MONSTERS`, `RAIDS` and the like, and turning monsters off would kill natural spawns). The harness replaces the level's immutable spawner list with a wrapper that skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched (M25 owns siege and raid code).
 - `docs/M26-bounds.md` is the tunable audit the plan's 3.9.4 asks for: every DESIGN *(tunable)* and the plan's 3.8.2 values, current numbers (the plan's tool-speed and haul table is stale: stone is ×2.0, `BASE_TICKS_PER_LOG` is 80, `MINER_HAUL_UNITS` is 4000), the tests that follow or pin each one, and a safe range. No value was changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are TASK 11, which is told to read this file.
 - Tests: L1 `OutsideBandTest`, `DefendedScenarioTest`, `ScenarioParserTest`. L2 `moveInPutsVillagersInsideTheRing`, `nightSpawnOutsideStandsOutsideTheRing` (the old 12..20 disc cannot reach the band), `villageSiegeSuppressedInsideClaim` (inside: armed siege untouched; outside in daylight: the real tick closes it). `scripts/verify.sh --fast` exit 0 at c7f109bc plus this work (388 GameTests, perf within caps). No screenshots: nothing visual changed.
-- The five unseeded 10-day runs of `defended_walled` and of `defended_nosiege` are not recorded yet. Assertions stay as they are even if the kills bar still fails.
-- Next: those ten runs, then a merge of `origin/dev` and a full `scripts/verify.sh`. Blockers: none.
+- Five unseeded 10-day runs of each scenario are in the next section. Assertions were not changed.
+- Next: merge `origin/dev`, then a full `scripts/verify.sh`. Blockers: none.
 
-## 2026-11-11: TASK 8 runs in progress (four of ten finished)
-Seed stays 1. Villager AI is unseeded, so these are replicates. Assertions were not changed. Exit 1 is an assertion FAIL, not a harness error. No run has thrown.
+## 2026-11-11: TASK 8 unseeded runs (five `defended_walled`, five `defended_nosiege`)
+Seed stays 1 (world seed). Villager AI is unseeded, so the five runs are replicates. Every run finished 10 of 10 days. Exit 0 is PASS, exit 1 is an assertion FAIL. No run exited 2 and none threw in `move_in` or the siege gate. `move_in` logged the same line on every walled run: 8 villagers inside, 8 beds (6 already, 2 added), 13 outside poi blocks removed, bell 660, 70, 864. Every nosiege run logged the siege off inside 80 blocks of the bell at 639, 66, 821 and then moved the centre to the Heart at 641, 64, 821. Natural hostile spawns inside the claim were 0 on every run. Screenshots: none (the harness does not take any).
 
-| run | status | deaths.mobs | guard kills | failed assertions | who died |
+`defended_walled` is 0 of 5. Guard kills were 9, 6, 8, 2, 3, all under the unchanged bar of 15. Mob deaths were 2, 3, 1, 0, 0, so three runs meet `deaths.mobs <= 1` and two do not. Before this task the same scenario was also 0 of 5, with kills 1/0/0/0/0 and every death an unhired villager in the old village. The deaths below are guards (and one farmer) who were already outside the ring. Nobody unhired died in the old village.
+
+| run | status | mob deaths | kills | what failed | deaths |
 |---|---|---|---|---|---|
-| defended_walled 1 | FAIL | 2 | 9 | deaths.mobs ≤ 1, kills ≥ 15 | day 2 guard Nera, scripted zombie, outside 637 70 858; day 7 guard Peith, zombified by a scripted zombie, outside 672 69 847 |
-| defended_walled 2 | FAIL | 3 | 6 | employed == 4 on day 1 (employed 3, population 6), deaths.mobs ≤ 1, kills ≥ 15 | day 1 guard Gilda, zombified, scripted, outside 645 71 880 (south of the ring); day 1 farmer Morow, zombified, converted, outside 647 69 847 (one block north of the site); day 2 guard Bramine, scripted, outside 646 66 843 |
-| defended_walled 3 | FAIL | 1 | 8 | kills ≥ 15 | day 3 guard Peey, zombified, scripted, outside 685 66 855 |
-| defended_nosiege 1 | FAIL | 2 | 21 | deaths.mobs ≤ 1 (kills bar passed) | day 7 guard Bramton, scripted, 655 64 839 (no ring); day 9 unhired Dunley, zombified, scripted, 602 65 843 (old village, west of the Heart) |
+| 1 | FAIL | 2 | 9 | mob deaths, kills | day 2 guard Nera, scripted zombie, both outside, 637 70 858; day 7 guard Peith, zombified by a scripted zombie, both outside, 672 69 847. One scripted hostile was first seen inside the ring on day 5 |
+| 2 | FAIL | 3 | 6 | employed == 4 on day 1 (3 employed, population 6), mob deaths, kills | day 1 guard Gilda, zombified, scripted, outside, 645 71 880 (south of the ring); day 1 farmer Morow, zombified by a converted zombie, outside, 647 69 847 (one block north of the site); day 2 guard Bramine, scripted, outside, 646 66 843. The four hires did happen; two of them were dead by the day-1 snapshot |
+| 3 | FAIL | 1 | 8 | kills | day 3 guard Peey, zombified, scripted, outside, 685 66 855 |
+| 4 | FAIL | 0 | 2 | kills | none. Population stayed 8 |
+| 5 | FAIL | 0 | 3 | kills | day 9 unhired Roa, `minecraft:in_wall`, inside the ring at 662 70 871. Not a mob death, so the deaths bar passed. Two scripted hostiles were first seen inside the ring on day 5 |
 
-`move_in` logged the same shape on the walled runs that have finished: 8 villagers, 8 beds (6 already, 2 added), 13 outside poi blocks removed, bell at 660, 70, 864. Natural spawns inside the claim stayed 0. One scripted hostile was first seen inside the ring (walled 1, day 5). The other walled deaths are guards, or in run 2 a farmer, who were already outside. The nosiege death of unhired Dunley is the old-village kill the wall scenario was built to stop. `defended_nosiege` logged the siege gate at the bell and then at the Heart.
+`defended_nosiege` is 2 of 5. Kills were 21, 17, 10, 23, 21. Mob deaths were 2, 0, 0, 0, 3. The prep's `defended` (siege still on) was 1 of 5, and 32 of 49 deaths in those earlier runs were siege nights. Turning the siege off inside the claim is the comparison M26 asked for; the other assertions are the same file as `defended`.
 
-Still running at 08:53 UTC: defended_walled 4 and 5. Not started yet: defended_nosiege 2–5. Reports live under `/tmp/sim-task8/reports/` until this note is finished.
+| run | status | mob deaths | kills | what failed | deaths |
+|---|---|---|---|---|---|
+| 1 | FAIL | 2 | 21 | mob deaths | day 7 guard Bramton, scripted, 655 64 839 (near the Heart); day 9 unhired Dunley, zombified, scripted, 602 65 843 (the old village, west of the Heart). This is the kill the wall scenario was built to stop |
+| 2 | PASS | 0 | 17 | — | none. Population stayed 8 |
+| 3 | FAIL | 0 | 10 | kills | none. Population ended at 10 |
+| 4 | PASS | 0 | 23 | — | none. Population stayed 8 |
+| 5 | FAIL | 3 | 21 | employed == 4 on day 1 (employed 2), mob deaths, duty samples on day 1 (48 < 100) | day 1 guard Gilley, zombified, scripted, 653 64 833; day 1 guard Morric, zombified, converted, 649 64 837; day 2 lumberjack Corey, zombified, converted, 650 70 852. Both guards died on night 1, which is why the duty-sample bar failed that day |
+
+Doubt: guards still walk out of the ring to fight, and a farmer did too (run 2), so the wall is not keeping hired workers inside. Roa's suffocation on day 9 was inside the ring and is not explained by the night spawn. Neither is a harness throw, and the assertions were left as they are. Next: merge `origin/dev` and run the full `scripts/verify.sh`. Blockers: none.
