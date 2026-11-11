@@ -928,4 +928,21 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Screenshots: M23 has no visual change. Layer 4 wrote the existing 41 shots, `0000_village_heart_placed.png` through `0040_mp_ranks.png`. No new shot to describe.
 - `scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions, 10/10 days). Growth log: day 1 licensed and a baby, day 2 licensed and a baby, days 3–5 `NO_FREE_BED`, day 6 licensed and a baby, days 7–10 `NO_FREE_BED`. No `TOO_FAR`, no lapse. Population 8 → 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie; the starter assertions do not mention that death.
 - ROADMAP checkbox left unticked for the orchestrator. Doubts: the new test freezes the brains; the live-brain morning is covered by `one_birth_per_day`, which passed the full suite.
-- Trailing `scripts/verify.sh --fast` at `6fed83d` exit 0 (402 GameTests in both layers, perf within caps: worst 2638 us, 16x16x8 1289 us, spill 1466 us, snapshot 300 us, deposit 294 us, idle tick 8.2e-4 ms). Next: the PR into `dev`.
+- Trailing `scripts/verify.sh --fast` at `6fed83d` exit 0 (402 GameTests in both layers, perf within caps: worst 2638 us, 16x16x8 1289 us, spill 1466 us, snapshot 300 us, deposit 294 us, idle tick 8.2e-4 ms).
+- Opening the PR into `dev` was refused: GitHub said the account must be a collaborator. Branch `m23` is pushed. Title and description, for the orchestrator to open:
+
+### PR title
+
+TASK 1: finish M23 (Population growth)
+
+### PR description
+
+Status: task TASK 1, branch `m23`, state done. Full `scripts/verify.sh` exit 0 at `4c21c0d` (2026-11-11T09:04:54Z). Trailing `scripts/verify.sh --fast` exit 0 at `6fed83d` (2026-11-11T09:34:55Z).
+
+Courtship treated a cannot-reach stamp left by an earlier stroll as the courtship walk failing. The stamp is already older than 200 ticks when the morning window opens, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). The stamp now counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A real cannot-reach of the partner walk still lapses. The 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C until the dawn has read them. New test `staleCannotReachDoesNotEndCourtship` failed `LAPSED/CANNOT_MEET` before the fix and again when the partner-target check was removed. The ROADMAP checkbox is left unticked for the orchestrator.
+
+Full verify at `4c21c0d`: Layer 1 pass; Layer 2 "All 402 required tests passed"; GameTest-ran gate, script self-test, model-log gate, 2-player session log gate pass; Layer 4 client tests pass; lost wakeups rescued 1; leaked in-flight count cleared 0; world-load timeout fix installed; no villageheart model warnings; 2-player session clean; 41 existing screenshots `0000_village_heart_placed.png` through `0040_mp_ranks.png` (no new M23 shot); perf worst 2583 us, 16x16x8 2176 us, spill 938 us, snapshot 269 us, deposit 205 us, idle tick 7.8e-4 ms.
+
+`scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions). Births on days 1, 2 and 6; `NO_FREE_BED` on the other dawns. No `TOO_FAR`, no lapse. Population 8 to 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie.
+
+Doubt: the new test freezes the brains so the stroll stamp stays on the stroll. The live-brain morning is `one_birth_per_day`, which passed both layers of the full verify and of the trailing fast run.
