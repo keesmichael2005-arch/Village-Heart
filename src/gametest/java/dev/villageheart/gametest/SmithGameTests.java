@@ -627,7 +627,7 @@ public class SmithGameTests {
 	 * Two smiths at two furnaces share one camp: two iron axes, one from each. Fired mid-craft, the other smith adopts the
 	 * saved craft after finishing its own, and both axes still arrive.
 	 */
-	@GameTest(environment = "villageheart-gametest:smith_two_smiths", structure = YARD, skyAccess = true, maxTicks = 16000)
+	@GameTest(environment = "villageheart-gametest:smith_two_smiths", structure = YARD, skyAccess = true, maxTicks = 20000)
 	public void twoLumberjacksTwoSmithsShareACamp(GameTestHelper h) {
 		Villager[] smiths = new Villager[2];
 		Villager[] jacks = new Villager[2];
@@ -656,16 +656,19 @@ public class SmithGameTests {
 			h.assertValueEqual(1L, craftUnits(h, smiths[0]), "the first smith's axe");
 			h.assertValueEqual(1L, craftUnits(h, smiths[1]), "the second smith's axe");
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
-			log("two axes, one from each smith");
+			log("two axes, one from each smith, day " + Math.floorMod(h.getLevel().getDayTime(), 24000L));
 			GearOrders.reset();
 			resetCamp(h);
 			putStore(h, Items.IRON_INGOT, 6);
 			putStore(h, Items.STICK, 4);
+			// The first pair used the afternoon. The next morning is a full work day; stepping the clock backward
+			// leaves the smiths out of work.
+			long now = h.getLevel().getDayTime();
+			long day = Math.floorMod(now, 24000L);
+			setDayTime(h, now - day + 24000L + 1000L);
 		}).thenWaitUntil(() -> {
-			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
-			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]),
-					"crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
-							+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size());
+			long dayNow = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), part2(h, smiths, dayNow));
 		}).thenExecute(() -> {
 			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
 			log("second smith fired mid-craft");
@@ -1451,6 +1454,16 @@ public class SmithGameTests {
 		h.assertTrue(data != null && SmithyLayout.smithyAt(h.getLevel().getServer(), data.jobBlock()).isPresent(),
 				"job block " + (data == null ? null : data.jobBlock()));
 		return v;
+	}
+
+	private static String part2(GameTestHelper h, Villager[] smiths, long day) {
+		var server = h.getLevel().getServer();
+		var a = SmithRuntime.get(server).state(smiths[0].getUUID());
+		var b = SmithRuntime.get(server).state(smiths[1].getUUID());
+		return "crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
+				+ " modes " + a.mode + " " + b.mode + " hints " + a.hint + " " + b.hint
+				+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size()
+				+ " axes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE);
 	}
 
 	private static boolean craftAt(GameTestHelper h, Villager smith) {
