@@ -118,3 +118,10 @@ tasks.register('genAssets', JavaExec) {
 	args file('src/main/resources').absolutePath, file('build/asset-preview').absolutePath
 	systemProperty 'java.awt.headless', 'true'
 }
+
+// -Dvillageheart.l4.only=art is a Gradle JVM flag. The client test runs in its own process, so copy it across.
+// Absent means the full Layer 4 suite, which is what scripts/verify.sh runs.
+tasks.named('runClientGameTest') {
+	def only = System.getProperty('villageheart.l4.only')
+	if (only != null && !only.isBlank()) systemProperty 'villageheart.l4.only', only
+}
