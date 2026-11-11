@@ -890,3 +890,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `core.death`: `DeathEntry`, `DeathLog` (32 rows, uncapped `nextSeq` / `inClaimLogged`, one-tick conversion merge), `DeathCauses` (shared with the sim). A witch conversion is `minecraft:lightning_bolt`, not `zombified`.
 - `VillageState.deaths` and codec key `death_log` on `RAW_B` (optional, empty omitted). A bad value drops the log and keeps the village; 40 rows on disk keep the newest 32.
 - Tests: `DeathLogTest`, `DeathCausesTest`, `VillageCodecsTest.deathLogRoundTripCapAndABadValue`. Mutation: disabling the 32-row trim turned `thirtyThreeAppendsKeepThirtyTwo` red (33 rows). Next: step 2, the raid core.
+
+## 2026-11-11: M25 track A step 2 (raid core)
+- `core.raid`: facts, plan, record, summary, tracker, the danger alert line. A raid latches by vanilla id when its centre or a raider is in the claim. Victory beats loss beats a stop; a missing raid is gone. A different id does not replace the latched one.
+- `VillageState.threats` (raid + last raid only) and codec key `threats`. A bad raid or last raid drops that value and keeps the village. Empty threats are omitted.
+- Tests: `RaidTrackerTest` (T-L1-3 and the claim edge), `RaidAlertsTest` (T-L1-4), `VillageCodecsTest.raidRoundTripAndABadRaid`. Mutation: ignoring a raider inside the claim turned `outsideDoesNotStartUnlessARaiderIsInside` and `claimEdgeCountsARaiderAt79AndNotAt81` red. Next: step 3, shelter.

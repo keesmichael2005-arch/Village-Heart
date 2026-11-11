@@ -412,4 +412,45 @@ class VillageCodecsTest {
 		assertEquals(3, oneBad.deaths().entries().get(0).seq());
 		assertEquals(4, oneBad.deaths().nextSeq());
 	}
+
+	/** Raid and last raid (M25, T-L1-7). A missing key is empty; a bad raid drops the raid and keeps the village. */
+	@Test void raidRoundTripAndABadRaid() {
+		assertEquals(dev.villageheart.core.raid.ThreatState.EMPTY, dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}")).threats());
+		assertFalse(keys(enc(VillageCodecs.VILLAGE_STATE, full())).contains("threats"));
+
+		var plan = new dev.villageheart.core.raid.RaidPlan(2, 4, 1, 0, false);
+		var record = new dev.villageheart.core.raid.RaidRecord(7, dev.villageheart.core.raid.RaidOrigin.BAD_OMEN, plan, 500L, 3, 12,
+				4, 4, 1, 0, 6, 2, 4, false, 1, 5, 4, 0, 80L);
+		var summary = new dev.villageheart.core.raid.RaidSummary(3, 500L, 900L, dev.villageheart.core.raid.RaidOutcome.VICTORY,
+				dev.villageheart.core.raid.RaidOrigin.RANDOM, 2, 2, 12, 11, 1, 9, 8);
+		VillageState saved = full().withRaid(java.util.Optional.of(record)).withLastRaid(java.util.Optional.of(summary));
+		assertEquals(saved, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, saved)));
+		com.google.gson.JsonObject encoded = enc(VillageCodecs.VILLAGE_STATE, saved).getAsJsonObject();
+		assertTrue(encoded.has("threats"), "threats is a top-level key");
+		com.google.gson.JsonObject raid = encoded.getAsJsonObject("threats").getAsJsonObject("raid");
+		assertEquals(7, raid.get("vanilla_id").getAsInt());
+		assertEquals("bad_omen", raid.get("origin").getAsString());
+		assertEquals(2, raid.getAsJsonObject("plan").get("omen").getAsInt());
+		assertEquals(4, raid.getAsJsonObject("plan").get("extra_vindicators").getAsInt());
+		assertTrue(raid.has("waves_total"), "the raid object is flat, not split into two compounds");
+		assertEquals("victory", encoded.getAsJsonObject("threats").getAsJsonObject("last_raid").get("outcome").getAsString());
+
+		VillageState dropped = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"threats\":{\"raid\":[],\"last_raid\":{\"outcome\":\"victory\",\"origin\":\"random\"}}}"));
+		assertTrue(dropped.threats().raid().isEmpty(), "a bad raid is dropped");
+		assertEquals(dev.villageheart.core.raid.RaidOutcome.VICTORY, dropped.threats().lastRaid().orElseThrow().outcome());
+		assertEquals("a", dropped.ownerName());
+
+		VillageState badOutcome = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"threats\":{\"last_raid\":{\"outcome\":\"drawn\",\"origin\":\"test\"}}}"));
+		assertTrue(badOutcome.threats().lastRaid().isEmpty());
+		assertEquals("a", badOutcome.ownerName());
+
+		VillageState badThreats = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"threats\":[]}"));
+		assertEquals(dev.villageheart.core.raid.ThreatState.EMPTY, badThreats.threats());
+		assertEquals("a", badThreats.ownerName());
+
+		VillageState badPlan = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE
+				+ ",\"threats\":{\"raid\":{\"vanilla_id\":1,\"origin\":\"test\",\"plan\":{\"omen\":9}}}}"));
+		assertTrue(badPlan.threats().raid().isEmpty());
+		assertEquals("a", badPlan.ownerName());
+	}
 }

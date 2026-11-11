@@ -574,10 +574,18 @@ Babies are normal vanilla villagers and can be hired as adults.
 ## 8. Threats and survival
 - **Night mobs** (vanilla): villagers go indoors at night (vanilla behaviour). Guards on night shift patrol.
   Lamp posts and walls reduce spawns and access.
-- **Raids** (vanilla Bad Omen raids, unchanged). The Heart screen shows a raid alert, all guards come on duty,
+- **Raids** (vanilla Bad Omen raids). The Heart screen shows a raid alert, all guards come on duty,
   golems fight, and workers go indoors.
+  As built (M25 track A, step 2): a raid counts when it is still going and its centre or a raider is inside the claim
+  (the 80-block sphere, the edge included). The tracker latches that raid by its vanilla id; a different id does not
+  replace it. Victory beats a loss, and a loss beats a stop or an over raid; a raid that vanishes is gone. The alert
+  line is danger: coming, the wave and how many raiders are left, or between waves. The screen, the call-up and
+  shelter are later steps.
 - **Hunger and homelessness**: these slow or stop work (§4). Villagers **do not die** of either.
 - Deaths are tracked (cause and day) for the Overview tab and the simulation metrics.
+  As built (M25 step 1): the village keeps the last 32 (cause, day, whether it was in the claim, and whether a raid
+  or a siege was on). A conversion within one tick merges into the death. A witch conversion is lightning. The
+  Overview rows are a later step.
 
 ## 9. Progression: village tiers
 
