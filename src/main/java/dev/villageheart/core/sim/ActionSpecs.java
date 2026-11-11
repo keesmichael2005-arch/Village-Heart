@@ -84,6 +84,20 @@ public final class ActionSpecs {
 				ints(f, "size", 2, 8, 200);
 				integer(f, "spacing", 7, 3, 16);
 			}
+			case "raid" -> {
+				integer(f, "omen", -1, 1, 5);
+				if (f.containsKey("scaled") && !(f.get("scaled") instanceof Boolean)) throw new IllegalArgumentException("scaled must be true or false");
+			}
+			case "golems" -> integer(f, "count", -1, 0, 4);
+			case "top_up_villagers" -> {
+				integer(f, "adults", -1, 1, 50);
+				ints(f, "at", 2, -80, 80);
+			}
+			case "worker_level" -> {
+				String job = str(f, "job");
+				if (JobType.byId(job).isEmpty()) throw new IllegalArgumentException("job: unknown job " + job);
+				integer(f, "level", -1, 1, 3);
+			}
 			case "night_spawn" -> {
 				String mob = str(f, "mob");
 				if (!mob.contains(":")) throw new IllegalArgumentException("mob must be a namespaced entity id: " + mob);

@@ -329,6 +329,7 @@ public final class SimulationRun implements Host {
 	private void running() {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
+		if (collector != null) collector.sample(server);
 		if (now % dev.villageheart.core.sim.SimArea.FOLLOW_INTERVAL_TICKS == 0) StarterActions.followWorkers(this, tickets);
 		if (now % 100 == 0) {
 			StarterActions.maintain(this);
@@ -504,6 +505,7 @@ public final class SimulationRun implements Host {
 						d.villageMs().meanMs(), d.villageMs().p95Ms(), d.serverTps(), d.heapUsedMb()));
 			}
 			sb.append(dev.villageheart.core.sim.DeathLog.markdown(days));
+			if (collector != null) sb.append(collector.raidSection(days));
 			Files.writeString(md, sb.toString(), StandardCharsets.UTF_8);
 		} catch (Throwable t) {
 			VillageHeart.LOG.error("[sim] could not write summary", t);

@@ -57,6 +57,8 @@ public final class SimMetricsCollector {
 	private volatile boolean enabled = true;
 	private final List<Pending> pending = new ArrayList<>();
 	private final Set<UUID> seen = new HashSet<>();
+	private final RaidMeter raids = new RaidMeter();
+	private long lastInClaimLogged;
 
 	public SimMetricsCollector(ServerLevel level, Vec3 centre, int radius) {
 		this.level = level;
@@ -73,6 +75,11 @@ public final class SimMetricsCollector {
 
 	/** Fabric events cannot be unregistered, so tests switch the handlers off instead. */
 	public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+	/** Reads the tracked raid often enough that a raid which ends before the day record still has its guard census. */
+	public void sample(MinecraftServer server) { raids.sample(server); }
+
+	public String raidSection(List<DayMetrics> days) { return raids.section(days); }
 
 	/** Entity tags for the death log's attacker origin: a scenario {@code night_spawn} mob, a villager turned into a zombie villager. */
 	public static final String TAG_SCRIPTED = "villageheart_sim_scripted", TAG_CONVERTED = "villageheart_sim_converted";
@@ -303,6 +310,15 @@ public final class SimMetricsCollector {
 		double tps = wallSeconds > 0 ? ticksInDay / wallSeconds : 0;
 		Runtime rt = Runtime.getRuntime();
 		long heapMb = (rt.totalMemory() - rt.freeMemory()) >> 20;
+		long logged = 0;
+		int golems = 0;
+		if (village.isPresent()) {
+			long nowLogged = village.get().deaths().inClaimLogged();
+			logged = Math.max(0, nowLogged - lastInClaimLogged);
+			lastInClaimLogged = nowLogged;
+			ServerLevel home = dev.villageheart.worker.Workers.levelOf(server, village.get().heart());
+			if (home != null) golems = RaidSim.countGolems(home, village.get().heart());
+		}
 		return new DayMetrics(day, gameTime, village.isPresent(), c.population(), c.adults(), c.babies(),
 				village.map(v -> v.workers().size()).orElse(0),
 				village.map(v -> (int) v.buildings().stream().filter(b -> b.status() == dev.villageheart.core.building.BuildingStatus.VALID).count()).orElse(0),
@@ -311,7 +327,7 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay());
+				needsDay(server, village), wageDay(), raids.take(server, gameTime), logged, golems);
 	}
 
 	/** The wage runs of the day (reset here, M12). */

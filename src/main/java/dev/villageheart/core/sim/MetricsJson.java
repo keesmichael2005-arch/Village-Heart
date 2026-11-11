@@ -218,6 +218,7 @@ public final class MetricsJson {
 			list.add(dm);
 		}
 		de.put("list", list);
+		de.put("logged", d.deathsLogged());
 		m.put("deaths", de);
 		Map<String, Object> vm = new LinkedHashMap<>();
 		vm.put("mean", d.villageMs().meanMs());
@@ -237,6 +238,37 @@ public final class MetricsJson {
 		m.put("work", longs(d.work()));
 		m.put("worker_status", longs(d.workerStatus()));
 		m.put("stockpile_tags", longs(d.stockpileTags()));
+		m.put("raid", raidMap(d.raid()));
+		Map<String, Object> gl = new LinkedHashMap<>();
+		gl.put("in_claim", (long) d.golemsInClaim());
+		m.put("golems", gl);
+		return m;
+	}
+
+	private static Map<String, Object> raidMap(DayMetrics.RaidDay r) {
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("started", (long) r.started());
+		m.put("active", (long) r.active());
+		m.put("victories", (long) r.victories());
+		m.put("losses", (long) r.losses());
+		m.put("stopped", (long) r.stopped());
+		m.put("gone", (long) r.gone());
+		m.put("waves", (long) r.waves());
+		m.put("waves_total", (long) r.wavesTotal());
+		m.put("villagers_at_start", (long) r.villagersAtStart());
+		m.put("villagers_at_end", (long) r.villagersAtEnd());
+		m.put("guards_at_start", (long) r.guardsAtStart());
+		m.put("guards_qualified_at_start", (long) r.guardsQualifiedAtStart());
+		m.put("guards_wounded_at_start", (long) r.guardsWoundedAtStart());
+		m.put("guards_unloaded_at_start", (long) r.guardsUnloadedAtStart());
+		m.put("villager_deaths", (long) r.villagerDeaths());
+		m.put("raiders_killed", (long) r.raidersKilled());
+		m.put("origin_random", (long) r.originRandom());
+		m.put("early", (long) r.early());
+		m.put("reward", (long) r.reward());
+		m.put("extra_raiders", (long) r.extraRaiders());
+		m.put("spawn_min_distance", (long) r.spawnMinDistance());
+		m.put("callup_ticks", (long) r.callupTicks());
 		return m;
 	}
 
@@ -302,6 +334,8 @@ public final class MetricsJson {
 		Map<String, Object> w = Json.obj(m.get("world"), "world");
 		Map<String, Long> items = new LinkedHashMap<>();
 		for (Map.Entry<String, Object> e : Json.obj(s.get("items"), "items").entrySet()) items.put(e.getKey(), ((Number) e.getValue()).longValue());
+		Map<String, Object> raid = m.get("raid") == null ? null : Json.obj(m.get("raid"), "raid");
+		Map<String, Object> golems = m.get("golems") == null ? null : Json.obj(m.get("golems"), "golems");
 		List<DeathRecord> deaths = new ArrayList<>();
 		for (Object o : Json.arr(de.get("list"), "deaths.list")) {
 			Map<String, Object> d = Json.obj(o, "death");
@@ -323,6 +357,19 @@ public final class MetricsJson {
 				readLongs(m.get("work")), readLongs(m.get("worker_status")), readLongs(m.get("stockpile_tags")),
 				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
 						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
-				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")));
+				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")),
+				readRaid(raid), optLng(de, "logged"), golems == null ? 0 : (int) optLng(golems, "in_claim"));
+	}
+
+	/** A report from before M25 has no raid object: every counter is 0 and the spawn distance stays -1. */
+	private static DayMetrics.RaidDay readRaid(Map<String, Object> r) {
+		if (r == null) return DayMetrics.RaidDay.ZERO;
+		return new DayMetrics.RaidDay((int) optLng(r, "started"), (int) optLng(r, "active"), (int) optLng(r, "victories"),
+				(int) optLng(r, "losses"), (int) optLng(r, "stopped"), (int) optLng(r, "gone"), (int) optLng(r, "waves"),
+				(int) optLng(r, "waves_total"), (int) optLng(r, "villagers_at_start"), (int) optLng(r, "villagers_at_end"),
+				(int) optLng(r, "guards_at_start"), (int) optLng(r, "guards_qualified_at_start"), (int) optLng(r, "guards_wounded_at_start"),
+				(int) optLng(r, "guards_unloaded_at_start"), (int) optLng(r, "villager_deaths"), (int) optLng(r, "raiders_killed"),
+				(int) optLng(r, "origin_random"), (int) optLng(r, "early"), (int) optLng(r, "reward"), (int) optLng(r, "extra_raiders"),
+				r.containsKey("spawn_min_distance") ? (int) optLng(r, "spawn_min_distance") : -1, (int) optLng(r, "callup_ticks"));
 	}
 }

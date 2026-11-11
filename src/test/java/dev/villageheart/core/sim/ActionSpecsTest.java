@@ -21,7 +21,11 @@ class ActionSpecsTest {
 		ScenarioParser.parse("x", doc("{\"action\":\"site\",\"size\":[44,32],\"min_distance\":24,\"max_distance\":72},{" + PREFAB + "},"
 				+ "{\"action\":\"field\",\"at\":[10,14],\"size\":9,\"crop\":\"carrots\",\"age\":7},"
 				+ "{\"action\":\"grove\",\"area\":[22,21,20,10],\"trees\":8,\"spacing\":5,\"seed\":11},"
-				+ "{\"action\":\"hire\",\"day\":1,\"tick\":200,\"job\":\"farmer\",\"building\":\"farmhouse\"}"));
+				+ "{\"action\":\"hire\",\"day\":1,\"tick\":200,\"job\":\"farmer\",\"building\":\"farmhouse\"},"
+				+ "{\"action\":\"raid\",\"day\":1,\"tick\":100,\"omen\":3,\"scaled\":false},"
+				+ "{\"action\":\"golems\",\"count\":1},"
+				+ "{\"action\":\"top_up_villagers\",\"adults\":4,\"at\":[2,2]},"
+				+ "{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":2}"));
 	}
 
 	@Test void typosNameTheField() {
@@ -35,5 +39,15 @@ class ActionSpecsTest {
 		bad("{\"action\":\"site\",\"size\":[44],\"max_distance\":72}", "size");
 		bad("{\"action\":\"site\",\"size\":[4,4],\"min_distance\":50,\"max_distance\":20}", "min_distance");
 		bad("{\"action\":\"grove\",\"area\":[1,1,5,5],\"trees\":0,\"spacing\":5}", "trees");
+		bad("{\"action\":\"raid\",\"omen\":3}", "day");
+		bad("{\"action\":\"raid\",\"day\":1,\"omen\":0}", "omen");
+		bad("{\"action\":\"raid\",\"day\":1,\"omen\":6}", "omen");
+		bad("{\"action\":\"raid\",\"day\":1,\"omen\":1,\"scaled\":\"yes\"}", "scaled");
+		bad("{\"action\":\"golems\",\"count\":5}", "count");
+		bad("{\"action\":\"golems\"}", "count");
+		bad("{\"action\":\"top_up_villagers\",\"adults\":0,\"at\":[1,1]}", "adults");
+		bad("{\"action\":\"top_up_villagers\",\"adults\":4}", "at");
+		bad("{\"action\":\"worker_level\",\"job\":\"wizard\",\"level\":2}", "unknown job wizard");
+		bad("{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":4}", "level");
 	}
 }

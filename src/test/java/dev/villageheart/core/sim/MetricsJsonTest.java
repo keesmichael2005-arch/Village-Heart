@@ -62,13 +62,18 @@ class MetricsJsonTest {
 		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
 		assertEquals(List.of("day", "game_time", "claimed", "population", "adults", "babies", "employed", "buildings",
 				"stockpile", "food", "housing", "treasury", "wages", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
-				"stockpile_tags"), List.copyOf(day.keySet()));
+				"stockpile_tags", "raid", "golems"), List.copyOf(day.keySet()));
 		assertEquals(List.of("valid", "invalid"), List.copyOf(((Map<String, Object>) day.get("buildings")).keySet()));
 		assertEquals(List.of("total", "distinct", "items"), List.copyOf(((Map<String, Object>) day.get("stockpile")).keySet()));
 		assertEquals(List.of("nutrition", "days_left", "dinners", "diners", "fed", "hungry", "eaten_nutrition", "eaten_items", "max_hungry_days"),
 				List.copyOf(((Map<String, Object>) day.get("food")).keySet()));
 		assertEquals(List.of("housed", "house_beds"), List.copyOf(((Map<String, Object>) day.get("housing")).keySet()));
-		assertEquals(List.of("total", "mobs", "by_cause", "list"), List.copyOf(((Map<String, Object>) day.get("deaths")).keySet()));
+		assertEquals(List.of("total", "mobs", "by_cause", "list", "logged"), List.copyOf(((Map<String, Object>) day.get("deaths")).keySet()));
+		assertEquals(List.of("started", "active", "victories", "losses", "stopped", "gone", "waves", "waves_total", "villagers_at_start",
+				"villagers_at_end", "guards_at_start", "guards_qualified_at_start", "guards_wounded_at_start", "guards_unloaded_at_start",
+				"villager_deaths", "raiders_killed", "origin_random", "early", "reward", "extra_raiders", "spawn_min_distance", "callup_ticks"),
+				List.copyOf(((Map<String, Object>) day.get("raid")).keySet()));
+		assertEquals(List.of("in_claim"), List.copyOf(((Map<String, Object>) day.get("golems")).keySet()));
 		assertEquals(List.of("mean", "p95", "max", "samples"), List.copyOf(((Map<String, Object>) day.get("village_ms")).keySet()));
 		assertEquals(List.of("mspt", "tps", "heap_used_mb"), List.copyOf(((Map<String, Object>) day.get("server")).keySet()));
 		assertEquals(List.of("save_bytes"), List.copyOf(((Map<String, Object>) day.get("world")).keySet()));
@@ -177,5 +182,51 @@ class MetricsJsonTest {
 		for (String k : List.of("wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers")) assertTrue(MetricNames.isKnown(k), k);
 		day.remove("wages");
 		assertEquals(DayMetrics.WageDay.ZERO, MetricsJson.read(Json.write(m, true)).days().get(0).wages());
+	}
+
+	@Test
+	void raidRoundTripPinnedKeysAndOldReportsReadZeros() {
+		DayMetrics d = rich(1);
+		DayMetrics.RaidDay raid = new DayMetrics.RaidDay(1, 1, 0, 0, 0, 0, 3, 5, 12, 11, 4, 3, 1, 0, 1, 6, 1, 0, 0, 2, 48, 80);
+		DayMetrics with = new DayMetrics(d.day(), d.gameTime(), d.claimed(), d.population(), d.adults(), d.babies(), d.employed(),
+				1, 3, d.stockpile(), 12, 3.5, 4, d.deaths(), d.villageMs(), 1.5, 470.25, 51.2, 900, 41_000_000L,
+				Map.of(), Map.of(), Map.of(), DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO, raid, 2L, 1);
+		Report r = new Report("x", SimStatus.PASS, null, true, 1, 0, null, 1, "normal", 1, "1.21.11", VillagePositions.NONE,
+				0, List.of(), null, List.of(with), List.of());
+		String json = MetricsJson.write(r);
+		assertEquals(r, MetricsJson.read(json));
+		Map<String, Double> flat = with.flatten();
+		assertEquals(1.0, flat.get("raid.started"));
+		assertEquals(1.0, flat.get("raid.origin_random"));
+		assertEquals(48.0, flat.get("raid.spawn_min_distance"));
+		assertEquals(80.0, flat.get("raid.callup_ticks"));
+		assertEquals(2.0, flat.get("deaths.logged"));
+		assertEquals(1.0, flat.get("golems.in_claim"));
+		for (String k : List.of("raid.started", "raid.active", "raid.victories", "raid.losses", "raid.stopped", "raid.gone", "raid.waves",
+				"raid.waves_total", "raid.villagers_at_start", "raid.villagers_at_end", "raid.guards_at_start", "raid.guards_qualified_at_start",
+				"raid.guards_wounded_at_start", "raid.guards_unloaded_at_start", "raid.villager_deaths", "raid.raiders_killed", "raid.origin_random",
+				"raid.early", "raid.reward", "raid.extra_raiders", "raid.spawn_min_distance", "raid.callup_ticks", "deaths.logged", "golems.in_claim")) {
+			assertTrue(MetricNames.isKnown(k), k);
+			assertTrue(flat.containsKey(k), k);
+		}
+		assertFalse(MetricNames.isKnown("raid.defence_hp"));
+		assertFalse(MetricNames.isKnown("siege.active"));
+		DayMetrics zero = rich(1);
+		assertEquals(DayMetrics.RaidDay.ZERO, zero.raid());
+		assertEquals(-1.0, zero.flatten().get("raid.spawn_min_distance"));
+		assertEquals(0.0, zero.flatten().get("raid.callup_ticks"));
+		@SuppressWarnings("unchecked")
+		Map<String, Object> m = (Map<String, Object>) Json.parse(json);
+		@SuppressWarnings("unchecked")
+		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
+		day.remove("raid");
+		day.remove("golems");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> deaths = (Map<String, Object>) day.get("deaths");
+		deaths.remove("logged");
+		DayMetrics old = MetricsJson.read(Json.write(m, true)).days().get(0);
+		assertEquals(DayMetrics.RaidDay.ZERO, old.raid());
+		assertEquals(0L, old.deathsLogged());
+		assertEquals(0, old.golemsInClaim());
 	}
 }
