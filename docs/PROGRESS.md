@@ -936,4 +936,5 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `LureSlots` admits up to 24 zombies (siege tag first, then distance). `VillageLureGoal` walks a partial path up to the wall and hands off. `BreachGoal` then hits for a zombie that holds a slot, or whose target stands in the claim.
 - Each lure GameTest passed alone (1 required test): T-L2-20 `zombieBehindClosedWallBreaks`, T-L2-21 `skeletonStaysVanilla`, T-L2-22 `lureOffByDay`, T-L2-23 `noWallsNoLure`, T-L2-24 `lureBudgetCaps`, T-L2-37 `trenchInFrontOfWall` (zombie half), T-L2-38 `openGapIsUsed`, T-L2-39 `partialWallNoLure`.
 - The gate sits on the north wall. A south gate's eye-level air lets the zombie see a villager and take a target before it hits. The beside-the-wall bound is 1200 ticks: the specified wander arrived in 794, and 600 is a straight walk. "Never had a target" is checked until the zombie is beside the wall.
-- Fast verify is next. Creepers are step 14.
+- `scripts/verify.sh --fast` at `0d2cc08`: exit 0 (L1 green, L2 402/402, L3 self-test, perf).
+- Next: step 14, creeper breach. The builder repair of T-L2-40 stays in step 15.
