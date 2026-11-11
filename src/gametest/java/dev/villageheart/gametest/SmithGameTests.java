@@ -14,10 +14,14 @@ import static dev.villageheart.gametest.SmithTestSupport.walkBlocks;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.gear.CraftTier;
+import dev.villageheart.core.gear.GearCraft;
 import dev.villageheart.core.gear.GearNeed;
+import dev.villageheart.core.gear.ItemCount;
+import dev.villageheart.core.gear.OrderKey;
 import dev.villageheart.core.gear.ToolRecipe;
 import dev.villageheart.core.gear.ToolRecipes;
 import dev.villageheart.core.smith.RepairRules;
+import dev.villageheart.core.smith.SmithCraft;
 import dev.villageheart.core.smith.SmithDecision;
 import dev.villageheart.core.smith.SmithKind;
 import dev.villageheart.core.smith.SmithRecipe;
@@ -28,6 +32,7 @@ import dev.villageheart.golem.GolemGate;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.core.job.ToolKind;
+import dev.villageheart.worker.gear.GearOrders;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
 import dev.villageheart.worker.job.CampTools;
 import dev.villageheart.worker.gear.ToolStacks;
@@ -531,6 +536,80 @@ public class SmithGameTests {
 			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
 			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:stone_pickaxe")), "stone pickaxe crafted: " + units);
 			log("miner leases the iron pickaxe");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5h --------------------------------------------------------------------------------------
+
+	/**
+	 * A saved iron pickaxe pauses at dusk, survives a runtime restart, and finishes the next morning. Breaking the Smithy
+	 * refunds the committed ingots and sticks once.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_craft_night", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void craftPausesOvernightAndSurvivesRestart(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		int[] dusk = {-1};
+		int[] held = {0};
+		long[] finishDay = {-1};
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			GearOrders.reset();
+			SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+			seedPick(h, 1200);
+			setDayTime(h, 10400);
+			log("iron pickaxe seeded at 1200, day 10400");
+		}).thenExecuteFor(1000, () -> {
+			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			int progress = craftProgress(h);
+			if (dusk[0] < 0 && day >= 11100 && day < 12000) {
+				dusk[0] = progress;
+				h.assertTrue(Math.abs(progress - 1800) <= 20, "dusk progress " + progress);
+				log("dusk progress " + progress);
+			}
+			if (dusk[0] >= 0 && held[0] < 200) {
+				held[0]++;
+				h.assertValueEqual(dusk[0], progress, "progress moved overnight");
+			}
+		}).thenExecute(() -> {
+			h.assertTrue(dusk[0] >= 0, "dusk was not sampled");
+			h.assertValueEqual(200, held[0], "overnight samples");
+			var server = h.getLevel().getServer();
+			SmithRuntime.resetForTests();
+			GearOrders.reset();
+			GearOrders.rebuild(server);
+			setDayTime(h, 980);
+			h.assertValueEqual(1, mineOrders(h), "open mine orders after restart");
+			log("restarted at day 980 with one mine order, progress " + craftProgress(h));
+		}).thenWaitUntil(() -> {
+			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			if (craftProgress(h) >= 0) h.assertValueEqual(1, mineOrders(h), "a second mine order opened");
+			if (finishDay[0] < 0 && SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream()
+					.anyMatch(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:iron_pickaxe"))) finishDay[0] = day;
+			h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.IRON_PICKAXE),
+					"iron pickaxe not delivered, day " + day + " progress " + craftProgress(h));
+		}).thenExecute(() -> {
+			int expect = 1000 + (Balance.SMITH_TOOL_IRON - dusk[0]);
+			h.assertTrue(finishDay[0] > 0 && Math.abs(finishDay[0] - expect) <= 80,
+					"finished on day " + finishDay[0] + ", expected about " + expect);
+			log("iron pickaxe delivered, finished day " + finishDay[0]);
+			seedPick(h, 100);
+			h.setBlock(SmithTestSupport.smithyMarker(), Blocks.AIR);
+			log("smithy marker broken");
+		}).thenExecuteFor(200, () -> { }).thenExecute(() -> {
+			h.assertValueEqual(3L, count(h, Items.IRON_INGOT), "refunded ingots");
+			h.assertValueEqual(2L, count(h, Items.STICK), "refunded sticks");
+			h.assertTrue(smithCraftsEmpty(h), "the craft is still saved");
+			log("refunded once");
+		}).thenExecuteFor(400, () -> {
+			h.assertValueEqual(3L, count(h, Items.IRON_INGOT), "ingots doubled");
+			h.assertValueEqual(2L, count(h, Items.STICK), "sticks doubled");
+			h.assertTrue(smithCraftsEmpty(h), "a craft came back");
+		}).thenExecute(() -> {
+			log("refund stayed put");
 			VillageTestSupport.done(h);
 		});
 	}
@@ -1258,6 +1337,24 @@ public class SmithGameTests {
 
 	private static void seedBuild(GameTestHelper h, int progress) {
 		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withGolemBuild(smithyAt(h), progress));
+	}
+
+	/** A saved iron pickaxe for the Mine's slot 0, committed as 3 ingots and 2 sticks. */
+	private static void seedPick(GameTestHelper h, int progress) {
+		HeartLocation mine = BuildingTestSupport.loc(h, SmithTestSupport.mineMarker());
+		HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+		OrderKey key = new OrderKey(mine, GearNeed.PICKAXE, 0);
+		GearCraft craft = new GearCraft("minecraft:iron_pickaxe", key, progress, List.of(
+				new ItemCount("minecraft:iron_ingot", 3), new ItemCount("minecraft:stick", 2)));
+		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withSmithCraft(furnace, new SmithCraft(craft, mine)));
+	}
+
+	private static int mineOrders(GameTestHelper h) {
+		return GearOrders.openOf(BuildingTestSupport.loc(h, SmithTestSupport.mineMarker()), GearNeed.PICKAXE).size();
+	}
+
+	private static boolean smithCraftsEmpty(GameTestHelper h) {
+		return VillageClaims.current(h.getLevel().getServer()).map(v -> v.smithCrafts().isEmpty()).orElse(false);
 	}
 
 	private static void take(GameTestHelper h, net.minecraft.world.item.Item item, int n) {
