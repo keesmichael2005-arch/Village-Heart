@@ -114,7 +114,9 @@ final class MarkerClientTests {
 			srv.runCommand("time set noon");
 			srv.runCommand("gamemode survival @a");
 			srv.runCommand("clear @a");
+			srv.runCommand("give @a villageheart:village_heart 1");
 			srv.runCommand("give @a villageheart:blank_marker 1");
+			srv.runCommand("give @a villageheart:blueprint 1");
 			for (BuildingType t : BuildingType.values()) srv.runCommand("give @a villageheart:" + t.markerId() + " 1");
 			for (JobBlockType t : JobBlockType.values()) srv.runCommand("give @a villageheart:" + t.id() + " 1");
 			context.waitTicks(10);

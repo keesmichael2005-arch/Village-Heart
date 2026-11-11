@@ -127,7 +127,7 @@ public final class AssetGenerator {
 				String base = t.id() + "_" + status;
 				out.put(A + "models/block/marker/" + base + ".json", json(map(
 						"parent", NS + ":block/marker_plaque",
-						"textures", map("front", NS + ":block/marker/" + base, "edge", "minecraft:block/stripped_oak_log"))));
+						"textures", map("front", NS + ":block/marker/" + base, "edge", NS + ":block/marker_edge"))));
 				out.put(A + "textures/block/marker/" + base + ".png", png(MarkerArt.render(t, status)));
 			}
 			out.put(A + "items/" + id + ".json", json(itemDef(NS + ":item/" + id)));
@@ -147,6 +147,8 @@ public final class AssetGenerator {
 		out.put(A + "models/item/blueprint.json", json(map(
 				"parent", "minecraft:item/generated", "textures", map("layer0", NS + ":item/blueprint"))));
 		out.put(A + "textures/item/blueprint.png", png(BlueprintArt.render()));
+		// drawn for blueprints-2; that branch's model still samples the blueprint sheet until it is retargeted
+		out.put(A + "textures/item/blueprint_quill.png", png(ExtraArt.quill()));
 
 		// ---- job blocks ----
 		for (JobBlockType t : JobBlockType.values()) {
@@ -164,9 +166,9 @@ public final class AssetGenerator {
 		}
 		out.put(A + "models/block/chopping_block.json", json(map(
 				"parent", "minecraft:block/block",
-				"textures", map("particle", "minecraft:block/oak_log", "side", "minecraft:block/oak_log",
-						"top", "minecraft:block/oak_log_top", "handle", "minecraft:block/stripped_oak_log",
-						"head", "minecraft:block/iron_block"),
+				"textures", map("particle", NS + ":block/chopping_block_side", "side", NS + ":block/chopping_block_side",
+						"top", NS + ":block/chopping_block_top", "handle", NS + ":block/chopping_block_handle",
+						"head", NS + ":block/chopping_block_head"),
 				"elements", list(
 						map("from", list(1L, 0L, 1L), "to", list(15L, 12L, 15L), "faces", map(
 								"north", face("#side", null), "east", face("#side", null), "south", face("#side", null),
@@ -200,6 +202,18 @@ public final class AssetGenerator {
 
 		// ---- villager profession overlays (M7) ----
 		for (JobType j : JobType.values()) out.put(PROFESSION_DIR + j.id() + ".png", png(ProfessionArt.render(j)));
+
+		// ---- block faces that are not job-block enums ----
+		out.put(A + "textures/block/marker_edge.png", png(ExtraArt.markerEdge()));
+		out.put(A + "textures/block/village_heart.png", png(HeartBlockArt.render()));
+		// blueprints-2 still points the scaffold model at bamboo; this is the texture to switch it to
+		out.put(A + "textures/block/builder_scaffold.png", png(ExtraArt.scaffold()));
+
+		// ---- GUI sprites and the refined icon (the mod icon itself stays the release-prep file) ----
+		for (Map.Entry<String, BufferedImage> e : GuiArt.sprites().entrySet()) {
+			out.put(A + e.getKey(), png(e.getValue()));
+		}
+		out.put(A + "icon_refined.png", png(ExtraArt.iconRefined()));
 
 		// ---- loot tables ----
 		for (String id : blockIds()) {
@@ -256,8 +270,13 @@ public final class AssetGenerator {
 						|| rel.startsWith(D + "advancement/recipes/misc/"))) owned = true;
 				if (!owned && rel.startsWith(A + "textures/")) {
 					for (String j : jobs) if (base.equals(j) || base.startsWith(j + "_")) owned = true;
-					if (rel.equals(A + "textures/item/blank_marker.png") || rel.equals(A + "textures/item/blueprint.png")) owned = true;
+					if (rel.equals(A + "textures/item/blank_marker.png") || rel.equals(A + "textures/item/blueprint.png")
+							|| rel.equals(A + "textures/item/blueprint_quill.png")) owned = true;
+					if (rel.equals(A + "textures/block/marker_edge.png") || rel.equals(A + "textures/block/village_heart.png")
+							|| rel.equals(A + "textures/block/builder_scaffold.png")) owned = true;
+					if (rel.startsWith(A + "textures/gui/")) owned = true;
 				}
+				if (rel.equals(A + "icon_refined.png")) owned = true;
 				if (owned) res.add(rel);
 			}
 		}
@@ -280,47 +299,74 @@ public final class AssetGenerator {
 	}
 
 	private static void blit(Graphics2D g, BufferedImage img, int x, int y, int scale) {
-		g.drawImage(img, x, y, 16 * scale, 16 * scale, null);
+		g.drawImage(img, x, y, img.getWidth() * scale, img.getHeight() * scale, null);
 	}
 
-	/** Contact sheet: all markers at x8, the status variants of the House, the job textures, and all markers at x3. */
+	/** Contact sheet: markers, job blocks, items and GUI icons, each at x8, plus the profession overlays. */
 	static void writePreview(Path dir) throws IOException {
 		Files.createDirectories(dir);
-		int s = 8, tile = 16 * s, gap = 8;
-		int cols = 7;
-		int w = cols * (tile + gap) + gap;
-		int h = gap + 2 * (tile + gap) + (tile + gap) + (tile + gap) + (16 * 3 + gap) + gap;
-		BufferedImage sheet = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		List<String> names = new ArrayList<>();
+		List<BufferedImage> imgs = new ArrayList<>();
+		names.add("village_heart"); imgs.add(HeartBlockArt.render());
+		names.add("blank_marker"); imgs.add(JobBlockArt.blankMarker());
+		names.add("blueprint"); imgs.add(BlueprintArt.render());
+		names.add("blueprint_quill"); imgs.add(ExtraArt.quill());
+		names.add("scaffold"); imgs.add(ExtraArt.scaffold());
+		names.add("marker_edge"); imgs.add(ExtraArt.markerEdge());
+		for (Map.Entry<String, BufferedImage> e : JobBlockArt.textures().entrySet()) {
+			names.add(e.getKey()); imgs.add(e.getValue());
+		}
+		for (BuildingType t : BuildingType.values()) {
+			names.add(t.id()); imgs.add(MarkerArt.render(t, "valid"));
+		}
+		for (Map.Entry<String, BufferedImage> e : GuiArt.sprites().entrySet()) {
+			String n = e.getKey();
+			n = n.substring(n.lastIndexOf('/') + 1).replace(".png", "");
+			names.add(n); imgs.add(e.getValue());
+		}
+		int scale = 8, gap = 6, label = 14, cols = 8;
+		int cell = 16 * scale;
+		int sheetW = cols * (cell + gap) + gap;
+		int rows = (imgs.size() + cols - 1) / cols;
+		int sheetH = rows * (cell + label + gap) + gap;
+		BufferedImage sheet = new BufferedImage(sheetW, sheetH, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = sheet.createGraphics();
-		g.setColor(new Color(0x5A5A5A));
-		g.fillRect(0, 0, w, h);
-		BuildingType[] types = BuildingType.values();
-		for (int i = 0; i < types.length; i++) {
-			blit(g, MarkerArt.render(types[i], "unchecked"), gap + (i % cols) * (tile + gap), gap + (i / cols) * (tile + gap), s);
+		g.setColor(new Color(0x2A241C));
+		g.fillRect(0, 0, sheetW, sheetH);
+		g.setColor(Color.WHITE);
+		for (int i = 0; i < imgs.size(); i++) {
+			int cx = gap + (i % cols) * (cell + gap);
+			int cy = gap + (i / cols) * (cell + label + gap);
+			BufferedImage img = imgs.get(i);
+			int dw = img.getWidth() * scale, dh = img.getHeight() * scale;
+			g.drawImage(img, cx + (cell - dw) / 2, cy + (cell - dh) / 2, dw, dh, null);
+			String labelText = names.get(i);
+			if (labelText.length() > 18) labelText = labelText.substring(0, 18);
+			g.drawString(labelText, cx, cy + cell + 12);
 		}
-		int y = gap + 2 * (tile + gap);
-		for (int i = 0; i < 3; i++) blit(g, MarkerArt.render(BuildingType.HOUSE, MarkerArt.STATUSES[i]), gap + i * (tile + gap), y, s);
-		y += tile + gap;
-		int i = 0;
-		for (BufferedImage img : JobBlockArt.textures().values()) {
-			blit(g, img, gap + (i++ % cols) * (tile + gap), y, s);
-		}
-		y += tile + gap;
-		for (int k = 0; k < types.length; k++) blit(g, MarkerArt.render(types[k], "unchecked"), gap + k * (16 * 3 + 4), y, 3);
 		g.dispose();
 		ImageIO.write(sheet, "png", dir.resolve("markers.png").toFile());
+		ImageIO.write(sheet, "png", dir.resolve("contact.png").toFile());
 
-		// professions: each overlay at x6 on a villager-brown background (64x64 -> 384x384), 3 per row
 		JobType[] jobs = JobType.values();
-		int ps = 6, pt = 64 * ps;
-		BufferedImage prof = new BufferedImage(3 * (pt + gap) + gap, 3 * (pt + gap) + gap, BufferedImage.TYPE_INT_ARGB);
+		int ps = 4, pt = 64 * ps, pgap = 8;
+		BufferedImage prof = new BufferedImage(3 * (pt + pgap) + pgap, 3 * (pt + pgap) + pgap, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D pg = prof.createGraphics();
 		pg.setColor(new Color(0x7A5A3C));
 		pg.fillRect(0, 0, prof.getWidth(), prof.getHeight());
 		for (int k = 0; k < jobs.length; k++) {
-			pg.drawImage(ProfessionArt.render(jobs[k]), gap + (k % 3) * (pt + gap), gap + (k / 3) * (pt + gap), pt, pt, null);
+			pg.drawImage(ProfessionArt.render(jobs[k]), pgap + (k % 3) * (pt + pgap), pgap + (k / 3) * (pt + pgap), pt, pt, null);
 		}
 		pg.dispose();
 		ImageIO.write(prof, "png", dir.resolve("professions.png").toFile());
+
+		// the refined icon beside a 4x copy of the block, so the two can be judged together
+		BufferedImage icon = ExtraArt.iconRefined();
+		BufferedImage pair = new BufferedImage(icon.getWidth() + 80, icon.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D ig = pair.createGraphics();
+		ig.drawImage(icon, 0, 0, null);
+		ig.drawImage(HeartBlockArt.render(), icon.getWidth() + 8, 32, 64, 64, null);
+		ig.dispose();
+		ImageIO.write(pair, "png", dir.resolve("icon_refined.png").toFile());
 	}
 }
