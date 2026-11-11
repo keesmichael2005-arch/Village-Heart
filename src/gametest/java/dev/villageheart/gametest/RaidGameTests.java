@@ -432,9 +432,13 @@ public class RaidGameTests {
 		seq.thenExecute(() -> finish(h));
 	}
 
-	/** T-L2-10. An unemployed villager still hides the vanilla way. A hired worker beside it never does. */
+	/**
+	 * T-L2-10, changed by the owner's decision of 2026-11-11 ("when a raid starts EVERY villager in the claim runs indoors, hired or not").
+	 * It used to assert that an unemployed villager stays on vanilla's PRE_RAID (the meeting point, outdoors). Now an unemployed villager
+	 * shelters like a hired worker, and neither is ever on vanilla's raid activities. The full walk indoors is in {@code ThreatShelterGameTests}.
+	 */
 	@GameTest(environment = "villageheart-gametest:raid_unhired", structure = YARD, skyAccess = true, maxTicks = 4000)
-	public void unhiredVillagersKeepVanillaRaid(GameTestHelper h) {
+	public void unhiredVillagersShelterToo(GameTestHelper h) {
 		begin(h);
 		BlockPos farm = WorkerTestSupport.ORIGIN_A;
 		Villager[] hired = new Villager[1];
@@ -452,13 +456,14 @@ public class RaidGameTests {
 			plain[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(4, 1, 2));
 		});
 		seq = village(h, seq).thenExecute(() -> raid[0] = start(h));
-		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the unemployed villager is pre-raid and the hired worker is sheltering", () -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the unemployed villager and the hired worker are both sheltering", () -> {
 			RaidStart.holdWaves(raid[0]);
 			var act = hired[0].getBrain().getActiveNonCoreActivity().orElse(null);
 			if (act == Activity.PRE_RAID || act == Activity.RAID) vanilla[0] = true;
 			h.assertFalse(vanilla[0], "the hired worker entered " + act);
 			h.assertTrue(hired[0].getBrain().isActive(WorkerBrain.SHELTER), "hired activity " + act);
-			h.assertTrue(plain[0].getBrain().isActive(Activity.PRE_RAID), "unemployed activity " + plain[0].getBrain().getActiveNonCoreActivity().orElse(null));
+			h.assertTrue(plain[0].getBrain().isActive(WorkerBrain.SHELTER), "unemployed activity " + plain[0].getBrain().getActiveNonCoreActivity().orElse(null));
+			h.assertFalse(plain[0].getBrain().isActive(Activity.PRE_RAID) || plain[0].getBrain().isActive(Activity.RAID), "the unemployed villager is on a vanilla raid activity");
 		});
 		seq.thenExecute(() -> finish(h));
 	}

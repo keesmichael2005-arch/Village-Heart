@@ -45,6 +45,10 @@ public final class VillageTestSupport {
 		dev.villageheart.siege.VanillaSiege.clear();
 		dev.villageheart.raid.RaidNotices.setSinkForTest(null);
 		dev.villageheart.raid.RaiderKills.clearForTests();
+		dev.villageheart.raid.StuckRaiderSystem.clearForTests();
+		dev.villageheart.raid.ThreatMessages.setSinkForTest(null);
+		dev.villageheart.raid.VillageBell.clearForTests();
+		dev.villageheart.worker.shelter.UnhiredShelter.clearForTests();
 		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
 		removePlayers(server);
 		// worker tests (M7): give back every POI ticket the mod holds before the claim (and with it the held set) is forgotten,

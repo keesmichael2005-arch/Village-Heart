@@ -92,7 +92,11 @@ public final class VillageRaids implements VillageSystem {
 			}
 			return out;
 		});
-		if (step.started()) RaidNotices.started(server);
+		if (step.started()) {
+			RaidNotices.started(server);
+			ThreatMessages.title(server, dev.villageheart.core.siege.ThreatWarnings.RAID_TITLE);
+			VillageBell.ring(level, village);
+		}
 		step.ended().ifPresent(summary -> RaidNotices.ended(server, summary));
 		if (closing.isPresent() && step.ended().isPresent() && step.ended().get().outcome() == dev.villageheart.core.raid.RaidOutcome.VICTORY) {
 			ThreatScheduler.grant(server, closing.get(), threatDay);

@@ -145,7 +145,7 @@ public final class ZombieSiege {
 		if (owed == ThreatState.NO_DAY) return;
 		int time = ThreatRoll.dayTime(level.getDayTime());
 		int day = ThreatRoll.day(level.getGameTime());
-		if (owed != day || time < 18000 || time >= Balance.LURE_NIGHT_END) return;
+		if (owed != day || time < Balance.SIEGE_SPAWN_TICK || time >= Balance.LURE_NIGHT_END) return;
 		int n = SiegeSize.zombies(score(server, level, village), qualified(level, village));
 		begin(server, level, village, n);
 	}
@@ -166,6 +166,8 @@ public final class ZombieSiege {
 		VillageClaims.data(server).update(s -> s.withThreats(s.threats().withPendingSiegeDay(ThreatState.NO_DAY)));
 		SiegeStats.siegeStarted();
 		spawnDue(server, level, village);
+		dev.villageheart.raid.ThreatMessages.title(server, dev.villageheart.core.siege.ThreatWarnings.SIEGE_TITLE);
+		dev.villageheart.raid.VillageBell.ring(level, village);
 	}
 
 	private static void spawnDue(MinecraftServer server, ServerLevel level, VillageState village) {

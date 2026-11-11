@@ -37,7 +37,6 @@ import net.minecraft.world.entity.ai.behavior.InteractWith;
 import net.minecraft.world.entity.ai.behavior.InteractWithDoor;
 import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
 import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
-import net.minecraft.world.entity.ai.behavior.ReactToBell;
 import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.SetClosestHomeAsWalkTarget;
 import net.minecraft.world.entity.ai.behavior.SetEntityLookTarget;
@@ -156,7 +155,8 @@ public final class WorkerBrain {
 				p(0, new LookAtTargetSink(45, 90)),
 				p(0, new WorkerPanicTrigger()),
 				p(0, WakeUp.create()),
-				p(0, ReactToBell.create()),
+				// No ReactToBell: a hired worker follows its day and the SHELTER activity. The bell rung when a raid or siege starts
+				// would otherwise send it into vanilla's HIDE after the raid, and with no bed in reach nothing ends that.
 				p(1, new MoveToTargetSink()),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14), WorkerBrain::bedIsFree)),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));

@@ -321,7 +321,7 @@ public class ZombieSiegeGameTests {
 	}
 
 	/** Stone and air on the circle the spawner searches, plus torches so a natural zombie cannot appear there. */
-	private static void pad(GameTestHelper h, BlockPos heartRel, int distance) {
+	static void pad(GameTestHelper h, BlockPos heartRel, int distance) {
 		ServerLevel level = h.getLevel();
 		BlockPos heart = h.absolutePos(heartRel);
 		int floorY = h.absolutePos(BlockPos.ZERO).getY() - 1;
@@ -405,7 +405,7 @@ public class ZombieSiegeGameTests {
 		h.assertTrue(h.getLevel().isVillage(bell), "not a village at " + bell.toShortString());
 	}
 
-	private static BlockPos heartRel(GameTestHelper h) {
+	static BlockPos heartRel(GameTestHelper h) {
 		HeartLocation loc = state(h).heart();
 		return VillageTestSupport.rel(h, new BlockPos(loc.x(), loc.y(), loc.z()));
 	}

@@ -21,6 +21,7 @@ import dev.villageheart.core.siege.ThreatClock;
 import dev.villageheart.core.siege.ThreatRoll;
 import dev.villageheart.core.siege.ThreatRules;
 import dev.villageheart.core.siege.ThreatState;
+import dev.villageheart.core.siege.ThreatWarnings;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.economy.Treasury;
 import dev.villageheart.mixin.RaidAccessor;
@@ -67,6 +68,9 @@ public final class ThreatScheduler implements VillageSystem {
 	private static boolean lateRaid;
 	private static boolean lateSiege;
 	private static boolean clearUnspawned;
+	/** The warning lines sent for one pending threat: its key (day and kind) and how many lines went out. Not saved. */
+	private static long warnKey = -1;
+	private static int warnSent;
 
 	private ThreatScheduler() {}
 
@@ -77,6 +81,8 @@ public final class ThreatScheduler implements VillageSystem {
 		lateSiege = false;
 		clearUnspawned = false;
 		warnings = 0;
+		warnKey = -1;
+		warnSent = 0;
 		ThreatRules.clearForTest();
 		ZombieSiege.clearForTests();
 	}
@@ -111,10 +117,45 @@ public final class ThreatScheduler implements VillageSystem {
 		if (threats.pending().isPresent()) tryStart(server, level, village, threats);
 		else loadedStreak = 0;
 		spawnExtras(server, level, village);
+		warn(server, level, VillageClaims.current(server).map(VillageState::threats).orElse(threats));
 		boolean forcedSiege = ThreatRules.siegeForced();
 		ZombieSiege.onTick(server, level, village, lateSiege || forcedSiege, clearUnspawned);
 		if (!forcedSiege) lateSiege = false;
 		clearUnspawned = false;
+	}
+
+	/**
+	 * The ominous lead-up (owner, 2026-11-11): for a pending raid, or a siege rolled for tonight, the next due line goes to the
+	 * players in or near the claim. Each line goes once; the start itself gets a title (see {@link ThreatMessages}).
+	 */
+	private static void warn(MinecraftServer server, ServerLevel level, ThreatState threats) {
+		long now = level.getGameTime();
+		int day = ThreatRoll.day(now);
+		// The in-game hours, so a sleep or a /time set moves the lead-up with the sky. The roll day is a game-time day, like the pending raid's.
+		int time = ThreatRoll.dayTime(level.getDayTime());
+		ThreatWarnings.Kind kind;
+		int roll;
+		int start;
+		if (threats.raid().isEmpty() && threats.pending().isPresent() && threats.pending().get().rolledDay() == day) {
+			kind = ThreatWarnings.Kind.RAID;
+			roll = Balance.RAID_ROLL_TICK;
+			start = threats.pending().get().startTick();
+		} else if (threats.siege().isEmpty() && threats.pendingSiegeDay() == day) {
+			kind = ThreatWarnings.Kind.SIEGE;
+			roll = Balance.SIEGE_ROLL_TICK;
+			start = Balance.SIEGE_SPAWN_TICK;
+		} else {
+			return;
+		}
+		long key = day * 2L + kind.ordinal();
+		if (key != warnKey) {
+			warnKey = key;
+			warnSent = 0;
+		}
+		int line = ThreatWarnings.next(kind, roll, start, Balance.WARNING_LEAD_TICKS, time, warnSent);
+		if (line < 0) return;
+		warnSent = line + 1;
+		ThreatMessages.chat(server, kind.lines().get(line));
 	}
 
 	/** A random victory pays the treasury once. {@code record} is the raid that just closed. */

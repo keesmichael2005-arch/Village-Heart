@@ -61,6 +61,18 @@ class LangCoverageTest {
 		}
 	}
 
+	/** The raid and siege warnings, the two titles and the stuck-raider lines (owner, 2026-11-11): every line is in the lang file with this English. */
+	@Test
+	void threatWarningLines() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.siege.ThreatWarnings.Kind kind : dev.villageheart.core.siege.ThreatWarnings.Kind.values()) {
+			for (var line : kind.lines()) assertEquals(line.text(), lang.get(line.key()), line.key());
+			assertEquals(kind.title().text(), lang.get(kind.title().key()), kind.title().key());
+		}
+		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.key()));
+		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.key()));
+	}
+
 	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */
 	@Test
 	void heartScreenClientTexts() throws Exception {

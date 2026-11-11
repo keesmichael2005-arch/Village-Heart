@@ -39,6 +39,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			RaidClientTests.raidOverview(context);
 			return;
 		}
+		if ("title".equals(System.getProperty("villageheart.l4.only"))) {
+			ThreatTitleClientTests.titles(context);
+			return;
+		}
 		if ("siege".equals(System.getProperty("villageheart.l4.only"))) {
 			SiegeClientTests.wallCracks(context);
 			return;
@@ -90,6 +94,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		MultiplayerClientTests.ownerAndResident(context);
 		RaidClientTests.raidOverview(context);
 		SiegeClientTests.wallCracks(context);
+		ThreatTitleClientTests.titles(context);
 	}
 
 	/** The Village Heart block in the world, with a bell beside it. */

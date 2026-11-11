@@ -257,6 +257,8 @@ public final class Balance {
 	public static final int THREAT_PLAYER_RANGE = 96;
 	public static final int RAID_ROLL_TICK = 1000;
 	public static final int SIEGE_ROLL_TICK = 13000;
+	/** The day tick at which a rolled siege spawns its first zombie. */
+	public static final int SIEGE_SPAWN_TICK = 18000;
 	public static final int PENDING_START_MIN = 2000;
 	public static final int PENDING_START_MAX = 11000;
 	public static final int EARLY_RAID_WAVES = 2;
@@ -265,6 +267,27 @@ public final class Balance {
 	public static final int SIEGE_SPAWN_MIN = 32;
 	public static final int SIEGE_SPAWN_PAD = 12;
 	public static final int BREACH_NOTICE_TICKS = 1200;
+	// ---- raid and siege warnings (owner, 2026-11-11) ----
+	/** Chat warnings spread over this many ticks before a pending raid or siege starts. A raid is only rolled at {@link #RAID_ROLL_TICK}, so its window can be shorter. */
+	public static final int WARNING_LEAD_TICKS = 6000;
+	/** A title is on screen this long (ticks): fade in, stay, fade out. */
+	public static final int THREAT_TITLE_FADE_IN = 10;
+	public static final int THREAT_TITLE_STAY = 70;
+	public static final int THREAT_TITLE_FADE_OUT = 20;
+	// ---- stuck raiders: the only removal of a raider that is allowed (owner, 2026-11-11) ----
+	/** No progress toward the village for this long, with nobody near, makes a raider glow. */
+	public static final int STUCK_RAIDER_TICKS = 12000;
+	/** A glowing raider that is still stuck this much later flees (is removed with a smoke puff). */
+	public static final int STUCK_FLEE_GRACE_TICKS = 1200;
+	/** A villager, guard, golem or player this close means the raider is not hiding. */
+	public static final double STUCK_HELPER_RANGE = 16.0;
+	/** Getting this much closer to the Heart (blocks) counts as progress. */
+	public static final double STUCK_PROGRESS_BLOCKS = 2.0;
+	/** A raider that hurt or was hurt this recently is fighting. */
+	public static final int STUCK_COMBAT_TICKS = 600;
+	public static final int STUCK_CHECK_TICKS = 20;
+	/** How often unhired villagers are told to keep hiding while a raid or siege lasts. */
+	public static final int SHELTER_ENFORCE_TICKS = 10;
 	/** The builder repairs a breach before it starts a new build. */
 	public static final boolean REPAIR_BEFORE_BUILDS = true;
 	// ---- farmer (M10) ----
