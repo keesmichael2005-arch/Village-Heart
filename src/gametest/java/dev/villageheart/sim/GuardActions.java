@@ -59,6 +59,9 @@ public final class GuardActions {
 	 * {@code wall_ring} (the {@code defended_walled} scenario): a two-high cobblestone wall on the edge of the site ({@code size} [w, d], the same as the
 	 * {@code site} action) with ONE oak fence gate in the south edge at x offset {@code gate} (default w / 2), the cell above the gate left open for the
 	 * walker. Solid cobblestone, not wall blocks (an unconnected wall block is a 4-pixel post a zombie walks between). A torch on top every 6 blocks.
+	 * The wall is two blocks above the flattened site, and higher where the natural ground just outside is higher: its top is always at least
+	 * {@link #WALL_CLEARANCE} blocks above the outside ground (M26 prep: on seed 1 the ground west of the site is a block up, so a two-high wall
+	 * was a one-block step from outside and the scripted zombies walked over it).
 	 */
 	public static void wallRing(Host ctx, ScenarioAction a) {
 		ServerLevel level = ctx.level();
@@ -68,27 +71,57 @@ public final class GuardActions {
 		int w = ((Number) size.get(0)).intValue(), d = ((Number) size.get(1)).intValue();
 		int gateX = num(a, "gate", w / 2);
 		int y = site.getY();
-		int cells = 0;
+		int cells = 0, raised = 0, maxRaise = 0;
 		for (int x = 0; x < w; x++) {
 			for (int z = 0; z < d; z++) {
 				if (x != 0 && x != w - 1 && z != 0 && z != d - 1) continue;
 				boolean gate = z == d - 1 && x == gateX;
 				BlockPos base = new BlockPos(site.getX() + x, y, site.getZ() + z);
+				int top = wallTop(level, site, w, d, x, z); // the y of the first air cell above the wall
+				if (top > y + 3) {
+					raised++;
+					maxRaise = Math.max(maxRaise, top - (y + 3));
+				}
 				set(level, base, Blocks.COBBLESTONE.defaultBlockState());
 				if (gate) {
+					if (top > y + 3) VillageHeart.LOG.warn("[sim] wall ring: the ground outside the gate is {} block(s) up; a zombie may jump the gate", top - (y + 3));
 					set(level, base.above(), Blocks.OAK_FENCE_GATE.defaultBlockState().setValue(net.minecraft.world.level.block.FenceGateBlock.FACING, Direction.NORTH)
 							.setValue(net.minecraft.world.level.block.FenceGateBlock.OPEN, false));
 					set(level, base.above(2), Blocks.AIR.defaultBlockState());
 					set(level, base.above(3), Blocks.AIR.defaultBlockState());
 				} else {
-					set(level, base.above(), Blocks.COBBLESTONE.defaultBlockState());
-					set(level, base.above(2), Blocks.COBBLESTONE.defaultBlockState());
-					if ((x + z) % 6 == 0) set(level, base.above(3), Blocks.TORCH.defaultBlockState());
+					for (int wy = y + 1; wy < top; wy++) set(level, new BlockPos(base.getX(), wy, base.getZ()), Blocks.COBBLESTONE.defaultBlockState());
+					if ((x + z) % 6 == 0) set(level, new BlockPos(base.getX(), top, base.getZ()), Blocks.TORCH.defaultBlockState());
 				}
 				cells++;
 			}
 		}
-		VillageHeart.LOG.info("[sim] wall ring {}x{} at {}: {} cells, gate at x+{}", w, d, site.toShortString(), cells, gateX);
+		VillageHeart.LOG.info("[sim] wall ring {}x{} at {}: {} cells, gate at x+{}, {} cells raised for higher ground outside (up to +{})", w, d,
+				site.toShortString(), cells, gateX, raised, maxRaise);
+	}
+
+	/** A wall's top must be this many blocks above the ground a mob stands on outside it (a zombie steps up one block, a fence's 1.5 stops it). */
+	public static final int WALL_CLEARANCE = 2;
+
+	/** Outside columns more than this many blocks above the site's walking level are not ground (the {@code site} action's largest deviation). */
+	static final int MAX_GROUND_STEP = 5;
+
+	/**
+	 * The first air y above the wall cell ({@code x}, {@code z}) of the ring: two blocks above the site's floor, or {@link #WALL_CLEARANCE}
+	 * above the highest natural ground in the cells just outside it (the outward neighbours, diagonals at the corners), whichever is higher.
+	 */
+	static int wallTop(ServerLevel level, BlockPos site, int w, int d, int x, int z) {
+		int top = site.getY() + 3;
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				int nx = x + dx, nz = z + dz;
+				if (nx >= 0 && nx < w && nz >= 0 && nz < d) continue; // on or inside the ring
+				int feet = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, site.getX() + nx, site.getZ() + nz);
+				if (feet > site.getY() + 1 + MAX_GROUND_STEP) continue; // a trunk or a building, not ground a mob walks on
+				top = Math.max(top, feet + WALL_CLEARANCE);
+			}
+		}
+		return top;
 	}
 
 	/**
@@ -141,6 +174,7 @@ public final class GuardActions {
 			mob.snapTo(x + 0.5, y, z + 0.5, level.getRandom().nextFloat() * 360.0F, 0.0F);
 			mob.setPersistenceRequired();
 			if (mob instanceof Zombie zom) zom.setBaby(false);
+			mob.addTag(SimMetricsCollector.TAG_SCRIPTED); // the death log tells scripted attackers from natural ones
 			level.addFreshEntity(mob);
 			placed++;
 		}
