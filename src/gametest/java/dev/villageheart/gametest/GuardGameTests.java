@@ -299,8 +299,7 @@ public class GuardGameTests {
 			if (g[0] == null) return;
 			dev.villageheart.worker.guard.GuardRuntime.lastArrival(g[0].getUUID()).ifPresent(reached::add);
 			if (dev.villageheart.worker.guard.GuardRuntime.isDwelling(g[0].getUUID(), h.getLevel().getGameTime())) {
-				BlockPos rel = h.relativePos(g[0].blockPosition());
-				// compared in world space: the door and the cells in front of it
+				// World positions. relativePos would mirror the guard through the origin and is not used.
 				BlockPos door = h.absolutePos(doorRel);
 				BlockPos p = g[0].blockPosition();
 				if (p.getX() == door.getX() && p.getZ() == door.getZ() || p.getX() == door.getX() && Math.abs(p.getZ() - door.getZ()) <= 1

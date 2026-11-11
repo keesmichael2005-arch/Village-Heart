@@ -521,58 +521,88 @@ public class LumberjackGameTests {
 	}
 
 	/**
-	 * The step-aside rule never moves one of our workers (review backlog-2 r1): a lumberjack chopping an oak (navigation idle, standing
-	 * still) has a stalled walker one block from it, a plain villager held in place whose {@code WalkTo} heads through the chopper's cell.
-	 * The walker's jam rule must not hand the chopper a WALK_TARGET, and the oak is felled whole by the same lumberjack.
+	 * The step-aside rule never moves one of our workers (review backlog-2 r1). The geometry is the one
+	 * {@link #idlerTwoCellsAheadIsAsked} uses, where a plain villager on the door front is asked within 200 ticks: here that idler is a
+	 * hired lumberjack, held on the same cell, and the walker's path has to cross it (or the test fails its premise). The hold is one jam
+	 * period plus a margin (a plain villager on this cell is asked at tick 31) and stays under the 200-tick walk stall, so the job does not
+	 * blacklist the oak. The walker is then parked and the lumberjack fells the oak. Spawning uses test-relative cells; {@code relativePos}
+	 * would mirror them through the origin.
 	 */
-	@GameTest(environment = "villageheart-gametest:lumber_chopper_not_nudged", structure = YARD, skyAccess = true, maxTicks = 2500)
+	@GameTest(environment = "villageheart-gametest:lumber_chopper_not_nudged", structure = YARD, skyAccess = true, maxTicks = 4000)
 	public void chopperIsNotAskedToStepAside(GameTestHelper h) {
 		begin(h);
 		BlockPos spot = new BlockPos(3, 0, 24);
+		BlockPos doorFront = new BlockPos(11, 0, 3);
+		BlockPos inside = new BlockPos(11, 1, 5);
 		Villager[] v = new Villager[2];
 		Set<BlockPos>[] logs = new Set[1];
 		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
-		net.minecraft.world.phys.Vec3[] pin = new net.minecraft.world.phys.Vec3[1];
-		java.util.List<Villager> nudged = new java.util.ArrayList<>();
-		int[] jamTicks = {0};
+		boolean[] asked = {false};
+		boolean[] hold = {true};
+		int[] onPath = {0};
 		h.onEachTick(() -> {
-			if (pin[0] == null || v[1] == null || !v[1].isAlive()) return;
-			v[1].teleportTo(pin[0].x, pin[0].y, pin[0].z);
+			if (v[0] == null || v[1] == null || !hold[0]) return;
+			BlockPos w = h.absolutePos(inside);
+			if (v[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(w)) > 0.3) v[0].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			v[0].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+			v[0].setOnGround(true);
+			BlockPos door = h.absolutePos(doorFront);
+			v[1].teleportTo(door.getX() + 0.5, door.getY(), door.getZ() + 0.5);
 			v[1].setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
-			// through the chopper's cell to a spot beyond it
-			net.minecraft.world.phys.Vec3 dir = v[0].position().subtract(pin[0]).normalize();
-			BlockPos target = BlockPos.containing(v[0].position().add(dir.scale(6)));
-			if (!walk.active()) walk.begin(target, 1.0, h.getLevel().getGameTime());
-			if (walk.tick(v[1], h.getLevel().getGameTime()) == dev.villageheart.worker.job.WalkTo.State.UNREACHABLE) walk.clear();
-			jamTicks[0]++;
+			v[1].setOnGround(true);
+			v[1].getNavigation().stop();
+			v[1].getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+			long now = h.getLevel().getGameTime();
+			if (!walk.active()) walk.begin(h.absolutePos(new BlockPos(11, 0, 0)), 1.0, now);
+			walk.tick(v[0], now);
+			if (pathTouches(v[0], door)) onPath[0]++;
 		});
 		GameTestSequence seq = scene(h, false, true).thenExecute(() -> {
 			logs[0] = logsOf(h, growOak(h, spot, 12L));
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
-			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(nudged::add);
+			v[1] = hire(h, doorFront);
+			v[0] = WorkerTestSupport.spawnVillager(h, inside);
+			h.assertTrue(v[1].blockPosition().equals(h.absolutePos(doorFront)), "the lumberjack stands on the door cell " + h.absolutePos(doorFront).toShortString()
+					+ ", not " + v[1].blockPosition().toShortString());
+			h.assertTrue(v[0].blockPosition().equals(h.absolutePos(inside)), "the walker stands inside at " + h.absolutePos(inside).toShortString()
+					+ ", not " + v[0].blockPosition().toShortString());
+			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(o -> {
+				if (o == v[1]) asked[0] = true;
+			});
 			h.getLevel().setDayTime(1000);
-			v[0] = hire(h, spawnSpot());
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "the lumberjack starts chopping"));
-		seq = seq.thenExecute(() -> {
-			h.assertTrue(v[0].getNavigation().isDone(), "premise: the chopper's navigation is idle");
-			// the walker stands one block from the chopper, on the side away from the trunk
-			net.minecraft.world.phys.Vec3 trunk = net.minecraft.world.phys.Vec3.atBottomCenterOf(h.absolutePos(spot));
-			net.minecraft.world.phys.Vec3 away = v[0].position().subtract(trunk).multiply(1, 0, 1).normalize();
-			pin[0] = v[0].position().add(away);
-			BlockPos at = BlockPos.containing(pin[0]);
-			v[1] = WorkerTestSupport.spawnVillager(h, h.relativePos(at));
+		seq = seq.thenExecuteAfter(80, () -> {
+			h.assertTrue(onPath[0] >= 30, "premise: the walker's path crossed the lumberjack for a jam period (" + onPath[0] + " ticks)");
+			h.assertTrue(!asked[0], "the hired lumberjack was asked to step aside");
+			hold[0] = false;
+			// off the door, so the stall clock he accumulated while held can start moving before it reaches 200
+			v[0].getNavigation().stop();
+			v[0].setNoAi(true);
+			BlockPos away = h.absolutePos(new BlockPos(1, 0, 1));
+			v[0].teleportTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
 		});
-		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "the chopper fells the whole oak; nudged " + nudged));
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(0, standing(h, logs[0]), "the lumberjack fells the whole oak; asked " + asked[0] + "; "
+				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[1].getUUID(), v[1])));
 		seq.thenExecute(() -> {
-			System.out.println("[b2] chopperIsNotAskedToStepAside: oak felled with a stalled walker beside the chopper for " + jamTicks[0] + " ticks; nudged " + nudged.size());
-			h.assertTrue(jamTicks[0] >= 60, "premise: the walker stood stalled for at least two jam periods (" + jamTicks[0] + " ticks)");
-			h.assertTrue(!nudged.contains(v[0]), "the chopping lumberjack was asked to step aside: " + nudged);
-			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[0].getUUID()).isPresent(), "still the camp's lumberjack");
+			System.out.println("[b2] chopperIsNotAskedToStepAside: path crossed the lumberjack for " + onPath[0] + " ticks; asked " + asked[0]);
+			h.assertTrue(!asked[0], "the lumberjack was asked to step aside after the hold");
+			h.assertTrue(dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[1].getUUID()).isPresent(), "still the camp's lumberjack");
 			dev.villageheart.worker.job.WalkTo.setNudgeListenerForTest(null);
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	/** True when {@code cell} is a node of the walker's live path or of the path published in its PATH memory. */
+	private static boolean pathTouches(Villager walker, BlockPos cell) {
+		net.minecraft.world.level.pathfinder.Path live = walker.getNavigation().getPath();
+		if (live != null && nodeIs(live, cell)) return true;
+		return walker.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.PATH).filter(p -> nodeIs(p, cell)).isPresent();
+	}
+
+	private static boolean nodeIs(net.minecraft.world.level.pathfinder.Path path, BlockPos cell) {
+		for (int i = 0; i < path.getNodeCount(); i++) if (path.getNode(i).asBlockPos().equals(cell)) return true;
+		return false;
 	}
 
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
