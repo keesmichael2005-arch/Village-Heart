@@ -18,7 +18,8 @@ The plan's table was written against an older `Balance`. On `dev` now, tool spee
 
 | Constant | Current | Tests | Safe range now | Design range after pins are re-pointed |
 |---|---|---|---|---|
-| `CLAIM_RADIUS` | 80 | **pin** `ReasonTest` (the text "max 80"); **pin** `SimAreaTest` (`staticRadiusChunks` must be 6, which is true for 65..80, and the message says "80-block"); **follow** `SimAreaTest` for the edge walk | exactly 80 | untunable. It is a design constant: every scenario's layout and the force-loaded square hang off it |
+| `CLAIM_RADIUS` | 80 | **pin** `ReasonTest` (the text "max 80"); **pin** `SimAreaTest` (`staticRadiusChunks` must be 6, which is true for 65..80, and the message says "80-block"); **follow** `SimAreaTest` for the edge walk | exactly 80 | recommended untunable (owner to confirm; DESIGN marks it tunable). It is a design constant: every scenario's layout and the force-loaded square hang off it |
+| `ROOM_MAX_AIR` | 4096 | **pin** `RoomProblemTest` (`assertEquals(4096, Balance.ROOM_MAX_AIR)`); **pin** `RoomScannerTest` (`volume() == 4096` and the text "Room too big (max 4096 air)"); shown in the player guide and lang strings | exactly 4096 | 2048..8192 once the pins are re-pointed, bounded by the flood-fill cost `perfTest` caps |
 | `BLANK_MARKER_YIELD` | 1 | **follow** `MarkerGameTests` and `AssetGenerator`; **pin** `GeneratedAssetsTest` (the committed `recipe/blank_marker.json` has `"count": 1`, and the generator writes `Balance`) | exactly 1 | untunable. Crafting yield; a change also needs `./gradlew genAssets` |
 | `WORK_START` | 1000 | **follow** `DayScheduleTest` | 500..1500, and strictly below `WORK_END` | same. Last resort: it moves every job's day |
 | `WORK_END` | 11000 | **follow** `DayScheduleTest`. `COOK_DONE_BY` and `SELF_CRAFT_LAST_FETCH` are derived from it | 10000..11500, and `WORK_START < WORK_END < SLEEP_START` | same. Last resort |
