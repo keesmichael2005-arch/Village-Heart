@@ -308,6 +308,7 @@ public final class HeartFacts {
 		if (a == WorkerBrain.GO_HOME) return ActivityKind.GOING_HOME;
 		if (a == Activity.REST) return v.isSleeping() ? ActivityKind.SLEEPING : ActivityKind.RESTING;
 		if (a == Activity.PANIC) return ActivityKind.PANICKING;
+		if (a == WorkerBrain.SHELTER) return dev.villageheart.worker.shelter.ShelterRuntime.hasTarget(v) ? ActivityKind.SHELTERING : ActivityKind.NO_SHELTER;
 		if (a == Activity.HIDE || a == Activity.RAID || a == Activity.PRE_RAID) return ActivityKind.HIDING;
 		if (a == Activity.MEET) return ActivityKind.MEETING;
 		return ActivityKind.OTHER;

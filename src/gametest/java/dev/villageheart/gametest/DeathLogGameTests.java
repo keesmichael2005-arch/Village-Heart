@@ -68,6 +68,7 @@ public class DeathLogGameTests {
 			level.getServer().setDifficulty(Difficulty.HARD, true);
 			collector.setEnabled(true);
 			Villager converted = hire(h);
+			converted.setCustomName(net.minecraft.network.chat.Component.literal("A".repeat(40)));
 			converted.hurtServer(level, level.damageSources().mobAttack(zombie), 1000.0F);
 			collector.setEnabled(false);
 			var sim = collector.drainDeaths();
@@ -81,6 +82,8 @@ public class DeathLogGameTests {
 			h.assertValueEqual(day(level), hard.day(), "day");
 			h.assertValueEqual(hard.cause(), sim.get(0).cause(), "the sim row copies the village log");
 			h.assertTrue(sim.get(0).detail() != null && hard.jobId().equals(sim.get(0).detail().job()), "the sim row keeps the logged job");
+			h.assertValueEqual("A".repeat(32), hard.name(), "the log cuts a long name");
+			h.assertValueEqual(hard.name(), sim.get(0).detail().name(), "the sim name is the cut log name");
 			discardConverted(h);
 
 			level.getServer().setDifficulty(Difficulty.NORMAL, true);

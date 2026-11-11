@@ -7,7 +7,7 @@ import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.npc.villager.Villager;
 
 /**
- * Keeps the worker's active activity equal to {@link WorkerBrain#activityFor} for the day time. Present in IDLE, WORK, go_home and REST
+ * Keeps the worker's active activity equal to {@link WorkerBrain#activityFor}. Present in IDLE, WORK, go_home, REST and SHELTER
  * (not in PANIC, raid or hide, which must not be interrupted). Checks every 20 ticks (spread by entity id). Also corrects the drop to IDLE
  * that vanilla's calm-down / raid-end code causes by asking a schedule-less brain for its schedule activity.
  */

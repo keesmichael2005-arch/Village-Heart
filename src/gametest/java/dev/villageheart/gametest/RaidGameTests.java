@@ -10,27 +10,42 @@ import static dev.villageheart.gametest.GuardTestSupport.spawnSpot;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
+import dev.villageheart.block.JobBlocks;
+import dev.villageheart.building.Buildings;
 import dev.villageheart.core.Rank;
+import dev.villageheart.core.Tier;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.blueprint.Blueprints;
+import dev.villageheart.core.blueprint.Rotation4;
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.building.JobBlockType;
+import dev.villageheart.core.farm.CropKind;
 import dev.villageheart.core.guard.Shift;
 import dev.villageheart.core.heart.AlertCode;
 import dev.villageheart.core.heart.HeartSnapshotBuilder;
+import dev.villageheart.core.job.ToolTier;
 import dev.villageheart.core.raid.RaidFacts;
 import dev.villageheart.core.raid.RaidOrigin;
 import dev.villageheart.core.raid.RaidOutcome;
+import dev.villageheart.core.room.Pos;
+import dev.villageheart.core.room.RoomContents;
+import dev.villageheart.core.room.RoomScan;
 import dev.villageheart.gametest.raid.RaidStart;
 import dev.villageheart.mixin.RaidGroups;
 import dev.villageheart.raid.VillageRaids;
+import dev.villageheart.worker.WorkerBrain;
 import dev.villageheart.worker.guard.GuardActivities;
+import dev.villageheart.worker.job.WalkTo;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,9 +53,15 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.entity.schedule.Activity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 
@@ -328,6 +349,239 @@ public class RaidGameTests {
 			h.assertTrue(notes.stream().anyMatch(n -> n.text.contains("0 villagers lost")), "the lost count is the raid's villager deaths");
 		});
 		seq.thenExecute(() -> finish(h));
+	}
+
+	/** T-L2-5. A harvesting farmer goes to its own House bed for the raid, then back to the field. */
+	@GameTest(environment = "villageheart-gametest:raid_shelter", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void workerSheltersInHouse(GameTestHelper h) { shelterFarmer(h, false); }
+
+	/**
+	 * T-L2-5b. The same walk, with a raider standing off the path. Panic is allowed; the room is not.
+	 * The filter id is {@code raid_game_tests_worker_shelters_past_araider}: a lone capital stays glued to the next word.
+	 */
+	@GameTest(environment = "villageheart-gametest:raid_shelter_raider", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void workerSheltersPastARaider(GameTestHelper h) { shelterFarmer(h, true); }
+
+	/**
+	 * T-L2-6. A fell and a build both stop for the raid. Item totals count chests, inventories and drops, so a worker picking up a log it
+	 * already cut is not a new block; a log that breaks, or a block that is placed, still changes the total.
+	 */
+	@GameTest(environment = "villageheart-gametest:raid_shelter_jobs", structure = YARD, skyAccess = true, maxTicks = 12000)
+	public void shelterInterruptsJobsCleanly(GameTestHelper h) {
+		begin(h);
+		BlockPos camp = new BlockPos(24, 0, 4);
+		Villager[] jack = new Villager[1];
+		Villager[] builder = new Villager[1];
+		Set<BlockPos>[] logs = new Set[1];
+		Raid[] raid = new Raid[1];
+		long[] items = new long[1];
+		int[] standing = new int[1];
+		int[] cursor = new int[1];
+		GameTestSequence seq = BuildTestSupport.layout(h, BuildTestSupport.With.STANDARD).thenExecute(() -> {
+			freeze(h, 3000);
+			BuildingTestSupport.setTier(h, Tier.VILLAGE);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			BuildingTestSupport.room(h, camp, 5, 4);
+			h.setBlock(BuildingTestSupport.inside(camp, 0, 0, 0), JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+			h.setBlock(BuildingTestSupport.inside(camp, 4, 0, 3), Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(camp, 2, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, BuildingTestSupport.markerPos(camp, 5), Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(camp, 5), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenExecute(() -> {
+			BlockPos base = LumberTestSupport.growOak(h, new BlockPos(28, 0, 14), 1L);
+			logs[0] = LumberTestSupport.logsOf(h, base);
+			h.assertTrue(logs[0].size() > 1, "the oak has more than one log");
+			jack[0] = LumberTestSupport.hire(h, BuildingTestSupport.inside(camp, 1, 0, 1));
+			jack[0].getInventory().addItem(LumberTestSupport.axe(ToolTier.STONE));
+			builder[0] = BuildTestSupport.hireBuilder(h);
+			builder[0].getInventory().addItem(new ItemStack(Items.COBBLESTONE, 32));
+			BuildTestSupport.stock(h, BuildTestSupport.shedMaterials(1));
+			BuildTestSupport.startBuild(h, Blueprints.STORAGE_SHED, BuildTestSupport.GROUND, Rotation4.NONE);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 3000, "the lumberjack is mid-fell and the builder is mid-build", () -> {
+			int left = LumberTestSupport.standing(h, logs[0]);
+			h.assertTrue(left > 0 && left < logs[0].size(), "mid-fell, logs left " + left + " of " + logs[0].size());
+			h.assertTrue(BuildTestSupport.cursor(h) > 0, "mid-build, cursor " + BuildTestSupport.cursor(h));
+		});
+		seq = village(h, seq).thenExecute(() -> raid[0] = start(h));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "both workers are sheltering", () -> {
+			RaidStart.holdWaves(raid[0]);
+			h.assertTrue(jack[0].getBrain().isActive(WorkerBrain.SHELTER), "lumberjack");
+			h.assertTrue(builder[0].getBrain().isActive(WorkerBrain.SHELTER), "builder");
+			h.assertTrue(carrying(jack[0]) && carrying(builder[0]), "each is carrying items");
+		});
+		seq = seq.thenExecute(() -> {
+			RaidStart.holdWaves(raid[0]);
+			items[0] = conserved(h, jack[0], builder[0]);
+			standing[0] = LumberTestSupport.standing(h, logs[0]);
+			cursor[0] = BuildTestSupport.cursor(h);
+		}).thenExecuteAfter(100, () -> {
+			RaidStart.holdWaves(raid[0]);
+			h.assertValueEqual(standing[0], LumberTestSupport.standing(h, logs[0]), "no log broken while sheltering");
+			h.assertValueEqual(cursor[0], BuildTestSupport.cursor(h), "the build cursor stays put");
+			h.assertValueEqual(items[0], conserved(h, jack[0], builder[0]), "inventory, chests and drops are unchanged");
+			raid[0].stop();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 4000, "the tree is finished and the build carries on", () -> {
+			h.assertValueEqual(0, LumberTestSupport.standing(h, logs[0]), "logs left");
+			int now = BuildTestSupport.cursor(h);
+			h.assertTrue(now > cursor[0] || now < 0, "cursor moved from " + cursor[0] + " to " + now);
+		});
+		seq.thenExecute(() -> finish(h));
+	}
+
+	/** T-L2-10. An unemployed villager still hides the vanilla way. A hired worker beside it never does. */
+	@GameTest(environment = "villageheart-gametest:raid_unhired", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void unhiredVillagersKeepVanillaRaid(GameTestHelper h) {
+		begin(h);
+		BlockPos farm = WorkerTestSupport.ORIGIN_A;
+		Villager[] hired = new Villager[1];
+		Villager[] plain = new Villager[1];
+		boolean[] vanilla = {false};
+		Raid[] raid = new Raid[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			freeze(h, 3000);
+			WorkerTestSupport.farmhouse(h, farm, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, BuildingTestSupport.markerPos(farm, 5), Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(farm, 5), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenExecute(() -> {
+			hired[0] = FarmTestSupport.hire(h, new BlockPos(3, 1, 2));
+			plain[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(4, 1, 2));
+		});
+		seq = village(h, seq).thenExecute(() -> raid[0] = start(h));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the unemployed villager is pre-raid and the hired worker is sheltering", () -> {
+			RaidStart.holdWaves(raid[0]);
+			var act = hired[0].getBrain().getActiveNonCoreActivity().orElse(null);
+			if (act == Activity.PRE_RAID || act == Activity.RAID) vanilla[0] = true;
+			h.assertFalse(vanilla[0], "the hired worker entered " + act);
+			h.assertTrue(hired[0].getBrain().isActive(WorkerBrain.SHELTER), "hired activity " + act);
+			h.assertTrue(plain[0].getBrain().isActive(Activity.PRE_RAID), "unemployed activity " + plain[0].getBrain().getActiveNonCoreActivity().orElse(null));
+		});
+		seq.thenExecute(() -> finish(h));
+	}
+
+	private void shelterFarmer(GameTestHelper h, boolean raider) {
+		begin(h);
+		BlockPos house = new BlockPos(18, 0, 4);
+		BlockPos store = new BlockPos(18, 0, 16);
+		BlockPos farm = WorkerTestSupport.ORIGIN_A;
+		Villager[] farmer = new Villager[1];
+		BlockPos[] bed = new BlockPos[1];
+		RoomScan[] scan = new RoomScan[1];
+		Raid[] raid = new Raid[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			freeze(h, 3000);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			WorkerTestSupport.farmhouse(h, farm, 1);
+			BuildingTestSupport.room(h, house, 5, 4);
+			WorkerTestSupport.bed(h, BuildingTestSupport.inside(house, 0, 0, 1));
+			h.setBlock(BuildingTestSupport.inside(house, 2, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.room(h, store, 5, 4);
+			h.setBlock(BuildingTestSupport.inside(store, 0, 0, 3), Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(store, 4, 0, 3), Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(store, 2, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, BuildingTestSupport.markerPos(farm, 5), Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, BuildingTestSupport.markerPos(house, 5), Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, BuildingTestSupport.markerPos(store, 5), Direction.NORTH);
+			FarmTestSupport.field(h, 8, 14, 12, 17, CropKind.WHEAT, 7, false);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(farm, 5), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(house, 5), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(store, 5), dev.villageheart.block.MarkerStatus.VALID);
+		});
+		seq = village(h, seq).thenExecute(() -> {
+			farmer[0] = FarmTestSupport.hire(h, new BlockPos(6, 1, 16));
+			farmer[0].getInventory().addItem(new ItemStack(Items.IRON_HOE));
+			var houses = Buildings.valid(h.getLevel().getServer(), BuildingType.HOUSE);
+			h.assertTrue(houses.size() == 1 && houses.get(0).latestScan().isPresent(), "the house has a cached scan");
+			scan[0] = houses.get(0).latestScan().get();
+			var beds = scan[0].positions(RoomContents.BED);
+			h.assertTrue(!beds.isEmpty(), "the house scan lists a bed");
+			Pos p = beds.get(0);
+			bed[0] = new BlockPos(p.x(), p.y(), p.z());
+			farmer[0].getBrain().setMemory(MemoryModuleType.HOME, GlobalPos.of(h.getLevel().dimension(), bed[0]));
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the farmer is harvesting outdoors", () -> {
+			h.assertTrue(farmer[0].getBrain().isActive(Activity.WORK), "precondition activity " + farmer[0].getBrain().getActiveNonCoreActivity().orElse(null));
+			h.assertTrue(h.getLevel().canSeeSky(farmer[0].blockPosition()), "precondition sky at " + farmer[0].blockPosition()
+					+ " crop " + h.getBlockState(new BlockPos(10, 0, 16)) + " under " + h.getBlockState(new BlockPos(10, -1, 16)));
+			h.assertTrue(nearField(h, farmer[0]), "precondition near the field at " + farmer[0].blockPosition());
+		});
+		seq = seq.thenExecute(() -> {
+			raid[0] = start(h);
+			if (!raider) return;
+			// Eight blocks south of the line from the field to the house door, so the doorway stays clear.
+			Raider pillager = h.spawn(EntityType.PILLAGER, new BlockPos(14, 1, 18));
+			pillager.setNoAi(true);
+			raid[0].joinRaid(h.getLevel(), 1, pillager, pillager.blockPosition(), false);
+		});
+		if (raider) {
+			seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the farmer is inside the house", () -> {
+				RaidStart.holdWaves(raid[0]);
+				assertIndoors(h, farmer[0], scan[0]);
+			});
+			seq = seq.thenExecuteAfter(200, () -> {
+				RaidStart.holdWaves(raid[0]);
+				assertIndoors(h, farmer[0], scan[0]);
+			});
+		} else {
+			seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the farmer is sheltering", () -> {
+				RaidStart.holdWaves(raid[0]);
+				h.assertTrue(farmer[0].getBrain().isActive(WorkerBrain.SHELTER), "activity " + farmer[0].getBrain().getActiveNonCoreActivity().orElse(null));
+			});
+			seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the farmer is at its bed", () -> {
+				RaidStart.holdWaves(raid[0]);
+				assertIndoors(h, farmer[0], scan[0]);
+				h.assertTrue(WalkTo.distance(farmer[0], bed[0]) <= 1.5, "within 1.5 of the bed, was " + WalkTo.distance(farmer[0], bed[0]));
+			});
+			seq = seq.thenExecuteAfter(200, () -> {
+				RaidStart.holdWaves(raid[0]);
+				assertIndoors(h, farmer[0], scan[0]);
+				h.assertTrue(WalkTo.distance(farmer[0], bed[0]) <= 1.5, "still at the bed, was " + WalkTo.distance(farmer[0], bed[0]));
+				raid[0].stop();
+			});
+			seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the farmer is back at work", () ->
+					h.assertTrue(farmer[0].getBrain().isActive(Activity.WORK), "activity " + farmer[0].getBrain().getActiveNonCoreActivity().orElse(null)));
+			seq = BuildingTestSupport.awaitWithin(h, seq, 1200, "the farmer is harvesting again", () -> {
+				h.assertTrue(farmer[0].getBrain().isActive(Activity.WORK), "WORK");
+				h.assertTrue(h.getLevel().canSeeSky(farmer[0].blockPosition()), "after sky at " + farmer[0].blockPosition());
+				h.assertTrue(nearField(h, farmer[0]), "after near the field at " + farmer[0].blockPosition());
+			});
+		}
+		seq.thenExecute(() -> finish(h));
+	}
+
+	private static void assertIndoors(GameTestHelper h, Villager v, RoomScan scan) {
+		Pos feet = new Pos(v.getBlockX(), v.getBlockY(), v.getBlockZ());
+		h.assertTrue(scan.contains(feet), "inside the house at " + feet);
+		h.assertTrue(!h.getLevel().canSeeSky(v.blockPosition()), "the roof hides the sky at " + feet);
+	}
+
+	private static boolean nearField(GameTestHelper h, Villager v) {
+		for (int x = 8; x <= 12; x++) for (int z = 14; z <= 17; z++) {
+			if (WorkerTestSupport.distance(h, v, new BlockPos(x, 0, z)) <= 3.0) return true;
+		}
+		return false;
+	}
+
+	private static boolean carrying(Villager v) {
+		for (int i = 0; i < v.getInventory().getContainerSize(); i++) if (!v.getInventory().getItem(i).isEmpty()) return true;
+		return false;
+	}
+
+	/** Chests, both inventories, and drops of the materials a fell or a place would change. */
+	private static long conserved(GameTestHelper h, Villager a, Villager b) {
+		long n = 0;
+		for (Item item : java.util.List.of(Items.OAK_LOG, Items.COBBLESTONE, Items.OAK_PLANKS)) {
+			n += dev.villageheart.stock.Stockpiles.count(h.getLevel().getServer(), item);
+			n += a.getInventory().countItem(item);
+			n += b.getInventory().countItem(item);
+			for (ItemEntity drop : h.getEntities(EntityType.ITEM)) if (drop.getItem().is(item)) n += drop.getItem().getCount();
+		}
+		return n;
 	}
 
 	private record Note(UUID id, String text) {}
