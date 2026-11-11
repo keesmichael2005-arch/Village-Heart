@@ -3,8 +3,10 @@ package dev.villageheart.gametest;
 import static dev.villageheart.gametest.BuildTestSupport.YARD;
 
 import dev.villageheart.build.BlueprintQuill;
+import dev.villageheart.build.DesignWorld;
 import dev.villageheart.build.BuildJobs;
 import dev.villageheart.build.PaletteStates;
+import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.BlueprintParser;
 import dev.villageheart.core.blueprint.Blueprints;
@@ -16,6 +18,7 @@ import dev.villageheart.gametest.BuildTestSupport.With;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -24,6 +27,26 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 /** Foundation dirt, priority, and mirror of a facing. */
 public class P4GameTests {
+	@GameTest(maxTicks = 100)
+	public void designPlotDoesNotReturnItems(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		if (!DesignWorld.available(server)) {
+			h.assertFalse(server.levelKeys().toString().contains("villageheart:design"),
+					"the datapack file did not create a level: " + server.levelKeys());
+			h.succeed();
+			return;
+		}
+		var profile = new com.mojang.authlib.GameProfile(UUID.randomUUID(), "designer");
+		var player = new net.minecraft.server.level.ServerPlayer(server, h.getLevel(), profile, net.minecraft.server.level.ClientInformation.createDefault());
+		player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
+		h.assertTrue(DesignWorld.enter(player), "the player can be sent to the design level");
+		player.getInventory().setItem(1, new ItemStack(Items.EMERALD, 5));
+		h.assertTrue(DesignWorld.leave(player), "the player can leave");
+		h.assertValueEqual(3, player.getInventory().countItem(Items.DIAMOND), "the diamonds that went in come back");
+		h.assertValueEqual(0, player.getInventory().countItem(Items.EMERALD), "an item picked up in the plot does not come back");
+		h.succeed();
+	}
+
 	@GameTest(maxTicks = 100)
 	public void mirrorFlipsAnEastFacingStair(GameTestHelper h) {
 		Blueprint bp = BlueprintParser.parse("""
@@ -50,6 +73,28 @@ public class P4GameTests {
 		h.assertTrue(PaletteStates.resolve(e, Rotation4.NONE, false, null).getValue(BlockStateProperties.HORIZONTAL_FACING) == net.minecraft.core.Direction.EAST,
 				"unmirrored stair still faces east");
 		h.succeed();
+	}
+
+	@GameTest(environment = "villageheart-gametest:build_p4_cobble", structure = YARD, skyAccess = true, maxTicks = 800)
+	public void kitchenPlacesCobbleThatIsInStorage(GameTestHelper h) {
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			Blueprint bp = Blueprints.byId("kitchen").orElseThrow();
+			java.util.List<ItemStack> stacks = new java.util.ArrayList<>();
+			for (var line : bp.materials().lines()) {
+				Item item = PaletteStates.displayItem(line.material());
+				h.assertTrue(item != null, "no item for " + line.material().id());
+				stacks.add(new ItemStack(item, line.count()));
+			}
+			BuildTestSupport.stock(h, stacks.toArray(ItemStack[]::new));
+			long cobble = Stockpiles.count(h.getLevel().getServer(), Items.COBBLESTONE);
+			h.assertTrue(cobble >= 49, "Storage is holding cobblestone before the build: " + cobble);
+			BlockPos ground = h.absolutePos(BuildTestSupport.GROUND);
+			BuildJob job = BuildJobs.start(h.getLevel(), bp, ground, Rotation4.NONE, UUID.randomUUID());
+			var adv = BuildJobs.advance(h.getLevel().getServer(), job.id(), Integer.MAX_VALUE);
+			h.assertFalse(adv.stoppedBecause().contains("cobble"), "cobble is in Storage but the build stopped: " + adv);
+			h.assertTrue(adv.finished(), adv.toString());
+			VillageTestSupport.done(h);
+		});
 	}
 
 	@GameTest(environment = "villageheart-gametest:build_p4_foundation", structure = YARD, skyAccess = true, maxTicks = 800)

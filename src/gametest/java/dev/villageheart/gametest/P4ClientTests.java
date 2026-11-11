@@ -56,22 +56,29 @@ final class P4ClientTests {
 			String claim = srv.computeOnServer(server -> VillageClaims.claim(server.overworld(), new BlockPos(-2, fy, 0), server.getPlayerList().getPlayers().get(0)).name());
 			if (!claim.equals("CLAIMED")) throw new AssertionError("claim: " + claim);
 			srv.computeOnServer(server -> { VillageClaims.data(server).update(v -> v.withTier(Tier.TOWN)); return 0; });
-			HeartScreenClientTests.room(srv, -20, y, 14, 6, "storage_marker");
-			for (int row = 0; row < 3; row++) for (int i = 0; i < 10; i++) {
-				srv.runCommand("setblock " + (-18 + i) + " " + y + " " + (8 + row) + " minecraft:chest");
+			HeartScreenClientTests.room(srv, -20, y, 7, 5, "storage_marker");
+			for (int i = 0; i < 6; i++) srv.runCommand("setblock " + (-18 + i) + " " + y + " 8 minecraft:chest");
+			BlockPos storageMarker = new BlockPos(-16, y + 2, 13);
+			String storage = "";
+			for (int i = 0; i < 200 && !"VALID".equals(storage); i++) {
+				storage = srv.computeOnServer(server -> {
+					var s = server.overworld().getBlockState(storageMarker);
+					return s.getBlock() instanceof dev.villageheart.block.MarkerBlock
+							? s.getValue(dev.villageheart.block.MarkerBlock.STATUS).name() : "none";
+				});
+				context.waitTicks(1);
 			}
-			context.waitTicks(40);
+			if (!"VALID".equals(storage)) throw new AssertionError("storage did not go green: " + storage + " at " + storageMarker);
 			BlockPos chest = new BlockPos(-18, y, 8);
-			srv.computeOnServer(server -> { stockAll(server.overworld(), chest); return 0; });
-			// deposit can fill the scanned chests before cobble and fences fit; write those stacks in directly
-			String[] must = {"minecraft:dirt", "minecraft:cobblestone", "minecraft:oak_planks", "minecraft:oak_log", "minecraft:oak_fence",
-					"minecraft:oak_fence_gate", "minecraft:oak_door", "minecraft:glass_pane", "minecraft:oak_stairs", "minecraft:white_bed", "minecraft:torch"};
-			for (int i = 0; i < must.length; i++) {
-				int cx = -18 + (i % 6);
-				int cz = 8 + (i / 6);
-				for (int slot = 0; slot < 4; slot++) {
-					srv.runCommand("item replace block " + cx + " " + y + " " + cz + " container." + slot + " with " + must[i] + " 64");
-				}
+			String stocked = srv.computeOnServer(server -> {
+				stockAll(server.overworld(), chest);
+				return "cobble=" + Stockpiles.count(server, Items.COBBLESTONE)
+						+ " planks=" + Stockpiles.count(server, Items.OAK_PLANKS)
+						+ " fence=" + Stockpiles.count(server, Items.OAK_FENCE)
+						+ " dirt=" + Stockpiles.count(server, Items.DIRT);
+			});
+			if (!stocked.startsWith("cobble=") || stocked.startsWith("cobble=0")) {
+				throw new AssertionError("Storage did not take cobblestone: " + stocked);
 			}
 			List<String> ids = new ArrayList<>();
 			for (Blueprint bp : Blueprints.all()) ids.add(bp.id());
@@ -97,9 +104,9 @@ final class P4ClientTests {
 		srv.runCommand("fill " + (x - 1) + " " + (y - 4) + " " + z + " " + (x + 4) + " " + (y - 1) + " " + (z + 4) + " minecraft:air");
 		srv.runCommand("fill " + (x - 1) + " " + (y - 5) + " " + z + " " + (x + 4) + " " + (y - 5) + " " + (z + 4) + " minecraft:stone");
 		shoot(context, srv, "kitchen", x, y, z, "slope_foundation", false);
-		look(context, srv, x + 10, y + 2, z + 8, x + 1, y - 1, z + 2);
+		look(context, srv, x + 9, y + 3, z + 9, x + 2, y - 2, z + 2);
 		context.waitTicks(5);
-		context.takeScreenshot("slope_foundation_side");
+		picture(context, "slope_foundation_side");
 	}
 
 	/** A solid pad. Teleport first so the chunk loads, then stand clear of the footprint. */
@@ -140,7 +147,7 @@ final class P4ClientTests {
 		context.waitTicks(15);
 		look(context, srv, x + 10, y + 8, z + 12, x + 3, y + 3, z + 3);
 		sp.getClientWorld().waitForChunksRender();
-		context.takeScreenshot("scaffold_mid");
+		picture(context, "scaffold_mid");
 		String result = srv.computeOnServer(server -> BuildJobs.advance(server, java.util.UUID.fromString(id), Integer.MAX_VALUE).toString());
 		if (!result.contains("finished=true")) {
 			FAILURES.add("watchtower " + result);
@@ -148,7 +155,7 @@ final class P4ClientTests {
 		}
 		context.waitTicks(10);
 		look(context, srv, x + 16, y + 8, z + 18, x + 4, y + 2, z + 4);
-		context.takeScreenshot("built_watchtower");
+		picture(context, "built_watchtower");
 	}
 
 	private static void ghost(ClientGameTestContext context, TestSingleplayerContext sp, TestServerContext srv, int y) {
@@ -167,10 +174,10 @@ final class P4ClientTests {
 		context.waitTicks(20);
 		look(context, srv, 168, y + 6, 28, 160, y + 2, 23);
 		sp.getClientWorld().waitForChunksRender();
-		context.takeScreenshot("ghost_half_kitchen");
+		picture(context, "ghost_half_kitchen");
 		look(context, srv, 176, y + 4, 36, 168, y + 1, 28);
 		context.waitTicks(10);
-		context.takeScreenshot("ghost_preview");
+		picture(context, "ghost_preview");
 	}
 
 	private static void quill(ClientGameTestContext context, TestServerContext srv, int y) {
@@ -216,9 +223,11 @@ final class P4ClientTests {
 			return;
 		}
 		context.waitTicks(10);
-		look(context, srv, x + 16, y + 8, z + 18, x + 4, y + 2, z + 4);
+		boolean small = blueprint.equals("training_yard") || blueprint.equals("lamp_post") || blueprint.equals("farm_plot");
+		if (small) look(context, srv, x + 7, y + 3, z + 9, x + 1, y + 1, z + 2);
+		else look(context, srv, x + 12, y + 6, z + 14, x + 3, y + 2, z + 3);
 		context.waitTicks(8);
-		context.takeScreenshot(shot);
+		picture(context, shot);
 	}
 
 	private static Blueprint resolve(String id) {
@@ -291,6 +300,16 @@ final class P4ClientTests {
 			case "minecraft:stone_bricks" -> Items.STONE_BRICKS;
 			default -> Items.OAK_PLANKS;
 		};
+	}
+
+	/** Clears the recipe toast on the client thread, then takes the shot. Local to this test, not a mixin. */
+	private static void picture(ClientGameTestContext context, String name) {
+		context.computeOnClient(mc -> {
+			mc.getToastManager().clear();
+			return 0;
+		});
+		context.waitTicks(2);
+		context.takeScreenshot(name);
 	}
 
 	private static void look(ClientGameTestContext context, TestServerContext srv, double px, double py, double pz, double tx, double ty, double tz) {

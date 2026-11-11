@@ -16,7 +16,8 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * A flat creative dimension entered from the Builder's Table. The survival inventory is put back on the way out, and anything gathered in
- * the plot is destroyed.
+ * the plot is destroyed. On 1.21.11 the level is not created: stems live in the world preset, not in {@code data/<mod>/dimension}, and Fabric's
+ * dimensions API only ignores a missing stem in an old save. {@link #enter} returns false until a level exists.
  */
 public final class DesignWorld {
 	public static final ResourceKey<Level> DIMENSION = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "design"));
