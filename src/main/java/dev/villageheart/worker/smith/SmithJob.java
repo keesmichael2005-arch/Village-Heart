@@ -688,7 +688,20 @@ public final class SmithJob {
 			abortFetch(level, v, st, now);
 			return;
 		}
+		// A tool that arrived while the inputs were on the way is not committed. The two-check cancel puts them back.
+		if (holdsOffCommit(level, v, data, st, now)) return;
 		commitCraft(level, v, data, st, now);
+	}
+
+	/** True when the order's slot is definitely no longer missing, so this tick must not commit. */
+	private static boolean holdsOffCommit(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st, long now) {
+		if (st.order == null) return false;
+		var village = VillageClaims.current(level.getServer());
+		if (village.isEmpty()) return false;
+		SlotPresence p = presence(level.getServer(), village.get(), st.order.key());
+		if (p == SlotPresence.HELD || p == SlotPresence.UNKNOWN) return false;
+		if (due(st, now)) cancelIf(level, v, data, st, now);
+		return true;
 	}
 
 	private static void withdraw(ServerLevel level, Villager v, SmithRuntime.State st, BlockPos anchor) {
