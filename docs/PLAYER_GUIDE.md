@@ -36,7 +36,7 @@ Several players can run the one village. A new player is a Visitor.
 |---|---|
 | **Owner** (one) | Everything: set ranks, hand the village over, break the Heart, withdraw emeralds |
 | **Steward** | Hire and fire, start blueprints, set guard shifts, deposit emeralds |
-| **Resident** | Open Storage and the chests inside claimed buildings, deposit emeralds, view every tab (only the Owner can change ranks) |
+| **Resident** | Open Storage and the chests inside claimed buildings, deposit emeralds, view every tab except Ranks |
 | **Visitor** | View the Overview tab. Chests inside claimed rooms stay shut |
 
 The Owner sets ranks on the Ranks tab. The list is players who are online and players the village has already seen, up to 63 people with a rank. The Owner can give the village to a Steward or a Resident. That takes a second click to confirm. The old Owner becomes a Steward. The treasury, buildings, and workers stay as they are.
@@ -475,7 +475,7 @@ Right-click the claimed Heart.
 - **Villagers.** Name, job, level, XP, the fed / housed / paid icons, and what they are doing. Assign a job, fire, or set a guard's shift.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
-- **Ranks.** Residents and above see the tab; only the Owner can change ranks.
+- **Ranks.** Owner only. Others see the tab greyed out ("Only the Owner can manage ranks").
 
 A Visitor receives the Overview only.
 
