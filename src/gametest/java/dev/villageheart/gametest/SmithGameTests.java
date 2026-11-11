@@ -138,12 +138,17 @@ public class SmithGameTests {
 			SmithTestSupport.force(level, near, 16);
 			SmithTestSupport.force(level, far, 16);
 		}).thenWaitUntil(() -> {
-			// A forced chunk does not accept entities on the tick it loads. Under a full suite that can take longer than five ticks.
+			// A forced chunk does not accept entities on the tick it loads. The five villagers stand on
+			// two pads, two blocks either side of each centre, and a centre can sit on a chunk boundary.
 			ServerLevel level = h.getLevel();
 			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
-			h.assertTrue(level.isPositionEntityTicking(new BlockPos(heart.x() + 84, heart.y(), heart.z()))
-					&& level.isPositionEntityTicking(new BlockPos(heart.x() + 100, heart.y(), heart.z())),
-					"the far chunks are not ticking yet");
+			boolean ready = true;
+			for (int dx : new int[] {84, 100}) {
+				for (int i = -2; i <= 2; i++) {
+					if (!level.isPositionEntityTicking(new BlockPos(heart.x() + dx + i, heart.y(), heart.z()))) ready = false;
+				}
+			}
+			h.assertTrue(ready, "the far chunks are not ticking yet");
 		}).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
