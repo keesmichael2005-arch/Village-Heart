@@ -3,8 +3,12 @@ package dev.villageheart.worker.guard;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.defence.DefenceCell;
+import dev.villageheart.core.defence.DefenceIndex;
+import dev.villageheart.core.defence.DefenceKind;
 import dev.villageheart.core.guard.GuardChase;
 import dev.villageheart.core.guard.GuardTargets;
+import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.job.WorkUnit;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.worker.WorkXp;
@@ -299,7 +303,18 @@ public final class GuardCombat {
 		}
 		if (now - f.lastPathAt >= REPATH_TICKS) {
 			f.lastPathAt = now;
-			Path path = nav.createPath(target.blockPosition(), 1, 32);
+			BlockPos dest = target.blockPosition();
+			int pathLen = f.chase ? Balance.GUARD_CHASE_PATH : 32;
+			Path path = nav.createPath(dest, 1, pathLen);
+			// a 32-block path into the ring ends at the wall; the gate is the way out, and the next path is toward the raider
+			if (f.chase && (path == null || !path.canReach())) {
+				int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
+						dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
+				if (via != null) {
+					Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
+					if (viaPath != null) path = viaPath;
+				}
+			}
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
 			if (!f.chase && !near && target.onGround() && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
 				if (++f.shortPaths >= 8) {
@@ -315,6 +330,24 @@ public final class GuardCombat {
 			}
 			else if (path == null && nav.moveTo(target, Balance.GUARD_CHASE_SPEED)) f.navigating = true; // no planned path: close in directly (the give-up rule still ends a hopeless chase)
 		}
+	}
+
+	/** Recorded fence-gate cells, as x, y, z triples. Empty when there is no claim. */
+	private static int[] gateCells(ServerLevel level) {
+		Optional<VillageState> village = VillageClaims.current(level.getServer());
+		if (village.isEmpty()) return new int[0];
+		List<Pos> gates = new ArrayList<>();
+		for (DefenceCell c : DefenceIndex.of(village.get().defences()).cells()) {
+			if (c.kind() == DefenceKind.GATE) gates.add(c.pos());
+		}
+		int[] out = new int[gates.size() * 3];
+		for (int i = 0; i < gates.size(); i++) {
+			Pos p = gates.get(i);
+			out[i * 3] = p.x();
+			out[i * 3 + 1] = p.y();
+			out[i * 3 + 2] = p.z();
+		}
+		return out;
 	}
 
 	/** The nearest other guard within 32 blocks with at least 70 % health, awake. */

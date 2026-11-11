@@ -44,7 +44,7 @@
     {"action": "hire", "day": 1, "tick": 200, "job": "guard", "building": "barracks", "replace": true},
     {"action": "hire", "day": 1, "tick": 200, "job": "guard", "building": "barracks", "replace": true},
     {"action": "hire", "day": 1, "tick": 200, "job": "guard", "building": "barracks", "replace": true},
-    {"action": "worker_level", "day": 1, "tick": 400, "job": "guard", "level": 2},
+    {"action": "worker_level", "day": 1, "tick": 400, "job": "guard", "level": 3},
     {"action": "raid", "day": 3, "tick": 2000, "omen": 1, "scaled": false}
   ],
   "assertions": [

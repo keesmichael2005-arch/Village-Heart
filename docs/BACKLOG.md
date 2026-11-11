@@ -376,7 +376,7 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] **T-L2-46** `golemNotPulledDuringRaid` waits until M19 is merged. There is no `SmithyRepairGoal` on this branch, so the test is not written.
 
 ## From M25 (step 19)
-- [x] Guards chase the tracked raid's raiders 16 blocks past the claim edge. Shipped in M25 step 19 after three seed-1 raids stopped (`Balance.GUARD_RAID_CHASE`). A chase that is still changing blocks keeps the 200-tick give-up from firing on the walk out to a gate.
+- [x] Guards chase the tracked raid's raiders past the claim edge. Shipped in M25 step 19 after seed-1 raids stopped (`Balance.GUARD_RAID_CHASE`, 32 blocks: 16 left raiders vanilla still counts). A path that stops at the wall walks to the nearest gate first. A chase that is still changing blocks keeps the 200-tick give-up from firing on that walk.
 - [ ] A creeper answer (archers). Guards and golems ignore creepers; the lure budget and the repair loop are what M25 ships (plan risk 4).
 - [ ] Worker celebrations when a raid or a siege ends. Sheltered workers get no celebration in v1.
 - [ ] `defences adopt` for walls a player built before M25. A hand-built wall has no hit points.

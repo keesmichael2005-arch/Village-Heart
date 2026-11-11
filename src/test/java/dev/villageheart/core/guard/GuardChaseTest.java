@@ -15,6 +15,17 @@ class GuardChaseTest {
 	}
 
 	@Test
+	void aChaseThatStopsAtTheWallWalksToTheGateNearestTheRaider() {
+		int[] gates = { 681, 70, 870, 681, 70, 855 };
+		assertArrayEquals(new int[] { 681, 70, 855 },
+				GuardChase.gateWaypoint(660, 70, 864, 637, 70, 858, gates, false),
+				"the west raider's nearest gate is the east gate at z 855");
+		assertNull(GuardChase.gateWaypoint(681, 70, 855, 637, 70, 858, gates, false), "already at that gate");
+		assertNull(GuardChase.gateWaypoint(660, 70, 864, 637, 70, 858, gates, true), "a path that reaches needs no gate");
+		assertNull(GuardChase.gateWaypoint(660, 70, 864, 637, 70, 858, new int[0], false));
+	}
+
+	@Test
 	void aRaiderKillInsideTheChaseMarginCounts() {
 		assertTrue(GuardChase.killCounts(true, false));
 		assertTrue(GuardChase.killCounts(false, true));

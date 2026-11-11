@@ -154,8 +154,13 @@ public final class Balance {
 	public static final int GUARD_DUTY_TICKS = 12000;
 	public static final int GUARD_OFF_TICKS = 1000;
 	public static final int GUARD_SIGHT = 24;
-	/** How far past the claim edge an on-duty guard follows a raider of the tracked raid. */
-	public static final int GUARD_RAID_CHASE = 16;
+	/**
+	 * How far past the claim edge an on-duty guard follows a raider of the tracked raid. 32 reaches the distance at which
+	 * vanilla still counts a raider (about 112 from the centre); 16 left those raiders holding the wave.
+	 */
+	public static final int GUARD_RAID_CHASE = 32;
+	/** Path length while chasing. 32 ends at a wall; 48 is the villager's own required length and reaches a gate. */
+	public static final int GUARD_CHASE_PATH = 48;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
 	public static final int GUARD_SCAN_TICKS = 10;
 	public static final double GUARD_CHASE_SPEED = 0.6;
