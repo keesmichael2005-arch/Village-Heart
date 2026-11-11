@@ -119,12 +119,12 @@ final class SmithClientTests {
 				return "ok";
 			});
 			if (!posed.equals("ok")) throw new AssertionError(posed);
-			srv.runCommand("setblock -1 " + y + " 11 minecraft:oak_door[facing=south,half=lower,open=true]");
-			srv.runCommand("setblock -1 " + (y + 1) + " 11 minecraft:oak_door[facing=south,half=upper,open=true]");
+			// The south wall comes out after the build, the way the guard shot opens its wall: a one-block door hides the furnace.
+			srv.runCommand("fill -3 " + y + " 11 2 " + (y + 2) + " 11 minecraft:air");
 			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
 			int fov = context.computeOnClient(mc -> mc.options.fov().get());
 			context.runOnClient(mc -> { mc.options.hideGui = true; mc.options.fov().set(70); });
-			srv.runCommand("tp @a 3.5 " + y + " 17 facing -1 " + (y + 1.2) + " 8");
+			srv.runCommand("tp @a -0.5 " + (y + 1) + " 20 facing -1.5 " + (y + 1.0) + " 7.5");
 			context.waitTicks(20);
 			sp.getClientWorld().waitForChunksRender();
 			String problem = context.computeOnClient(mc -> {
