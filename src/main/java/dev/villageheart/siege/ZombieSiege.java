@@ -154,6 +154,7 @@ public final class ZombieSiege {
 		long seed = level.getSeed() ^ (ThreatRoll.day(level.getGameTime()) * 0x9E3779B97F4A7C15L);
 		baseAngle = (seed & 0xffff) / (double) 0xffff * Math.PI * 2;
 		VillageClaims.data(server).update(s -> s.withThreats(s.threats().withPendingSiegeDay(ThreatState.NO_DAY)));
+		SiegeStats.siegeStarted();
 		spawnDue(server, level, village);
 	}
 
@@ -184,6 +185,7 @@ public final class ZombieSiege {
 		zombie.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
 		zombie.addTag(LureSlots.SIEGE_TAG);
 		level.addFreshEntity(zombie);
+		SiegeStats.zombieSpawned();
 		UUID id = zombie.getUUID();
 		int day = ThreatRoll.day(level.getGameTime());
 		VillageClaims.data(server).update(s -> {
@@ -252,7 +254,9 @@ public final class ZombieSiege {
 			if (entity == null) continue;
 			if (!entity.isAlive() || entity.isRemoved() || !entity.getTags().contains(LureSlots.SIEGE_TAG)) dead++;
 		}
-		return dead == record.killed() ? record : record.withKilled(dead);
+		if (dead == record.killed()) return record;
+		SiegeStats.zombiesKilled(dead - record.killed());
+		return record.withKilled(dead);
 	}
 
 	private static void end(MinecraftServer server, ServerLevel level, SiegeRecord record) {

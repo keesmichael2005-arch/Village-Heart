@@ -115,6 +115,7 @@ public final class SiegeDamage {
 		DefenceDamage next = live.damage.struck(packed, SiegeHits.damage(attacker, cell.kind()), hp, breakable);
 		live.damage = next;
 		if (next.isBreached(packed)) {
+			SiegeStats.broken(attacker);
 			breakCell(level, village.heart(), pos, state, crackId(village.heart(), level, pos));
 			noteMissingKeys(level, live, site);
 			flush(server);
@@ -247,6 +248,7 @@ public final class SiegeDamage {
 		DefenceDamage next = live.damage.struck(packed, amount, hp, breakable(level, live, pos));
 		live.damage = next;
 		if (next.isBreached(packed)) {
+			SiegeStats.brokenByCreeper();
 			breakCell(level, village.heart(), pos, state, crackId(village.heart(), level, pos));
 			noteMissingKeys(level, live, site);
 			flush(server);

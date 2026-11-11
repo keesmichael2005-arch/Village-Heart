@@ -13,7 +13,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		List<DeathRecord> deaths,
 		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
 		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages,
-		RaidDay raid, long deathsLogged, int golemsInClaim) {
+		RaidDay raid, long deathsLogged, int golemsInClaim, SiegeDay siege) {
 
 	/**
 	 * What dinner and housing did that day (M11): the dinner's totals, the hungriest villager at the end of the day, and how many villagers
@@ -68,6 +68,55 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		}
 	}
 
+	/**
+	 * One day's defence and siege counters (M25 3.17). A report without them reads zeros. {@code threatScore} is the live
+	 * score times 100. {@code entityMs} is the overworld entity tick, measured the same way as {@code village_ms}.
+	 */
+	public record SiegeDay(int cells, int unseen, int breached, int cracked, int breachedNoon, int blocksBroken,
+			int brokenZombie, int brokenRavager, int brokenVindicator, int brokenCreeper, int brokenOther, int repairs,
+			int repairItems, int started, int zombies, int killed, int villagerDeaths, int paths, int maxLured, int threatScore,
+			TickStats entityMs) {
+		public static final SiegeDay ZERO = new SiegeDay(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, TickStats.EMPTY);
+
+		public void flatten(Map<String, Double> m) {
+			m.put("defence.cells", (double) cells);
+			m.put("defence.unseen", (double) unseen);
+			m.put("defence.breached", (double) breached);
+			m.put("defence.cracked", (double) cracked);
+			m.put("defence.breached_noon", (double) breachedNoon);
+			m.put("defence.blocks_broken", (double) blocksBroken);
+			m.put("defence.broken.zombie", (double) brokenZombie);
+			m.put("defence.broken.ravager", (double) brokenRavager);
+			m.put("defence.broken.vindicator", (double) brokenVindicator);
+			m.put("defence.broken.creeper", (double) brokenCreeper);
+			m.put("defence.broken.other", (double) brokenOther);
+			m.put("defence.repairs", (double) repairs);
+			m.put("defence.repair_items", (double) repairItems);
+			m.put("siege.started", (double) started);
+			m.put("siege.zombies", (double) zombies);
+			m.put("siege.killed", (double) killed);
+			m.put("siege.villager_deaths", (double) villagerDeaths);
+			m.put("siege.paths", (double) paths);
+			m.put("lure.max_lured", (double) maxLured);
+			m.put("threat.score", (double) threatScore);
+			m.put("entity_ms.mean", entityMs.meanMs());
+			m.put("entity_ms.p95", entityMs.p95Ms());
+			m.put("entity_ms.max", entityMs.maxMs());
+			m.put("entity_ms.samples", (double) entityMs.samples());
+		}
+	}
+
+	/** Without the M25 defence and siege record. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
+			WageDay wages, RaidDay raid, long deathsLogged, int golemsInClaim) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, wages, raid, deathsLogged, golemsInClaim, SiegeDay.ZERO);
+	}
+
 	/** Without the M25 raid record. {@code deaths.logged} and {@code golems.in_claim} read 0. */
 	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
@@ -103,6 +152,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		java.util.Objects.requireNonNull(needs, "needs");
 		java.util.Objects.requireNonNull(wages, "wages");
 		java.util.Objects.requireNonNull(raid, "raid");
+		java.util.Objects.requireNonNull(siege, "siege");
+		java.util.Objects.requireNonNull(siege.entityMs(), "entityMs");
 		if (deathsLogged < 0) throw new IllegalArgumentException("deathsLogged must be >= 0: " + deathsLogged);
 		if (golemsInClaim < 0) throw new IllegalArgumentException("golemsInClaim must be >= 0: " + golemsInClaim);
 		stockpile = Map.copyOf(stockpile);
@@ -186,6 +237,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		raid.flatten(m);
 		m.put("deaths.logged", (double) deathsLogged);
 		m.put("golems.in_claim", (double) golemsInClaim);
+		siege.flatten(m);
 		return m;
 	}
 }

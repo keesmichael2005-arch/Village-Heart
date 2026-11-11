@@ -290,6 +290,15 @@ public final class ThreatScheduler implements VillageSystem {
 		return ready;
 	}
 
+	/** The live threat score times 100, for the day report (3.17). 0 when there is no claim. */
+	public static int scoreHundred(MinecraftServer server) {
+		var state = VillageClaims.current(server);
+		if (state.isEmpty()) return 0;
+		ServerLevel level = dev.villageheart.worker.Workers.levelOf(server, state.get().heart());
+		if (level == null) return 0;
+		return (int) Math.round(score(server, level, state.get()) * 100.0);
+	}
+
 	private static double score(MinecraftServer server, ServerLevel level, VillageState village) {
 		Map<String, Integer> counts = new HashMap<>();
 		for (var e : Stockpiles.totalsById(server).entrySet()) counts.put(e.getKey(), (int) Math.min(Integer.MAX_VALUE, e.getValue()));

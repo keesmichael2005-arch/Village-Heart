@@ -35,6 +35,7 @@ public final class PathBudget {
 		}
 		owed.remove(mob);
 		used++;
+		SiegeStats.path();
 		return true;
 	}
 

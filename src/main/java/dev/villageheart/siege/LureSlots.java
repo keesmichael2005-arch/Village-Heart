@@ -103,6 +103,7 @@ public final class LureSlots {
 		for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, box, LureSlots::counts)) consider(mobs, zombie, heart, r);
 		for (Creeper creeper : level.getEntitiesOfClass(Creeper.class, box, c -> c.isAlive() && !c.isRemoved())) consider(mobs, creeper, heart, r);
 		admitted = new HashSet<>(LureBudget.admit(mobs));
+		SiegeStats.lure(admitted.size());
 	}
 
 	private static void consider(List<LureBudget.Mob> mobs, Mob mob, HeartLocation heart, int radius) {

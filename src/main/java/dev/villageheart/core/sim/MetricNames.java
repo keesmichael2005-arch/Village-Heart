@@ -25,6 +25,12 @@ public final class MetricNames {
 			"raid.origin_random", "raid.early", "raid.reward", "raid.extra_raiders",
 			"raid.spawn_min_distance", "raid.callup_ticks",
 			"village_ms.mean", "village_ms.p95", "village_ms.max", "village_ms.samples",
+			"entity_ms.mean", "entity_ms.p95", "entity_ms.max", "entity_ms.samples",
+			"defence.cells", "defence.unseen", "defence.breached", "defence.cracked", "defence.breached_noon",
+			"defence.blocks_broken", "defence.broken.zombie", "defence.broken.ravager", "defence.broken.vindicator",
+			"defence.broken.creeper", "defence.broken.other", "defence.repairs", "defence.repair_items",
+			"siege.started", "siege.zombies", "siege.killed", "siege.villager_deaths", "siege.paths",
+			"lure.max_lured", "threat.score",
 			"server.mspt", "server.tps", "server.heap_used_mb",
 			"world.save_bytes", "wall_seconds");
 

@@ -39,6 +39,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			RaidClientTests.raidOverview(context);
 			return;
 		}
+		if ("siege".equals(System.getProperty("villageheart.l4.only"))) {
+			SiegeClientTests.wallCracks(context);
+			return;
+		}
 		if ("guards".equals(System.getProperty("villageheart.l4.only"))) {
 			GuardClientTests.guardOnDuty(context);
 			GuardClientTests.villagersTabGuards(context);
@@ -83,6 +87,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
 		RaidClientTests.raidOverview(context);
+		SiegeClientTests.wallCracks(context);
 	}
 
 	/** T-L4-1: a survival player right-clicks a Village Heart onto the ground with no bell near. */

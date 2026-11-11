@@ -326,6 +326,7 @@ public final class SimulationRun implements Host {
 	/** Day records and wall clock start fresh (the setup/boot ticks must not leak into the next day). */
 	private void resetTimers() {
 		VillageTicker.TIMER.snapshotAndReset();
+		VillageTicker.ENTITIES.snapshotAndReset();
 		dayWallStart = System.nanoTime();
 		dayStartTick = level.getGameTime();
 	}
@@ -384,6 +385,7 @@ public final class SimulationRun implements Host {
 		double wall = (System.nanoTime() - dayWallStart) / 1e9;
 		long ticks = now - dayStartTick;
 		TickStats ms = VillageTicker.TIMER.snapshotAndReset();
+		collector.setEntityMs(VillageTicker.ENTITIES.snapshotAndReset());
 		DayMetrics m = collector.collect(server, day, now, ms, wall, ticks);
 		days.add(m);
 		dayWallStart = System.nanoTime();

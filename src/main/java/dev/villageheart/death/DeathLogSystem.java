@@ -77,6 +77,7 @@ public final class DeathLogSystem {
 			if (inClaim && duringSiege) {
 				next = next.withThreats(next.threats().withSiege(next.threats().siege()
 						.map(r -> r.withVillagerDeaths(r.villagerDeaths() + 1))));
+				dev.villageheart.siege.SiegeStats.villagerDeath();
 			}
 			return next;
 		});

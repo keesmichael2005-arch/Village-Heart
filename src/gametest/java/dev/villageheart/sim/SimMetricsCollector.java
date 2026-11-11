@@ -59,6 +59,7 @@ public final class SimMetricsCollector {
 	private final Set<UUID> seen = new HashSet<>();
 	private final RaidMeter raids = new RaidMeter();
 	private long lastInClaimLogged;
+	private TickStats entityMs = TickStats.EMPTY;
 
 	public SimMetricsCollector(ServerLevel level, Vec3 centre, int radius) {
 		this.level = level;
@@ -67,6 +68,9 @@ public final class SimMetricsCollector {
 	}
 
 	public void setCentre(Vec3 centre) { this.centre = centre; }
+
+	/** The overworld entity timer for the day about to be recorded. The baseline leaves this empty. */
+	public void setEntityMs(TickStats entityMs) { this.entityMs = entityMs == null ? TickStats.EMPTY : entityMs; }
 
 	private java.util.function.Supplier<dev.villageheart.core.sim.WallRing> wallRing = () -> null;
 
@@ -77,7 +81,11 @@ public final class SimMetricsCollector {
 	public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
 	/** Reads the tracked raid often enough that a raid which ends before the day record still has its guard census. */
-	public void sample(MinecraftServer server) { raids.sample(server); }
+	public void sample(MinecraftServer server) {
+		raids.sample(server);
+		int tod = (int) Math.floorMod(level.getDayTime(), 24000L);
+		if (tod >= 9000) dev.villageheart.siege.SiegeStats.noteNoon(dev.villageheart.siege.SiegeDamage.damage(server).breached().size());
+	}
 
 	public String raidSection(List<DayMetrics> days) { return raids.section(days); }
 
@@ -327,7 +335,29 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay(), raids.take(server, gameTime), logged, golems);
+				needsDay(server, village), wageDay(), raids.take(server, gameTime), logged, golems, siegeDay(server, village, entityMs));
+	}
+
+	/** Cells, cracks and the day's siege counters (M25 3.17). The counters reset here. */
+	private static DayMetrics.SiegeDay siegeDay(MinecraftServer server, Optional<VillageState> village, TickStats entities) {
+		dev.villageheart.siege.SiegeStats.Counts c = dev.villageheart.siege.SiegeStats.take();
+		int cells = 0, unseen = 0, breached = 0, cracked = 0;
+		if (village.isPresent()) {
+			for (var site : village.get().defences()) {
+				for (var placed : dev.villageheart.core.defence.DefenceCells.of(site)) {
+					cells++;
+					long relative = dev.villageheart.core.defence.DefenceCells.relative(site.ground(), placed.pos());
+					if (!site.seen().contains(relative)) unseen++;
+				}
+			}
+			var damage = dev.villageheart.siege.SiegeDamage.damage(server);
+			breached = damage.breached().size();
+			cracked = damage.cracked().size();
+		}
+		return new DayMetrics.SiegeDay(cells, unseen, breached, cracked, c.breachedNoon(), c.blocksBroken(), c.brokenZombie(),
+				c.brokenRavager(), c.brokenVindicator(), c.brokenCreeper(), c.brokenOther(), c.repairs(), c.repairItems(),
+				c.started(), c.zombies(), c.killed(), c.villagerDeaths(), c.paths(), c.maxLured(),
+				dev.villageheart.raid.ThreatScheduler.scoreHundred(server), entities);
 	}
 
 	/** The wage runs of the day (reset here, M12). */

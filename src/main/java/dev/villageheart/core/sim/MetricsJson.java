@@ -220,12 +220,7 @@ public final class MetricsJson {
 		de.put("list", list);
 		de.put("logged", d.deathsLogged());
 		m.put("deaths", de);
-		Map<String, Object> vm = new LinkedHashMap<>();
-		vm.put("mean", d.villageMs().meanMs());
-		vm.put("p95", d.villageMs().p95Ms());
-		vm.put("max", d.villageMs().maxMs());
-		vm.put("samples", d.villageMs().samples());
-		m.put("village_ms", vm);
+		m.put("village_ms", timerMap(d.villageMs()));
 		Map<String, Object> sv = new LinkedHashMap<>();
 		sv.put("mspt", d.serverMspt());
 		sv.put("tps", d.serverTps());
@@ -242,6 +237,54 @@ public final class MetricsJson {
 		Map<String, Object> gl = new LinkedHashMap<>();
 		gl.put("in_claim", (long) d.golemsInClaim());
 		m.put("golems", gl);
+		m.put("defence", defenceMap(d.siege()));
+		m.put("siege", siegeMap(d.siege()));
+		Map<String, Object> lure = new LinkedHashMap<>();
+		lure.put("max_lured", (long) d.siege().maxLured());
+		m.put("lure", lure);
+		Map<String, Object> threat = new LinkedHashMap<>();
+		threat.put("score", (long) d.siege().threatScore());
+		m.put("threat", threat);
+		m.put("entity_ms", timerMap(d.siege().entityMs()));
+		return m;
+	}
+
+	private static Map<String, Object> defenceMap(DayMetrics.SiegeDay s) {
+		Map<String, Object> broken = new LinkedHashMap<>();
+		broken.put("zombie", (long) s.brokenZombie());
+		broken.put("ravager", (long) s.brokenRavager());
+		broken.put("vindicator", (long) s.brokenVindicator());
+		broken.put("creeper", (long) s.brokenCreeper());
+		broken.put("other", (long) s.brokenOther());
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("cells", (long) s.cells());
+		m.put("unseen", (long) s.unseen());
+		m.put("breached", (long) s.breached());
+		m.put("cracked", (long) s.cracked());
+		m.put("breached_noon", (long) s.breachedNoon());
+		m.put("blocks_broken", (long) s.blocksBroken());
+		m.put("broken", broken);
+		m.put("repairs", (long) s.repairs());
+		m.put("repair_items", (long) s.repairItems());
+		return m;
+	}
+
+	private static Map<String, Object> siegeMap(DayMetrics.SiegeDay s) {
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("started", (long) s.started());
+		m.put("zombies", (long) s.zombies());
+		m.put("killed", (long) s.killed());
+		m.put("villager_deaths", (long) s.villagerDeaths());
+		m.put("paths", (long) s.paths());
+		return m;
+	}
+
+	private static Map<String, Object> timerMap(TickStats t) {
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("mean", t.meanMs());
+		m.put("p95", t.p95Ms());
+		m.put("max", t.maxMs());
+		m.put("samples", t.samples());
 		return m;
 	}
 
@@ -358,7 +401,25 @@ public final class MetricsJson {
 				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
 						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
 				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")),
-				readRaid(raid), optLng(de, "logged"), golems == null ? 0 : (int) optLng(golems, "in_claim"));
+				readRaid(raid), optLng(de, "logged"), golems == null ? 0 : (int) optLng(golems, "in_claim"), readSiege(m));
+	}
+
+	/** A report from before step 17 has none of these objects: every counter is 0. */
+	private static DayMetrics.SiegeDay readSiege(Map<String, Object> m) {
+		if (m.get("defence") == null && m.get("siege") == null) return DayMetrics.SiegeDay.ZERO;
+		Map<String, Object> d = m.get("defence") == null ? Map.of() : Json.obj(m.get("defence"), "defence");
+		Map<String, Object> broken = d.get("broken") == null ? Map.of() : Json.obj(d.get("broken"), "defence.broken");
+		Map<String, Object> s = m.get("siege") == null ? Map.of() : Json.obj(m.get("siege"), "siege");
+		Map<String, Object> lure = m.get("lure") == null ? Map.of() : Json.obj(m.get("lure"), "lure");
+		Map<String, Object> threat = m.get("threat") == null ? Map.of() : Json.obj(m.get("threat"), "threat");
+		Map<String, Object> em = m.get("entity_ms") == null ? null : Json.obj(m.get("entity_ms"), "entity_ms");
+		TickStats entity = em == null ? TickStats.EMPTY : new TickStats(optLng(em, "samples"), dbl(em, "mean"), dbl(em, "p95"), dbl(em, "max"));
+		return new DayMetrics.SiegeDay((int) optLng(d, "cells"), (int) optLng(d, "unseen"), (int) optLng(d, "breached"),
+				(int) optLng(d, "cracked"), (int) optLng(d, "breached_noon"), (int) optLng(d, "blocks_broken"),
+				(int) optLng(broken, "zombie"), (int) optLng(broken, "ravager"), (int) optLng(broken, "vindicator"),
+				(int) optLng(broken, "creeper"), (int) optLng(broken, "other"), (int) optLng(d, "repairs"), (int) optLng(d, "repair_items"),
+				(int) optLng(s, "started"), (int) optLng(s, "zombies"), (int) optLng(s, "killed"), (int) optLng(s, "villager_deaths"),
+				(int) optLng(s, "paths"), (int) optLng(lure, "max_lured"), (int) optLng(threat, "score"), entity);
 	}
 
 	/** A report from before M25 has no raid object: every counter is 0 and the spawn distance stays -1. */

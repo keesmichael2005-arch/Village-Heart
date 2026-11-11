@@ -28,6 +28,7 @@ import dev.villageheart.core.worker.DaySchedule;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.siege.SiegeDamage;
+import dev.villageheart.siege.SiegeStats;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.worker.WorkXp;
@@ -238,6 +239,7 @@ public final class WallRepair {
 		}
 		WorkXp.award(v, WorkUnit.BLOCK_PLACED, 1);
 		SiegeDamage.repair(level.getServer(), target.packed());
+		SiegeStats.repaired(target.cost());
 		job.target = Long.MIN_VALUE;
 		return true;
 	}

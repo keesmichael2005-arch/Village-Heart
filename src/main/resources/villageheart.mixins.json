@@ -6,6 +6,7 @@
 	"mixins": [
 		"AbstractFurnaceBlockEntityAccessor",
 		"CreeperExplodeMixin",
+		"EntityTickMixin",
 		"MobGoalsAccessor",
 		"RaidAccessor",
 		"RaidGroups",
