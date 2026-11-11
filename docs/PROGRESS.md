@@ -886,6 +886,13 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Not fixed: `hunter_game_tests_two_hunters_one_ground` (970 ticks vs bound 450 at load 8; walk jam retries, product-side). Next: audit other jobs' `walk.begin(..., JOB_BLOCK_REACH)` for the same 0.1 band (BACKLOG).
 - Round 2: the dead band fixed at the root (`WalkTo` ARRIVED only within the reach; `SelfCraftJob` workaround removed), new `WorkerGameTests.walkToNeverArrivesBeyondItsReach`, full L2 343/343 green with the strict rule. `two_hunters_one_ground` investigated, not reproduced (BACKLOG has the mechanism hypothesis).
 
+## 2026-11-11: backlog-small
+- Market emerald counts use the singular for 1 and the plural otherwise, on the Stockpile line and in `/villageheart market status` (`MarketTexts`). `MarketTextsTest` failed on "Market: sold 1 emeralds today" before the change.
+- Client screenshots clear vanilla toasts first (`ScreenshotToastClear`). Before: `treasury_overview` / `treasury_villagers` hide the Stockpile and Ranks tabs under "New Recipe(s) Unlocked!". After: those tabs are visible. `toastsClearedBeforeScreenshot` failed while the toast survived the shot.
+- Each simulated day records the village tier and the fed-days streak (`village.tier`, `tier.fed_streak`, and the summary table). `ScenarioFilesTest.reportCarriesVillageTierAndFedStreak` failed while the report still wrote hamlet / 0 for a Village day with streak 4.
+- Two hunters no longer treat a walk jam as an unreachable ground with a 600-tick retry. `jamIsNotAnUnreachableGround` failed with SITE_UNREACHABLE before the change and passed after. `twoHuntersOneGround` passed 8 of 8 under the unchanged 450-tick bound; the hidden-hunter corridor test still goes out in 31 ticks.
+- Next: nothing from this list. Blockers: none.
+
 ## 2026-11-11: GameTest position helpers (audit-relpos)
 - `GameTestHelper.relativePos` rotates by the test rotation plus 180°, so on an unrotated test it negates the offset. Documented in TESTING.md under "GameTest position helpers". `VillageTestSupport.rel` subtracts the origin and asserts the round trip; `BuildTestSupport.rel` delegates to it.
 - `chopperIsNotAskedToStepAside` spawned the walker with `relativePos` of an absolute cell (the mirrored cell) and a 200-tick pin sat on the walk-stall limit, so a full-suite run left the oak standing. The walker now spawns on test-relative cells in the doorway geometry, the path must cross the hired lumberjack for a jam period (80 ticks, under the 200-tick stall), he is not asked, then he fells the oak. Mutation (drop the `isWorker` skip in `WalkTo.idleBlocker`): red at tick 85, "the hired lumberjack was asked to step aside". Restored: green, path crossed for 80 ticks, asked false, oak felled.

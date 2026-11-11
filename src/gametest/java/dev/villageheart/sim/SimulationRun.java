@@ -483,11 +483,7 @@ public final class SimulationRun implements Host {
 			for (AssertionResult a : assertionResults) {
 				sb.append(a.passed() ? "- PASS " : "- FAIL ").append(a.text()).append(" (").append(a.detail()).append(")\n");
 			}
-			sb.append("\n| day | population | deaths | village ms mean | village ms p95 | server tps | heap MB |\n|---|---|---|---|---|---|---|\n");
-			for (DayMetrics d : days) {
-				sb.append(String.format("| %d | %d | %d | %.4f | %.4f | %.0f | %d |%n", d.day(), d.population(), d.deaths().size(),
-						d.villageMs().meanMs(), d.villageMs().p95Ms(), d.serverTps(), d.heapUsedMb()));
-			}
+			sb.append("\n").append(dev.villageheart.core.sim.SimSummary.table(days));
 			Files.writeString(md, sb.toString(), StandardCharsets.UTF_8);
 		} catch (Throwable t) {
 			VillageHeart.LOG.error("[sim] could not write summary", t);

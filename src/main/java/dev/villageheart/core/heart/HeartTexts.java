@@ -82,6 +82,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "stock.line2_none", "Food: %s nutrition");
 		EN.put(PREFIX + "stock.more", "+%s more kinds");
 		EN.put(PREFIX + "stock.count", "\u00d7 %s");
+		EN.put(PREFIX + "stock.market_sold_one", "Market: sold 1 emerald today");
 		EN.put(PREFIX + "stock.market_sold", "Market: sold %s emeralds today");
 		EN.put(PREFIX + "stock.market_none", "No merchant: nothing is sold");
 		EN.put(PREFIX + "stock.for_sale", "Up to %s for sale above the reserve");

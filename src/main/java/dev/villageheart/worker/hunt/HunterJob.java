@@ -4,6 +4,7 @@ import dev.villageheart.VillageHeart;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.WorkerRecord;
+import dev.villageheart.core.hunt.HuntApproach;
 import dev.villageheart.core.hunt.HuntPace;
 import dev.villageheart.core.hunt.HunterPlanner;
 import dev.villageheart.core.hunt.HunterPlanner.Action;
@@ -60,6 +61,11 @@ public final class HunterJob {
 		long lastPlan = Long.MIN_VALUE;
 		long unreachableAt = Long.MIN_VALUE;
 		long idleBackoffUntil;
+		/** Where this hunter was when it started being pushed against another villager. */
+		net.minecraft.world.phys.Vec3 jamPos;
+		long jamAt = Long.MIN_VALUE;
+		/** Until this tick the side-step owns the navigation; {@link #goOut} does not start a new walk. */
+		long yieldUntil;
 	}
 
 	static void trace(String fmt, Object... args) {
@@ -188,31 +194,102 @@ public final class HunterJob {
 		}
 	}
 
-	private static boolean touchesAwayVillager(ServerLevel level, Villager v) {
-		return !level.getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(0.4, 0.0, 0.4), o -> o != v && AwayTrips.isAway(o)).isEmpty();
+	/** Another villager close enough to be what this one is pushing against. Away or not: a walking partner jams the same way. */
+	private static Villager blockingVillager(ServerLevel level, Villager v) {
+		Villager best = null;
+		double bestD = Double.MAX_VALUE;
+		for (Villager o : level.getEntitiesOfClass(Villager.class, v.getBoundingBox().inflate(1.0, 0.25, 1.0), x -> x != v && x.isAlive())) {
+			double d = o.distanceToSqr(v);
+			if (d < bestD) {
+				bestD = d;
+				best = o;
+			}
+		}
+		return best;
+	}
+
+	/** Ticks this hunter has stayed put while {@code blocking} is there. */
+	private static long jammedFor(State ws, Villager v, Villager blocking, long now) {
+		if (blocking == null) {
+			ws.jamPos = null;
+			ws.jamAt = Long.MIN_VALUE;
+			return 0;
+		}
+		if (ws.jamPos == null || v.position().distanceTo(ws.jamPos) >= 0.3) {
+			ws.jamPos = v.position();
+			ws.jamAt = now;
+			return 0;
+		}
+		return now - ws.jamAt;
+	}
+
+	/** One block off the line to {@code blocking}, onto air with ground under it. The navigation walks there. */
+	private static boolean stepAside(ServerLevel level, Villager v, Villager blocking, State ws, long now) {
+		BlockPos here = v.blockPosition();
+		BlockPos other = blocking.blockPosition();
+		int ax = Integer.signum(here.getX() - other.getX());
+		int az = Integer.signum(here.getZ() - other.getZ());
+		BlockPos[] opts = {here.offset(az == 0 ? 1 : az, 0, ax == 0 ? 1 : -ax), here.offset(az == 0 ? -1 : -az, 0, ax == 0 ? -1 : ax),
+				here.offset(ax == 0 ? 1 : -ax, 0, az == 0 ? 1 : -az), here.offset(1, 0, 0), here.offset(-1, 0, 0), here.offset(0, 0, 1), here.offset(0, 0, -1)};
+		for (BlockPos c : opts) {
+			if (c.equals(here) || c.equals(other) || !standable(level, c)) continue;
+			ws.walk.release(v);
+			v.getNavigation().moveTo(c.getX() + 0.5, c.getY(), c.getZ() + 0.5, 0.5);
+			ws.yieldUntil = now + 20;
+			ws.jamPos = null;
+			ws.jamAt = Long.MIN_VALUE;
+			trace("{} @{} jammed against {} at {}: steps aside to {}", v.getId(), now, blocking.getId(), here, c);
+			return true;
+		}
+		return false;
+	}
+
+	private static boolean standable(ServerLevel level, BlockPos c) {
+		if (level.getChunkSource().getChunkNow(c.getX() >> 4, c.getZ() >> 4) == null) return false;
+		if (level.getBlockState(c.below()).getCollisionShape(level, c.below()).isEmpty()) return false;
+		if (!level.getBlockState(c).getCollisionShape(level, c).isEmpty()) return false;
+		return level.getBlockState(c.above()).getCollisionShape(level, c.above()).isEmpty();
 	}
 
 	private static void goOut(ServerLevel level, Villager v, WorkerData data, State ws, long now) {
+		if (now < ws.yieldUntil) return; // the side-step is still walking
 		HuntSites.GroundSite ground = ws.ground;
 		if (ground == null || ground.level() != level) return;
 		BlockPos target = ground.marker();
 		if (!ws.walk.active() || !ws.walk.target().equals(target)) ws.walk.begin(target, Balance.HUNT_ENTRY_REACH, Balance.HUNT_ENTRY_CLOSEST, now);
 		WalkTo.State st = ws.walk.tick(v, now);
-		// A hunter that is already out stands (hidden, but still solid for a walker) where it arrived, maybe right in the way of the next
-		// one; pushing against it can take hundreds of ticks. A hunter that touches an away villager near the ground counts as arrived
-		// (the hold cell below keeps the two apart).
-		if (st == WalkTo.State.WALKING && WalkTo.distance(v, target) <= Balance.HUNT_ENTRY_CLOSEST && touchesAwayVillager(level, v)) {
-			trace("{} @{} blocked by a hunter that is already out: goes out here", v.getId(), now);
+		Villager blocking = blockingVillager(level, v);
+		double dist = WalkTo.distance(v, target);
+		// Touching someone near the marker counts as arrived, whether or not they are already hidden. Farther away, the higher id
+		// steps aside after a short push so the stall (200) and the unreachable retry (600) never start. That retry is what made
+		// two hunters miss the 450-tick bound.
+		if (st == WalkTo.State.WALKING && HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blocking != null, false) == HuntApproach.Choice.ARRIVE) {
+			trace("{} @{} blocked near the ground: goes out here", v.getId(), now);
 			st = WalkTo.State.ARRIVED;
+		} else if (st == WalkTo.State.WALKING && HuntApproach.yieldNow(jammedFor(ws, v, blocking, now), blocking != null,
+				blocking != null && !blocking.isNoAi() && blocking.getId() < v.getId(), dist, Balance.HUNT_ENTRY_CLOSEST)) {
+			if (stepAside(level, v, blocking, ws, now)) return;
 		}
 		if (st == WalkTo.State.WALKING) return;
 		if (st == WalkTo.State.UNREACHABLE) {
-			trace("{} @{} the ground at {} is unreachable: {}", v.getId(), now, target, ws.walk.reason());
-			ws.walk.clear();
-			ws.unreachableAt = now;
-			ws.decision = null;
-			WorkerStatuses.set(v.getUUID(), WorkerStatus.SITE_UNREACHABLE);
-			return;
+			HuntApproach.Choice choice = HuntApproach.choose(dist, Balance.HUNT_ENTRY_CLOSEST, blocking != null, true);
+			if (choice == HuntApproach.Choice.ARRIVE) {
+				trace("{} @{} the walk gave up against a villager near the ground: goes out here", v.getId(), now);
+				st = WalkTo.State.ARRIVED;
+			} else if (choice == HuntApproach.Choice.YIELD) {
+				trace("{} @{} the walk gave up against villager {}: not an unreachable ground", v.getId(), now, blocking == null ? "-" : blocking.getId());
+				if (blocking != null && stepAside(level, v, blocking, ws, now)) return;
+				ws.walk.clear();
+				ws.decision = null; // plan again next tick; do not arm the 600-tick retry
+				return;
+			} else {
+				trace("{} @{} the ground at {} is unreachable: {}", v.getId(), now, target, ws.walk.reason());
+				ws.walk.clear();
+				ws.unreachableAt = now;
+				ws.decision = null;
+				WorkerStatuses.set(v.getUUID(), WorkerStatus.SITE_UNREACHABLE);
+				return;
+			}
 		}
 		AwayState as = AwayTrips.state(v);
 		if (!as.progressShaft().equals(Optional.of(ground.loc()))) as = as.withProgress(AwayProgress.ZERO, Optional.of(ground.loc()));

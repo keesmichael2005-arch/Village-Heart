@@ -45,6 +45,11 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			LevelClientTests.villagersTabLevels(context);
 			return;
 		}
+		if ("toasts".equals(System.getProperty("villageheart.l4.only"))) {
+			toastsClearedBeforeScreenshot(context);
+			return;
+		}
+		toastsClearedBeforeScreenshot(context);
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
 			sp.getServer().runCommand("time set day");
@@ -78,6 +83,25 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		MarketClientTests.stockpileReserves(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
+	}
+
+	/**
+	 * A vanilla toast is up, then a screenshot is taken. The toast must be gone before the frame is captured, so it cannot
+	 * cover the UI (the "New Recipe(s) Unlocked" toast on {@code treasury_overview}).
+	 */
+	static void toastsClearedBeforeScreenshot(ClientGameTestContext context) {
+		var id = net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION;
+		boolean showing = context.computeOnClient(mc -> {
+			mc.getToastManager().addToast(net.minecraft.client.gui.components.toasts.SystemToast.multiline(mc, id,
+					net.minecraft.network.chat.Component.literal("New Recipe(s) Unlocked!"),
+					net.minecraft.network.chat.Component.literal("Check your recipe book")));
+			return mc.getToastManager().getToast(net.minecraft.client.gui.components.toasts.SystemToast.class, id) != null;
+		});
+		if (!showing) throw new AssertionError("precondition: the vanilla toast was not showing");
+		context.waitTicks(5); // let it draw, so a run without the clear still photographs it
+		context.takeScreenshot("toast_cleared");
+		boolean gone = context.computeOnClient(mc -> mc.getToastManager().getToast(net.minecraft.client.gui.components.toasts.SystemToast.class, id) == null);
+		if (!gone) throw new AssertionError("a vanilla toast was still up when the screenshot was taken");
 	}
 
 	/** T-L4-1: a survival player right-clicks a Village Heart onto the ground with no bell near. */

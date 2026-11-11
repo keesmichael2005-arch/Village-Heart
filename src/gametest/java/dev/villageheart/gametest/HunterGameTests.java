@@ -408,6 +408,47 @@ public class HunterGameTests {
 		});
 	}
 
+	/**
+	 * A hunter who cannot move because another hunter (not away) fills the only way out used to be told the ground was
+	 * unreachable and then waited {@code HUNTER_RETRY_TICKS} (600). That wait, on top of the 200-tick walk stall, is the
+	 * 970-tick {@code twoHuntersOneGround} failure. A jam is not a missing ground.
+	 */
+	@GameTest(environment = "villageheart-gametest:hunt_jam", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void jamIsNotAnUnreachableGround(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		// a wall across the yard, south of the marker, so the walk cannot arrive and is not within HUNT_ENTRY_CLOSEST
+		BlockPos blocker = new BlockPos(16, 0, 10), walker = new BlockPos(15, 0, 10);
+		GameTestSequence seq = scene(h, true).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			putInChest(h, 1, sword("stone"));
+			for (int x = 0; x <= 31; x++) for (int y = 0; y <= 2; y++) h.setBlock(new BlockPos(x, y, 12), net.minecraft.world.level.block.Blocks.STONE);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			var b = h.absolutePos(blocker);
+			v[0].teleportTo(b.getX() + 0.5, b.getY(), b.getZ() + 0.5);
+			v[0].setNoAi(true);
+			h.assertFalse(AwayTrips.isAway(v[0]), "the blocker is not away");
+			v[1] = hireAt(h, spawnSpot2());
+			var w = h.absolutePos(walker);
+			v[1].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			double dist = dev.villageheart.worker.job.WalkTo.distance(v[1], h.absolutePos(GROUND));
+			h.assertTrue(dist > dev.villageheart.core.Balance.HUNT_ENTRY_CLOSEST, "farther than the close-enough arrival: " + dist);
+		});
+		// long enough for the 200-tick stall to fire and the old code to arm the 600-tick retry, and short of that retry ending
+		seq = seq.thenIdle(280);
+		seq.thenExecute(() -> {
+			WorkerStatus st = status(h, v[1]);
+			System.out.println("[m17] jamIsNotAnUnreachableGround: status " + st + " decision " + HunterJob.decisionOf(v[1].getUUID())
+					+ " at " + v[1].blockPosition());
+			h.assertTrue(st != WorkerStatus.SITE_UNREACHABLE, "a hunter jammed against another hunter was reported SITE_UNREACHABLE (" + st
+					+ "), which waits 600 ticks before it walks again");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	// ---- T-L2-8 ----------------------------------------------------------------------------------
 
 	/** Two hunters share one ground: different cells, the first-hired holds the bow and is the only one to take an arrow. */
@@ -442,7 +483,10 @@ public class HunterGameTests {
 			}
 			h.assertTrue(t1.away() && t2.away(), "both out: " + t1.away() + " " + t2.away());
 		});
-		seq = seq.thenExecute(() -> h.assertTrue(h.getTick() - w0[0] <= 450, "both hunters are out took " + (h.getTick() - w0[0]) + " ticks, bound 450"));
+		seq = seq.thenExecute(() -> {
+			System.out.println("[m17] twoHuntersOneGround: both out after " + (h.getTick() - w0[0]) + " ticks");
+			h.assertTrue(h.getTick() - w0[0] <= 450, "both hunters are out took " + (h.getTick() - w0[0]) + " ticks, bound 450");
+		});
 		seq = seq.thenExecute(() -> {
 			BlockPos a = v[0].blockPosition(), b = v[1].blockPosition(), marker = h.absolutePos(GROUND);
 			System.out.println("[m17] twoHuntersOneGround: held at " + a + " and " + b + ", marker " + marker);

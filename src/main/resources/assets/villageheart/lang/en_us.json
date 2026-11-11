@@ -187,6 +187,7 @@
 	"gui.villageheart.heart.stock.line2_none": "Food: %s nutrition",
 	"gui.villageheart.heart.stock.more": "+%s more kinds",
 	"gui.villageheart.heart.stock.count": "× %s",
+	"gui.villageheart.heart.stock.market_sold_one": "Market: sold 1 emerald today",
 	"gui.villageheart.heart.stock.market_sold": "Market: sold %s emeralds today",
 	"gui.villageheart.heart.stock.market_none": "No merchant: nothing is sold",
 	"gui.villageheart.heart.stock.for_sale": "Up to %s for sale above the reserve",
@@ -374,6 +375,7 @@
 	"message.villageheart.treasury.add": "Added %s emeralds. Treasury: %s",
 	"message.villageheart.market.reserves_set": "Keeping %s days of food, %s of each item",
 	"message.villageheart.market.reserves": "Market keeps %s days of food and %s of every other item",
-	"message.villageheart.market.status": "Market: %s sold today, %s merchants, keeps %s days of food and %s of every other item",
+	"message.villageheart.market.status": "Market: sold %s emeralds today, %s merchants, keeps %s days of food and %s of every other item",
+	"message.villageheart.market.status_one": "Market: sold 1 emerald today, %s merchants, keeps %s days of food and %s of every other item",
 	"message.villageheart.market.bad_reserve": "Reserves must be 0 to 30 days and 0 to 1024 items"
 }

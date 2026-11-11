@@ -6,7 +6,8 @@
 		"NetworkSynchronizerLostWakeupFix",
 		"DisconnectInFlightLeakFix",
 		"WorldLoadTimeoutFix",
-		"NetworkSynchronizerAccessor"
+		"NetworkSynchronizerAccessor",
+		"ScreenshotToastClear"
 	],
 	"injectors": {
 		"defaultRequire": 1

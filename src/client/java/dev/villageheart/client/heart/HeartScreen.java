@@ -1072,7 +1072,8 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		}
 		if (!alerted) {
 			// the market line takes the place of the (usually empty) storage alert
-			text(g, st.merchants() > 0 ? t("stock.market_sold", st.soldToday()) : t("stock.market_none"), MARGIN, y + 24, w, st.merchants() > 0 ? GREEN : GREY, AREA_BODY, grp);
+			text(g, st.merchants() > 0 ? text(dev.villageheart.core.market.MarketTexts.soldToday(st.soldToday())) : t("stock.market_none"),
+					MARGIN, y + 24, w, st.merchants() > 0 ? GREEN : GREY, AREA_BODY, grp);
 		}
 		int[] r = listRect();
 		clip = new int[] {r[0], r[1], r[0] + r[2], r[1] + r[3]};
