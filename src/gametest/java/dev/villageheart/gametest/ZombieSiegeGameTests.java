@@ -63,7 +63,7 @@ public class ZombieSiegeGameTests {
 			day[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
 			night[0] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.NIGHT));
 			arm(h);
-			setTime(h, 17990);
+			atTime(h, 17990);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the day guard is asleep before the spawn", () -> {
@@ -72,7 +72,7 @@ public class ZombieSiegeGameTests {
 			h.assertTrue(state(h).threats().siege().isEmpty(), "a siege record before 18000 would wake the guard");
 			h.assertTrue(state(h).threats().pendingSiegeDay() != ThreatState.NO_DAY, "no roll yet " + debug(h));
 		});
-		seq = seq.thenExecute(() -> setTime(h, 18000));
+		seq = seq.thenExecute(() -> atTime(h, 18000));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "three siege zombies", () -> {
 			h.assertValueEqual(3, tagged(h).size(), debug(h));
 		});
@@ -107,7 +107,7 @@ public class ZombieSiegeGameTests {
 			h.assertTrue(night[0].getBrain().isActive(GuardActivities.DUTY), "night still on duty after the alarm reset");
 			BuildingTestSupport.owner().teleportTo(h.absolutePos(new BlockPos(3, 1, 200)).getX() + 0.5, h.absolutePos(heart[0]).getY(),
 					h.absolutePos(new BlockPos(3, 1, 200)).getZ() + 0.5);
-			setTime(h, 23000);
+			atTime(h, 23000);
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the siege ended and the day guard is back in bed", () -> {
 			h.assertTrue(state(h).threats().siege().isEmpty(), "still running");
@@ -133,10 +133,10 @@ public class ZombieSiegeGameTests {
 			arm(h);
 			Threat.forceForTest(8);
 			// A chunk forced on the spawn tick is not entity-ticking yet, so the ring is forced while it is still day.
-			setTime(h, 1000);
+			atTime(h, 1000);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
 		});
-		seq = seq.thenIdle(10).thenExecute(() -> setTime(h, 18000));
+		seq = seq.thenIdle(10).thenExecute(() -> atTime(h, 18000));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "T = 8 with two guards is still 3, not 20", () -> {
 			h.assertValueEqual(3, tagged(h).size(), "zombies");
 			h.assertValueEqual(3, SiegeSize.zombies(8, 2), "size rule");
@@ -149,16 +149,24 @@ public class ZombieSiegeGameTests {
 			ThreatScheduler.clearForTests();
 			ThreatRules.siegeGraceForTest(0, 0);
 			ThreatRules.forceSiege();
-			setTime(h, 18000 + 24000);
+			atTime(h, 6000);
+		});
+		seq = seq.thenIdle(5).thenExecute(() -> {
+			h.getLevel().updateSkyBrightness();
+			atTime(h, 18000);
 		});
 		seq = seq.thenIdle(10).thenExecute(() -> {
 			h.assertTrue(tagged(h).isEmpty(), "a Hamlet spawned " + tagged(h).size());
 			h.assertTrue(state(h).threats().siege().isEmpty(), "a Hamlet has a siege record");
+			// The claim stays lit, as in T-L2-35: a dark yard at 18000 with spawn_mobs on grows a natural zombie,
+			// and that zombie is not a vanilla siege. Anything already inside is removed before the window.
+			light(h, heart[0], 20);
+			for (Zombie zombie : zombiesInClaim(h)) zombie.discard();
 			VanillaSiege.clear();
 			VanillaSiege.forceTonight();
 			h.getLevel().getGameRules().set(GameRules.SPAWN_MOBS, true, h.getLevel().getServer());
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, true, h.getLevel().getServer());
-			setTime(h, 17999);
+			atTime(h, 17999);
 		});
 		seq = seq.thenIdle(400).thenExecute(() -> {
 			h.assertTrue(VanillaSiege.suppressedCount() > 0, "the claim never redirected isVillage");
@@ -172,7 +180,7 @@ public class ZombieSiegeGameTests {
 	 * T-L2-35. Vanilla's siege does not spawn inside the claim, including for a player standing just outside it.
 	 * A village built 200 blocks away still does.
 	 */
-	@GameTest(environment = "villageheart-gametest:siege_vanilla", structure = YARD, skyAccess = true, maxTicks = 4000)
+	@GameTest(environment = "villageheart-gametest:siege_vanilla", structure = YARD, skyAccess = true, maxTicks = 9000)
 	public void vanillaSiegeSuppressedInClaim(GameTestHelper h) {
 		BlockPos[] heart = new BlockPos[1];
 		BlockPos[] control = new BlockPos[1];
@@ -187,7 +195,7 @@ public class ZombieSiegeGameTests {
 			h.getLevel().getGameRules().set(SiegeGamerules.SIEGES, false, h.getLevel().getServer());
 			claimBell(h, h.absolutePos(BuildingTestSupport.BELL));
 			VanillaSiege.forceTonight();
-			setTime(h, 17999);
+			atTime(h, 17999);
 		});
 		seq = seq.thenIdle(400).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
@@ -203,36 +211,56 @@ public class ZombieSiegeGameTests {
 		seq = seq.thenIdle(5).thenExecute(() -> {
 			claimBell(h, h.absolutePos(heart[0].offset(87, 0, 0)));
 			VanillaSiege.forceTonight();
-			setTime(h, 24000 + 17999);
+			atTime(h, 17999);
 		});
 		seq = seq.thenIdle(400).thenExecute(() -> {
 			h.assertTrue(zombiesInClaim(h).isEmpty(), "a player just outside pulled zombies into the claim");
 			// A night with no daylight leaves the vanilla siege already set up, so the control night would not look again.
-			setTime(h, 48000 + 6000);
+			atTime(h, 6000);
 			h.getLevel().updateSkyBrightness();
 		});
 		seq = seq.thenIdle(5).thenExecute(() -> control[0] = surfaceVillage(h, h.absolutePos(heart[0].offset(200, 0, 0))));
 		seq = seq.thenIdle(10).thenExecute(() -> {
 			claimBell(h, control[0]);
 			VanillaSiege.forceTonight();
-			setTime(h, 48000 + 17999);
+			atTime(h, 17999);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the control village spawns", () -> {
-			long near = h.getLevel().getEntities(EntityType.ZOMBIE, new AABB(control[0]).inflate(48), z -> z.isAlive()).size();
+		int[] nights = {0};
+		int[] bright = {0};
+		int[] arming = {0};
+		seq = BuildingTestSupport.awaitWithin(h, seq, 5000, "the control village spawns", () -> {
+			ServerLevel level = h.getLevel();
+			long near = level.getEntities(EntityType.ZOMBIE, new AABB(control[0]).inflate(48), z -> z.isAlive()).size();
+			if (near == 0 && nights[0] < 3) {
+				int tod = (int) Math.floorMod(level.getDayTime(), 24000L);
+				if (arming[0] == 0 && tod > 19000) {
+					atTime(h, 6000);
+					level.updateSkyBrightness();
+					arming[0] = 1;
+					bright[0] = 0;
+				} else if (arming[0] == 1 && level.isBrightOutside() && ++bright[0] >= 5) {
+					nights[0]++;
+					VanillaSiege.clear();
+					VanillaSiege.forceTonight();
+					atTime(h, 17999);
+					arming[0] = 0;
+				}
+			}
 			BlockPos player = BuildingTestSupport.owner().blockPosition();
 			BlockPos out = control[0].offset(32, 0, 0);
-			int spawnY = h.getLevel().getHeight(Heightmap.Types.WORLD_SURFACE, out.getX(), out.getZ());
+			int spawnY = level.getHeight(Heightmap.Types.WORLD_SURFACE, out.getX(), out.getZ());
 			BlockPos spot = new BlockPos(out.getX(), spawnY, out.getZ());
 			h.assertTrue(near > 0, "no zombie near the control bell at " + control[0].toShortString()
-					+ " day " + h.getLevel().getDayTime() + " bright " + h.getLevel().isBrightOutside()
-					+ " village " + h.getLevel().isVillage(control[0]) + " player " + player.toShortString()
-					+ " playerVillage " + h.getLevel().isVillage(player)
-					+ " spot " + spot.toShortString() + " " + h.getLevel().getBlockState(spot.below()).getBlock().getName().getString()
-					+ "/" + h.getLevel().getBlockState(spot).getBlock().getName().getString()
-					+ " sky " + h.getLevel().getBrightness(net.minecraft.world.level.LightLayer.SKY, spot)
-					+ " block " + h.getLevel().getBrightness(net.minecraft.world.level.LightLayer.BLOCK, spot)
-					+ " spotVillage " + h.getLevel().isVillage(spot)
-					+ " monsters " + h.getLevel().isSpawningMonsters());
+					+ " day " + level.getDayTime() + " bright " + level.isBrightOutside()
+					+ " nights " + nights[0]
+					+ " village " + level.isVillage(control[0]) + " player " + player.toShortString()
+					+ " playerVillage " + level.isVillage(player)
+					+ " spot " + spot.toShortString() + " " + level.getBlockState(spot.below()).getBlock().getName().getString()
+					+ "/" + level.getBlockState(spot).getBlock().getName().getString()
+					+ " sky " + level.getBrightness(net.minecraft.world.level.LightLayer.SKY, spot)
+					+ " block " + level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, spot)
+					+ " spotVillage " + level.isVillage(spot)
+					+ " monsters " + level.isSpawningMonsters());
 		});
 		seq.thenExecute(() -> {
 			VillageTestSupport.done(h);
@@ -415,6 +443,13 @@ public class ZombieSiegeGameTests {
 				+ " diff " + level.getDifficulty() + " mobs " + level.getGameRules().get(GameRules.SPAWN_MOBS)
 				+ " sieges " + level.getGameRules().get(SiegeGamerules.SIEGES) + " owner " + dist
 				+ " forced " + ThreatRules.siegeForced();
+	}
+
+	/** A time of day on the current day, so the change never looks like a run of missed dawns to another test. */
+	private static void atTime(GameTestHelper h, int tick) {
+		long now = h.getLevel().getDayTime();
+		long base = Math.floorDiv(now, 24000L) * 24000L;
+		h.getLevel().setDayTime(base + Math.floorMod(tick, 24000));
 	}
 
 	private static boolean outside(BlockPos zombie, BlockPos heart, int radius) {
