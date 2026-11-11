@@ -155,10 +155,10 @@ public final class Balance {
 	public static final int GUARD_OFF_TICKS = 1000;
 	public static final int GUARD_SIGHT = 24;
 	/**
-	 * How far past the claim edge an on-duty guard follows a raider of the tracked raid. 32 reaches the distance at which
-	 * vanilla still counts a raider (about 112 from the centre); 16 left those raiders holding the wave.
+	 * How far past the claim edge an on-duty guard follows a raider of the tracked raid. The wave spawns about 120 blocks
+	 * from the Heart. 16 and then 32 (112) left that group holding the wave; 64 reaches them.
 	 */
-	public static final int GUARD_RAID_CHASE = 32;
+	public static final int GUARD_RAID_CHASE = 64;
 	/** Path length while chasing. 32 ends at a wall; 48 is the villager's own required length and reaches a gate. */
 	public static final int GUARD_CHASE_PATH = 48;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
