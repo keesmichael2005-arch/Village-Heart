@@ -63,6 +63,16 @@ final class P4ClientTests {
 			context.waitTicks(40);
 			BlockPos chest = new BlockPos(-18, y, 8);
 			srv.computeOnServer(server -> { stockAll(server.overworld(), chest); return 0; });
+			// deposit can fill the scanned chests before cobble and fences fit; write those stacks in directly
+			String[] must = {"minecraft:dirt", "minecraft:cobblestone", "minecraft:oak_planks", "minecraft:oak_log", "minecraft:oak_fence",
+					"minecraft:oak_fence_gate", "minecraft:oak_door", "minecraft:glass_pane", "minecraft:oak_stairs", "minecraft:white_bed", "minecraft:torch"};
+			for (int i = 0; i < must.length; i++) {
+				int cx = -18 + (i % 6);
+				int cz = 8 + (i / 6);
+				for (int slot = 0; slot < 4; slot++) {
+					srv.runCommand("item replace block " + cx + " " + y + " " + cz + " container." + slot + " with " + must[i] + " 64");
+				}
+			}
 			List<String> ids = new ArrayList<>();
 			for (Blueprint bp : Blueprints.all()) ids.add(bp.id());
 			int n = 0;
