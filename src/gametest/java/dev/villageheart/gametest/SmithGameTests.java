@@ -631,6 +631,7 @@ public class SmithGameTests {
 	public void twoLumberjacksTwoSmithsShareACamp(GameTestHelper h) {
 		Villager[] smiths = new Villager[2];
 		Villager[] jacks = new Villager[2];
+		int[] seen = {0};
 		BlockPos secondFurnace = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 1);
 		BlockPos secondAnvil = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 2);
 		BlockPos secondBlock = BuildingTestSupport.inside(SmithTestSupport.CAMP, 3, 0, 1);
@@ -684,7 +685,9 @@ public class SmithGameTests {
 			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
 			log("second smith fired mid-craft");
 		}).thenWaitUntil(() -> {
+			seen[0]++;
 			String state = part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L));
+			if (seen[0] % 2000 == 1) log("after fire " + state);
 			h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption " + state);
 		}).thenExecute(() -> {
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both still lease an axe");
@@ -1483,12 +1486,24 @@ public class SmithGameTests {
 		var server = h.getLevel().getServer();
 		var a = SmithRuntime.get(server).state(smiths[0].getUUID());
 		var b = SmithRuntime.get(server).state(smiths[1].getUUID());
+		BlockPos chest = h.absolutePos(SmithTestSupport.campChest());
+		String walk = a.walk.target() == null ? "-" : a.walk.target().toShortString() + " " + a.walk.reason();
 		return "crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
 				+ " modes " + a.mode + " " + b.mode + " hints " + a.hint + " " + b.hint
 				+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size()
-				+ " axes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE)
-				+ " held " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
-				+ smiths[1].getInventory().countItem(Items.IRON_INGOT);
+				+ " campAxes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE)
+				+ " storeAxes " + count(h, Items.IRON_AXE)
+				+ " heldAxes " + smiths[0].getInventory().countItem(Items.IRON_AXE) + "/"
+				+ smiths[1].getInventory().countItem(Items.IRON_AXE)
+				+ " heldIron " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
+				+ smiths[1].getInventory().countItem(Items.IRON_INGOT)
+				+ " units " + craftUnits(h, smiths[0]) + "/" + craftUnits(h, smiths[1])
+				+ " trip " + Workers.tripRunning(smiths[0])
+				+ " pos " + smiths[0].blockPosition().toShortString()
+				+ " chest " + chest.toShortString()
+				+ " walk " + walk
+				+ " to " + a.deliverTo
+				+ " prog " + (int) a.progressAcc;
 	}
 
 	private static boolean craftAt(GameTestHelper h, Villager smith) {
