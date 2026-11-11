@@ -666,6 +666,10 @@ public class SmithGameTests {
 			long now = h.getLevel().getDayTime();
 			long day = Math.floorMod(now, 24000L);
 			setDayTime(h, now - day + 24000L + 1000L);
+		}).thenExecuteFor(500, () -> { }).thenExecute(() -> {
+			log("part2 morning " + part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L))
+					+ " carried " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
+					+ smiths[1].getInventory().countItem(Items.IRON_INGOT));
 		}).thenWaitUntil(() -> {
 			long dayNow = Math.floorMod(h.getLevel().getDayTime(), 24000L);
 			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), part2(h, smiths, dayNow));
@@ -1463,7 +1467,9 @@ public class SmithGameTests {
 		return "crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
 				+ " modes " + a.mode + " " + b.mode + " hints " + a.hint + " " + b.hint
 				+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size()
-				+ " axes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE);
+				+ " axes " + chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE)
+				+ " held " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
+				+ smiths[1].getInventory().countItem(Items.IRON_INGOT);
 	}
 
 	private static boolean craftAt(GameTestHelper h, Villager smith) {
