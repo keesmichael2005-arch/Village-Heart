@@ -1189,7 +1189,9 @@ public final class SmithJob {
 	// ---- cancel, surplus, adopt --------------------------------------------------------------------
 
 	private static boolean due(SmithRuntime.State st, long now) {
-		if (now - st.lastCancelCheck < Balance.SMITH_CANCEL_CHECK_TICKS) return false;
+		// lastCancelCheck starts at Long.MIN_VALUE. Subtracting that from the game time overflows, so a
+		// difference check never becomes due and a slot that fills during a fetch is never cancelled.
+		if (st.lastCancelCheck > now - Balance.SMITH_CANCEL_CHECK_TICKS && st.lastCancelCheck <= now) return false;
 		st.lastCancelCheck = now;
 		return true;
 	}
