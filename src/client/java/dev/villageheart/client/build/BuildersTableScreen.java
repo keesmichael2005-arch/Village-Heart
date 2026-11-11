@@ -1,5 +1,6 @@
 package dev.villageheart.client.build;
 
+import dev.villageheart.client.art.ModTextures;
 import dev.villageheart.build.BuildersTableMenu;
 import dev.villageheart.build.net.CancelBuildPayload;
 import dev.villageheart.build.net.TakeBlueprintPayload;
@@ -235,7 +236,8 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		g.fill(0, 22, width, height - FOOTER_H, 0x99000000);
 		g.fill(0, height - FOOTER_H, width, height, 0xFF202020);
 		g.fill(0, height - FOOTER_H, width, height - FOOTER_H + 1, 0xFF000000);
-		line(g, t("title").getString(), MARGIN, 7, width - 2 * MARGIN, WHITE);
+		ModTextures.blit(g, ModTextures.TABLE_BLUEPRINT, MARGIN, 3, 16);
+		line(g, t("title").getString(), MARGIN + 18, 7, width - 2 * MARGIN - 18, WHITE);
 
 		// the blueprints
 		line(g, t("blueprints").getString(), MARGIN, TOP, LIST_W, GREY);
@@ -250,7 +252,8 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			String info = b.locked() ? (bp == null ? "" : bp.tier().displayName()) : bp != null && bp.mode() == PlacementMode.LINE ? t("line_tag").getString()
 					: b.width() + "x" + b.depth() + "x" + b.height();
 			int iw = font.width(info);
-			line(g, name, MARGIN + 4, y + 4, LIST_W - 12 - iw, b.locked() ? DARK_GREY : WHITE);
+			ModTextures.blit(g, b.locked() ? ModTextures.TABLE_LOCKED : ModTextures.TABLE_BLUEPRINT, MARGIN + 2, y + 4, 8);
+			line(g, name, MARGIN + 12, y + 4, LIST_W - 20 - iw, b.locked() ? DARK_GREY : WHITE);
 			g.drawString(font, info, MARGIN + LIST_W - 4 - iw, y + 4, b.locked() ? RED : GREY);
 		}
 
@@ -267,7 +270,8 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			} else {
 				line(g, isLine ? t("line_hint").getString() : t("size", sel.width(), sel.depth(), sel.height()).getString(), rx, TOP + 12, rw, GREY);
 			}
-			line(g, t(!isLine ? "materials" : sel.id().equals("gate") ? "materials_gate" : "materials_wall").getString(), rx, TOP + 28, rw, GREY);
+			ModTextures.blit(g, ModTextures.TABLE_MATERIALS, rx, TOP + 26, 8);
+			line(g, t(!isLine ? "materials" : sel.id().equals("gate") ? "materials_gate" : "materials_wall").getString(), rx + 10, TOP + 28, rw - 10, GREY);
 			int y = TOP + 40;
 			for (TableMaterial m : sel.materials()) {
 				boolean enough = m.have() >= m.needed();
