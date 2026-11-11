@@ -214,6 +214,7 @@ public class SiegeRepairGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "health rises after the ration grows", () ->
 				h.assertTrue(guard[0].getHealth() > health[0], "health " + guard[0].getHealth() + " from " + health[0]));
 		seq.thenExecute(() -> {
+			if (zombie[0] != null) zombie[0].discard();
 			VillageTestSupport.done(h);
 			WorkerTestSupport.end(h);
 		});

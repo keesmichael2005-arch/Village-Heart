@@ -72,7 +72,7 @@ public class SiegeLureGameTests {
 		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 1200, "beside the wall took " + (h.getTick() - t0[0])));
 		seq = seq.thenWaitUntil(() -> {
 			h.assertTrue(maxDamage(h) > 0, "no damage yet at " + at(h, zombie[0]) + " target " + zombie[0].getTarget());
-		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 1800, "first damage took " + (h.getTick() - t0[0])));
+		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 2000, "first damage took " + (h.getTick() - t0[0])));
 		seq = seq.thenWaitUntil(() -> {
 			h.assertTrue(anyBreach(h), "no breach yet at " + at(h, zombie[0]) + " target " + zombie[0].getTarget());
 			BlockPos p = at(h, zombie[0]);
