@@ -286,6 +286,58 @@ class SmithPlannerTest {
 		assertEquals(3, SmithKeep.keep("minecraft:iron_ingot", 3, Set.of("minecraft:iron_ingot"), false, false, false));
 	}
 
+	// ---- M19 review round 1, items 2, 3 and 6 ----------------------------------------------------------
+
+	private static final OrderKey GUARD_SWORD = new OrderKey(CAMP, GearNeed.SWORD, 0);
+
+	private static SmithFacts urgentOrderableWithSavedCraft(SlotPresence presence) {
+		SmithFacts f = SmithFacts.morning();
+		f.savedCraft = Optional.of(AXE);
+		f.craftPresence = presence;
+		f.demands = List.of(new GearDemand(GUARD_SWORD, "guard", Urgency.U2_GUARD_WEAPON, SlotState.MISSING, CAMP, OptionalInt.empty(), true));
+		f.materials = new Materials(List.of(new StockItem("minecraft:oak_planks", MaterialRole.PLANKS, 5)));
+		return f;
+	}
+
+	@Test
+	void aSavedCraftWhoseSlotReadsUnknownPausesAndNeverFreesTheFurnace() {
+		SmithFacts f = urgentOrderableWithSavedCraft(SlotPresence.UNKNOWN);
+		// Control: the same demand with a free furnace is crafted, so the facts below really are orderable.
+		SmithFacts free = urgentOrderableWithSavedCraft(SlotPresence.UNKNOWN);
+		free.savedCraft = Optional.empty();
+		assertInstanceOf(SmithDecision.StartCraft.class, decide(free));
+		assertFalse(decide(f) instanceof SmithDecision.StartCraft, "a second craft was started over the saved one: " + decide(f));
+		assertFalse(decide(f) instanceof SmithDecision.Craft, "an unknown slot is not resumed either: " + decide(f));
+		f.craftCancelCount = 5;
+		assertFalse(decide(f) instanceof SmithDecision.StartCraft);
+	}
+
+	@Test
+	void aCraftWithAPendingRefundIsNeverResumedAndNeverReplaced() {
+		SmithFacts f = urgentOrderableWithSavedCraft(SlotPresence.HELD);
+		f.craftRefundPending = true;
+		SmithDecision d = decide(f);
+		assertFalse(d instanceof SmithDecision.Craft, "a refund-pending craft was resumed: " + d);
+		assertFalse(d instanceof SmithDecision.CancelCraft, "the refund system gives the items back, not a cancel: " + d);
+		assertFalse(d instanceof SmithDecision.StartCraft, "a new craft would overwrite the record: " + d);
+		f.craftRefundPending = false;
+		assertInstanceOf(SmithDecision.Craft.class, decide(f));
+	}
+
+	@Test
+	void aSecondSmithNeverStartsAGolemInASmithyThatHasABuildOrAFetch() {
+		SmithFacts f = golemReady();
+		assertInstanceOf(SmithDecision.StartGolem.class, decide(f));
+		f.buildSaved = true;
+		f.buildOwnedByMe = false;
+		assertFalse(decide(f) instanceof SmithDecision.StartGolem, "the second smith started another build: " + decide(f));
+		SmithFacts fetching = golemReady();
+		fetching.golemPending = true;
+		assertFalse(decide(fetching) instanceof SmithDecision.StartGolem, "a build is already being fetched here: " + decide(fetching));
+		fetching.golemPending = false;
+		assertInstanceOf(SmithDecision.StartGolem.class, decide(fetching));
+	}
+
 	private static SmithFacts golemReady() {
 		SmithFacts f = SmithFacts.morning();
 		f.golemAllowed = true;

@@ -207,7 +207,7 @@ public final class SmithJob {
 		SmithFacts f = facts(level, v, data, st, village.get(), now);
 		HeartLocation furnace = data.jobBlock();
 		Optional<SmithCraft> saved = village.get().smithCraft(furnace);
-		if (saved.isPresent() && GearOrders.of(saved.get().craft().key()).isEmpty())
+		if (saved.isPresent() && !saved.get().refundPending() && GearOrders.of(saved.get().craft().key()).isEmpty())
 			GearOrders.claim(saved.get().craft().key(), v.getUUID(), now, true);
 		SmithDecision d = SmithPlanner.decide(f);
 		apply(level, v, data, st, d, now);
@@ -330,6 +330,7 @@ public final class SmithJob {
 		f.savedCraft = saved.map(c -> c.craft().key());
 		if (saved.isPresent()) {
 			f.craftPresence = presence(server, village, saved.get().craft().key());
+			f.craftRefundPending = saved.get().refundPending();
 			f.craftCancelCount = st.cancelCount;
 		}
 		golemFacts(level, v, data, st, village, f);
@@ -356,7 +357,17 @@ public final class SmithJob {
 		for (Villager c : census) ids.add(c.getUUID());
 		int pop = GolemRules.population(ids, village.workers());
 		int golems = golemsInClaim(level, village);
-		f.golemAllowed = GolemRules.allowed(pop, golems, village.golemBuilds().size());
+		// A smith still fetching the materials has no saved build yet, but it will have one: it counts toward the cap, and a fetch in this
+		// Smithy means no second smith may start another build here.
+		int fetching = 0;
+		for (var e : SmithRuntime.get(level.getServer()).workers.entrySet()) {
+			if (!e.getValue().buildFetch || e.getKey().equals(v.getUUID())) continue;
+			var other = village.worker(e.getKey());
+			if (other.isEmpty()) continue;
+			fetching++;
+			if (other.get().building().equals(smithy)) f.golemPending = true;
+		}
+		f.golemAllowed = GolemRules.allowed(pop, golems, village.golemBuilds().size() + fetching);
 		SmithyRepairs.waitingAt(smithy).ifPresent(id -> {
 			if (!(level.getEntity(id) instanceof IronGolem g) || !g.isAlive()) {
 				SmithyRepairs.release(id);
@@ -666,7 +677,11 @@ public final class SmithJob {
 			remove(v, "minecraft:carved_pumpkin", 1);
 			st.keep.remove("minecraft:iron_ingot");
 			st.keep.remove("minecraft:carved_pumpkin");
-			GolemBuilds.start(level.getServer(), data.building());
+			if (!GolemBuilds.start(level.getServer(), data.building())) {
+				giveBuildMaterialsBack(v);
+				abortFetch(level, v, st, now);
+				return;
+			}
 			SmithRuntime.get(level.getServer()).buildOwner.put(data.building(), v.getUUID());
 			st.golemAcc = 0;
 			st.buildStart = now;
@@ -744,7 +759,12 @@ public final class SmithJob {
 		}
 		carried(v).keySet().stream().filter(SmithJob::isFuelId).forEach(st.keep::add);
 		HeartLocation dest = order.demand().destination();
-		SmithCrafts.commit(level.getServer(), data.jobBlock(), new SmithCraft(new GearCraft(order.recipe().id(), order.key(), 0, committed), dest));
+		if (!SmithCrafts.commit(level.getServer(), data.jobBlock(), new SmithCraft(new GearCraft(order.recipe().id(), order.key(), 0, committed), dest))) {
+			// This furnace still holds another craft (paused, or waiting for its refund). Nothing was stored: the items go back.
+			for (ItemCount back : committed) give(v, back.id(), back.count());
+			abortFetch(level, v, st, now);
+			return;
+		}
 		st.progressAcc = 0;
 		st.lastSavedProgress = 0;
 		st.prereqIndex = 0;
@@ -957,7 +977,11 @@ public final class SmithJob {
 		if (iron >= Balance.GOLEM_INGOTS && pumpkin >= 1) {
 			remove(v, "minecraft:iron_ingot", Balance.GOLEM_INGOTS);
 			remove(v, "minecraft:carved_pumpkin", 1);
-			GolemBuilds.start(level.getServer(), data.building());
+			if (!GolemBuilds.start(level.getServer(), data.building())) {
+				giveBuildMaterialsBack(v);
+				st.needsPlan = true;
+				return;
+			}
 			SmithRuntime.get(level.getServer()).buildOwner.put(data.building(), v.getUUID());
 			st.golemAcc = 0;
 			st.buildStart = now;
@@ -973,6 +997,12 @@ public final class SmithJob {
 		st.fetchKey = null;
 		beginFetch(level, v, data, st, want, null, now);
 		if (st.mode != SmithRuntime.Mode.FETCH) st.buildFetch = false;
+	}
+
+	/** The build was refused (this Smithy already has one): the 36 ingots and the pumpkin go back to the smith, who hands them in. */
+	private static void giveBuildMaterialsBack(Villager v) {
+		give(v, "minecraft:iron_ingot", Balance.GOLEM_INGOTS);
+		give(v, "minecraft:carved_pumpkin", 1);
 	}
 
 	private static void resumeBuild(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st, long now) {

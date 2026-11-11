@@ -30,6 +30,7 @@ public final class SmithySystem implements VillageSystem {
 		if (server.getTickCount() % INTERVAL != 0) return;
 		GolemBuilds.refundUnregistered(server);
 		SmithCrafts.refundOrphans(server);
+		SmithCrafts.retryPending(server);
 		long now = server.overworld().getGameTime();
 		SmithRuntime rt = SmithRuntime.get(server);
 		for (Buildings.BuildingView b : Buildings.valid(server, BuildingType.SMITHY)) {

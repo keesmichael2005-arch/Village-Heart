@@ -48,7 +48,9 @@ public final class SmithPlanner {
 		if (f.golemWaiting.isPresent() && f.golemIngotsReady) return new SmithDecision.RepairGolem(f.golemWaiting.getAsInt());
 		if (f.carriedTool.isPresent() && !f.deliveryBlocked.contains(f.carriedTool.get())) return new SmithDecision.Deliver(f.carriedTool.get());
 
-		if (f.savedCraft.isPresent()) {
+		// A saved craft owns this furnace until it is finished or cancelled. UNKNOWN pauses it and never frees the furnace, and a craft
+		// whose refund is pending is never resumed (the refund system gives its items back); neither lets a new craft be committed.
+		if (f.savedCraft.isPresent() && !f.craftRefundPending) {
 			CancelCheck check = GearDemandPlanner.cancel(f.craftPresence, f.craftCancelCount);
 			if (check.reason().isPresent()) return new SmithDecision.CancelCraft(check.reason().get());
 			if (f.craftPresence != SlotPresence.UNKNOWN) return new SmithDecision.Craft(check.consecutiveDefinite());
@@ -66,7 +68,7 @@ public final class SmithPlanner {
 		Optional<SmithDecision> later = takeOrder(f, LATER);
 		if (later.isPresent()) return later.get();
 
-		if (!hasOrderable(f, BLOCKS_GOLEM) && f.golemAllowed && golemMats(f) && f.dayTime <= Balance.GOLEM_LAST_START)
+		if (!f.buildSaved && !f.golemPending && !hasOrderable(f, BLOCKS_GOLEM) && f.golemAllowed && golemMats(f) && f.dayTime <= Balance.GOLEM_LAST_START)
 			return new SmithDecision.StartGolem();
 
 		SmithBatch.Plan batch = smelt(f);
@@ -117,7 +119,7 @@ public final class SmithPlanner {
 				hold(open, key);
 				continue;
 			}
-			if (endsBy(f, f.walkTicks + prerequisiteTicks(order), Balance.SMITH_DONE_BY))
+			if (f.savedCraft.isEmpty() && endsBy(f, f.walkTicks + prerequisiteTicks(order), Balance.SMITH_DONE_BY))
 				return Optional.of(new SmithDecision.StartCraft(order));
 			hold(open, key);
 		}

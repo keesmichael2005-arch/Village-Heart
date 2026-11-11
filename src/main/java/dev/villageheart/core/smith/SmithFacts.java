@@ -36,6 +36,8 @@ public final class SmithFacts {
 	public boolean golemIngotsReady;
 	public Optional<OrderKey> savedCraft = Optional.empty();
 	public SlotPresence craftPresence = SlotPresence.HELD;
+	/** The saved craft is waiting for its materials to go back (a bad save or an incomplete refund). It is never resumed. */
+	public boolean craftRefundPending;
 	/** Definite cancel checks already seen for {@link #savedCraft}, before this decision. */
 	public int craftCancelCount;
 	public Optional<OrderKey> carriedTool = Optional.empty();
@@ -52,6 +54,8 @@ public final class SmithFacts {
 	/** False for every smith but the one that owns this Smithy's build today. */
 	public boolean buildOwnedByMe = true;
 	public boolean golemAllowed;
+	/** Another smith of this Smithy is fetching the materials for a golem build that is not saved yet. */
+	public boolean golemPending;
 	public RepairJob chestRepair;
 	public List<RepairJob> fetchRepairs = List.of();
 	/** Item id to count: ore, fuel is separate, ingots, pumpkin, repair materials. */

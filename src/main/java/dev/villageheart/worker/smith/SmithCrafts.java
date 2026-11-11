@@ -30,9 +30,19 @@ import net.minecraft.world.item.ItemStack;
 public final class SmithCrafts {
 	private SmithCrafts() {}
 
-	public static void commit(MinecraftServer server, HeartLocation furnace, SmithCraft craft) {
-		VillageClaims.data(server).update(v -> v.withSmithCraft(furnace, craft));
-		GearOrders.markCommitted(craft.craft().key());
+	/**
+	 * Compare-and-insert. False when the furnace already holds a different craft: nothing is stored and the caller keeps the items
+	 * it took (a record is never overwritten, because its committed items would be lost).
+	 */
+	public static boolean commit(MinecraftServer server, HeartLocation furnace, SmithCraft craft) {
+		boolean[] stored = {false};
+		VillageClaims.data(server).update(v -> {
+			if (!v.canStoreSmithCraft(furnace, craft)) return v;
+			stored[0] = true;
+			return v.withSmithCraft(furnace, craft);
+		});
+		if (stored[0]) GearOrders.markCommitted(craft.craft().key());
+		return stored[0];
 	}
 
 	/** Update-only. A missing record, or one with a different recipe or key, is left alone. */
@@ -127,6 +137,18 @@ public final class SmithCrafts {
 		if (v.isEmpty()) return;
 		for (var e : v.get().smithCrafts().entrySet()) {
 			if (!refund(server, e.getKey(), e.getValue())) VillageHeart.LOG.warn("Smith craft at {}: the refund is not complete", e.getKey());
+		}
+	}
+
+	/**
+	 * A craft marked {@code refundPending} (a bad save, or a refund that could not finish) is never resumed. Every call tries again to
+	 * give what it still holds back, until the record is gone.
+	 */
+	public static void retryPending(MinecraftServer server) {
+		var v = VillageClaims.current(server);
+		if (v.isEmpty()) return;
+		for (var e : List.copyOf(v.get().smithCrafts().entrySet())) {
+			if (e.getValue().refundPending()) refund(server, e.getKey(), e.getValue());
 		}
 	}
 

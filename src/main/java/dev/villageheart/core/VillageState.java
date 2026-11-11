@@ -635,9 +635,19 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	public VillageState withSmithCraft(HeartLocation furnace, dev.villageheart.core.smith.SmithCraft craft) {
 		Objects.requireNonNull(furnace, "furnace");
 		Objects.requireNonNull(craft, "craft");
+		dev.villageheart.core.smith.SmithCraft have = smithCrafts.get(furnace);
+		// A furnace holds one craft. A different order never replaces it (its committed items would be lost); a record of the same
+		// order is updated in place (progress, a refund that left something behind).
+		if (have != null && !have.craft().key().equals(craft.craft().key())) return this;
 		Map<HeartLocation, dev.villageheart.core.smith.SmithCraft> next = new java.util.LinkedHashMap<>(smithCrafts);
 		next.put(furnace, craft);
 		return withSmithCrafts(next);
+	}
+
+	/** True when {@link #withSmithCraft} would store this craft: the furnace is free or already holds the same order. */
+	public boolean canStoreSmithCraft(HeartLocation furnace, dev.villageheart.core.smith.SmithCraft craft) {
+		dev.villageheart.core.smith.SmithCraft have = smithCrafts.get(furnace);
+		return have == null || have.craft().key().equals(craft.craft().key());
 	}
 
 	public VillageState withoutSmithCraft(HeartLocation furnace) {

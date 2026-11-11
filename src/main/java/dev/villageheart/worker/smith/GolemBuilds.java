@@ -22,8 +22,18 @@ import net.minecraft.world.item.Items;
 public final class GolemBuilds {
 	private GolemBuilds() {}
 
-	public static void start(MinecraftServer server, HeartLocation smithy) {
-		VillageClaims.data(server).update(v -> v.withGolemBuild(smithy, 0));
+	/**
+	 * Compare-and-insert. False when this Smithy already has a build: nothing changes (its progress is kept) and the caller gives its
+	 * materials back.
+	 */
+	public static boolean start(MinecraftServer server, HeartLocation smithy) {
+		boolean[] started = {false};
+		VillageClaims.data(server).update(v -> {
+			if (v.golemProgress(smithy) >= 0) return v;
+			started[0] = true;
+			return v.withGolemBuild(smithy, 0);
+		});
+		return started[0];
 	}
 
 	public static void progress(MinecraftServer server, HeartLocation smithy, int ticks) {

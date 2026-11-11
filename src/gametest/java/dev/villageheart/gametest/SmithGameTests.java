@@ -1721,6 +1721,103 @@ public class SmithGameTests {
 		return VillageClaims.current(h.getLevel().getServer()).map(v -> v.golemProgress(smithyAt(h))).orElse(-1);
 	}
 
+	// ---- M19 review round 1: items 2, 3 and 6 ---------------------------------------------------------
+
+	/**
+	 * A saved craft whose refund is pending (a bad save, or a refund that could not finish) is never resumed: the smith gives its items
+	 * back and crafts the pickaxe afresh. Resuming would finish it with no COMMIT, and the refund would never be acted on.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_refund_pending", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void refundPendingCraftIsRefundedNotResumed(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> SmithTestSupport.addMine(h)).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			GearOrders.reset();
+			HeartLocation mine = BuildingTestSupport.loc(h, SmithTestSupport.mineMarker());
+			HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+			GearCraft craft = new GearCraft("minecraft:iron_pickaxe", new OrderKey(mine, GearNeed.PICKAXE, 0), 0,
+					List.of(new ItemCount("minecraft:iron_ingot", 3), new ItemCount("minecraft:stick", 2)));
+			VillageClaims.data(h.getLevel().getServer()).update(v -> v.withSmithCraft(furnace, new SmithCraft(craft, mine, true)));
+			setDayTime(h, 1000);
+			SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.IRON_PICKAXE), "iron pickaxe in the mine chest")
+		).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			long commits = units.stream().filter(u -> u.kind().equals("COMMIT")).count();
+			long crafts = units.stream().filter(u -> u.kind().equals("CRAFT")).count();
+			h.assertValueEqual(1L, commits, "the pickaxe was committed afresh after the refund: " + units);
+			h.assertValueEqual(1L, crafts, "one craft: " + units);
+			h.assertTrue(smithCraftsEmpty(h), "the record is gone");
+			h.assertValueEqual(0L, SmithTestSupport.groundCount(h, Items.IRON_PICKAXE), "pickaxes on the ground");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** The compare-and-insert starts refuse to overwrite: a second golem build keeps the first one's progress, a second craft the first record. */
+	@GameTest(environment = "villageheart-gametest:smith_cas", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void startsRefuseToOverwrite(GameTestHelper h) {
+		scene(h).thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			HeartLocation smithy = smithyAt(h);
+			seedBuild(h, 3000);
+			h.assertFalse(dev.villageheart.worker.smith.GolemBuilds.start(server, smithy), "a second build was started in the same Smithy");
+			h.assertValueEqual(3000, buildProgress(h), "the first build's progress was reset");
+			dev.villageheart.worker.smith.GolemBuilds.refund(server, smithy);
+			h.assertTrue(dev.villageheart.worker.smith.GolemBuilds.start(server, smithy), "a free Smithy starts a build");
+			h.assertValueEqual(0, buildProgress(h), "fresh build");
+			dev.villageheart.worker.smith.GolemBuilds.refund(server, smithy);
+			HeartLocation mine = BuildingTestSupport.loc(h, SmithTestSupport.mineMarker());
+			HeartLocation camp = BuildingTestSupport.loc(h, SmithTestSupport.campMarker());
+			HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+			SmithCraft pick = new SmithCraft(new GearCraft("minecraft:iron_pickaxe", new OrderKey(mine, GearNeed.PICKAXE, 0), 40,
+					List.of(new ItemCount("minecraft:iron_ingot", 3), new ItemCount("minecraft:stick", 2))), mine);
+			SmithCraft axe = new SmithCraft(new GearCraft("minecraft:iron_axe", new OrderKey(camp, GearNeed.AXE, 0), 0,
+					List.of(new ItemCount("minecraft:iron_ingot", 3), new ItemCount("minecraft:stick", 2))), camp);
+			h.assertTrue(dev.villageheart.worker.smith.SmithCrafts.commit(server, furnace, pick), "a free furnace takes a craft");
+			h.assertFalse(dev.villageheart.worker.smith.SmithCrafts.commit(server, furnace, axe), "a second craft replaced the first");
+			h.assertValueEqual(pick, VillageClaims.current(server).flatMap(v -> v.smithCraft(furnace)).orElseThrow(), "the saved pickaxe");
+			dev.villageheart.worker.smith.SmithCrafts.refund(server, furnace, pick);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
+	 * Two smiths in one Smithy, 10 villagers and 72 ingots: exactly one build is started and 36 ingots stay in the world while it runs
+	 * (the second smith used to fetch another 36 and overwrite the first one's progress, so a whole golem's materials vanished).
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_two_golem_smiths", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void twoSmithsStartOneGolemBuild(GameTestHelper h) {
+		BlockPos secondFurnace = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 1);
+		BlockPos secondAnvil = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 2);
+		int[] builds = {0};
+		scene(h).thenExecute(() -> {
+			h.setBlock(secondFurnace, Blocks.BLAST_FURNACE);
+			h.setBlock(secondAnvil, Blocks.ANVIL);
+		}).thenWaitUntil(() -> h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.BLAST_FURNACE), "furnaces")
+		).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			SmithTestSupport.pen(h, 4);
+			for (int i = 0; i < 4; i++) WorkerTestSupport.spawnVillager(h, new BlockPos(1 + (i % 3), 1, 14));
+			putStore(h, Items.IRON_INGOT, 72);
+			putStore(h, Items.CARVED_PUMPKIN, 2);
+			setDayTime(h, 1000);
+			hireEitherFurnace(h);
+			hireEitherFurnace(h);
+		}).thenExecuteFor(1500, () -> {
+			int saved = VillageClaims.current(h.getLevel().getServer()).map(v -> v.golemBuilds().size()).orElse(0);
+			builds[0] = Math.max(builds[0], saved);
+			h.assertTrue(saved <= 1, "two builds are saved: " + saved);
+			if (builds[0] >= 1) h.assertTrue(SmithTestSupport.ironTotal(h) >= 36, "a second build took ingots, iron left " + SmithTestSupport.ironTotal(h));
+		}).thenExecute(() -> {
+			h.assertValueEqual(1, builds[0], "a build was started");
+			h.assertValueEqual(36, SmithTestSupport.ironTotal(h), "one build's worth of ingots left");
+			VillageTestSupport.done(h);
+		});
+	}
+
 	private static void seedBuild(GameTestHelper h, int progress) {
 		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withGolemBuild(smithyAt(h), progress));
 	}
