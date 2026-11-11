@@ -24,6 +24,10 @@ public final class PathBudget {
 		return true;
 	}
 
+	public static int usedThisTick(MinecraftServer server) {
+		return server.getTickCount() == tick ? used : 0;
+	}
+
 	public static void resetForTests() {
 		tick = Integer.MIN_VALUE;
 		used = 0;

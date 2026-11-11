@@ -1,5 +1,6 @@
 package dev.villageheart.siege;
 
+import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.defence.DefenceCell;
 import dev.villageheart.core.defence.DefenceCells;
@@ -35,7 +36,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Breaks the defence cells between this mob and where it is going (docs/plans/M25.md 3.11). Ravagers and vindicators run
- * it at priority 2, above the raid path. Zombies are installed here and start using it in step 13.
+ * it at priority 2, above the raid path. Zombies run it at priority 4 while they are lured, or while their target is in the claim.
  */
 public final class BreachGoal extends Goal {
 	private final Mob mob;
@@ -99,13 +100,21 @@ public final class BreachGoal extends Goal {
 		cooldown = SiegeHits.interval(attacker);
 	}
 
-	/** Zombies stay quiet until step 13. Raiders only while they belong to the tracked raid. */
+	/** Zombies only while lured, or while their vanilla target stands in the claim. Raiders only in the tracked raid. */
 	private boolean allowed() {
 		if (!(mob.level() instanceof ServerLevel level)) return false;
 		if (!level.getGameRules().get(SiegeGamerules.SIEGE_DAMAGE)) return false;
-		if (mob instanceof Zombie) return false;
+		if (mob instanceof Zombie) return LureSlots.holds(level.getServer(), mob) || targetInClaim(level);
 		if (mob instanceof Raider raider) return TrackedRaids.member(level, raider);
 		return false;
+	}
+
+	private boolean targetInClaim(ServerLevel level) {
+		LivingEntity target = mob.getTarget();
+		if (target == null) return false;
+		var village = VillageClaims.current(level.getServer());
+		if (village.isEmpty()) return false;
+		return ClaimGeometry.inClaim(village.get().heart(), VillageClaims.locate(level, target.blockPosition()));
 	}
 
 	private boolean refreshBlocked() {
@@ -151,6 +160,9 @@ public final class BreachGoal extends Goal {
 	}
 
 	private BlockPos goal() {
+		LivingEntity target = mob.getTarget();
+		if (target != null) return target.blockPosition();
+		if (mob instanceof Zombie && mob.level() instanceof ServerLevel level) return LureSlots.point(level.getServer(), mob);
 		if (mob instanceof Raider raider) {
 			Raid raid = raider.getCurrentRaid();
 			return raid == null ? null : raid.getCenter();

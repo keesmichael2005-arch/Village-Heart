@@ -74,6 +74,7 @@ public final class VillageTestSupport {
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
 		dev.villageheart.siege.SiegeDamage.resetForTests();
 		dev.villageheart.siege.PathBudget.resetForTests();
+		dev.villageheart.siege.LureSlots.resetForTests();
 		dev.villageheart.siege.TrackedRaids.restoreDifficulty(server);
 		dev.villageheart.market.Markets.clearRuntime(); // M22
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
