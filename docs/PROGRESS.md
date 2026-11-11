@@ -912,4 +912,5 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - L1 for those rules passed: 29 tests, 0 failures (`DefenceCellsTest`, `WallHpTest`, `SiegeHitsTest`, `DefenceDamageTest`, `BreachChoiceTest`, `LureTest`, `ThreatTest`, `ItemValueTest`, `RaidScaleTest`, `ThreatRollTest`, `ThreatRulesTest`, `SiegeRulesTest`, `RepairPlannerTest`, `ThreatClockTest`, `RewardTest`, `DefenceScanTest`, `RaidPlanTest`, `SiegeAlertsTest`).
 - Decisions, in docs/plans/M25.md section 8: defence cells in the threat score divide as integers; siege spawns use `max(outermost, 32) + 12` (outermost 10 → 44); a Hamlet's random raid is the young-village plan.
 - The alert-code order (RAID, SIEGE, DEFENCE_DAMAGED) is step 15. `SiegeAlerts` has the two sentences and the "(no builder)" variant.
-- Next: `scripts/verify.sh --fast` for this step, then step 11 (hit, crack and scan glue).
+- `scripts/verify.sh --fast` at `d06cb14`: exit 0 (L1 green, L2 386/386, perf green).
+- Next: step 11, siege damage glue.
