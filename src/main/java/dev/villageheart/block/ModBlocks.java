@@ -32,9 +32,19 @@ public final class ModBlocks {
 
 	private ModBlocks() {}
 
+	public static final Identifier SCAFFOLD_ID = Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "builder_scaffold");
+	private static final ResourceKey<Block> SCAFFOLD_KEY = ResourceKey.create(Registries.BLOCK, SCAFFOLD_ID);
+	public static final Block BUILDER_SCAFFOLD = new BuilderScaffoldBlock(BlockBehaviour.Properties.of()
+			.setId(SCAFFOLD_KEY)
+			.strength(0.2f)
+			.sound(SoundType.SCAFFOLDING)
+			.noOcclusion()
+			.noLootTable());
+
 	public static void register() {
 		Registry.register(BuiltInRegistries.BLOCK, BLOCK_KEY, VILLAGE_HEART);
 		Registry.register(BuiltInRegistries.ITEM, ITEM_KEY, VILLAGE_HEART_ITEM);
+		Registry.register(BuiltInRegistries.BLOCK, SCAFFOLD_KEY, BUILDER_SCAFFOLD);
 		ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(e -> e.accept(VILLAGE_HEART_ITEM));
 	}
 }

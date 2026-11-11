@@ -79,8 +79,13 @@ public final class BuildJobs {
 
 	/** {@code bp} is the resolved blueprint of {@code params} (a wall of its length), as {@link #blueprint} would give. */
 	public static BuildJob start(ServerLevel level, Blueprint bp, BlockPos ground, Rotation4 rotation, BlueprintParams params, UUID startedBy) {
+		return start(level, bp, ground, rotation, params, startedBy, false);
+	}
+
+	public static BuildJob start(ServerLevel level, Blueprint bp, BlockPos ground, Rotation4 rotation, BlueprintParams params, UUID startedBy,
+			boolean mirrored) {
 		HeartLocation loc = VillageClaims.locate(level, ground);
-		BuildJob job = BuildJob.start(UUID.randomUUID(), bp.id(), params, loc, rotation, level.getGameTime(), startedBy);
+		BuildJob job = BuildJob.start(UUID.randomUUID(), bp.id(), params, loc, rotation, level.getGameTime(), startedBy).withMirrored(mirrored);
 		VillageClaims.data(level.getServer()).update(v -> v.withBuild(job));
 		VillageHeart.LOG.info("Build {} started: {} at {} ({})", job.id(), bp.id(), ground.toShortString(), rotation);
 		BuildSystem.refresh(level.getServer()); // its materials are reserved at once
@@ -94,6 +99,16 @@ public final class BuildJobs {
 		Stockpiles.reservations(server).release(id);
 		BuildRuntime.forgetBuild(server, id);
 		VillageHeart.LOG.info("Build {} cancelled", id);
+		return true;
+	}
+
+	/** Puts this build ahead of every other one. The next builder to pick work takes it first. */
+	public static boolean prioritise(MinecraftServer server, UUID id) {
+		if (find(server, id).isEmpty()) return false;
+		int max = 0;
+		for (BuildJob j : list(server)) max = Math.max(max, j.priority());
+		int next = max + 1;
+		VillageClaims.data(server).update(v -> v.build(id).isPresent() ? v.withBuild(v.build(id).get().withPriority(next)) : v);
 		return true;
 	}
 
@@ -111,6 +126,8 @@ public final class BuildJobs {
 			return withSite;
 		});
 		Stockpiles.reservations(server).release(job.id());
+		ServerLevel home = Workers.levelOf(server, job.ground());
+		if (home != null) SiteGround.clearScaffold(home, job.id());
 		BuildRuntime.forgetBuild(server, job.id());
 		VillageHeart.LOG.info("Build {} finished: {}", job.id(), job.blueprintId());
 	}
@@ -135,6 +152,8 @@ public final class BuildJobs {
 		java.util.Set<Long> touched = touched(server, job);
 		ServerLevel level = Workers.levelOf(server, job.ground());
 		if (level == null) return new Advanced(0, false, "level not loaded");
+		int dirt = SiteGround.dirt(level, bp, job);
+		if (dirt > 0) return new Advanced(0, false, "needs " + dirt + " more dirt");
 		int cursor = job.cursor();
 		int done = 0;
 		String stop = "";

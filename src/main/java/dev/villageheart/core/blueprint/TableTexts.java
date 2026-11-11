@@ -19,6 +19,8 @@ public final class TableTexts {
 		EN.put("builds", "Builds");
 		EN.put("builds_none", "No builds in progress");
 		EN.put("cancel", "Cancel");
+		EN.put("next", "Next");
+		EN.put("prioritised", "That build is next");
 		EN.put("locked", "Requires %s tier");
 		EN.put("no_permission", "Only a Steward or the Owner can start a blueprint");
 		EN.put("too_many", "Too many builds at once (max 8)");

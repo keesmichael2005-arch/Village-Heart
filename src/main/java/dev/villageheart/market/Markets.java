@@ -77,7 +77,8 @@ public final class Markets {
 			String id = k.id();
 			int nutrition = FoodCatalog.of(k).map(v -> v.nutrition()).orElse(0);
 			if (nutrition == 0 && PriceTable.lot(id).isEmpty()) continue; // neither food nor priced: the market never looks at it
-			out.add(new StockItem<>(k, id, k.patch().isEmpty(), t.count(), Math.min(reserved.reserved(k), t.count()), nutrition));
+			long held = reserved.reserved(k) + dev.villageheart.build.BuildSystem.demanded(server, k);
+			out.add(new StockItem<>(k, id, k.patch().isEmpty(), t.count(), Math.min(held, t.count()), nutrition));
 		}
 		return out;
 	}

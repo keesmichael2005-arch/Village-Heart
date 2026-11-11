@@ -176,9 +176,12 @@ public final class VillageCodecs {
 			UUID_STRING.fieldOf("started_by").forGetter(BuildJob::startedBy),
 			Codec.INT.optionalFieldOf("cursor", 0).forGetter(BuildJob::cursor),
 			Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("carried", java.util.Map.of()).forGetter(BuildJob::carried),
-			UUID_STRING.optionalFieldOf("carrier").forGetter(b -> java.util.Optional.ofNullable(b.carrier()))
-	).apply(i, (id, bp, length, ground, rot, created, by, cursor, carried, carrier) ->
-			new BuildJob(id, bp, new BlueprintParams(Math.max(0, length)), ground, rot, created, by, Math.max(0, cursor), carried, carrier.orElse(null))));
+			UUID_STRING.optionalFieldOf("carrier").forGetter(b -> java.util.Optional.ofNullable(b.carrier())),
+			Codec.INT.optionalFieldOf("priority", 0).forGetter(BuildJob::priority),
+			Codec.BOOL.optionalFieldOf("mirrored", false).forGetter(BuildJob::mirrored)
+	).apply(i, (id, bp, length, ground, rot, created, by, cursor, carried, carrier, priority, mirrored) ->
+			new BuildJob(id, bp, new BlueprintParams(Math.max(0, length)), ground, rot, created, by, Math.max(0, cursor), carried,
+					carrier.orElse(null), priority, mirrored)));
 
 	/** A saved build whose blueprint is unknown or whose cursor is past its last step is dropped (logged), never failing the village. */
 	public static final Codec<BuildJob> BUILD = RAW_BUILD.flatXmap(b -> {

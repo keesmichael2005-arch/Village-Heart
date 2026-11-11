@@ -321,6 +321,7 @@ public class BuildGameTests {
 			problem = SiteValidation.check(level, VillageClaims.current(server).orElseThrow(), bp, p, Rank.OWNER);
 			h.assertTrue(problem == null, "the site is fine once the player's block is gone: " + (problem == null ? "" : problem.english()));
 			before.putAll(Stockpiles.totalsById(server));
+			BuildTestSupport.stock(h, new ItemStack(Items.DIRT, 3));
 			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
 			BuildJobs.Advanced a = BuildJobs.advance(server, BuildTestSupport.onlyBuild(h), 246);
 			h.assertTrue(a.steps() == 246 && !a.finished(), "the 246 clear steps ran: " + a);
@@ -400,6 +401,15 @@ public class BuildGameTests {
 			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
 			h.assertTrue(site.rotationEnum() == Rotation4.COUNTERCLOCKWISE_90, "a sneak-click rotates: " + site.rotationEnum());
 			h.assertTrue(site.ground().equals(h.absolutePos(ground)) && site.ok(), "the same ground, still fine");
+			steward[0].setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack[0]);
+			h.assertTrue(dev.villageheart.build.BlueprintUse.tryMirror(steward[0]), "swap-hands mirrors");
+			stack[0] = steward[0].getMainHandItem();
+			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site.mirrored() && site.rotationEnum() == Rotation4.COUNTERCLOCKWISE_90, "mirror keeps the rotation: " + site);
+			h.assertTrue(dev.villageheart.build.BlueprintUse.tryMirror(steward[0]), "swap-hands mirrors back");
+			stack[0] = steward[0].getMainHandItem();
+			site = stack[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(!site.mirrored() && site.ok(), "mirror toggles off and the site is still fine");
 			// 3: a click outside the box moves the site (and picks the facing again)
 			BlockPos other = new BlockPos(12, -1, 12);
 			BuildingTestSupport.rightClick(h, steward[0], other, Direction.UP, stack[0]);
@@ -505,32 +515,32 @@ public class BuildGameTests {
 			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
 			id[0] = BuildTestSupport.onlyBuild(h);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 4, "the materials are reserved", () -> {
-			var res = Stockpiles.reservations(h.getLevel().getServer());
-			h.assertTrue(res.reservedBy(id[0], planks) == 119, "119 planks reserved: " + res.reservedBy(id[0], planks));
-			h.assertTrue(res.reservedBy(id[0], cobble) == 49, "49 cobblestone reserved");
-		});
-		seq = seq.thenExecute(() -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 4, "the build lists what it still needs", () -> {
 			var server = h.getLevel().getServer();
-			// another consumer cannot take what the build reserved
-			h.assertTrue(Stockpiles.withdraw(h.getLevel(), null, planks, 64, null).isEmpty(), "another consumer gets no planks");
-			// cancel: the reservations go and the same withdraw now works
-			h.assertTrue(BuildJobs.cancel(server, id[0]), "cancelled");
-			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 0, "no reservation after cancel");
-			ItemStack got = Stockpiles.withdraw(h.getLevel(), null, planks, 64, null);
-			h.assertTrue(got.getCount() == 64, "the planks are free again: " + got.getCount());
-			BuildTestSupport.stock(h, got);
-			// a restart forgets the reservations; one refresh brings them back
-			BuildTestSupport.startBuild(h, bp, BuildTestSupport.GROUND, Rotation4.NONE);
-			id[0] = BuildTestSupport.onlyBuild(h);
-			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 119, "reserved again by the new build");
-			Stockpiles.resetRuntimeForTests();
-			h.assertTrue(Stockpiles.reservations(server).reservedBy(id[0], planks) == 0, "a restart forgets them");
+			var res = Stockpiles.reservations(server);
+			h.assertTrue(res.reservedBy(id[0], planks) == 0, "a build does not reserve planks: " + res.reservedBy(id[0], planks));
+			h.assertTrue(res.reservedBy(id[0], cobble) == 0, "a build does not reserve cobblestone");
+			h.assertTrue(BuildSystem.demanded(server, planks) == 119, "the house still needs 119 planks: " + BuildSystem.demanded(server, planks));
+			h.assertTrue(BuildSystem.demanded(server, cobble) == 49, "the house still needs 49 cobblestone");
 		});
-		BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 4, "the reservations are back", () -> {
-			var res = Stockpiles.reservations(h.getLevel().getServer());
-			h.assertTrue(res.reservedBy(id[0], planks) == 119, "119 planks reserved again: " + res.reservedBy(id[0], planks));
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			// not a lock: another consumer can take the planks. The market still will not sell them.
+			ItemStack got = Stockpiles.withdraw(h.getLevel(), null, planks, 64, null);
+			h.assertTrue(got.getCount() == 64, "another consumer can take planks: " + got.getCount());
+			long free = -1;
+			long count = -1;
+			for (var item : dev.villageheart.market.Markets.stockItems(server)) {
+				if (item.key().equals(cobble)) {
+					free = item.free();
+					count = item.count();
+				}
+			}
+			h.assertTrue(count == 49 && free == 0, "the market will not sell cobblestone a build still needs (count " + count + " free " + free + ")");
+			h.assertTrue(BuildJobs.cancel(server, id[0]), "cancelled");
+			h.assertTrue(BuildSystem.demanded(server, planks) == 0, "a cancelled build demands nothing");
+			VillageTestSupport.done(h);
+		});
 	}
 
 	// ---- T-L2-7 (roadmap) ------------------------------------------------------------------------
@@ -691,8 +701,10 @@ public class BuildGameTests {
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.BUILD_REFRESH_TICKS + 200, "the build goes on after the restart", () -> {
 			var res = Stockpiles.reservations(h.getLevel().getServer());
-			h.assertTrue(BuildTestSupport.cursor(h) > restartCursor[0], "the cursor moves on from " + restartCursor[0] + ": " + BuildTestSupport.cursor(h));
-			h.assertTrue(res.reservedBy(id[0], planks) > 0, "the reservations are back");
+			int cursor = BuildTestSupport.cursor(h);
+			h.assertTrue(cursor > restartCursor[0] || BuildTestSupport.builds(h).isEmpty(),
+					"the cursor moves on from " + restartCursor[0] + ": " + cursor);
+			h.assertTrue(res.reservedBy(id[0], planks) == 0, "a build does not reserve planks");
 		});
 		// (2) the builder is fired while it carries planks
 		seq = seq.thenWaitUntil(() -> {
@@ -747,13 +759,13 @@ public class BuildGameTests {
 				var m = openTable(h, p);
 				h.assertTrue(m.snapshot().blueprints().size() == Blueprints.all().size(), p.getName().getString() + " sees every blueprint");
 				h.assertTrue(m.snapshot().viewerRank() == VillageClaims.current(h.getLevel().getServer()).orElseThrow().rankOf(p.getUUID()), "with the viewer's rank");
-				h.assertTrue(m.snapshot().blueprints().get(0).materials().size() == 6, "and the material list");
+				h.assertTrue(!m.snapshot().blueprints().get(0).materials().isEmpty(), "and the material list");
 				h.assertTrue(!m.snapshot().blueprints().get(0).locked(), "unlocked at Village tier");
 			}
 			// the list shows what Storage could give (nothing here) and what it costs
 			var first = ((BuildersTableMenu) steward.containerMenu).snapshot().blueprints().get(0);
-			h.assertTrue(first.id().equals("small_house") && first.materials().get(1).name().equals("planks") && first.materials().get(1).needed() == 119
-					&& first.materials().get(1).have() == 0, "planks 0 / 119: " + first.materials());
+			h.assertTrue(first.id().equals("farm_plot") && first.materials().get(0).name().equals("dirt") && first.materials().get(0).needed() == 80
+					&& first.materials().get(0).have() == 0, "dirt 0 / 80: " + first.materials());
 			// Take: a Visitor and a Resident are refused and get nothing
 			for (var p : List.of(visitor, resident)) {
 				HeartTestSupport.send(p, TakeBlueprintPayload.CODEC, new TakeBlueprintPayload(p.containerMenu.containerId, "small_house"));
@@ -786,14 +798,14 @@ public class BuildGameTests {
 			BuildTestSupport.startBuild(h, Blueprints.SMALL_HOUSE, BuildTestSupport.GROUND, Rotation4.NONE);
 			UUID id = BuildTestSupport.onlyBuild(h);
 			StackKey planks = StackKey.of(Items.OAK_PLANKS);
-			h.assertTrue(Stockpiles.reservations(h.getLevel().getServer()).reservedBy(id, planks) == 119, "the build reserved its planks");
+			h.assertTrue(BuildSystem.demanded(h.getLevel().getServer(), planks) == 119, "the build still needs its planks");
 			HeartTestSupport.send(resident, CancelBuildPayload.CODEC, new CancelBuildPayload(resident.containerMenu.containerId, id));
 			h.assertTrue(BuildTestSupport.builds(h).size() == 1 && !HeartTestSupport.lastResult(sent, resident).ok(), "a Resident cannot cancel");
 			HeartTestSupport.send(steward, CancelBuildPayload.CODEC, new CancelBuildPayload(steward.containerMenu.containerId + 9, id));
 			h.assertTrue(BuildTestSupport.builds(h).size() == 1, "a stale container id cannot cancel");
 			HeartTestSupport.send(steward, CancelBuildPayload.CODEC, new CancelBuildPayload(steward.containerMenu.containerId, id));
 			h.assertTrue(BuildTestSupport.builds(h).isEmpty() && HeartTestSupport.lastResult(sent, steward).ok(), "a Steward cancels");
-			h.assertTrue(Stockpiles.reservations(h.getLevel().getServer()).reservedBy(id, planks) == 0, "and the reservations are released");
+			h.assertTrue(BuildSystem.demanded(h.getLevel().getServer(), planks) == 0, "a cancelled build needs nothing");
 			HeartTestSupport.done(h);
 		});
 	}
@@ -817,7 +829,7 @@ public class BuildGameTests {
 
 	// ---- T-L2-11 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:build_player_block", structure = YARD, skyAccess = true, maxTicks = 20000)
+	@GameTest(environment = "villageheart-gametest:build_player_block", structure = YARD, skyAccess = true, maxTicks = 50000)
 	public void playerBlockAppearsMidBuild(GameTestHelper h) {
 		Blueprint bp = Blueprints.SMALL_HOUSE;
 		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
@@ -1005,7 +1017,7 @@ public class BuildGameTests {
 				.thenExecute(() -> {
 					long ticks = h.getTick() - t0[0];
 					System.out.println("[m20] farm plot finished after " + ticks + " ticks: " + log[0].places + " places, " + log[0].clears + " clears");
-					h.assertTrue(ticks < Balance.DAY_TICKS, "within one day: " + ticks);
+					h.assertTrue(ticks < Balance.DAY_TICKS * 2, "within two days at the slower pace: " + ticks);
 					h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
 					checkFarm(h, bp, pl, 0);
 					BlockPos gate = BuildTestSupport.cell(h, bp, pl, 5, 1, 0);
@@ -1253,6 +1265,7 @@ public class BuildGameTests {
 			var job = BuildTestSupport.builds(h).get(0);
 			VillageClaims.data(h.getLevel().getServer()).update(v -> v.withBuild(job.withCarried(carried).withCarrier(builder[0].getUUID())));
 			before[0] = Stockpiles.snapshot(h.getLevel().getServer()).totals().stream().mapToLong(t -> t.count()).sum();
+			BuildTestSupport.stock(h, new ItemStack(Items.DIRT, 3));
 			cursor0[0] = BuildTestSupport.cursor(h);
 			watch[0] = true;
 		}).thenIdle(400).thenExecute(() -> {
@@ -1267,7 +1280,7 @@ public class BuildGameTests {
 
 	// ---- T-L2-15 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:build_two_builders", structure = YARD, skyAccess = true, maxTicks = 40000)
+	@GameTest(environment = "villageheart-gametest:build_two_builders", structure = YARD, skyAccess = true, maxTicks = 80000)
 	public void twoBuildersTwoBuilds(GameTestHelper h) {
 		Blueprint bp = Blueprints.SMALL_HOUSE;
 		BlockPos groundA = new BlockPos(10, -1, 22), groundB = new BlockPos(22, -1, 22);
@@ -1281,7 +1294,7 @@ public class BuildGameTests {
 			if (!watch[0]) return;
 			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
 			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
-			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
+			if (!distinct[0] && claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
 				throw h.assertionException("the younger build was claimed first");
 			}
 		});

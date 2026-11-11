@@ -2,6 +2,7 @@ package dev.villageheart.client.build;
 
 import dev.villageheart.build.BuildersTableMenu;
 import dev.villageheart.build.net.CancelBuildPayload;
+import dev.villageheart.build.net.PrioritiseBuildPayload;
 import dev.villageheart.build.net.TakeBlueprintPayload;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.blueprint.Blueprint;
@@ -51,6 +52,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 	private final BuildersTableMenu menu;
 	private int selected;
 	private int scroll;
+	private int listScroll;
 	private int seenVersion = -1;
 	private Button take;
 	private Button done;
@@ -157,7 +159,18 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 	private int maxScroll() { return Math.max(0, snap().builds().size() * BUILD_H - (buildsBottom() - buildsTop() - 12)); }
 
 	/** GUI coordinates of the middle of the blueprint row {@code i} (for tests). */
-	public int[] blueprintRowCentre(int i) { return new int[] {MARGIN + LIST_W / 2, TOP + 12 + i * ROW_H + ROW_H / 2}; }
+	public int[] blueprintRowCentre(int i) { return new int[] {MARGIN + LIST_W / 2, TOP + 12 + i * ROW_H - listScroll + ROW_H / 2}; }
+
+	/** Scrolls the catalogue so row {@code index} is inside the list. */
+	public void scrollBlueprintIntoView(int index) {
+		int top = TOP + 12;
+		int view = Math.max(ROW_H, buildsTop() - top);
+		int y = top + index * ROW_H;
+		if (y < top + listScroll) listScroll = y - top;
+		else if (y + ROW_H > top + listScroll + view) listScroll = y + ROW_H - (top + view);
+		int max = Math.max(0, snap().blueprints().size() * ROW_H - view);
+		listScroll = Math.max(0, Math.min(max, listScroll));
+	}
 
 	/** GUI coordinates of the middle of the Take button (for tests). */
 	public int[] takeButtonCentre() { return new int[] {take.getX() + take.getWidth() / 2, take.getY() + take.getHeight() / 2}; }
@@ -174,8 +187,8 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		double mx = ev.x(), my = ev.y();
 		List<TableBlueprint> bps = snap().blueprints();
 		for (int i = 0; i < bps.size(); i++) {
-			int y = TOP + 12 + i * ROW_H;
-			if (mx >= MARGIN && mx < MARGIN + LIST_W && my >= y && my < y + ROW_H - 1) {
+			int y = TOP + 12 + i * ROW_H - listScroll;
+			if (mx >= MARGIN && mx < MARGIN + LIST_W && my >= y && my < y + ROW_H - 1 && my < buildsTop()) {
 				selected = i;
 				refreshTake();
 				return true;
@@ -190,6 +203,11 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 					ClientPlayNetworking.send(new CancelBuildPayload(menu.containerId, b.id()));
 					return true;
 				}
+				int nx = x - 40;
+				if (y >= buildsTop() + 10 && y + BUILD_H <= buildsBottom() + 2 && mx >= nx && mx < nx + 36 && my >= y && my < y + BUILD_H - 1) {
+					ClientPlayNetworking.send(new PrioritiseBuildPayload(menu.containerId, b.id()));
+					return true;
+				}
 				i++;
 			}
 		}
@@ -198,6 +216,11 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 
 	@Override
 	public boolean mouseScrolled(double mx, double my, double sx, double sy) {
+		if (mx < MARGIN + LIST_W && my < buildsTop()) {
+			int max = Math.max(0, snap().blueprints().size() * ROW_H - (buildsTop() - TOP - 12));
+			listScroll = Math.max(0, Math.min(max, listScroll - (int) Math.round(sy * ROW_H)));
+			return true;
+		}
 		if (my >= buildsTop()) {
 			scroll = Math.max(0, Math.min(maxScroll(), scroll - (int) Math.round(sy * BUILD_H)));
 			return true;
@@ -239,9 +262,11 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 
 		// the blueprints
 		line(g, t("blueprints").getString(), MARGIN, TOP, LIST_W, GREY);
+		g.enableScissor(MARGIN, TOP + 12, MARGIN + LIST_W, buildsTop());
 		for (int i = 0; i < s.blueprints().size(); i++) {
 			TableBlueprint b = s.blueprints().get(i);
-			int y = TOP + 12 + i * ROW_H;
+			int y = TOP + 12 + i * ROW_H - listScroll;
+			if (y + ROW_H < TOP + 12 || y > buildsTop()) continue;
 			boolean hover = mx >= MARGIN && mx < MARGIN + LIST_W && my >= y && my < y + ROW_H - 1;
 			if (i == selected) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x66FFFFFF);
 			else if (hover) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x33FFFFFF);
@@ -253,6 +278,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			line(g, name, MARGIN + 4, y + 4, LIST_W - 12 - iw, b.locked() ? DARK_GREY : WHITE);
 			g.drawString(font, info, MARGIN + LIST_W - 4 - iw, y + 4, b.locked() ? RED : GREY);
 		}
+		g.disableScissor();
 
 		// the selected blueprint
 		TableBlueprint sel = selectedBlueprint();
@@ -294,7 +320,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			int w = line(g, bpName + " (" + b.row().x() + ", " + b.row().y() + ", " + b.row().z() + ")", MARGIN + 4, y + 2, 170, WHITE);
 			Component statusLine = b.row().missing().isEmpty() || b.row().state() != BuildStatus.NEEDS_MATERIALS ? text(b.row().status()) : text(b.row().missing().get(0));
 			int color = switch (b.row().state()) {
-				case NEEDS_MATERIALS, BLOCKED, IN_THE_WAY, UNREACHABLE, NOT_LOADED -> YELLOW;
+				case NEEDS_MATERIALS, DECORATION_WAITING, BLOCKED, IN_THE_WAY, UNREACHABLE, NOT_LOADED -> YELLOW;
 				default -> GREY;
 			};
 			line(g, statusLine.getString(), MARGIN + 4 + 176, y + 2, width - 2 * MARGIN - 176 - 60, color);
@@ -304,6 +330,11 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 				g.fill(x, y, x + 52, y + BUILD_H - 1, hover ? 0xFF7A3030 : 0xFF5A2020);
 				String c = t("cancel").getString();
 				g.drawString(font, c, x + (52 - font.width(c)) / 2, y + 2, WHITE);
+				int nx = x - 40;
+				boolean nextHover = mx >= nx && mx < nx + 36 && my >= y && my < y + BUILD_H - 1;
+				g.fill(nx, y, nx + 36, y + BUILD_H - 1, nextHover ? 0xFF3A5A30 : 0xFF2A4020);
+				String n = t("next").getString();
+				g.drawString(font, n, nx + (36 - font.width(n)) / 2, y + 2, WHITE);
 			}
 		}
 		g.disableScissor();

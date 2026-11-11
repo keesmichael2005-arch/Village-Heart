@@ -185,6 +185,19 @@ public final class Balance {
 	// ---- builder and blueprints (M20) ----
 	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
 	public static final double BUILD_TICKS_PER_BLOCK = 20;
+	/**
+	 * Work-clock units per block a builder places or clears. 70 ticks is 3.5 seconds at level 1 before hunger.
+	 * {@link #BUILD_TICKS_PER_BLOCK} stays 20 so wall repairs (M25) keep a one-second action.
+	 */
+	public static final double BUILD_PLACE_TICKS = 70;
+	/** Player blueprints (quill, design world): each side, and the touched-cell cap. */
+	public static final int BLUEPRINT_MAX_SIDE = 16;
+	public static final int BLUEPRINT_MAX_CELLS = 1024;
+	/** Vanilla houses may be larger than the player cap when they pass the room check. */
+	public static final int VANILLA_MAX_SIDE = 32;
+	public static final int VANILLA_MAX_CELLS = 4096;
+	/** How many blueprints one Builder's Table snapshot page carries. The catalogue paginates. */
+	public static final int TABLE_PAGE = 20;
 	/** The builder acts on a cell within this distance (3D, feet to cell centre, no line of sight). */
 	public static final double BUILD_REACH = 7.0;
 	/** A fetch trip takes one stack's worth of materials ... */

@@ -179,6 +179,7 @@ public final class BuildTestSupport {
 	/** The materials of {@code copies} Small Houses. */
 	public static ItemStack[] houseMaterials(int copies) {
 		List<ItemStack> out = new ArrayList<>();
+		out.add(new ItemStack(Items.DIRT, 3 * copies)); // the yard has a few holes under the floor; the foundation uses them
 		out.add(new ItemStack(Items.COBBLESTONE, 49 * copies));
 		out.add(new ItemStack(Items.OAK_PLANKS, 119 * copies));
 		out.add(new ItemStack(Items.OAK_DOOR, copies));

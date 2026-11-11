@@ -21,6 +21,7 @@ public final class ModComponents {
 			.persistent(BlueprintSite.CODEC).networkSynchronized(BlueprintSite.STREAM_CODEC).build();
 
 	public static void register() {
+		BlueprintQuill.registerComponent();
 		Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "blueprint"), BLUEPRINT);
 		Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "blueprint_site"), BLUEPRINT_SITE);
 	}

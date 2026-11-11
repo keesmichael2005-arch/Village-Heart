@@ -59,10 +59,33 @@ public final class BuildSystem implements VillageSystem {
 
 	private BuildSystem() {}
 
-	public static Material material(String id) { return MATERIALS.get(id); }
+	public static Material material(String id) {
+		Material known = MATERIALS.get(id);
+		if (known != null) return known;
+		for (Blueprint bp : Blueprints.all()) {
+			for (var line : bp.materials().lines()) {
+				if (line.material().id().equals(id)) {
+					MATERIALS.put(id, line.material());
+					return line.material();
+				}
+			}
+		}
+		for (String fixture : new String[] {"small_house", "storage_shed"}) {
+			var bp = Blueprints.byId(fixture);
+			if (bp.isEmpty()) continue;
+			for (var line : bp.get().materials().lines()) {
+				if (line.material().id().equals(id)) {
+					MATERIALS.put(id, line.material());
+					return line.material();
+				}
+			}
+		}
+		return null;
+	}
 
 	@Override
 	public void tick(MinecraftServer server, VillageState village) {
+		if (!village.builds().isEmpty() && server.getTickCount() % 20 == 0) showGhost(server);
 		if (village.builds().isEmpty() || server.getTickCount() % Balance.BUILD_REFRESH_TICKS != 0) return;
 		try (var t = VillageTicker.section()) {
 			refresh(server, village);
@@ -74,6 +97,31 @@ public final class BuildSystem implements VillageSystem {
 		BuildRuntime rt = BuildRuntime.get(server);
 		rt.claims.put(build, builder);
 		rt.pinned.add(build);
+	}
+
+	/** Translucent dust on cells that are not built yet. Red when that material is still missing from Storage. */
+	public static void showGhost(MinecraftServer server) {
+		VillageClaims.current(server).ifPresent(v -> ghost(server, v));
+	}
+
+	private static void ghost(MinecraftServer server, VillageState village) {
+		int shown = 0;
+		for (BuildJob job : village.builds()) {
+			ServerLevel level = Workers.levelOf(server, job.ground());
+			if (level == null || level.players().isEmpty()) continue;
+			Blueprint bp = BuildJobs.blueprint(job);
+			var missing = BuildRuntime.get(server).missing(job.id());
+			java.util.Set<String> shortOf = new java.util.HashSet<>();
+			for (BuildRuntime.Missing m : missing) shortOf.add(m.material().id());
+			List<Step> steps = BuildJobs.steps(server, job);
+			for (int i = job.cursor(); i < steps.size() && shown < 180; i++) {
+				Step s = steps.get(i);
+				if (s.kind() != BuildPlan.Kind.PLACE) continue;
+				var dust = new net.minecraft.core.particles.DustParticleOptions(shortOf.contains(s.materialId()) ? 0xD03030 : 0x3FBF3F, 1.0F);
+				level.sendParticles(dust, s.pos().x() + 0.5, s.pos().y() + 0.5, s.pos().z() + 0.5, 1, 0, 0, 0, 0);
+				shown++;
+			}
+		}
 	}
 
 	/** Works the reservations out now (a new build, a test). */
@@ -116,17 +164,74 @@ public final class BuildSystem implements VillageSystem {
 			}
 			needs.add(new BuildNeed<>(b.id(), need, carriedByMaterial(bp, b), held));
 		}
-		MaterialPlanner.Result<StackKey, UUID> r = MaterialPlanner.plan(needs, stock, (k, mid) -> BuildJobs.matches(k, MATERIALS.get(mid)),
-				StackKey::id);
+		// No up-front reservation (P4). Missing is what the build still has to place, minus what its carrier already holds.
+		// The market treats that missing list as unsellable; cooks and the player can still take the items.
 		for (BuildJob b : builds) {
 			res.release(b.id());
-			Map<StackKey, Integer> mine = r.reserve().get(b.id());
-			for (Map.Entry<StackKey, Integer> e : mine.entrySet()) res.set(b.id(), e.getKey(), e.getValue());
-			rt.reservedKeys.put(b.id(), new HashMap<>(mine));
+			rt.reservedKeys.put(b.id(), Map.of());
+			Blueprint bp = BuildJobs.blueprint(b);
+			Map<String, Integer> have = carriedByMaterial(bp, b);
+			Map<String, Integer> avail = availableByMaterial(server, bp);
 			List<BuildRuntime.Missing> miss = new ArrayList<>();
-			for (Map.Entry<String, Integer> e : r.missing().get(b.id()).entrySet()) miss.add(new BuildRuntime.Missing(MATERIALS.get(e.getKey()), e.getValue()));
+			Map<String, Integer> need = new LinkedHashMap<>();
+			for (BuildNeed<StackKey, UUID> n : needs) {
+				if (!n.holder().equals(b.id())) continue;
+				need = n.need();
+			}
+			for (Map.Entry<String, Integer> e : need.entrySet()) {
+				int shortBy = e.getValue() - have.getOrDefault(e.getKey(), 0);
+				if (shortBy <= 0) continue;
+				int onHand = avail.getOrDefault(e.getKey(), 0);
+				if (onHand >= shortBy) continue;
+				Material mat = MATERIALS.get(e.getKey());
+				if (mat == null) mat = materialOf(bp, e.getKey());
+				if (mat != null) miss.add(new BuildRuntime.Missing(mat, shortBy - Math.min(shortBy, onHand)));
+			}
 			rt.missing.put(b.id(), miss);
 		}
+	}
+
+	/**
+	 * How many of {@code key} active builds still have to place (carried items already subtracted). The market will not sell these.
+	 * Not a reservation: {@link dev.villageheart.stock.Stockpiles#withdraw} with a null holder can still take them.
+	 */
+	public static int demanded(MinecraftServer server, dev.villageheart.stock.StackKey key) {
+		int n = 0;
+		for (BuildJob b : BuildJobs.list(server)) {
+			Blueprint bp = BuildJobs.blueprint(b);
+			ServerLevel level = Workers.levelOf(server, b.ground());
+			Map<String, Integer> left = new LinkedHashMap<>();
+			for (String id : stepMaterials(server, level, bp, b)) left.merge(id, 1, Integer::sum);
+			for (Map.Entry<String, Integer> e : carriedByMaterial(bp, b).entrySet()) left.merge(e.getKey(), -e.getValue(), Integer::sum);
+			for (Map.Entry<String, Integer> e : left.entrySet()) {
+				if (e.getValue() <= 0) continue;
+				Material m = MATERIALS.get(e.getKey());
+				if (m == null) m = materialOf(bp, e.getKey());
+				if (m != null && BuildJobs.matches(key, m)) n += e.getValue();
+			}
+		}
+		return n;
+	}
+
+	/** Material id to how many a builder can take right now (stock minus other holders' reservations). */
+	public static Map<String, Integer> availableByMaterial(MinecraftServer server, Blueprint bp) {
+		Map<String, Integer> out = new LinkedHashMap<>();
+		StockSnapshot<StackKey> snap = Stockpiles.snapshot(server);
+		Reservations<StackKey> res = Stockpiles.reservations(server);
+		for (var line : bp.materials().lines()) {
+			long n = 0;
+			for (StockSnapshot.Total<StackKey> t : snap.totals()) {
+				if (!BuildJobs.matches(t.key(), line.material())) continue;
+				n += Math.max(0, t.count() - res.reserved(t.key()));
+			}
+			if (n > 0) out.put(line.material().id(), (int) Math.min(Integer.MAX_VALUE, n));
+		}
+		return out;
+	}
+
+	private static Material materialOf(Blueprint bp, String id) {
+		for (var l : bp.materials().lines()) if (l.material().id().equals(id)) return l.material();
+		return null;
 	}
 
 	/** A claim stays only while its builder is loaded, a worker and in its WORK activity. */
@@ -135,7 +240,9 @@ public final class BuildSystem implements VillageSystem {
 			if (village.build(e.getKey()).isEmpty()) return true;
 			if (rt.pinned.contains(e.getKey())) return false;
 			Optional<Villager> v = Workers.findLoaded(server, e.getValue());
-			boolean release = v.isEmpty() || village.worker(e.getValue()).isEmpty() || !v.get().getBrain().isActive(Activity.WORK);
+			// A builder who is off shift keeps the claim, so a long build is not handed to someone else overnight.
+			boolean release = v.isEmpty() || village.worker(e.getValue()).isEmpty();
+			if (release) rt.crew.remove(e.getKey());
 			if (release && Boolean.getBoolean("villageheart.build.trace")) {
 				dev.villageheart.VillageHeart.LOG.info("[build] claim of {} released (loaded {}, worker {}, working {})", e.getValue(), v.isPresent(),
 						village.worker(e.getValue()).isPresent(), v.isPresent() && v.get().getBrain().isActive(Activity.WORK));
@@ -234,7 +341,11 @@ public final class BuildSystem implements VillageSystem {
 		BuildRuntime.Pause pause = rt.pause(job.id());
 		BuildStatus status;
 		TextLine line;
-		if (pause != null && now - pause.at() <= PAUSE_FRESH_TICKS && builder != null) {
+		Integer dirt = rt.dirtShort.get(job.id());
+		if (dirt != null && dirt > 0) {
+			status = BuildStatus.NEEDS_MATERIALS;
+			line = BuildTexts.status(status, List.of(Integer.toString(dirt), "dirt"));
+		} else if (pause != null && now - pause.at() <= PAUSE_FRESH_TICKS && builder != null) {
 			status = pause.status();
 			line = status == BuildStatus.NEEDS_MATERIALS && !missing.isEmpty() ? missing.get(0)
 					: status == BuildStatus.NEEDS_MATERIALS && pause.args().size() < 2 ? new TextLine("build.villageheart.needs_unknown", "Needs materials")

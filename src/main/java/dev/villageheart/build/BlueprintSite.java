@@ -13,10 +13,14 @@ import net.minecraft.network.codec.StreamCodec;
  * The site a Blueprint item shows: the ground block, the rotation (an ordinal of {@code Rotation4}), whether the server's check passed and
  * why not. A data component of the stack, so the client draws the outline from it (green when ok, red otherwise).
  */
-public record BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine reason, int length) {
+public record BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine reason, int length, boolean mirrored) {
 	/** A footprint site (M20): {@code length} 0. For a LINE blueprint, {@code ground} is the start and {@code length} 0 means only the start was clicked. */
+	public BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine reason, int length) {
+		this(ground, rotation, ok, reason, length, false);
+	}
+
 	public BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine reason) {
-		this(ground, rotation, ok, reason, 0);
+		this(ground, rotation, ok, reason, 0, false);
 	}
 
 	private static final Codec<TextLine> TEXT_LINE = RecordCodecBuilder.create(i -> i.group(
@@ -30,7 +34,8 @@ public record BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine 
 			Codec.intRange(0, 3).fieldOf("rotation").forGetter(BlueprintSite::rotation),
 			Codec.BOOL.fieldOf("ok").forGetter(BlueprintSite::ok),
 			TEXT_LINE.fieldOf("reason").forGetter(BlueprintSite::reason),
-			Codec.intRange(0, 32).optionalFieldOf("length", 0).forGetter(BlueprintSite::length)
+			Codec.intRange(0, 32).optionalFieldOf("length", 0).forGetter(BlueprintSite::length),
+			Codec.BOOL.optionalFieldOf("mirrored", false).forGetter(BlueprintSite::mirrored)
 	).apply(i, BlueprintSite::new));
 
 	public static final StreamCodec<ByteBuf, BlueprintSite> STREAM_CODEC = StreamCodec.composite(
@@ -39,6 +44,7 @@ public record BlueprintSite(BlockPos ground, int rotation, boolean ok, TextLine 
 			ByteBufCodecs.BOOL, BlueprintSite::ok,
 			HeartCodecs.BUILD_TEXT_LINE, BlueprintSite::reason,
 			ByteBufCodecs.VAR_INT, BlueprintSite::length,
+			ByteBufCodecs.BOOL, BlueprintSite::mirrored,
 			BlueprintSite::new);
 
 	public dev.villageheart.core.blueprint.Rotation4 rotationEnum() { return dev.villageheart.core.blueprint.Rotation4.values()[rotation]; }

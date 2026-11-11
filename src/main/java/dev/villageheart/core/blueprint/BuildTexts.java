@@ -26,6 +26,7 @@ public final class BuildTexts {
 			case BUILDING -> "Building: %s%%";
 			case CHECKING -> "Checking the work";
 			case NEEDS_MATERIALS -> "Needs %s more %s";
+			case DECORATION_WAITING -> "Decoration waiting: %s more %s";
 			case BLOCKED -> "%s in the way at %s";
 			case IN_THE_WAY -> "Something is in the way at %s";
 			case UNREACHABLE -> "Can't reach %s";

@@ -20,7 +20,9 @@ public final class BuilderState {
 	@Nullable
 	public UUID build;
 	final WalkTo walk = new WalkTo();
-	final WorkClock clock = new WorkClock(Balance.BUILD_TICKS_PER_BLOCK);
+	final WorkClock clock = new WorkClock(Balance.BUILD_PLACE_TICKS);
+	/** The step index this builder is working, when it is not the saved cursor (another builder holds that one). */
+	public int step = -1;
 	BuilderPlanner.Action action = new BuilderPlanner.Action(BuilderPlanner.Type.IDLE, null);
 	boolean needsPlan = true;
 	long nextPlanAt;
@@ -62,5 +64,6 @@ public final class BuilderState {
 		fetchTarget = null;
 		entitySince = -1;
 		blockedUntil = 0;
+		step = -1;
 	}
 }

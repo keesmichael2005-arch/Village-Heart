@@ -1,6 +1,7 @@
 package dev.villageheart.core.blueprint;
 
 import dev.villageheart.core.Balance;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -171,16 +172,51 @@ public final class Blueprints {
 	public static final Blueprint LAMP_POST = DefenceBlueprints.LAMP_POST;
 	public static final Blueprint WATCHTOWER = DefenceBlueprints.WATCHTOWER;
 
+	/**
+	 * The two box houses stay resolvable so the builder tests and an in-progress save still have a shape, and they are not in the menu.
+	 */
+	private static final List<Blueprint> FIXTURES = List.of(SMALL_HOUSE, STORAGE_SHED);
+
 	/** For a LINE blueprint the entry is the shortest instance: used for names, tier and the table, never for a site. */
-	private static final List<Blueprint> ALL = List.of(SMALL_HOUSE, STORAGE_SHED, FARM_PLOT, WALL_SEGMENT, GATE, LAMP_POST, WATCHTOWER);
+	private static final List<Blueprint> ALL = menu();
+
+	private static List<Blueprint> menu() {
+		List<Blueprint> out = new ArrayList<>();
+		out.add(FARM_PLOT);
+		out.addAll(JobBlueprints.all());
+		out.add(WALL_SEGMENT);
+		out.add(GATE);
+		out.add(LAMP_POST);
+		out.add(WATCHTOWER);
+		return List.copyOf(out);
+	}
 
 	/** In menu order. */
-	public static List<Blueprint> all() { return ALL; }
+	public static List<Blueprint> all() {
+		if (dynamic.isEmpty()) return ALL;
+		List<Blueprint> out = new ArrayList<>(ALL);
+		out.addAll(dynamic);
+		return List.copyOf(out);
+	}
 
 	public static Optional<Blueprint> byId(String id) {
 		for (Blueprint b : ALL) if (b.id().equals(id)) return Optional.of(b);
+		for (Blueprint b : FIXTURES) if (b.id().equals(id)) return Optional.of(b);
+		for (Blueprint b : dynamic) if (b.id().equals(id)) return Optional.of(b);
 		return Optional.empty();
 	}
+
+	/** Vanilla houses and quill saves, registered once the game's blocks exist. Not part of the static menu built above. */
+	private static final List<Blueprint> dynamic = new ArrayList<>();
+
+	public static void addDynamic(Blueprint blueprint) {
+		dynamic.removeIf(b -> b.id().equals(blueprint.id()));
+		dynamic.add(blueprint);
+	}
+
+	public static void clearDynamic() { dynamic.clear(); }
+
+	public static void removeDynamic(String id) { dynamic.removeIf(b -> b.id().equals(id)); }
 
 	/**
 	 * The blueprint for an id and its parameters. FOOTPRINT blueprints are fixed (the params are ignored); a LINE blueprint is generated

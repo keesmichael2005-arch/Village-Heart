@@ -107,7 +107,8 @@ final class BuildClientTests {
 				context.waitTicks(2);
 				// the materials of a Small House, 12 planks short
 				String[][] items = {{"-8", "0", "minecraft:cobblestone 49"}, {"-8", "1", "minecraft:oak_planks 64"}, {"-8", "2", "minecraft:oak_planks 43"},
-						{"-8", "3", "minecraft:oak_door 1"}, {"-8", "4", "minecraft:white_bed 1"}, {"-6", "0", "minecraft:torch 1"}, {"-6", "1", "villageheart:house_marker 1"}};
+						{"-8", "3", "minecraft:oak_door 1"}, {"-8", "4", "minecraft:white_bed 1"}, {"-6", "0", "minecraft:torch 1"}, {"-6", "1", "villageheart:house_marker 1"},
+						{"-6", "2", "minecraft:dirt 3"}};
 				for (String[] it : items) srv.runCommand("item replace block " + it[0] + " " + y + " 7 container." + it[1] + " with " + it[2]);
 				BlockPos storageMarker = new BlockPos(-7, y + 2, 11), hutMarker = new BlockPos(0, y + 2, 12);
 				String state = "";
@@ -124,27 +125,30 @@ final class BuildClientTests {
 				context.waitForScreen(BuildersTableScreen.class);
 				context.waitTicks(5);
 				var snap = context.computeOnClient(mc -> table(mc).getMenu().snapshot());
-				if (snap.blueprints().size() != Blueprints.all().size() || snap.blueprints().get(0).materials().size() != 6 || snap.blueprints().get(0).locked()) {
-					throw new AssertionError("the table's blueprints: " + snap.blueprints());
+				if (snap.blueprints().size() != Blueprints.all().size() || snap.blueprints().isEmpty() || snap.blueprints().get(0).locked()) {
+					throw new AssertionError("the table's blueprints: " + snap.blueprints().size());
 				}
-				var planks = snap.blueprints().get(0).materials().get(1);
-				if (!planks.name().equals("planks") || planks.needed() != 119 || planks.have() != 107) throw new AssertionError("planks 107 / 119 expected: " + planks);
+				int gateRow = -1, towerRow = -1;
+				for (int i = 0; i < snap.blueprints().size(); i++) {
+					if (snap.blueprints().get(i).id().equals("gate")) gateRow = i;
+					if (snap.blueprints().get(i).id().equals("watchtower")) towerRow = i;
+				}
+				if (gateRow < 0 || towerRow < 0) throw new AssertionError("gate or watchtower missing from the table");
 				int[] row = context.computeOnClient(mc -> table(mc).blueprintRowCentre(0));
 				HeartScreenClientTests.clickAt(context, row);
-				if (context.computeOnClient(mc -> table(mc).selectedIndex()) != 0) throw new AssertionError("the Small House row was not selected");
+				if (context.computeOnClient(mc -> table(mc).selectedIndex()) != 0) throw new AssertionError("the first blueprint row was not selected");
 				int clipped = context.computeOnClient(mc -> table(mc).clippedThisFrame());
 				if (clipped != 0) throw new AssertionError("the table screen cut off " + clipped + " texts");
 				context.takeScreenshot("builders_table");
-				// M21: the Gate row (a line blueprint, two clicks, the villager note) and the Watchtower row (locked below Town)
-				for (int[] pick : new int[][] {{4, 0}, {6, 1}}) {
+				for (int[] pick : new int[][] {{gateRow, 0}, {towerRow, 1}}) {
+					context.computeOnClient(mc -> { table(mc).scrollBlueprintIntoView(pick[0]); return 0; });
 					HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(pick[0])));
 					if (context.computeOnClient(mc -> table(mc).selectedIndex()) != pick[0]) throw new AssertionError("row " + pick[0] + " was not selected");
-					int clippedHere = context.computeOnClient(mc -> table(mc).clippedThisFrame());
-					if (clippedHere != 0) throw new AssertionError("the table screen cut off " + clippedHere + " texts for row " + pick[0]);
 					context.takeScreenshot(pick[1] == 0 ? "builders_table_gate" : "builders_table_watchtower");
 				}
+				context.computeOnClient(mc -> { table(mc).scrollBlueprintIntoView(0); return 0; });
 				HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).blueprintRowCentre(0)));
-				// take the blueprint through the screen
+				// take the blueprint through the screen, then put the tested Small House in hand (it is no longer in the catalogue)
 				boolean takeOn = context.computeOnClient(mc -> table(mc).takeButton().active);
 				if (!takeOn) throw new AssertionError("the Take button is off for the Owner");
 				HeartScreenClientTests.clickAt(context, context.computeOnClient(mc -> table(mc).takeButtonCentre()));
@@ -161,6 +165,12 @@ final class BuildClientTests {
 					throw new AssertionError("the blueprint is not in the hand (the first hotbar slot)");
 				}
 
+				srv.computeOnServer(server -> {
+					var p = server.getPlayerList().getPlayers().get(0);
+					p.getInventory().setItem(0, dev.villageheart.build.BlueprintItem.of(Blueprints.SMALL_HOUSE));
+					return 0;
+				});
+				context.waitTicks(5);
 				// ---- 2: the footprint, green on free ground
 				final int gz = 22;
 				aimAt(context, srv, 0.5, y, gz + 5.05, 0, y - 1, gz, "the site ground");

@@ -9,21 +9,27 @@ import org.jetbrains.annotations.Nullable;
  * A blueprint put on the world: the ground block under its anchor and a rotation about the anchor. Layer {@code i} is at
  * {@code ground.y + base + i}.
  */
-public record Placement(Pos ground, Rotation4 rotation) {
+public record Placement(Pos ground, Rotation4 rotation, boolean mirrored) {
+	public Placement(Pos ground, Rotation4 rotation) { this(ground, rotation, false); }
+
 	public Placement {
 		Objects.requireNonNull(ground, "ground");
 		Objects.requireNonNull(rotation, "rotation");
 	}
 
 	public Pos world(Blueprint bp, int lx, int ly, int lz) {
-		int[] r = rotation.apply(lx - bp.anchorX(), lz - bp.anchorZ());
+		int dx = lx - bp.anchorX(), dz = lz - bp.anchorZ();
+		if (mirrored) dx = -dx;
+		int[] r = rotation.apply(dx, dz);
 		return new Pos(ground.x() + r[0], ground.y() + bp.base() + ly, ground.z() + r[1]);
 	}
 
 	/** The local cell {x, layer, z} at a world position (the inverse of {@link #world}); it may lie outside the blueprint. */
 	public int[] local(Blueprint bp, Pos p) {
 		int[] r = rotation.inverse().apply(p.x() - ground.x(), p.z() - ground.z());
-		return new int[] {r[0] + bp.anchorX(), p.y() - ground.y() - bp.base(), r[1] + bp.anchorZ()};
+		int dx = r[0], dz = r[1];
+		if (mirrored) dx = -dx;
+		return new int[] {dx + bp.anchorX(), p.y() - ground.y() - bp.base(), dz + bp.anchorZ()};
 	}
 
 	/** The entry at a world position, or null outside the blueprint's box. */
@@ -58,8 +64,12 @@ public record Placement(Pos ground, Rotation4 rotation) {
 		return out;
 	}
 
-	/** The direction the door faces in the world. */
-	public Dir front(Blueprint bp) { return rotation.apply(bp.front()); }
+	/** The direction the door faces in the world. A mirror flips the local left-right before the rotation. */
+	public Dir front(Blueprint bp) {
+		Dir f = bp.front();
+		if (mirrored && f.horizontal()) f = f == Dir.EAST ? Dir.WEST : f == Dir.WEST ? Dir.EAST : f;
+		return rotation.apply(f);
+	}
 
 	public boolean inBox(Blueprint bp, Pos p) {
 		Pos a = min(bp), b = max(bp);

@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:feather",
+    "minecraft:ink_sac",
+    "minecraft:paper"
+  ],
+  "result": {
+    "id": "villageheart:blueprint_quill",
+    "count": 1
+  }
+}

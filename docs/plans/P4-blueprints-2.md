@@ -1,8 +1,21 @@
 # P4 plan: Blueprints 2
 
-Planner: Cursor CLI (grok-4.7), 2026-11-11. **Planning only.** No feature code in this run.
-Branch: `blueprints-2`, cut from `dev`. Do not open a PR until Kees accepts this plan.
-The implementation run that follows acceptance goes end to end: build, all four test layers, in-game screenshots, the repo review process, then a PR into `dev`.
+Planner: Cursor CLI (grok-4.7), 2026-11-11. **Approved by Kees 2026-11-11 and implemented on `blueprints-2`.**
+
+## Decisions recorded (Kees, 2026-11-11)
+
+1. Author a Storage blueprint and a Builder's Hut blueprint as well as the other job buildings.
+2. Offer only `/houses/` templates that pass the house check. Not zombie copies, streets, or other pieces. The scan still lists every template.
+3. Player blueprints (quill and design world) are capped at 16×16×16 and 1024 blocks. A vanilla house that passes and looks right may be larger.
+4. No cap on saved blueprints per village. The Builder's Table catalogue paginates.
+5. The market will not sell items an active build still needs. That is a sale hold, not a stock reservation: cooks and the player can still take them.
+6. Swap-hands mirrors a held blueprint. Sneak-click rotates it.
+7. Quill recipe: feather + ink sac + paper.
+8. Mine and Hunting Lodge blueprints ship. Their markers stay red until the outdoor site exists.
+9. If foundation dirt runs out, the build pauses with "needs dirt".
+10. The design place is a separate flat dimension. Nothing item-shaped comes back. If that dimension cannot be created, the rest still ships and the PR says so. It is not hidden in the overworld.
+
+**Added requirement:** a builder crafts a building block it needs (planks, slabs, stairs, walls, fences, doors, trapdoors, glass, panes, bricks, wool, beds, and the same kind of block) from raw items in Storage, using vanilla crafting and smelting recipes, when those ingredients are there. Tools, food, and redstone are not crafted. Fuel for smelting comes from Storage.
 
 This is post-v1. It is not part of the v1.0 gate. Decisions below marked **Proposal** are the planner's default. Kees can change them; the open list is section 9.
 

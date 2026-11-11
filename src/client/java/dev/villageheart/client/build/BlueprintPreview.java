@@ -59,7 +59,7 @@ public final class BlueprintPreview {
 		}
 		Blueprint bp = Blueprints.resolve(id, new BlueprintParams(site.length())).orElse(null);
 		if (bp == null) return;
-		Placement pl = new Placement(new Pos(site.ground().getX(), site.ground().getY(), site.ground().getZ()), site.rotationEnum());
+		Placement pl = new Placement(new Pos(site.ground().getX(), site.ground().getY(), site.ground().getZ()), site.rotationEnum(), site.mirrored());
 		Pos min = pl.min(bp), max = pl.max(bp);
 		DustParticleOptions dust = new DustParticleOptions(site.ok() ? OK_COLOR : BAD_COLOR, 1.0F);
 		lastColor = site.ok() ? OK_COLOR : BAD_COLOR;

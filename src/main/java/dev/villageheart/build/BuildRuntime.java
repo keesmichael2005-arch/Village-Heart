@@ -28,6 +28,8 @@ public final class BuildRuntime {
 	public final Map<UUID, java.util.Set<Long>> touched = new HashMap<>();
 	/** Build id to the builder (villager uuid) working on it now. Released when the builder leaves WORK, unloads, is fired or dies. */
 	public final Map<UUID, UUID> claims = new HashMap<>();
+	/** Extra builders on a build (the primary is {@link #claims}). Several builders share one site. */
+	public final Map<UUID, java.util.Set<UUID>> crew = new HashMap<>();
 	/** Build id to what it is missing, worked out by the last refresh, in step order. */
 	public final Map<UUID, List<Missing>> missing = new HashMap<>();
 	/** Build id to the stock keys reserved for it at the last refresh (the amounts are read live from the reservations). */
@@ -38,6 +40,14 @@ public final class BuildRuntime {
 	public final java.util.Set<UUID> pinned = new java.util.HashSet<>();
 	/** Villager uuid to the builder's own state. */
 	public final Map<UUID, BuilderState> builders = new HashMap<>();
+	/** Builds whose ground and scaffold have been prepared. */
+	public final java.util.Set<UUID> prepared = new java.util.HashSet<>();
+	/** Builds whose foundation dirt is done. Separate from {@link #prepared} so a dirt pause can retry. */
+	public final java.util.Set<UUID> grounded = new java.util.HashSet<>();
+	/** Build id to how many dirt blocks the foundation still wants. */
+	public final Map<UUID, Integer> dirtShort = new HashMap<>();
+	/** Scaffold blocks placed for a build, removed when it finishes. */
+	public final Map<UUID, List<net.minecraft.core.BlockPos>> scaffold = new HashMap<>();
 
 	public record Missing(Material material, int n) {}
 
@@ -68,10 +78,15 @@ public final class BuildRuntime {
 		rt.plans.remove(id);
 		rt.touched.remove(id);
 		rt.claims.remove(id);
+		rt.crew.remove(id);
 		rt.missing.remove(id);
 		rt.reservedKeys.remove(id);
 		rt.pause.remove(id);
 		rt.pinned.remove(id);
+		rt.prepared.remove(id);
+		rt.grounded.remove(id);
+		rt.dirtShort.remove(id);
+		rt.scaffold.remove(id);
 		for (BuilderState b : rt.builders.values()) if (id.equals(b.build)) b.reset();
 	}
 
@@ -80,6 +95,27 @@ public final class BuildRuntime {
 	/** The builder working on a build now, or null. */
 	@Nullable
 	public UUID claimant(UUID build) { return claims.get(build); }
+
+	public int workerCount(UUID build) {
+		int n = claims.containsKey(build) ? 1 : 0;
+		return n + crew.getOrDefault(build, java.util.Set.of()).size();
+	}
+
+	public java.util.Set<UUID> crewOf(UUID build) { return crew.getOrDefault(build, java.util.Set.of()); }
+
+	public void join(UUID build, UUID villager) {
+		if (villager.equals(claims.get(build))) return;
+		crew.computeIfAbsent(build, k -> new java.util.HashSet<>()).add(villager);
+	}
+
+	public void leave(UUID build, UUID villager) {
+		if (villager.equals(claims.get(build))) claims.remove(build);
+		java.util.Set<UUID> c = crew.get(build);
+		if (c != null) {
+			c.remove(villager);
+			if (c.isEmpty()) crew.remove(build);
+		}
+	}
 
 	/** A copy of the claims: build id to builder. */
 	public Map<UUID, UUID> claims() { return new HashMap<>(claims); }

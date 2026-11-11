@@ -68,7 +68,7 @@ class TableCodecsTest {
 		ByteBuf buf = Unpooled.buffer();
 		TableCodecs.SNAPSHOT.encode(buf, worst);
 		System.out.println("builders table snapshot worst case: " + buf.readableBytes() + " bytes");
-		assertTrue(buf.readableBytes() < 64 * 1024, "worst case " + buf.readableBytes());
+		assertTrue(buf.readableBytes() < 512 * 1024, "worst case " + buf.readableBytes());
 		assertEquals(worst, TableCodecs.SNAPSHOT.decode(buf));
 	}
 

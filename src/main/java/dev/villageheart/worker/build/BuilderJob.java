@@ -2,6 +2,7 @@ package dev.villageheart.worker.build;
 
 import dev.villageheart.VillageHeart;
 import dev.villageheart.build.BuildExecutor;
+import dev.villageheart.build.SiteGround;
 import dev.villageheart.build.BuildJobs;
 import dev.villageheart.build.BuildRuntime;
 import dev.villageheart.build.BuildSystem;
@@ -115,6 +116,12 @@ public final class BuilderJob {
 			return;
 		}
 		Blueprint bp = BuildJobs.blueprint(job);
+		int dirt = SiteGround.prepare(level, bp, job);
+		if (dirt > 0) {
+			rt.pause.put(job.id(), new BuildRuntime.Pause(BuildStatus.NEEDS_MATERIALS, List.of(Integer.toString(dirt), "dirt"), now));
+			WorkerStatuses.set(v.getUUID(), WorkerStatus.NEEDS_MATERIALS);
+			return;
+		}
 		List<Step> steps = BuildJobs.steps(server, job);
 		boolean fetching = ws.action.type() == Type.FETCH && ws.fetchTarget != null; // a fetch is carried out, not re-planned on the way
 		if (ws.needsPlan || (now >= ws.nextPlanAt && !fetching)) {
@@ -130,7 +137,7 @@ public final class BuilderJob {
 		BuilderState ws = rt.builders.get(v.getUUID());
 		if (ws == null) return;
 		if (ws.build != null) {
-			rt.claims.remove(ws.build, v.getUUID());
+			rt.leave(ws.build, v.getUUID());
 			rt.pause.remove(ws.build);
 		}
 		ws.reset();
@@ -150,21 +157,39 @@ public final class BuilderJob {
 		UUID me = v.getUUID();
 		if (ws.build != null) {
 			Optional<BuildJob> j = village.build(ws.build);
-			if (j.isPresent() && me.equals(rt.claims.get(ws.build)) && (j.get().carrier() == null || me.equals(j.get().carrier()))) return j.get();
-			if (ws.build != null && me.equals(rt.claims.get(ws.build))) rt.claims.remove(ws.build);
+			if (j.isPresent()) {
+				if (rt.claims.get(ws.build) == null) rt.claims.put(ws.build, me);
+				else if (!me.equals(rt.claims.get(ws.build))) rt.join(ws.build, me);
+				return j.get();
+			}
+			rt.leave(ws.build, me);
 			ws.reset();
 		}
+		BuildJob best = null;
+		int bestWorkers = Integer.MAX_VALUE;
+		int bestPriority = Integer.MIN_VALUE;
 		for (BuildJob j : village.builds()) {
-			if (rt.claims.containsKey(j.id())) continue;
+			int crew = rt.workerCount(j.id());
+			if (crew > 0 && rt.claims.get(j.id()) != null && !me.equals(rt.claims.get(j.id())) && crew >= 3) continue;
 			UUID carrier = j.carrier();
-			if (carrier != null && !carrier.equals(me) && village.worker(carrier).isPresent()) continue; // waits for the builder that holds its materials
-			rt.claims.put(j.id(), me);
-			ws.reset();
-			ws.build = j.id();
-			trace("{} claims build {} ({})", v.getId(), j.id(), j.blueprintId());
-			return j;
+			if (carrier != null && !carrier.equals(me) && village.worker(carrier).isPresent() && !me.equals(rt.claims.get(j.id()))
+					&& !rt.crewOf(j.id()).contains(me)) {
+				// the builder holding this build's materials is the one who should keep working it; others may join
+			}
+			int pri = j.priority();
+			if (best == null || pri > bestPriority || (pri == bestPriority && crew < bestWorkers)) {
+				best = j;
+				bestPriority = pri;
+				bestWorkers = crew;
+			}
 		}
-		return null;
+		if (best == null) return null;
+		if (rt.claims.get(best.id()) == null) rt.claims.put(best.id(), me);
+		else rt.join(best.id(), me);
+		ws.reset();
+		ws.build = best.id();
+		trace("{} claims build {} ({})", v.getId(), best.id(), best.blueprintId());
+		return best;
 	}
 
 	private static void idle(ServerLevel level, Villager v, WorkerData data, BuilderState ws, long now) {
@@ -215,7 +240,8 @@ public final class BuilderJob {
 		Material m = step.kind() == BuildPlan.Kind.CLEAR ? null : step.entry().material();
 		boolean clearing = step.kind() == BuildPlan.Kind.CLEAR || cs == CellState.CLEARABLE;
 		boolean inHand = m == null || carriedAvailable(v, job, m) > 0;
-		boolean reserved = !inHand && BuildSystem.reservedByMaterial(server, job).getOrDefault(m.id(), 0) > 0;
+		boolean reserved = !inHand && m != null && (BuildSystem.availableByMaterial(server, bp).getOrDefault(m.id(), 0) > 0
+				|| dev.villageheart.build.BuildCrafter.canCraft(server, m));
 		boolean deposit = DepositTrip.wanted(level, v);
 		boolean inside = insideBox(v, bp, job);
 		boolean reach = distanceTo(v, step.pos()) <= ACT_REACH;
@@ -273,7 +299,11 @@ public final class BuilderJob {
 		List<String> args = List.of();
 		String cell = step.pos().toString();
 		switch (reason) {
-			case NEEDS_MATERIALS -> status = BuildStatus.NEEDS_MATERIALS;
+			case NEEDS_MATERIALS -> {
+				boolean decor = step.entry().pass() == dev.villageheart.core.blueprint.PaletteEntry.Pass.DECOR;
+				status = decor ? BuildStatus.DECORATION_WAITING : BuildStatus.NEEDS_MATERIALS;
+				if (decor && step.entry().material() != null) args = List.of("1", step.entry().material().plural());
+			}
 			case BLOCKED -> {
 				status = BuildStatus.BLOCKED;
 				BlockState st = BuildExecutor.read(level, step.pos());
@@ -305,7 +335,7 @@ public final class BuilderJob {
 		rt.pause.put(job.id(), new BuildRuntime.Pause(status, args, now));
 		trace("{} waits: {} {}", v.getId(), status, args);
 		WorkerStatuses.set(v.getUUID(), switch (status) {
-			case NEEDS_MATERIALS -> WorkerStatus.NEEDS_MATERIALS;
+			case NEEDS_MATERIALS, DECORATION_WAITING -> WorkerStatus.NEEDS_MATERIALS;
 			case BLOCKED, IN_THE_WAY, UNREACHABLE -> WorkerStatus.BLOCKED;
 			default -> null;
 		});
@@ -337,8 +367,14 @@ public final class BuilderJob {
 			return;
 		}
 		List<String> mats = BuildSystem.stepMaterials(server, level, bp, job);
-		List<FetchBatch.Take> batch = FetchBatch.plan(mats, BuildSystem.carriedByMaterial(bp, job), BuildSystem.reservedByMaterial(server, job),
+		List<FetchBatch.Take> batch = FetchBatch.plan(mats, BuildSystem.carriedByMaterial(bp, job), BuildSystem.availableByMaterial(server, bp),
 				id -> stackSize(BuildSystem.material(id)));
+		if (batch.isEmpty() && !mats.isEmpty()) {
+			Material next = BuildSystem.material(mats.get(0));
+			if (next != null && dev.villageheart.build.BuildCrafter.canCraft(server, next)) {
+				batch = List.of(new FetchBatch.Take(next.id(), 1));
+			}
+		}
 		if (batch.isEmpty()) {
 			ws.action = new Action(Type.WAIT, BuilderPlanner.WaitReason.NEEDS_MATERIALS);
 			rt.pause.put(job.id(), new BuildRuntime.Pause(BuildStatus.NEEDS_MATERIALS, List.of(), now));
@@ -361,6 +397,7 @@ public final class BuilderJob {
 	}
 
 	private static int stackSize(Material m) {
+		if (m == null) return 64;
 		Item item = PaletteStates.displayItem(m);
 		return item == null ? 64 : item.getDefaultMaxStackSize();
 	}
@@ -380,36 +417,44 @@ public final class BuilderJob {
 			return;
 		}
 		MinecraftServer server = level.getServer();
-		var reservations = Stockpiles.reservations(server);
 		Map<String, Integer> took = new HashMap<>(job.carried());
 		boolean any = false;
 		SimpleContainer inv = v.getInventory();
+		var snap = Stockpiles.snapshot(server);
 		outer:
 		for (FetchBatch.Take take : ws.batch) {
 			Material m = BuildSystem.material(take.material());
+			if (m == null) continue;
 			int left = take.n();
-			for (StackKey key : new ArrayList<>(rt.reservedKeys(job.id()))) {
-				if (left <= 0) break;
-				if (!BuildJobs.matches(key, m)) continue;
-				while (left > 0) {
-					int ask = Math.min(left, reservations.reservedBy(job.id(), key));
-					if (ask <= 0) break;
-					ItemStack got = Stockpiles.withdraw(level, v.blockPosition(), key, ask, job.id());
-					if (got.isEmpty()) break;
-					int n = got.getCount();
-					ItemStack rest = inv.addItem(got.copy());
-					if (!rest.isEmpty()) {
-						n -= rest.getCount();
-						Stockpiles.deposit(level, v.blockPosition(), rest);
-						left = 0;
-					}
-					if (n > 0) {
-						took.merge(BuiltInRegistries.ITEM.getKey(key.item()).toString(), n, Integer::sum);
-						any = true;
-					}
-					left -= n;
-					if (!rest.isEmpty()) break outer;
+			int have = 0;
+			for (var t : snap.totals()) if (BuildJobs.matches(t.key(), m)) have += (int) Math.min(Integer.MAX_VALUE, t.count());
+			if (have < left) {
+				int made = dev.villageheart.build.BuildCrafter.craft(level, v, m, left - have);
+				if (made > 0) {
+					took.merge(m.isTag() ? dev.villageheart.build.BuildCrafter.lastCraftedId() : m.id(), made, Integer::sum);
+					any = true;
+					left -= made;
 				}
+			}
+			for (var t : snap.totals()) {
+				if (left <= 0) break;
+				StackKey key = t.key();
+				if (!BuildJobs.matches(key, m)) continue;
+				ItemStack got = Stockpiles.withdraw(level, v.blockPosition(), key, left, null);
+				if (got.isEmpty()) continue;
+				int n = got.getCount();
+				ItemStack rest = inv.addItem(got.copy());
+				if (!rest.isEmpty()) {
+					n -= rest.getCount();
+					Stockpiles.deposit(level, v.blockPosition(), rest);
+					left = 0;
+				}
+				if (n > 0) {
+					took.merge(BuiltInRegistries.ITEM.getKey(key.item()).toString(), n, Integer::sum);
+					any = true;
+				}
+				left -= n;
+				if (!rest.isEmpty()) break outer;
 			}
 		}
 		ws.walk.clear();

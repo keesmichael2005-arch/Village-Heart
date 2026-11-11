@@ -20,7 +20,7 @@ public record PaletteEntry(char symbol, Kind kind, String state, @Nullable Mater
 		CellKind cell, List<String> contents, boolean converts) {
 	public enum Kind { ANY, AIR, BLOCK }
 
-	public enum Pass { MAIN, ATTACHED, LAST }
+	public enum Pass { MAIN, ATTACHED, LAST, DECOR }
 
 	public PaletteEntry {
 		Objects.requireNonNull(kind, "kind");

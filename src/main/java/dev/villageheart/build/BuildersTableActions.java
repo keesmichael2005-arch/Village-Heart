@@ -108,4 +108,29 @@ public final class BuildersTableActions {
 		reply(player, containerId, true, "cancelled", List.of());
 		menu.markDirty();
 	}
+
+	public static void prioritise(ServerPlayer player, int containerId, UUID buildId) {
+		var server = player.level().getServer();
+		long now = server.getTickCount();
+		if (!HeartActions.RATE.tryAcquire(player.getUUID(), now)) {
+			reply(player, containerId, false, "too_fast", List.of());
+			return;
+		}
+		BuildersTableMenu menu = menu(player, containerId);
+		Optional<VillageState> village = VillageClaims.current(server);
+		if (menu == null || village.isEmpty()) {
+			reply(player, containerId, false, "stale", List.of());
+			return;
+		}
+		if (!Permissions.allows(village.get().rankOf(player.getUUID()), Permission.START_BLUEPRINT)) {
+			reply(player, containerId, false, "no_permission", List.of());
+			return;
+		}
+		if (!BuildJobs.prioritise(server, buildId)) {
+			reply(player, containerId, false, "no_such_build", List.of());
+			return;
+		}
+		reply(player, containerId, true, "prioritised", List.of());
+		menu.markDirty();
+	}
 }

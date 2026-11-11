@@ -254,6 +254,7 @@ public class MarkerGameTests {
 		Set<String> expected = new TreeSet<>();
 		expected.add("village_heart");
 		expected.add("blank_marker");
+		expected.add("blueprint_quill");
 		List<String> ingredients = new ArrayList<>(List.of("#minecraft:planks", "minecraft:item_frame"));
 		for (BuildingType t : BuildingType.values()) { expected.add(t.markerId()); ingredients.addAll(modIngredients(t.ring().recipe("villageheart:x", 1))); }
 		for (JobBlockType t : JobBlockType.values()) { expected.add(t.id()); ingredients.addAll(modIngredients(t.recipe())); }
@@ -262,7 +263,7 @@ public class MarkerGameTests {
 			if (holder.id().identifier().getNamespace().equals("villageheart")) actual.add(holder.id().identifier().getPath());
 		}
 		h.assertValueEqual(expected, actual, "villageheart recipe ids");
-		h.assertValueEqual(19, actual.size(), "recipe count");
+		h.assertValueEqual(20, actual.size(), "recipe count");
 		for (String ing : ingredients) {
 			if (ing.startsWith("#")) {
 				TagKey<Item> tag = TagKey.create(Registries.ITEM, Identifier.parse(ing.substring(1)));

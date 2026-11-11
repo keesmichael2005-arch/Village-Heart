@@ -19,10 +19,15 @@ public final class ModItems {
 	private static final ResourceKey<Item> BLUEPRINT_KEY = ResourceKey.create(Registries.ITEM, BLUEPRINT_ID);
 	public static final Item BLUEPRINT = new dev.villageheart.build.BlueprintItem(new Item.Properties().setId(BLUEPRINT_KEY).stacksTo(1));
 
+	public static final Identifier QUILL_ID = Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "blueprint_quill");
+	private static final ResourceKey<Item> QUILL_KEY = ResourceKey.create(Registries.ITEM, QUILL_ID);
+	public static final Item BLUEPRINT_QUILL = new dev.villageheart.build.BlueprintQuill(new Item.Properties().setId(QUILL_KEY).stacksTo(1));
+
 	private ModItems() {}
 
 	public static void register() {
 		Registry.register(BuiltInRegistries.ITEM, BLANK_MARKER_KEY, BLANK_MARKER);
 		Registry.register(BuiltInRegistries.ITEM, BLUEPRINT_KEY, BLUEPRINT);
+		Registry.register(BuiltInRegistries.ITEM, QUILL_KEY, BLUEPRINT_QUILL);
 	}
 }

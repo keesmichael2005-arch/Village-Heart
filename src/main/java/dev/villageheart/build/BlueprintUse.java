@@ -57,7 +57,7 @@ public final class BlueprintUse {
 		if (bp.mode() == PlacementMode.LINE) return clickLine(player, level, village.get(), stack, bp, pending, clicked, sneaking, rank);
 
 		if (sneaking && pending != null) {
-			show(player, level, village.get(), stack, bp, pending.ground(), pending.rotationEnum().next(), rank);
+			show(player, level, village.get(), stack, bp, pending.ground(), pending.rotationEnum().next(), pending.mirrored(), rank);
 			return InteractionResult.SUCCESS;
 		}
 		if (clicked == null) return InteractionResult.PASS;
@@ -67,8 +67,24 @@ public final class BlueprintUse {
 			return InteractionResult.SUCCESS;
 		}
 		Dir towardPlayer = Dir.valueOf(player.getDirection().getOpposite().name());
-		show(player, level, village.get(), stack, bp, ground, Rotation4.turning(bp.front(), towardPlayer), rank);
+		show(player, level, village.get(), stack, bp, ground, Rotation4.turning(bp.front(), towardPlayer), false, rank);
 		return InteractionResult.SUCCESS;
+	}
+
+	/** Swap-hands while a footprint blueprint is showing a site: mirror it and check the site again. Lines are not mirrored. */
+	public static boolean tryMirror(ServerPlayer player) {
+		ItemStack stack = player.getMainHandItem();
+		if (stack.get(ModComponents.BLUEPRINT) == null) stack = player.getOffhandItem();
+		if (stack.get(ModComponents.BLUEPRINT) == null) return false;
+		Optional<Blueprint> found = BlueprintItem.blueprintOf(stack);
+		if (found.isEmpty() || found.get().mode() == PlacementMode.LINE) return false;
+		BlueprintSite pending = stack.get(ModComponents.BLUEPRINT_SITE);
+		if (pending == null) return false;
+		if (!(player.level() instanceof ServerLevel level)) return false;
+		Optional<VillageState> village = VillageClaims.current(level.getServer());
+		if (village.isEmpty()) return false;
+		show(player, level, village.get(), stack, found.get(), pending.ground(), pending.rotationEnum(), !pending.mirrored(), village.get().rankOf(player.getUUID()));
+		return true;
 	}
 
 	// ---- LINE blueprints (M21): start, end, confirm ----
@@ -152,17 +168,17 @@ public final class BlueprintUse {
 
 	/** A click confirms when its ground is a column of the shown box with a y from one below the site's ground up to the box's top. */
 	public static boolean inShownBox(Blueprint bp, BlueprintSite site, BlockPos ground) {
-		Placement pl = new Placement(pos(site.ground()), site.rotationEnum());
+		Placement pl = new Placement(pos(site.ground()), site.rotationEnum(), site.mirrored());
 		Pos min = pl.min(bp), max = pl.max(bp);
 		return ground.getX() >= min.x() && ground.getX() <= max.x() && ground.getZ() >= min.z() && ground.getZ() <= max.z()
 				&& ground.getY() >= site.ground().getY() - 1 && ground.getY() <= max.y();
 	}
 
 	private static void show(ServerPlayer player, ServerLevel level, VillageState village, ItemStack stack, Blueprint bp, BlockPos ground,
-			Rotation4 rotation, Rank rank) {
-		SiteProblem problem = SiteValidation.check(level, village, bp, new Placement(pos(ground), rotation), rank);
+			Rotation4 rotation, boolean mirrored, Rank rank) {
+		SiteProblem problem = SiteValidation.check(level, village, bp, new Placement(pos(ground), rotation, mirrored), rank);
 		TextLine reason = problem == null ? new TextLine("build.villageheart.msg.site_ok", "Site ok") : problem.text();
-		stack.set(ModComponents.BLUEPRINT_SITE, new BlueprintSite(ground.immutable(), rotation.ordinal(), problem == null, reason));
+		stack.set(ModComponents.BLUEPRINT_SITE, new BlueprintSite(ground.immutable(), rotation.ordinal(), problem == null, reason, 0, mirrored));
 		player.displayClientMessage(problem == null ? Component.translatable("build.villageheart.msg.site_ok")
 				: Component.translatableWithFallback(problem.key(), problem.fallback(), problem.args().toArray()), true);
 	}
@@ -170,12 +186,12 @@ public final class BlueprintUse {
 	private static void confirm(ServerPlayer player, ServerLevel level, VillageState village, ItemStack stack, Blueprint bp, BlueprintSite site,
 			Rank rank) {
 		Rotation4 rotation = site.rotationEnum();
-		SiteProblem problem = SiteValidation.check(level, village, bp, new Placement(pos(site.ground()), rotation), rank);
+		SiteProblem problem = SiteValidation.check(level, village, bp, new Placement(pos(site.ground()), rotation, site.mirrored()), rank);
 		if (problem != null) {
-			show(player, level, village, stack, bp, site.ground(), rotation, rank);
+			show(player, level, village, stack, bp, site.ground(), rotation, site.mirrored(), rank);
 			return;
 		}
-		BuildJobs.start(level, bp, site.ground(), rotation, player.getUUID());
+		BuildJobs.start(level, bp, site.ground(), rotation, BlueprintParams.NONE, player.getUUID(), site.mirrored());
 		stack.shrink(1);
 		stack.remove(ModComponents.BLUEPRINT_SITE); // a stack that survives (creative) must not keep drawing the confirmed site
 		var line = BuildTexts.blueprintName(bp);

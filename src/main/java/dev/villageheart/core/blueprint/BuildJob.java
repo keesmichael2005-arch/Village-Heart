@@ -13,7 +13,12 @@ import org.jetbrains.annotations.Nullable;
  * The reservations are not saved (M6: transient); the build system works them out again.
  */
 public record BuildJob(UUID id, String blueprintId, BlueprintParams params, HeartLocation ground, Rotation4 rotation, long createdAt,
-		UUID startedBy, int cursor, Map<String, Integer> carried, @Nullable UUID carrier) {
+		UUID startedBy, int cursor, Map<String, Integer> carried, @Nullable UUID carrier, int priority, boolean mirrored) {
+	/** Saves from before priority and mirror existed. */
+	public BuildJob(UUID id, String blueprintId, BlueprintParams params, HeartLocation ground, Rotation4 rotation, long createdAt,
+			UUID startedBy, int cursor, Map<String, Integer> carried, @Nullable UUID carrier) {
+		this(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, carried, carrier, 0, false);
+	}
 	public BuildJob {
 		Objects.requireNonNull(id, "id");
 		Objects.requireNonNull(blueprintId, "blueprintId");
@@ -41,18 +46,28 @@ public record BuildJob(UUID id, String blueprintId, BlueprintParams params, Hear
 	}
 
 	public BuildJob withCursor(int c) {
-		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, c, carried, carrier);
+		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, c, carried, carrier, priority, mirrored);
 	}
 
 	public BuildJob withCarried(Map<String, Integer> c) {
-		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, c, carrier);
+		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, c, carrier, priority, mirrored);
 	}
 
 	public BuildJob withCarrier(@Nullable UUID c) {
-		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, carried, c);
+		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, carried, c, priority, mirrored);
+	}
+
+	public BuildJob withPriority(int p) {
+		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, carried, carrier, p, mirrored);
+	}
+
+	public BuildJob withMirrored(boolean m) {
+		return new BuildJob(id, blueprintId, params, ground, rotation, createdAt, startedBy, cursor, carried, carrier, priority, m);
 	}
 
 	public int carriedOf(String itemId) { return carried.getOrDefault(itemId, 0); }
 
-	public Placement placement() { return new Placement(new dev.villageheart.core.room.Pos(ground.x(), ground.y(), ground.z()), rotation); }
+	public Placement placement() {
+		return new Placement(new dev.villageheart.core.room.Pos(ground.x(), ground.y(), ground.z()), rotation, mirrored);
+	}
 }

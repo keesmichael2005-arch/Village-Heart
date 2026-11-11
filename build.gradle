@@ -118,3 +118,12 @@ tasks.register('genAssets', JavaExec) {
 	args file('src/main/resources').absolutePath, file('build/asset-preview').absolutePath
 	systemProperty 'java.awt.headless', 'true'
 }
+
+// Optional: VH_TEST=villageheart-gametest:<id> runs one GameTest. Unset, verify.sh runs the whole suite.
+def vhFilter = System.getenv("VH_TEST")
+if (vhFilter != null && !vhFilter.isBlank()) {
+	afterEvaluate {
+		def run = loom.runs.findByName("gameTest")
+		if (run != null) run.property("fabric-api.gametest.filter", vhFilter)
+	}
+}

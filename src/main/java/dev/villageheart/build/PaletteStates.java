@@ -45,8 +45,14 @@ public final class PaletteStates {
 	 * half of a unit gets the same block as its primary.
 	 */
 	public static BlockState resolve(PaletteEntry entry, Rotation4 rotation, @Nullable Block substitute) {
+		return resolve(entry, rotation, false, substitute);
+	}
+
+	/** Mirror across the blueprint's local x ({@link net.minecraft.world.level.block.Mirror#FRONT_BACK}) and then rotate. */
+	public static BlockState resolve(PaletteEntry entry, Rotation4 rotation, boolean mirrored, @Nullable Block substitute) {
 		BlockState state = template(entry.state());
 		if (substitute != null && substitute != state.getBlock()) state = copyProperties(state, substitute.defaultBlockState());
+		if (mirrored) state = state.mirror(net.minecraft.world.level.block.Mirror.FRONT_BACK);
 		return state.rotate(rotation(rotation));
 	}
 

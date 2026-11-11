@@ -96,7 +96,7 @@ public final class BuildExecutor {
 	public static void place(ServerLevel level, Blueprint bp, Placement pl, Step step, Item item, @Nullable Entity actor) {
 		PaletteEntry e = step.entry();
 		Block substitute = PaletteStates.substituteFor(e, item);
-		BlockState state = PaletteStates.resolve(e, pl.rotation(), substitute);
+		BlockState state = PaletteStates.resolve(e, pl.rotation(), pl.mirrored(), substitute);
 		BlockPos pos = at(step.pos());
 		level.setBlock(pos, state, Block.UPDATE_ALL);
 		if (step.parts().isEmpty()) {
@@ -106,7 +106,7 @@ public final class BuildExecutor {
 		}
 		Block primary = level.getBlockState(pos).getBlock();
 		for (BuildPlan.Part part : step.parts()) {
-			level.setBlock(at(part.pos()), PaletteStates.resolve(part.entry(), pl.rotation(), e.material() != null && e.material().isTag() ? primary : null),
+			level.setBlock(at(part.pos()), PaletteStates.resolve(part.entry(), pl.rotation(), pl.mirrored(), e.material() != null && e.material().isTag() ? primary : null),
 					Block.UPDATE_ALL);
 		}
 		var sound = level.getBlockState(pos).getSoundType().getPlaceSound();

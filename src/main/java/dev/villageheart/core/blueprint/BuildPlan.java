@@ -72,6 +72,7 @@ public final class BuildPlan {
 		PaletteEntry marker = bp.markerEntry();
 		List<Cell> placed = new ArrayList<>();
 		for (PaletteEntry.Pass pass : PaletteEntry.Pass.values()) {
+			if (pass == PaletteEntry.Pass.DECOR) continue; // decoration waits until the marker is in
 			for (Cell c : sorted) {
 				if (!c.entry().primary() || c.entry().pass() != pass || c.entry() == marker) continue;
 				steps.add(new Step(steps.size(), Kind.PLACE, c.pos(), c.entry(), c.parts()));
@@ -85,6 +86,10 @@ public final class BuildPlan {
 			for (Cell c : sorted) {
 				if (c.entry() == marker) steps.add(new Step(steps.size(), Kind.PLACE, c.pos(), c.entry(), List.of()));
 			}
+		}
+		for (Cell c : sorted) {
+			if (!c.entry().primary() || c.entry().pass() != PaletteEntry.Pass.DECOR) continue;
+			steps.add(new Step(steps.size(), Kind.PLACE, c.pos(), c.entry(), c.parts()));
 		}
 		return List.copyOf(steps);
 	}

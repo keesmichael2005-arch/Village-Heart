@@ -116,13 +116,14 @@ class BuilderPlannerTest {
 	}
 
 	@Test
-	void paceIsOneBlockPerSecondAtLevelOne() {
+	void paceIsThreeAndAHalfSecondsAtLevelOne() {
 		double speed = WorkSpeed.untooled(1, Needs.DEFAULT);
 		assertEquals(1.0, speed);
-		WorkClock clock = new WorkClock(Balance.BUILD_TICKS_PER_BLOCK);
+		WorkClock clock = new WorkClock(Balance.BUILD_PLACE_TICKS);
 		int units = 0;
-		for (int t = 0; t < 2000; t++) units += clock.tick(speed);
-		assertEquals(100, units);
+		for (int t = 0; t < 7000; t++) units += clock.tick(speed);
+		assertEquals(100, units); // 70 ticks per block at level 1
 		assertEquals(1.25, WorkSpeed.untooled(2, Needs.DEFAULT));
+		assertEquals(20.0, Balance.BUILD_TICKS_PER_BLOCK); // repairs keep the old one-second clock
 	}
 }
