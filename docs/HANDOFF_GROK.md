@@ -29,8 +29,9 @@ milestone, `docs/agents/verifier.md`) and merges into `dev`.
 | 6 | `backlog-small` (new, from dev) | the "small fixes" prompt the orchestrator gave the owner | market plural, toasts, sim tier metric, hunter flake |
 | 7 | `blueprints-2` (new, from dev) | the owner's blueprints prompt | post-v1 feature; must not touch walls/repairs/raids |
 
-Two Claude-hosted machines (sessions `session_0184ToXjov375dJHY3niQHfP` = track A, `session_0184ToXmQh6Zh5QPmWPNfqcf` = track B) may still
-be running Grok on rows 3 and 4. Run rows 3 and 4 yourself only after stopping those sessions, so two agents never work one branch.
+Three Claude-hosted machines are ALREADY running Grok on rows 1-4: `session_0184ToXmmpq4M5N9MmYUDntk` (rows 1 and 2, M23 + M19),
+`session_0184ToXjov375dJHY3niQHfP` (row 3, track A), `session_0184ToXmQh6Zh5QPmWPNfqcf` (row 4, track B). Leave them running, or stop a
+session before you run its row yourself, so two agents never work one branch. Rows 5-7 are free to start.
 
 ## After Cursor usage runs out
 Tell the Claude orchestrator "resume". It will: fetch every branch above, run a Claude Opus review per milestone (M23, M19, M25 A+B merged,
