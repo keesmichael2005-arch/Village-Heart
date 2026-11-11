@@ -885,3 +885,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Verify after merging origin/dev (M22): full run exit 0 (L2 342/342, L4 green, perf green); `--fast` twice green (342/342 each).
 - Not fixed: `hunter_game_tests_two_hunters_one_ground` (970 ticks vs bound 450 at load 8; walk jam retries, product-side). Next: audit other jobs' `walk.begin(..., JOB_BLOCK_REACH)` for the same 0.1 band (BACKLOG).
 - Round 2: the dead band fixed at the root (`WalkTo` ARRIVED only within the reach; `SelfCraftJob` workaround removed), new `WorkerGameTests.walkToNeverArrivesBeyondItsReach`, full L2 343/343 green with the strict rule. `two_hunters_one_ground` investigated, not reproduced (BACKLOG has the mechanism hypothesis).
+
+## 2026-11-11: M25 track A step 1 (death log core)
+- `core.death`: `DeathEntry`, `DeathLog` (32 rows, uncapped `nextSeq` / `inClaimLogged`, one-tick conversion merge), `DeathCauses` (shared with the sim). A witch conversion is `minecraft:lightning_bolt`, not `zombified`.
+- `VillageState.deaths` and codec key `death_log` on `RAW_B` (optional, empty omitted). A bad value drops the log and keeps the village; 40 rows on disk keep the newest 32.
+- Tests: `DeathLogTest`, `DeathCausesTest`, `VillageCodecsTest.deathLogRoundTripCapAndABadValue`. Mutation: disabling the 32-row trim turned `thirtyThreeAppendsKeepThirtyTwo` red (33 rows). Next: step 2, the raid core.

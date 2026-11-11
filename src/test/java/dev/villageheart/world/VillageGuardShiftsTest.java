@@ -131,6 +131,8 @@ class VillageGuardShiftsTest {
 		calls.put("withoutSmokerHeat", s -> s.withSmokerHeat(BARRACKS, 3).withoutSmokerHeat(BARRACKS::equals));
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
+		calls.put("withDeaths", s -> s.withDeaths(dev.villageheart.core.death.DeathLog.EMPTY.append(
+				new dev.villageheart.core.death.DeathEntry(0, G1, "Ada", "guard", "minecraft:zombie", true, 10, 1, true, false, false))));
 		// the names that rebuild the guard map on purpose are tested above
 		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin", "withGuardSeniority");
 		Set<String> found = new HashSet<>();

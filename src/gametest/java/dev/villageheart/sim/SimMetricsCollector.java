@@ -2,6 +2,7 @@ package dev.villageheart.sim;
 
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.death.DeathCauses;
 import dev.villageheart.core.sim.DayMetrics;
 import dev.villageheart.core.sim.DeathRecord;
 import dev.villageheart.core.sim.TickStats;
@@ -93,24 +94,31 @@ public final class SimMetricsCollector {
 	public void onDeath(LivingEntity entity, DamageSource source) {
 		if (!enabled || !(entity instanceof Villager) || !inRadius(entity)) return;
 		if (!seen.add(entity.getUUID())) return;
-		String cause = source.getEntity() != null
-				? id(source.getEntity().getType())
-				: source.typeHolder().unwrapKey().map(k -> k.identifier().toString()).orElse("unknown");
-		pending.add(new Pending(entity.getUUID(), cause, source.getEntity() instanceof Enemy, level.getGameTime()));
+		Optional<String> sourceId = source.getEntity() != null ? Optional.of(id(source.getEntity().getType())) : Optional.empty();
+		String damage = source.typeHolder().unwrapKey().map(k -> k.identifier().toString()).orElse("unknown");
+		DeathCauses.Cause cause = DeathCauses.of(sourceId, source.getEntity() instanceof Enemy, damage);
+		pending.add(new Pending(entity.getUUID(), cause.cause(), cause.byMob(), level.getGameTime()));
 	}
 
-	/** Vanilla fires death and then conversion for one villager lost to a zombie: that is one loss, cause "zombified". */
+	/**
+	 * Vanilla fires death and then conversion for one villager lost to a zombie: that is one loss.
+	 * The cause comes from {@link DeathCauses}: a zombie villager is {@code zombified}, a witch is
+	 * {@code minecraft:lightning_bolt}. A cure and any other conversion add nothing.
+	 */
 	public void onConversion(Mob previous, Mob converted) {
 		if (!enabled || !(previous instanceof Villager) || !inRadius(previous)) return;
+		Optional<String> convertedCause = DeathCauses.conversion(id(previous.getType()), id(converted.getType()));
+		if (convertedCause.isEmpty()) return;
 		long now = level.getGameTime();
+		boolean mob = DeathCauses.conversionCountsAsMob(convertedCause.get());
 		for (Pending p : pending) {
-			if (p.id.equals(previous.getUUID()) && now - p.time <= 1) {
-				p.cause = "zombified";
-				p.byMob = true;
+			if (p.id.equals(previous.getUUID()) && DeathCauses.sameLoss(p.time, now)) {
+				p.cause = convertedCause.get();
+				p.byMob = mob;
 				return;
 			}
 		}
-		if (seen.add(previous.getUUID())) pending.add(new Pending(previous.getUUID(), "zombified", true, now));
+		if (seen.add(previous.getUUID())) pending.add(new Pending(previous.getUUID(), convertedCause.get(), mob, now));
 	}
 
 	/** Deaths since the last drain. */

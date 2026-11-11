@@ -286,7 +286,8 @@ public final class VillageCodecs {
 			java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
 			dev.villageheart.core.tier.TierProgress tierProgress,
-			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts,
+			dev.villageheart.core.death.DeathLog deaths) {}
 
 	/** One saved guard shift (M18): the villager, the shift id and whether it is pinned. */
 	public record GuardShiftEntry(UUID villager, dev.villageheart.core.guard.Shift shift, boolean pinned) {}
@@ -300,6 +301,53 @@ public final class VillageCodecs {
 			SHIFT.fieldOf("shift").forGetter(GuardShiftEntry::shift),
 			Codec.BOOL.optionalFieldOf("pinned", false).forGetter(GuardShiftEntry::pinned)
 	).apply(i, GuardShiftEntry::new));
+
+	/** One saved death (M25). Strings are cut by {@link dev.villageheart.core.death.DeathEntry}. */
+	public static final Codec<dev.villageheart.core.death.DeathEntry> DEATH_ENTRY = RecordCodecBuilder.create(i -> i.group(
+			Codec.LONG.fieldOf("seq").forGetter(dev.villageheart.core.death.DeathEntry::seq),
+			UUID_STRING.fieldOf("villager").forGetter(dev.villageheart.core.death.DeathEntry::villager),
+			Codec.STRING.optionalFieldOf("name", "").forGetter(dev.villageheart.core.death.DeathEntry::name),
+			Codec.STRING.optionalFieldOf("job", "").forGetter(dev.villageheart.core.death.DeathEntry::jobId),
+			Codec.STRING.fieldOf("cause").forGetter(dev.villageheart.core.death.DeathEntry::cause),
+			Codec.BOOL.optionalFieldOf("by_mob", false).forGetter(dev.villageheart.core.death.DeathEntry::byMob),
+			Codec.LONG.fieldOf("game_time").forGetter(dev.villageheart.core.death.DeathEntry::gameTime),
+			Codec.INT.optionalFieldOf("day", 1).forGetter(dev.villageheart.core.death.DeathEntry::day),
+			Codec.BOOL.optionalFieldOf("in_claim", true).forGetter(dev.villageheart.core.death.DeathEntry::inClaim),
+			Codec.BOOL.optionalFieldOf("during_raid", false).forGetter(dev.villageheart.core.death.DeathEntry::duringRaid),
+			Codec.BOOL.optionalFieldOf("during_siege", false).forGetter(dev.villageheart.core.death.DeathEntry::duringSiege)
+	).apply(i, dev.villageheart.core.death.DeathEntry::new));
+
+	private record RawDeathLog(java.util.List<dev.villageheart.core.death.DeathEntry> entries, long nextSeq, long inClaimLogged) {}
+
+	private static final Codec<RawDeathLog> RAW_DEATH_LOG = RecordCodecBuilder.create(i -> i.group(
+			lenientList(DEATH_ENTRY).optionalFieldOf("entries", java.util.List.of()).forGetter(RawDeathLog::entries),
+			Codec.LONG.optionalFieldOf("next_seq", 0L).forGetter(RawDeathLog::nextSeq),
+			Codec.LONG.optionalFieldOf("in_claim_logged", 0L).forGetter(RawDeathLog::inClaimLogged)
+	).apply(i, RawDeathLog::new));
+
+	/**
+	 * The death log (M25). A value that will not parse becomes an empty log (one WARN) and the village is kept.
+	 * More than {@link dev.villageheart.core.Balance#DEATH_LOG_MAX} entries keeps the newest.
+	 */
+	public static final Codec<dev.villageheart.core.death.DeathLog> DEATH_LOG = new Codec<>() {
+		@Override public <T> DataResult<Pair<dev.villageheart.core.death.DeathLog, T>> decode(DynamicOps<T> ops, T input) {
+			DataResult<Pair<RawDeathLog, T>> parsed = RAW_DEATH_LOG.decode(ops, input);
+			if (parsed.result().isEmpty()) {
+				LOG.warn("Village save: unreadable death_log dropped ({})", parsed.error().map(e -> e.message()).orElse("?"));
+				return DataResult.success(Pair.of(dev.villageheart.core.death.DeathLog.EMPTY, input));
+			}
+			RawDeathLog d = parsed.result().get().getFirst();
+			if (d.entries().size() > dev.villageheart.core.Balance.DEATH_LOG_MAX) {
+				LOG.warn("Village save: death log had {} entries, keeping the newest {}", d.entries().size(), dev.villageheart.core.Balance.DEATH_LOG_MAX);
+			}
+			return DataResult.success(Pair.of(new dev.villageheart.core.death.DeathLog(d.entries(), d.nextSeq(), d.inClaimLogged()),
+					parsed.result().get().getSecond()));
+		}
+
+		@Override public <T> DataResult<T> encode(dev.villageheart.core.death.DeathLog input, DynamicOps<T> ops, T prefix) {
+			return RAW_DEATH_LOG.encode(new RawDeathLog(input.entries(), input.nextSeq(), input.inClaimLogged()), ops, prefix);
+		}
+	};
 
 	private record RawProgress(int fedStreak, long lastDinnerDay, int bestDawnTreasury) {}
 
@@ -316,14 +364,15 @@ public final class VillageCodecs {
 		return new dev.villageheart.core.tier.TierProgress(Math.max(0, r.fedStreak()), r.lastDinnerDay(), Math.max(0, r.bestDawnTreasury()));
 	}, p -> new RawProgress(p.fedStreak(), p.lastDinnerDay(), p.bestDawnTreasury()));
 
-	// RecordCodecBuilder.group takes at most 16 fields and the village has 17 keys (M14, M13 and M18 each added one). So the keys are read by
-	// two map codecs joined with Codec.mapPair: both read the same flat compound, so the save format is unchanged and no old key moved.
+	// RecordCodecBuilder.group takes at most 16 fields. The village has 18 components (M25 adds death_log on RAW_B). The keys are read by
+	// two map codecs joined with Codec.mapPair: both read the same flat compound, so the save format stays flat and no old key moved.
 	private record RawA(HeartLocation heart, UUID owner, String ownerName, long claimedAt, java.util.Map<UUID, Rank> ranks,
 			java.util.List<KnownPlayer> known, int treasury, Tier tier, java.util.List<BuildingRecord> buildings, java.util.List<WorkerRecord> workers) {}
 
 	private record RawB(java.util.List<TreeTask> treeTasks, java.util.List<BuildJob> builds,
 			java.util.List<dev.villageheart.core.defence.DefenceSite> defences, java.util.List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
-			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts) {}
+			dev.villageheart.core.tier.TierProgress tierProgress, java.util.List<SmokerHeat> smokerHeat, java.util.List<GuardShiftEntry> guardShifts,
+			dev.villageheart.core.death.DeathLog deaths) {}
 
 	private static final com.mojang.serialization.MapCodec<RawA> RAW_A = RecordCodecBuilder.mapCodec(i -> i.group(
 			HEART_LOCATION.fieldOf("heart").forGetter(RawA::heart),
@@ -345,17 +394,18 @@ public final class VillageCodecs {
 			lenientList(SELF_CRAFT).optionalFieldOf("self_crafts", java.util.List.of()).forGetter(RawB::selfCrafts),
 			TIER_PROGRESS.lenientOptionalFieldOf("tier_progress", dev.villageheart.core.tier.TierProgress.INITIAL).forGetter(RawB::tierProgress),
 			lenientList(SMOKER_HEAT).optionalFieldOf("smoker_heat", java.util.List.of()).forGetter(RawB::smokerHeat),
-			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts)
+			lenientList(GUARD_SHIFT_ENTRY).optionalFieldOf("guard_shifts", java.util.List.of()).forGetter(RawB::guardShifts),
+			DEATH_LOG.optionalFieldOf("death_log", dev.villageheart.core.death.DeathLog.EMPTY).forGetter(RawB::deaths)
 	).apply(i, RawB::new));
 
 	private static final Codec<Raw> RAW = Codec.mapPair(RAW_A, RAW_B).codec().xmap(
 			pair -> new Raw(pair.getFirst().heart(), pair.getFirst().owner(), pair.getFirst().ownerName(), pair.getFirst().claimedAt(), pair.getFirst().ranks(),
 					pair.getFirst().known(), pair.getFirst().treasury(), pair.getFirst().tier(), pair.getFirst().buildings(), pair.getFirst().workers(),
 					pair.getSecond().treeTasks(), pair.getSecond().builds(), pair.getSecond().defences(), pair.getSecond().selfCrafts(),
-					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts()),
+					pair.getSecond().tierProgress(), pair.getSecond().smokerHeat(), pair.getSecond().guardShifts(), pair.getSecond().deaths()),
 			r -> com.mojang.datafixers.util.Pair.of(new RawA(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), r.ranks(), r.known(), r.treasury(), r.tier(),
 					r.buildings(), r.workers()),
-					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts())));
+					new RawB(r.treeTasks(), r.builds(), r.defences(), r.selfCrafts(), r.tierProgress(), r.smokerHeat(), r.guardShifts(), r.deaths())));
 
 	public static final Codec<VillageState> VILLAGE_STATE = RAW.flatXmap(r -> {
 		try {
@@ -368,13 +418,14 @@ public final class VillageCodecs {
 			// a map that does not match the records is brought in line once, here
 			var shifts = dev.villageheart.core.guard.ShiftBalancer.rebalance(guards, saved);
 			return DataResult.success(new VillageState(r.heart(), r.owner(), r.ownerName(), r.claimedAt(), m.ranks(), m.known(),
-					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts));
+					r.treasury(), r.tier(), dedupe(r.buildings()), r.workers(), dedupeTasks(r.treeTasks()), dedupeBuilds(r.builds()), dedupeDefences(r.defences()), dedupeSelfCrafts(r.selfCrafts()), r.tierProgress(), heatMap(r.smokerHeat()), shifts, r.deaths()));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid village: " + e.getMessage());
 		}
 	}, v -> DataResult.success(new Raw(v.heart(), v.owner(), v.ownerName(), v.claimedAtGameTime(), v.ranks(), v.known(),
 			v.treasury(), v.tier(), v.buildings(), v.workers(), v.treeTasks(), v.builds(), v.defences(), v.selfCrafts(), v.tierProgress(), heatList(v.smokerHeat()),
-			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList())));
+			v.guardShifts().entrySet().stream().map(e -> new GuardShiftEntry(e.getKey(), e.getValue().shift(), e.getValue().pinned())).toList(),
+			v.deaths())));
 
 	/** A striker and the wage it was charged at dawn (M12). */
 	public static final Codec<dev.villageheart.core.economy.Payee> PAYEE = RecordCodecBuilder.create(i -> i.group(

@@ -106,6 +106,8 @@ public final class Balance {
 	/** Heart screen actions per player: token bucket capacity and ticks per refilled token. */
 	public static final int HEART_RATE_CAPACITY = 8;
 	public static final int HEART_RATE_REFILL_TICKS = 5;
+	/** Death-log rows kept on the village (M25). Older rows drop; {@code nextSeq} and {@code inClaimLogged} do not. */
+	public static final int DEATH_LOG_MAX = 32;
 	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;

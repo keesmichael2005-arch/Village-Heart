@@ -79,6 +79,8 @@ class VillageStateTierTest {
 				new OrderKey(new HeartLocation(DIM, 5, 64, 5), GearNeed.AXE, 0), 0, List.of()), false);
 		if (t == java.util.Optional.class) return java.util.Optional.of(dev.villageheart.core.guard.Shift.DAY); // withGuardPin (M18)
 		if (t == Map.class) return Map.of(new UUID(3, 3), new dev.villageheart.core.guard.GuardShift(dev.villageheart.core.guard.Shift.DAY, true)); // withGuardShifts (M18)
+		if (t == dev.villageheart.core.death.DeathLog.class) return dev.villageheart.core.death.DeathLog.EMPTY.append(
+				new dev.villageheart.core.death.DeathEntry(0, new UUID(8, 8), "Ada", "farmer", "minecraft:zombie", true, 10, 1, true, false, false));
 		throw new AssertionError("add a fixture for " + t.getName() + " to VillageStateTierTest.arg");
 	}
 

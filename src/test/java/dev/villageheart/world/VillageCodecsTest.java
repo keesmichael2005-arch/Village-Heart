@@ -373,4 +373,43 @@ class VillageCodecsTest {
 		assertEquals(1, v.selfCrafts().size());
 		assertEquals("minecraft:stone_axe", v.selfCrafts().get(0).craft().recipeId());
 	}
+
+	/** Death log (M25, the save half of T-L1-7). A missing key is empty; 40 rows on disk keep the newest 32; a bad value keeps the village. */
+	@Test void deathLogRoundTripCapAndABadValue() {
+		assertEquals(dev.villageheart.core.death.DeathLog.EMPTY, dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}")).deaths());
+		UUID who = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+		dev.villageheart.core.death.DeathLog log = dev.villageheart.core.death.DeathLog.EMPTY
+				.append(new dev.villageheart.core.death.DeathEntry(0, who, "Ada", "farmer", "minecraft:zombie", true, 100, 1, true, true, false));
+		VillageState saved = full().withDeaths(log);
+		assertEquals(saved, dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, saved)));
+		assertTrue(keys(enc(VillageCodecs.VILLAGE_STATE, saved)).contains("death_log"));
+		assertFalse(keys(enc(VillageCodecs.VILLAGE_STATE, full())).contains("death_log"));
+
+		StringBuilder entries = new StringBuilder();
+		for (int i = 0; i < 40; i++) {
+			if (i > 0) entries.append(',');
+			entries.append("{\"seq\":").append(i).append(",\"villager\":\"").append(who)
+					.append("\",\"name\":\"n\",\"job\":\"farmer\",\"cause\":\"minecraft:fall\",\"by_mob\":false,\"game_time\":")
+					.append(i).append(",\"day\":1,\"in_claim\":true}");
+		}
+		VillageState capped = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"death_log\":{\"entries\":[" + entries
+				+ "],\"next_seq\":40,\"in_claim_logged\":40}}"));
+		assertEquals(32, capped.deaths().entries().size());
+		assertEquals(8, capped.deaths().entries().get(0).seq());
+		assertEquals(39, capped.deaths().entries().get(31).seq());
+		assertEquals(40, capped.deaths().nextSeq());
+		assertEquals(40, capped.deaths().inClaimLogged());
+		assertEquals(OWNER, capped.owner());
+
+		VillageState dropped = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"death_log\":[]}"));
+		assertEquals(dev.villageheart.core.death.DeathLog.EMPTY, dropped.deaths());
+		assertEquals("a", dropped.ownerName());
+
+		VillageState oneBad = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"death_log\":{\"entries\":["
+				+ "{\"seq\":\"nope\"},{\"seq\":3,\"villager\":\"" + who + "\",\"cause\":\"minecraft:fall\",\"game_time\":9}"
+				+ "],\"next_seq\":4,\"in_claim_logged\":1}}"));
+		assertEquals(1, oneBad.deaths().entries().size());
+		assertEquals(3, oneBad.deaths().entries().get(0).seq());
+		assertEquals(4, oneBad.deaths().nextSeq());
+	}
 }
