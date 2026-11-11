@@ -315,7 +315,7 @@ public class SiegeGameTests {
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "BreachGoal runs at the gate", () -> {
 			noteBreach(h, vindicator[0], saw, running, 4);
-			h.assertTrue(breachRunning(vindicator[0]) || h.getBlockState(rel(2, 0, -4)).isAir(), "the breach goal is the one running");
+			h.assertTrue(breachRunning(vindicator[0]) || h.getBlockState(attackCell()).isAir(), "the breach goal is the one running");
 			h.assertTrue(!doorRunning(vindicator[0]), "not the wooden-door goal");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the vindicator walks through the gate", () -> {
@@ -392,6 +392,12 @@ public class SiegeGameTests {
 	private static BlockPos mobSpot() { return rel(ATTACK_X, 0, ATTACK_Z - 1); }
 
 	private static void closedRing(GameTestHelper h, boolean gate) {
+		// The mob stands just outside the structure. Force those chunks so its goals tick.
+		BlockPos cornerA = h.absolutePos(rel(RING_X0 - 2, 0, RING_Z0 - 2));
+		BlockPos cornerB = h.absolutePos(rel(RING_X1 + 2, 0, RING_Z1 + 2));
+		int cx0 = Math.min(cornerA.getX(), cornerB.getX()) >> 4, cx1 = Math.max(cornerA.getX(), cornerB.getX()) >> 4;
+		int cz0 = Math.min(cornerA.getZ(), cornerB.getZ()) >> 4, cz1 = Math.max(cornerA.getZ(), cornerB.getZ()) >> 4;
+		for (int cx = cx0; cx <= cx1; cx++) for (int cz = cz0; cz <= cz1; cz++) h.getLevel().setChunkForced(cx, cz, true);
 		for (int x = RING_X0 - 2; x <= RING_X1 + 2; x++) for (int z = RING_Z0 - 2; z <= RING_Z1 + 2; z++) {
 			h.setBlock(rel(x, -1, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
 			for (int y = 0; y <= 4; y++) {
