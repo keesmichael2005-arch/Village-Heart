@@ -515,7 +515,13 @@ public class SimActionGameTests {
 			var raid = RaidSim.start(level, BuildingTestSupport.owner(), heart, 1, false);
 			h.assertTrue(ClaimGeometry.inClaim(village.heart(), VillageClaims.locate(level, raid.getCenter())),
 					"centre " + raid.getCenter() + " heart " + village.heart());
-			h.assertTrue(VillageClaims.current(level.getServer()).orElseThrow().threats().raid().isPresent(), "a raid is tracked");
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the raid is tracked", () -> h.assertTrue(
+				VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().raid().isPresent(), "a raid is tracked"));
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			BlockPos heart = h.absolutePos(spot);
+			var village = VillageClaims.current(level.getServer()).orElseThrow();
 			RaidStart.stopAll(level, heart, 160);
 			AABB near = new AABB(heart.getX() - 32, heart.getY() - 32, heart.getZ() - 32, heart.getX() + 32, heart.getY() + 32, heart.getZ() + 32);
 			for (Raider raider : List.copyOf(level.getEntitiesOfClass(Raider.class, near, e -> true))) raider.discard();
@@ -544,6 +550,7 @@ public class SimActionGameTests {
 			guard[0].setInvulnerable(true); // a raid wave must not spend the 30 health this test measures
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the guard stays at level 2 with 30 health", () -> {
+			h.assertTrue(guard[0] != null, "the guard was hired");
 			var data = guard[0].getAttached(WorkerAttachments.WORKER);
 			h.assertTrue(data != null && data.level() == 2, "level " + (data == null ? "none" : data.level()));
 			h.assertTrue(Math.abs(guard[0].getHealth() - 30f) < 0.05f && Math.abs(guard[0].getMaxHealth() - 30f) < 0.05f,
