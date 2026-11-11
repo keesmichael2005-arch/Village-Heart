@@ -116,6 +116,13 @@ public final class HeartSnapshotBuilder {
 		alerts.addAll(f.extraAlerts());
 		// severity first (M12): the cap of MAX_ALERTS must cut a warning, never a strike or an invalid workplace; stable within each severity
 		alerts.sort(Comparator.comparingInt((AlertLine a) -> a.severity() == Severity.DANGER ? 0 : 1));
+		// a raid is shown first, so the five-alert cap cannot hide it behind another danger (M25)
+		for (int i = 0; i < alerts.size(); i++) {
+			if (alerts.get(i).code() == AlertCode.RAID && i > 0) {
+				alerts.add(0, alerts.remove(i));
+				break;
+			}
+		}
 		int more = Math.max(0, alerts.size() - HeartLimits.MAX_ALERTS);
 		List<AlertLine> shown = alerts.subList(0, alerts.size() - more);
 

@@ -3,8 +3,7 @@
 	"package": "dev.villageheart.gametest.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"RaidTestAccess",
-		"RaidsAccessor"
+		"RaidTestAccess"
 	],
 	"client": [
 		"NetworkSynchronizerLostWakeupFix",

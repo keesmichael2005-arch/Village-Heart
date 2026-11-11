@@ -24,7 +24,4 @@ public interface RaidTestAccess {
 
 	@Accessor("started")
 	void villageheart$setStarted(boolean started);
-
-	@Accessor("numGroups")
-	int villageheart$numGroups();
 }

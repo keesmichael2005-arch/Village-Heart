@@ -39,6 +39,10 @@ public final class VillageTestSupport {
 	public static void reset(GameTestHelper h) {
 		MinecraftServer server = h.getLevel().getServer();
 		dev.villageheart.gametest.raid.RaidStart.stopAll(h.getLevel(), h.absolutePos(BlockPos.ZERO), 160);
+		dev.villageheart.raid.VillageRaids.clearForTests();
+		dev.villageheart.raid.RaidNotices.setSinkForTest(null);
+		dev.villageheart.raid.RaiderKills.clearForTests();
+		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
 		removePlayers(server);
 		// worker tests (M7): give back every POI ticket the mod holds before the claim (and with it the held set) is forgotten,
 		// restore the real building source, and discard villagers earlier worker tests spawned

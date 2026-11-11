@@ -6,9 +6,26 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Who hears a raid line. Chat itself is the glue (step 5). The owner is not in {@code VillageState.ranks}, so the caller puts them in. */
+/**
+ * Who hears a raid line, and the words of that line. The owner is not in {@code VillageState.ranks}, so the caller
+ * puts them in. The glue sends the line; tests replace the sink.
+ */
 public final class RaidNotices {
+	public static final String START = "A raid is coming to %s! Guards are called to duty.";
+	public static final String END = "The raid on %s is over: %s. %s villagers lost.";
+
 	private RaidNotices() {}
+
+	public static String start(String village) { return START.formatted(village); }
+
+	public static String end(String village, RaidOutcome outcome, int villagersLost) {
+		String how = switch (outcome) {
+			case VICTORY -> "won";
+			case LOSS -> "lost";
+			case STOPPED, GONE -> "ended";
+		};
+		return END.formatted(village, how, Math.max(0, villagersLost));
+	}
 
 	public static Set<UUID> audience(Map<UUID, Rank> ranks, Set<UUID> online) {
 		Set<UUID> out = new HashSet<>();

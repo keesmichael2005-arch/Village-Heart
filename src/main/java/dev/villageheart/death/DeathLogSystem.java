@@ -4,6 +4,7 @@ import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.death.DeathCauses;
 import dev.villageheart.core.death.DeathEntry;
+import dev.villageheart.core.raid.RaidTracker;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.world.VillageClaims;
@@ -66,10 +67,13 @@ public final class DeathLogSystem {
 
 	private static void remember(MinecraftServer server, Villager villager, Optional<WorkerData> worker, String cause, boolean byMob,
 			boolean inClaim, ServerLevel level) {
-		boolean raid = VillageClaims.current(server).map(s -> s.threats().raid().isPresent()).orElse(false);
-		VillageClaims.data(server).update(s -> s.withDeaths(s.deaths().appendUnlessSameLoss(new DeathEntry(0, villager.getUUID(),
-				villager.getName().getString(), worker.map(WorkerData::jobId).orElse(""), cause, byMob, level.getGameTime(),
-				day(level), inClaim, raid, false))));
+		VillageClaims.data(server).update(s -> {
+			boolean duringRaid = s.threats().raid().isPresent();
+			var deaths = s.deaths().appendUnlessSameLoss(new DeathEntry(0, villager.getUUID(), villager.getName().getString(),
+					worker.map(WorkerData::jobId).orElse(""), cause, byMob, level.getGameTime(), day(level), inClaim, duringRaid, false));
+			var raidRecord = inClaim && duringRaid ? RaidTracker.onVillagerDeath(s.threats().raid()) : s.threats().raid();
+			return s.withDeaths(deaths).withRaid(raidRecord);
+		});
 	}
 
 	private static boolean inClaim(ServerLevel level, VillageState state, Villager villager) {

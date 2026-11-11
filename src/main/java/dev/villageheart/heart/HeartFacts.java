@@ -212,8 +212,10 @@ public final class HeartFacts {
 		int strikers = VillageClaims.data(server).payroll().map(p -> p.strikers(workerIds)).orElse(0);
 		Set<UUID> censusIds = loaded.keySet();
 		dev.villageheart.core.tier.TierInputs tierInputs = dev.villageheart.tier.TierFacts.inputs(server, state, censusIds);
+		java.util.List<dev.villageheart.core.heart.AlertLine> extra = new java.util.ArrayList<>();
+		state.threats().raid().ifPresent(raid -> extra.add(dev.villageheart.core.raid.RaidAlerts.line(raid)));
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
-				villagers, jobs, buildings, stock(server, state, adults, babies), List.of(), members(server, state), builds(server),
+				villagers, jobs, buildings, stock(server, state, adults, babies), extra, members(server, state), builds(server),
 				dev.villageheart.core.economy.WageRules.bill(levels), strikers, tierInputs.population(),
 				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress())));
 	}
