@@ -50,7 +50,6 @@ import net.minecraft.world.entity.ai.behavior.ValidateNearbyPoi;
 import net.minecraft.world.entity.ai.behavior.VillageBoundRandomStroll;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
-import net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger;
 import net.minecraft.world.entity.ai.behavior.WakeUp;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
@@ -151,7 +150,7 @@ public final class WorkerBrain {
 				p(0, InteractWithDoor.create()),
 				p(0, new dev.villageheart.defence.GateTraffic()),
 				p(0, new LookAtTargetSink(45, 90)),
-				p(0, new VillagerPanicTrigger()),
+				p(0, new WorkerPanicTrigger()),
 				p(0, WakeUp.create()),
 				p(0, ReactToBell.create()),
 				p(1, new MoveToTargetSink()),

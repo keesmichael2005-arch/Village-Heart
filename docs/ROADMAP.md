@@ -232,7 +232,7 @@ from there instead of hard-coding them.
   `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` rows (verified: docs/reviews/M12-r1.md and M12-r2.md). Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
-- Track A (`m25`): steps 1–7 (death log, raid core, shelter rules, death-log glue, raid watch and call-up, workers shelter, Heart raid line and recent deaths) are in. The step 7 screenshot was looked at. Full verify is still to run. Not ticked; the milestone is not done.
+- Track A (`m25`): steps 1–7 (death log, raid core, shelter rules, death-log glue, raid watch and call-up, workers shelter, Heart raid line and recent deaths) are in. The step 7 screenshot was looked at. A full verify failed `worker_shelters_past_araider` (panic held the farmer out of the house); shelter now takes the activity back while a raid is close. Not re-run yet. Not ticked; the milestone is not done.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged
