@@ -918,7 +918,7 @@ public class GuardGameTests {
 		return hits.size() + " hits" + b;
 	}
 
-	/** One level-1 guard with the starting wooden sword and no armour against one zombie on flat ground in daylight: it must win and keep a quarter of its health. */
+	/** One level-1 guard with the starting wooden sword and no armour against one zombie on flat ground in daylight: it must win (the health left varies, see the comment). */
 	@GameTest(environment = "villageheart-gametest:guards_duel", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void guardBeatsOneZombie(GameTestHelper h) {
 		begin(h);
@@ -940,10 +940,11 @@ public class GuardGameTests {
 		seq.thenExecute(() -> {
 			System.out.println("[m18] duel: guard " + describe(hits(z[0], g[0])) + "; zombie " + describe(hits(g[0], z[0])) + "; guard hp left " + g[0].getHealth()
 					+ ", attack damage attribute " + g[0].getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE) + ", done in " + (h.getLevel().getGameTime() - t0[0]) + " ticks");
-			// the owner's bound while the guard has only a wooden sword: it WINS with at least 25 % of its max health left (5 of 20). The reason it is not
-			// 50 %: a wooden sword does 4.0 (base 1.0 + 3), a helmeted zombie takes 5 hits, and the zombie lands 5 hits of 3.0 in that time (vanilla damage and
-			// cooldown, no bug; measured 5.0 of 20 left in 153 ticks). Half the health is the intent for better swords (BACKLOG idea, not a test).
-			h.assertTrue(g[0].isAlive() && g[0].getHealth() >= 0.25 * g[0].getMaxHealth(), "the guard wins with at least a quarter of its health: " + g[0].getHealth() + " of " + g[0].getMaxHealth());
+			// owner decision 2026-11-11: while the guard has only a wooden sword the test asserts that it WINS (the zombie is dead within the tick bound above,
+			// and the guard is alive). No health bound: a wooden sword does 4.0 (base 1.0 + 3), so a helmeted zombie takes 5 hits, and the zombie lands 5 or 6
+			// hits of 3.0 in that time (vanilla damage and cooldown, no bug), so the health left varies from 2 to 20 between runs. The intent "at least 50 % of the
+			// health with a better sword" is a BACKLOG idea, not a test.
+			h.assertTrue(g[0].isAlive() && !z[0].isAlive(), "the guard wins the duel: guard alive " + g[0].isAlive() + " with " + g[0].getHealth() + " of " + g[0].getMaxHealth());
 			VillageTestSupport.done(h);
 			end(h);
 		});

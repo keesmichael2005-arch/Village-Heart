@@ -877,3 +877,6 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Duel bound: `guardBeatsOneZombie` asserts the guard wins with at least 25 % of max health (5 of 20) while it has only a wooden sword (reason in the test and TESTING); 50 % for better swords is a BACKLOG idea.
 - New scenario `defended_walled` (actions `wall_ring`, `lamps`, `night_spawn ... outside`), assertions identical to `defended`; `defended` untouched.
 - `defended` unseeded x5: 1 of 5 (run 3 passes: deaths 0, kills 18). Runs: deaths/kills 3/14, 6/20, 0/18, 6/17, 5/20. `defended_walled` unseeded x5: 0 of 5: deaths/kills 3/10, 1/1, 3/6, 3/6, 1/11. Full numbers in the report to the orchestrator.
+
+## 2026-11-11: M18 close-out
+- Owner accepted the guards as built (hard start). `guardBeatsOneZombie` now asserts only that the wooden-sword guard wins. `defended` 1/5 and `defended_walled` 0/5 are recorded in ROADMAP and plan section 8 as M26 balance targets, assertions unchanged. BACKLOG: sim death log, why walled loses villagers, why run 4 hired nobody.

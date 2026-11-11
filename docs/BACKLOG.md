@@ -359,3 +359,7 @@ Fix root causes; never loosen a bound without a written reason.
 - With 20+ guards per shift, guards need roles, not one shared patrol loop: **gate guards** (stand at a gate post), **wall/tower posts** (stand on a Watchtower or wall walk), **inside rovers**, and **patrol routes the player sets** (e.g. a Patrol Marker item placed in order, or a route on the Heart screen). Possibly squads with a leader.
 - v1 keeps M18 as built: every on-duty guard walks the shared loop (Heart, door points, Lamp Posts, Watchtowers) and the alarm gathers them.
 - Note (human): the start should be hard and the player should help defend; players often sleep through nights, so sieges/raids (M25) matter for the daytime threat.
+
+## From M18 close-out (for M26)
+- [ ] Sims: log every villager death (who, what killed it, inside or outside the wall, day and tick). Then find out why `defended_walled` loses 1 to 3 villagers a run while the zombies are placed outside the wall (zombies through the gate, workers outside, natural spawns, fire?). Also find out why `defended` run 4 hired no replacement guard from day 7 to day 10 (employed stayed 2, duty_samples 0).
+- [ ] Balance target (M26): `defended` and `defended_walled` pass their unchanged assertions (deaths.mobs <= 1, kills >= 15) once tools, armour, golems, walls and lights exist.

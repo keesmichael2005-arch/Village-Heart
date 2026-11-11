@@ -395,7 +395,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
   hit, worn armour per hit taken (vanilla's rule). A guard that a different hostile hurts switches to it. A guard below 50 % health with a healthy
   awake guard (at least 70 %) within 32 blocks falls back to within 5 blocks of it, eats and holds the line there, defending itself only against what
   reaches it, and fights again at 80 % (`work.guard.retreats`); with nobody to fall back to it fights on.
-  A duel of one level-1 guard (wooden sword, no armour) against one zombie is a test (`guardBeatsOneZombie`): the guard must win with at least 25 % of its max health left (a wooden sword takes 5 hits at vanilla damage; half the health stays the intent for better swords).
+  A duel of one level-1 guard (wooden sword, no armour) against one zombie is a test (`guardBeatsOneZombie`): the guard must win (no health bound: a wooden sword takes 5 hits at vanilla damage and the health left varies from 2 to 20; owner decision 2026-11-11).
 - **Gear**: worn on the villager with a guaranteed drop (a dead guard drops it intact; a converted guard's gear drops and the zombie villager
   wears nothing). A hired guard gets a wooden sword (a trainee keeps it; a fired guard hands it in with the rest). At the start of duty and every 1200
   ticks a guard plans one pick per slot, strictly better than what it wears, from the Barracks

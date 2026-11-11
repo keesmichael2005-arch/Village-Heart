@@ -170,6 +170,7 @@ from there instead of hard-coding them.
 - **L4**: Villagers tab row "Making a stone pickaxe" (screenshot looked at)
 
 ## M18: Guards: Barracks, shifts, sleep, training, combat
+- Owner decision 2026-11-11: M18 is accepted as built, as the intended HARD start. L3 `defended` is 1 of 5 unseeded (deaths/kills 3/14, 6/20, 0/18, 6/17, 5/20) and `defended_walled` 0 of 5 (3/10, 1/1, 3/6, 3/6, 1/11) with their assertions unchanged: both are balance targets for M26 (tools, armour, golems, walls, lights make the village stronger later), not M18 gates. The duel test asserts only that a wooden-sword guard wins. See docs/plans/M18.md section 8.
 - Status (builder, 2026-11-09): built on branch `m18` incl. fence-gate opening for hired workers and guards, redesigned in round 3 by the owner (wooden sword start, level 1 = 20 health, food rations and no free healing, nights only below 4 guards, then one day guard per four, seniors on nights, one training day, no night hire, wake on death; archers not built). Not ticked: the verifier ticks. See docs/plans/M18.md section 8 and docs/PROGRESS.md.
 - Note (M15): levels and XP exist. Use `Workers.addXp(villager, n)` for kills (`WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1)`) and `WorkXp.award(v, WorkUnit.SPAR, units)` for sparring, and register a `WorkerLevels.LevelListener` for the level perks (max health by level: see DESIGN 5.6, 20/30/40 as of M18 r3). The `Leveling`/`addXp` fallback in the M18 plan is not needed.
 - Note (M24): gate the set-guard-shift action with the existing `Permission.SET_GUARD_SHIFT` (Steward and up).
