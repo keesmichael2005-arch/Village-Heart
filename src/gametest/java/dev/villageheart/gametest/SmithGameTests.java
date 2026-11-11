@@ -683,8 +683,10 @@ public class SmithGameTests {
 		}).thenExecute(() -> {
 			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
 			log("second smith fired mid-craft");
-		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption")
-		).thenExecute(() -> {
+		}).thenWaitUntil(() -> {
+			String state = part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L));
+			h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption " + state);
+		}).thenExecute(() -> {
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both still lease an axe");
 			log("adopted craft delivered, two axes");
 			VillageTestSupport.done(h);
