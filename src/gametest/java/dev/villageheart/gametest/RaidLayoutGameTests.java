@@ -47,7 +47,7 @@ public class RaidLayoutGameTests {
 		BuildingTestSupport.begin(h).thenExecute(() -> {
 			StarterActions.resetStanding();
 			atTime(h, 1000);
-			LumberTestSupport.grass(h, 4, 4, 51, 39);
+			LumberTestSupport.grass(h, 4, 4, 47, 35);
 			site[0] = h.absolutePos(new BlockPos(4, -1, 4));
 			ServerLevel level = h.getLevel();
 			Host host = new Host() {
@@ -122,9 +122,9 @@ public class RaidLayoutGameTests {
 			}
 		}
 		for (List<Integer> list : lengths.values()) list.sort(Integer::compareTo);
-		h.assertTrue(List.of(2, 10, 10, 16, 16, 32, 32, 32).equals(lengths.get("wall_segment")), "wall lengths " + lengths);
+		h.assertTrue(List.of(8, 8, 12, 12, 30, 32, 32).equals(lengths.get("wall_segment")), "wall lengths " + lengths);
 		h.assertTrue(List.of(7, 7).equals(lengths.get("gate")), "gate lengths " + lengths);
-		h.assertValueEqual(486, cells, "defence cells");
+		h.assertValueEqual(438, cells, "defence cells");
 		h.assertValueEqual(0, unseen, "unseen cells");
 		long builders = village.workers().stream().filter(w -> w.jobId().equals("builder")).count();
 		long guards = village.workers().stream().filter(w -> w.jobId().equals("guard")).count();
