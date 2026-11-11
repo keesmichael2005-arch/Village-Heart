@@ -231,15 +231,9 @@ public final class BuildTestSupport {
 		return new Placement(new Pos(a.getX(), a.getY(), a.getZ()), r);
 	}
 
-	/**
-	 * The test-relative position of an absolute one. {@code GameTestHelper.relativePos} is not the inverse of {@code absolutePos} for an
-	 * unrotated test (it turns the offset by 180 degrees), so this subtracts the origin (our tests are never rotated; asserted).
-	 */
+	/** Test-relative block of a world {@link Pos}. See {@link VillageTestSupport#rel}. */
 	public static BlockPos rel(GameTestHelper h, Pos abs) {
-		BlockPos o = h.absolutePos(BlockPos.ZERO);
-		BlockPos r = new BlockPos(abs.x() - o.getX(), abs.y() - o.getY(), abs.z() - o.getZ());
-		if (!h.absolutePos(r).equals(new BlockPos(abs.x(), abs.y(), abs.z()))) throw new AssertionError("the test is rotated; positions cannot be mapped back");
-		return r;
+		return VillageTestSupport.rel(h, new BlockPos(abs.x(), abs.y(), abs.z()));
 	}
 
 	/** The absolute position of a test-relative one, as a core {@link Pos}. */
