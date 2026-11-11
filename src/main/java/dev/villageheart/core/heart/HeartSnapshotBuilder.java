@@ -128,7 +128,18 @@ public final class HeartSnapshotBuilder {
 
 		return new Overview(HeartLimits.cut(f.ownerName(), HeartLimits.MAX_NAME), f.tier(), f.tierReport().next(), goals(f.tierReport()),
 				f.population(), f.adults(), f.babies(), f.beds(), workers, f.workerSlots(),
-				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), f.wageBill(), shown, more);
+				FoodDays.tenths(nutrition, f.adults(), f.babies()), f.treasury(), f.wageBill(), shown, more, deathRows(f),
+				Math.max(0, f.deathsLogged()));
+	}
+
+	/** The newest death rows, re-cut, and never more than the screen shows. */
+	private static List<DeathRow> deathRows(VillageFacts f) {
+		List<DeathRow> out = new ArrayList<>();
+		for (DeathRow d : f.recentDeaths()) {
+			if (out.size() == HeartLimits.MAX_DEATH_ROWS) break;
+			out.add(new DeathRow(d.name(), d.jobId(), d.cause(), d.day(), d.duringRaid()));
+		}
+		return List.copyOf(out);
 	}
 
 	/** One line per goal of the next tier, in checklist order (M14). Two arguments at most. */

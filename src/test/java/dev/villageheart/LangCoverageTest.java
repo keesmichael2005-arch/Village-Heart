@@ -39,8 +39,14 @@ class LangCoverageTest {
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_building", "1 building needs attention"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_buildings", "%s buildings need attention"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
-				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace")};
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_coming", "Raid coming! Guards are called to duty"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_wave", "Raid! Wave %s, %s raiders left"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_between", "Raid: wave %s beaten, the next one is coming")};
 		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
+		for (String id : dev.villageheart.core.heart.DeathCauseText.NAMED) {
+			assertTrue(lang.containsKey("death.villageheart.cause." + id), id);
+		}
 		// the wage alerts (M12): the very lines WageAlerts builds
 		for (int strikers : new int[] {1, 3}) {
 			for (var a : dev.villageheart.core.economy.WageAlerts.of(0, 5, strikers)) assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());

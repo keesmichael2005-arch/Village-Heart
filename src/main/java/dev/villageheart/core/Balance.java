@@ -7,6 +7,9 @@ public final class Balance {
 	/** Blocks around the Heart that count as the village (DESIGN section 1, tunable). */
 	public static final int CLAIM_RADIUS = 80;
 
+	/** How far a vanilla raid reaches. Hired workers shelter only inside this of the raid centre (M25). */
+	public static final int RAID_REACH = 96;
+
 	/** Blank Markers crafted from 8 planks around an item frame (DESIGN section 3.1, tunable). */
 	public static final int BLANK_MARKER_YIELD = 1;
 

@@ -50,6 +50,12 @@ class HeartSnapshotBuilderTest {
 				extra, MEMBERS);
 	}
 
+	static VillageFacts withDeaths(VillageFacts base, List<DeathRow> rows, long logged) {
+		return new VillageFacts(base.ownerName(), base.tier(), base.treasury(), base.adults(), base.babies(), base.beds(),
+				base.workerSlots(), base.villagers(), base.jobs(), base.buildings(), base.stock(), base.extraAlerts(),
+				base.members(), base.builds(), base.wageBill(), base.strikers(), base.population(), base.tierReport(), rows, logged);
+	}
+
 	static VillageFacts basic() {
 		return facts(List.of(worker(1, "", 0), unemployed(2, "Ada")),
 				List.of(building("storage", RowStatus.VALID, 0, List.of()), building("house", RowStatus.VALID, 5, List.of())),
@@ -315,5 +321,39 @@ class HeartSnapshotBuilderTest {
 		assertEquals(33, HeartSnapshotBuilder.build(f, Rank.VISITOR).overview().foodDaysTenths());
 		VillageFacts nobody = facts(List.of(), List.of(), stock(StorageAlert.OK, 0), 0, 0, List.of());
 		assertEquals(-1, HeartSnapshotBuilder.build(nobody, Rank.VISITOR).overview().foodDaysTenths());
+	}
+
+	/** T-L1-8. A raid leads the five shown alerts, and the three newest deaths keep log order. */
+	@Test void raidIsFirstAndDeathsAreNewest() {
+		List<AlertLine> extra = new ArrayList<>();
+		for (int i = 0; i < 5; i++) extra.add(new AlertLine(AlertCode.NO_STORAGE, Severity.DANGER, new TextLine("k", "x" + i)));
+		extra.add(new AlertLine(AlertCode.RAID, Severity.DANGER,
+				new TextLine("gui.villageheart.heart.alert.raid_coming", "Raid coming! Guards are called to duty")));
+		List<DeathRow> rows = List.of(new DeathRow("Cara", "farmer", "minecraft:vindicator", 3, true),
+				new DeathRow("Bea", "guard", "zombified", 2, false), new DeathRow("Ada", "", "minecraft:fall", 1, false));
+		Overview o = HeartSnapshotBuilder.build(withDeaths(facts(List.of(), List.of(), stock(StorageAlert.OK, 0), 1, 0, extra), rows, 9),
+				Rank.OWNER).overview();
+		assertEquals(AlertCode.RAID, o.alerts().get(0).code());
+		assertEquals(5, o.alerts().size());
+		assertEquals(1, o.moreAlerts());
+		assertEquals(rows, o.recentDeaths());
+		assertEquals(9L, o.deathsLogged());
+
+		DeathRow cut = new DeathRow("N".repeat(40), "J".repeat(40), "C".repeat(80), 4, true);
+		Overview capped = HeartSnapshotBuilder.build(
+				withDeaths(facts(List.of(), List.of(), stock(StorageAlert.OK, 0), 1, 0, List.of()),
+						List.of(cut, rows.get(0), rows.get(1), rows.get(2)), 4),
+				Rank.OWNER).overview();
+		assertEquals(3, capped.recentDeaths().size());
+		assertEquals(32, capped.recentDeaths().get(0).name().length());
+		assertEquals(32, capped.recentDeaths().get(0).jobId().length());
+		assertEquals(64, capped.recentDeaths().get(0).cause().length());
+		assertEquals("Cara", capped.recentDeaths().get(1).name());
+		assertEquals("Bea", capped.recentDeaths().get(2).name());
+
+		Overview quiet = HeartSnapshotBuilder.build(basic(), Rank.OWNER).overview();
+		assertTrue(quiet.alerts().stream().noneMatch(a -> a.code() == AlertCode.RAID));
+		assertTrue(quiet.recentDeaths().isEmpty());
+		assertEquals(0L, quiet.deathsLogged());
 	}
 }

@@ -214,10 +214,15 @@ public final class HeartFacts {
 		dev.villageheart.core.tier.TierInputs tierInputs = dev.villageheart.tier.TierFacts.inputs(server, state, censusIds);
 		java.util.List<dev.villageheart.core.heart.AlertLine> extra = new java.util.ArrayList<>();
 		state.threats().raid().ifPresent(raid -> extra.add(dev.villageheart.core.raid.RaidAlerts.line(raid)));
+		java.util.List<dev.villageheart.core.heart.DeathRow> deaths = new java.util.ArrayList<>();
+		for (dev.villageheart.core.death.DeathEntry e : state.deaths().recent(dev.villageheart.core.heart.HeartLimits.MAX_DEATH_ROWS)) {
+			deaths.add(new dev.villageheart.core.heart.DeathRow(e.name(), e.jobId(), e.cause(), e.day(), e.duringRaid()));
+		}
 		return Optional.of(new VillageFacts(state.ownerName(), state.tier(), state.treasury(), adults, babies, beds, workerSlots,
 				villagers, jobs, buildings, stock(server, state, adults, babies), extra, members(server, state), builds(server),
 				dev.villageheart.core.economy.WageRules.bill(levels), strikers, tierInputs.population(),
-				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress())));
+				dev.villageheart.core.tier.TierGoals.evaluate(state.tier(), tierInputs, state.tierProgress()), deaths,
+				state.deaths().nextSeq()));
 	}
 
 	/** The builds in progress, oldest first (M20). */

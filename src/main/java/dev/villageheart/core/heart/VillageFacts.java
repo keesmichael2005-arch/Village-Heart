@@ -21,11 +21,22 @@ import java.util.UUID;
  * @param strikers     registered workers that are on strike (M12)
  * @param population   the Overview's population: loaded villagers in the claim plus registered workers that are not loaded there (M14)
  * @param tierReport   the next tier's goals with progress (M14)
+ * @param recentDeaths the newest death-log rows, newest first (M25)
+ * @param deathsLogged {@code DeathLog.nextSeq}: deaths assigned a sequence, including ones the list has dropped
  */
 public record VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 		List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
 		List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers,
-		int population, dev.villageheart.core.tier.TierReport tierReport) {
+		int population, dev.villageheart.core.tier.TierReport tierReport, List<DeathRow> recentDeaths, long deathsLogged) {
+	/** Without the death rows (the shape before M25). */
+	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
+			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
+			List<AlertLine> extraAlerts, List<MemberFact> members, List<BuildRow> builds, int wageBill, int strikers,
+			int population, dev.villageheart.core.tier.TierReport tierReport) {
+		this(ownerName, tier, treasury, adults, babies, beds, workerSlots, villagers, jobs, buildings, stock, extraAlerts, members,
+				builds, wageBill, strikers, population, tierReport, List.of(), 0L);
+	}
+
 	/** Without the population and the tier checklist (the shape before M14): population is adults plus babies, the report has no live inputs. */
 	public VillageFacts(String ownerName, Tier tier, int treasury, int adults, int babies, int beds, int workerSlots,
 			List<VillagerFact> villagers, List<JobFact> jobs, List<BuildingFact> buildings, StockFacts stock,
@@ -60,6 +71,8 @@ public record VillageFacts(String ownerName, Tier tier, int treasury, int adults
 		extraAlerts = List.copyOf(extraAlerts);
 		members = List.copyOf(members);
 		builds = List.copyOf(builds);
+		recentDeaths = List.copyOf(recentDeaths);
+		if (deathsLogged < 0) deathsLogged = 0;
 	}
 
 	/**

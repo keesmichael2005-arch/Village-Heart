@@ -6,6 +6,8 @@ import dev.villageheart.core.Balance;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.BuildingRow;
+import dev.villageheart.core.heart.DeathCauseText;
+import dev.villageheart.core.heart.DeathRow;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.HeartSnapshot;
 import dev.villageheart.core.heart.HeartTexts;
@@ -793,11 +795,15 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 
 		int ay = Math.max(y + 66, gy + 4);
 		int grp3 = groupCounter++;
-		// the treasury bar (M12) takes the bottom 24 px of the body: the alert list gives way to it
+		// the treasury bar (M12) takes the bottom 24 px of the body: the alert list gives way to it.
+		// recent deaths (M25) sit under the alerts and reserve their own rows, hidden when there are none.
+		int deathRows = Math.min(o.recentDeaths().size(), dev.villageheart.core.heart.HeartLimits.MAX_DEATH_ROWS);
+		int reserved = deathRows == 0 ? 0 : (1 + deathRows) * 12;
 		boolean bar = !actionWidgets.isEmpty();
-		int fit = Math.max(1, (bodyBottom() - (bar ? 24 : 0) - 2 - ay) / 12);
+		int fit = Math.max(1, (bodyBottom() - (bar ? 24 : 0) - 2 - ay - reserved) / 12);
 		if (o.alerts().isEmpty()) {
 			text(g, t("overview.no_alerts"), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
+			ay += 12;
 		} else {
 			int lines = o.alerts().size() + (o.moreAlerts() > 0 ? 1 : 0);
 			int shown = lines <= fit ? o.alerts().size() : Math.max(0, fit - 1);
@@ -807,9 +813,29 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 				ay += 12;
 			}
 			int hidden = o.moreAlerts() + (o.alerts().size() - shown);
-			if (hidden > 0) text(g, t("overview.more_alerts", hidden), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
+			if (hidden > 0) {
+				text(g, t("overview.more_alerts", hidden), lx, ay, width - 2 * MARGIN, GREY, AREA_BODY, grp3);
+				ay += 12;
+			}
+		}
+		if (deathRows > 0) {
+			text(g, t("overview.recent_deaths"), lx, ay, width - 2 * MARGIN, GOLD, AREA_BODY, grp3);
+			ay += 12;
+			for (int i = 0; i < deathRows; i++) {
+				text(g, deathLine(o.recentDeaths().get(i)), lx, ay, width - 2 * MARGIN, WHITE, AREA_BODY, grp3);
+				ay += 12;
+			}
 		}
 		for (AbstractWidget w : actionWidgets) note(AREA_BODY, grp3, w.getX(), w.getY(), w.getWidth(), w.getHeight());
+	}
+
+	/** "%s (%s): %s, day %s" and, during a raid, " (raid)". A job with no id reads as Villager. */
+	private static Component deathLine(DeathRow d) {
+		Component job = d.jobId().isEmpty() ? t("overview.death_no_job")
+				: Component.translatable("entity.villageheart.villager." + d.jobId());
+		Component cause = DeathCauseText.translationKey(d.cause()).map(Component::translatable).orElseGet(() -> Component.literal(d.cause()));
+		Component line = t("overview.death_row", d.name(), job, cause, d.day());
+		return d.duringRaid() ? t("overview.death_raid", line) : line;
 	}
 
 	static String days(int tenths) { return (tenths / 10) + "." + (tenths % 10); }

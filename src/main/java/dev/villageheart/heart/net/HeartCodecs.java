@@ -8,6 +8,7 @@ import dev.villageheart.core.heart.BuildRow;
 import dev.villageheart.core.heart.AlertCode;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildingRow;
+import dev.villageheart.core.heart.DeathRow;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.GoalLine;
 import dev.villageheart.core.heart.HeartLimits;
@@ -120,11 +121,23 @@ public final class HeartCodecs {
 	private static final StreamCodec<ByteBuf, List<GoalLine>> GOALS = GOAL_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_GOALS));
 	private static final StreamCodec<ByteBuf, List<AlertLine>> ALERTS = ALERT_LINE.apply(ByteBufCodecs.list(HeartLimits.MAX_ALERTS));
 	private static final StreamCodec<ByteBuf, Optional<Tier>> NEXT_TIER = ByteBufCodecs.optional(TIER);
+	private static final StreamCodec<ByteBuf, Long> LONG = ByteBufCodecs.VAR_LONG;
+	private static final StreamCodec<ByteBuf, DeathRow> DEATH_ROW = codec(
+			buf -> new DeathRow(NAME.decode(buf), NAME.decode(buf), ByteBufCodecs.stringUtf8(HeartLimits.MAX_ID).decode(buf),
+					INT.decode(buf), BOOL.decode(buf)),
+			(buf, d) -> {
+				NAME.encode(buf, d.name());
+				NAME.encode(buf, d.jobId());
+				ByteBufCodecs.stringUtf8(HeartLimits.MAX_ID).encode(buf, d.cause());
+				INT.encode(buf, d.day());
+				BOOL.encode(buf, d.duringRaid());
+			});
+	private static final StreamCodec<ByteBuf, List<DeathRow>> DEATHS = DEATH_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_DEATH_ROWS));
 
 	public static final StreamCodec<ByteBuf, Overview> OVERVIEW = codec(
 			buf -> new Overview(NAME.decode(buf), TIER.decode(buf), NEXT_TIER.decode(buf), GOALS.decode(buf), INT.decode(buf),
 					INT.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf), INT.decode(buf),
-					INT.decode(buf), INT.decode(buf), ALERTS.decode(buf), INT.decode(buf)),
+					INT.decode(buf), INT.decode(buf), ALERTS.decode(buf), INT.decode(buf), DEATHS.decode(buf), LONG.decode(buf)),
 			(buf, o) -> {
 				NAME.encode(buf, o.ownerName());
 				TIER.encode(buf, o.tier());
@@ -141,6 +154,8 @@ public final class HeartCodecs {
 				INT.encode(buf, o.wageBill());
 				ALERTS.encode(buf, o.alerts());
 				INT.encode(buf, o.moreAlerts());
+				DEATHS.encode(buf, o.recentDeaths());
+				LONG.encode(buf, o.deathsLogged());
 			});
 
 	private static final StreamCodec<ByteBuf, NeedsFlags> NEEDS = codec(

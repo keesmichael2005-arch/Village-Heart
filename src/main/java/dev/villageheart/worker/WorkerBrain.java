@@ -104,7 +104,7 @@ public final class WorkerBrain {
 
 	/** Hired non-guards go indoors while the village is under attack, except a sleeper who already has a home and a worker who is away. */
 	private static boolean shouldShelter(Villager v, ServerLevel level) {
-		return RaidActivity.shelter(VillageThreats.underAttack(level.getServer()), DaySchedule.phaseAt(level.getDayTime()),
+		return RaidActivity.shelter(VillageThreats.nearRaid(level, v.blockPosition()), DaySchedule.phaseAt(level.getDayTime()),
 				AwayTrips.isAway(v), Housing.home(v).isPresent());
 	}
 
