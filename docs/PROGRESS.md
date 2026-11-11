@@ -933,3 +933,19 @@ Seed stays 1 (world seed). Villager AI is unseeded, so the five runs are replica
 Doubt: guards still walk out of the ring to fight, and a farmer did too (run 2), so the wall is not keeping hired workers inside. Roa's suffocation on day 9 was inside the ring and is not explained by the night spawn. Neither is a harness throw, and the assertions were left as they are.
 
 `origin/dev` was already an ancestor of this branch (no new commits to merge). Full `scripts/verify.sh` exit 0 at `cebed9d1` (2026-11-11T09:14:24Z): Layer 1 build and unit tests, Layer 2 all 388 required GameTests, the L3 script self-test and the log gates, Layer 4 client GameTests on xvfb (lost-wakeup fix installed, 0 rescues; model log clean; 2-player session clean), perf within caps (worst 2835 us, 16x16x8 2322 us, spill 550, snapshot 270, deposit 217, village ticker mean about 8.3e-4 ms). The 41 client screenshots are the existing Layer 4 set (`0000_village_heart_placed` through `0040_mp_ranks`). This task did not change a screen, so they are not new scenario art. Blockers: none.
+
+GitHub refused the pull request (`must be a collaborator`). The branch is on `origin/m26-scenarios`. Title and description that were refused:
+
+**TASK 8: defence scenarios and M26 groundwork**
+
+| task | branch | state | last verify |
+|---|---|---|---|
+| TASK 8 | `m26-scenarios` | done | `scripts/verify.sh` exit 0 at `cebed9d1` (2026-11-11T09:14:24Z). The results note is `c4661611`. |
+
+`defended_walled` runs `move_in` after the lamps. Villagers inside the claim get a bed inside the existing ring, a floor bell is placed inside if the old one is outside, and beds, job sites and bells that are not strictly inside the ring are removed. The wall was not enlarged. Scripted zombies with `outside` stand in a Chebyshev band 3–8 blocks outside the rectangle, including the south gate. `radius` stays in the action and is not used for that placement. Assertions are unchanged.
+
+`defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege`. The harness wraps the level's spawner list and skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched.
+
+`docs/M26-bounds.md` is the tunable audit (plan 3.9.4). No balance number changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are left for TASK 11.
+
+Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (kills 9/6/8/2/3, mob deaths 2/3/1/0/0, those mob deaths outside the ring). `defended_nosiege` 2 of 5 (kills 21/17/10/23/21, mob deaths 2/0/0/0/3). No run exited 2. Full `scripts/verify.sh` exit 0 at `cebed9d1`: 388 GameTests, Layer 4 clean, perf within caps (worst 2835 us). `origin/dev` was already an ancestor. No balance value, assertion, or `docs/LOOP_STATE.md` edit.
