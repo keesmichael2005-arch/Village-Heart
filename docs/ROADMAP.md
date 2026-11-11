@@ -251,3 +251,5 @@ from there instead of hard-coding them.
   - Harness (M24): `MultiplayerClientTests` = 1 real networked client + 1 server-side player (the Owner), `scripts/check-mp-log.sh`; a second real client would need a protocol bot. Whether that satisfies this item is decided at release.
 - [ ] L4 screenshot set refreshed and reviewed: every marker state, all Heart tabs, a Builder mid-build, the defence set
 - [ ] README updated (recipes, how to start, the building table). DESIGN.md matches what shipped
+
+Art pass (`art-pass`, not a milestone): custom textures and GUI sprites replace the placeholder heart, the "Mod ID" icon, and the vanilla log and iron textures the chopping block and marker edges borrowed. The list is `docs/ART.md`.

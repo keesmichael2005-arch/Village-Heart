@@ -166,13 +166,9 @@ public final class ExtraArt {
 					if (Math.abs(x - 64) <= half) bell[y][x] = true;
 				}
 				if (y >= 96 && y <= 108 && Math.abs(x - 64) <= 48) bell[y][x] = true;
-				double hx = (x - 64) / 22.0;
-				double hy = (y - 74) / 22.0;
-				hy = hy * 1.05 + 0.15;
-				double a = hx * hx + hy * hy - 1;
-				if (a * a * a - hx * hx * hy * hy * hy <= 0 && y > 52 && y < 100) heart[y][x] = true;
 			}
 		}
+		stampHeart(heart);
 		for (int y = 0; y < n; y++) {
 			for (int x = 0; x < n; x++) {
 				if (outline(yoke, x, y) || outline(bell, x, y)) img.setRGB(x, y, ArtKit.INK);
@@ -212,6 +208,22 @@ public final class ExtraArt {
 			if ((x - 64) * (x - 64) + (y - 106) * (y - 106) < 22) img.setRGB(x, y, ArtKit.GOLD_OL);
 		}
 		return img;
+	}
+
+	/** A vanilla-style heart, six pixels tall, scaled so it sits on the bell face. */
+	private static void stampHeart(boolean[][] heart) {
+		String[] rows = {".##..##.", "########", "########", ".######.", "..####..", "...##..."};
+		int scale = 6;
+		int ox = 64 - rows[0].length() * scale / 2;
+		int oy = 58;
+		for (int y = 0; y < rows.length; y++) {
+			for (int x = 0; x < rows[y].length(); x++) {
+				if (rows[y].charAt(x) != '#') continue;
+				for (int dy = 0; dy < scale; dy++) {
+					for (int dx = 0; dx < scale; dx++) heart[oy + y * scale + dy][ox + x * scale + dx] = true;
+				}
+			}
+		}
 	}
 
 	private static boolean outline(boolean[][] shape, int x, int y) {

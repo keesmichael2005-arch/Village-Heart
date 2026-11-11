@@ -27,13 +27,13 @@ public final class GuiArt {
 				"...Rk...",
 				"........");
 		put8(m, "heart/tab_villagers",
-				".oooooo.",
-				".occcco.",
-				".ociico.",
-				".occcco.",
-				".ocooCo.",
-				".occcco.",
-				".oooooo.",
+				"..oooo..",
+				".oiiiio.",
+				".oi..io.",
+				".oiiiio.",
+				"..oooo..",
+				".oCCCCo.",
+				"oCCCCCCo",
 				"........");
 		put8(m, "heart/tab_buildings",
 				"...RR...",
@@ -46,7 +46,7 @@ public final class GuiArt {
 				"........");
 		put8(m, "heart/tab_stockpile",
 				".oGGGGo.",
-				".oGGGGGo",
+				".oGGGGo.",
 				"oooooooo",
 				".oCCCCo.",
 				".oCaCCo.",
@@ -82,13 +82,13 @@ public final class GuiArt {
 				"..oooo..",
 				"........");
 		put8(m, "heart/tier_town",
-				"R.RR.RR.",
-				"RRRRRRRR",
-				"oCCoCCoC",
-				".oC.C.C.",
-				".oC.C.C.",
-				"..o...o.",
-				"........",
+				"...gg...",
+				"..gGGg..",
+				"...MM...",
+				"..tTTt..",
+				"..tTTt..",
+				"..tTTt..",
+				".tttttt.",
 				"........");
 		// ranks
 		put8(m, "heart/rank_owner",
@@ -101,13 +101,13 @@ public final class GuiArt {
 				"........",
 				"........");
 		put8(m, "heart/rank_steward",
-				"..oooo..",
-				"..oggGo.",
 				"..oGGo..",
-				"...oo...",
+				".oGGGGo.",
+				"..oGGo..",
 				"...GG...",
 				"...GG...",
-				"..GGGG..",
+				"...G.G..",
+				"...GG...",
 				"........");
 		put8(m, "heart/rank_resident",
 				".oooooo.",
@@ -232,7 +232,7 @@ public final class GuiArt {
 		put8(m, "heart/building_house", new String[] {
 				"...RR...", "..RRRR..", ".RRRRRR.", "oCCCCCCo", ".oCRRCo.", ".oCRRCo.", "..oooo..", "........"});
 		put8(m, "heart/building_storage", new String[] {
-				".oGGGGo.", ".oGGGGGo", "oooooooo", ".oCCCCo.", ".oCaCCo.", ".oCCCCo.", ".oooooo.", "........"});
+				".oGGGGo.", ".oGGGGo.", "oooooooo", ".oCCCCo.", ".oCaCCo.", ".oCCCCo.", ".oooooo.", "........"});
 		put8(m, "heart/building_farmhouse", wheat());
 		put8(m, "heart/building_lumber_camp", axe());
 		put8(m, "heart/building_kitchen", pot());
@@ -261,6 +261,24 @@ public final class GuiArt {
 		m.put(ROOT + "heart/need_pay.png", pay());
 		// not referenced on this branch: activity badges for m19 and m25, ready to blit when those lines merge
 		put8(m, "heart/activity_smithing", anvil());
+		put8(m, "heart/activity_needs_material",
+				".iiiiii.",
+				".iIIIIi.",
+				".iIIIIi.",
+				".iiiiii.",
+				"...RR...",
+				"..RRRR..",
+				"...RR...",
+				"........");
+		put8(m, "heart/activity_needs_villagers",
+				".oo..oo.",
+				"oii..iio",
+				"o..oo..o",
+				".oo..oo.",
+				"........",
+				".RRRRRR.",
+				"........",
+				"........");
 		put8(m, "heart/activity_golem", new String[] {
 				".oooooo.", ".oiiiio.", ".oiRRio.", ".oiiiio.", ".oiiiio.", ".oooooo.", ".oIIIIo.", ".oooooo."});
 		put8(m, "heart/activity_shelter", new String[] {
@@ -290,7 +308,7 @@ public final class GuiArt {
 	}
 
 	private static String[] pot() {
-		return new String[] {"w..w..w.", ".w.w.w..", ".oooooo.", ".oRRRRo.", ".oRRRRo.", ".oooooo.", "..o..o..", "........"};
+		return new String[] {"..w..w..", ".ww..ww.", ".oooooo.", ".oIIIIo.", ".oIIIIo.", ".oooooo.", "..o..o..", "........"};
 	}
 
 	private static String[] hammer() {
