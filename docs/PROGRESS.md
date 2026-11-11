@@ -906,3 +906,17 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Tests: L1 `OutsideBandTest`, `DefendedScenarioTest`, `ScenarioParserTest`. L2 `moveInPutsVillagersInsideTheRing`, `nightSpawnOutsideStandsOutsideTheRing` (the old 12..20 disc cannot reach the band), `villageSiegeSuppressedInsideClaim` (inside: armed siege untouched; outside in daylight: the real tick closes it). `scripts/verify.sh --fast` exit 0 at c7f109bc plus this work (388 GameTests, perf within caps). No screenshots: nothing visual changed.
 - The five unseeded 10-day runs of `defended_walled` and of `defended_nosiege` are not recorded yet. Assertions stay as they are even if the kills bar still fails.
 - Next: those ten runs, then a merge of `origin/dev` and a full `scripts/verify.sh`. Blockers: none.
+
+## 2026-11-11: TASK 8 runs in progress (four of ten finished)
+Seed stays 1. Villager AI is unseeded, so these are replicates. Assertions were not changed. Exit 1 is an assertion FAIL, not a harness error. No run has thrown.
+
+| run | status | deaths.mobs | guard kills | failed assertions | who died |
+|---|---|---|---|---|---|
+| defended_walled 1 | FAIL | 2 | 9 | deaths.mobs ≤ 1, kills ≥ 15 | day 2 guard Nera, scripted zombie, outside 637 70 858; day 7 guard Peith, zombified by a scripted zombie, outside 672 69 847 |
+| defended_walled 2 | FAIL | 3 | 6 | employed == 4 on day 1 (employed 3, population 6), deaths.mobs ≤ 1, kills ≥ 15 | day 1 guard Gilda, zombified, scripted, outside 645 71 880 (south of the ring); day 1 farmer Morow, zombified, converted, outside 647 69 847 (one block north of the site); day 2 guard Bramine, scripted, outside 646 66 843 |
+| defended_walled 3 | FAIL | 1 | 8 | kills ≥ 15 | day 3 guard Peey, zombified, scripted, outside 685 66 855 |
+| defended_nosiege 1 | FAIL | 2 | 21 | deaths.mobs ≤ 1 (kills bar passed) | day 7 guard Bramton, scripted, 655 64 839 (no ring); day 9 unhired Dunley, zombified, scripted, 602 65 843 (old village, west of the Heart) |
+
+`move_in` logged the same shape on the walled runs that have finished: 8 villagers, 8 beds (6 already, 2 added), 13 outside poi blocks removed, bell at 660, 70, 864. Natural spawns inside the claim stayed 0. One scripted hostile was first seen inside the ring (walled 1, day 5). The other walled deaths are guards, or in run 2 a farmer, who were already outside. The nosiege death of unhired Dunley is the old-village kill the wall scenario was built to stop. `defended_nosiege` logged the siege gate at the bell and then at the Heart.
+
+Still running at 08:53 UTC: defended_walled 4 and 5. Not started yet: defended_nosiege 2–5. Reports live under `/tmp/sim-task8/reports/` until this note is finished.
