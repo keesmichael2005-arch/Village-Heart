@@ -923,3 +923,54 @@ The unloaded-chunk half of T-L2-5k is not covered: the 32×32 yard stays loaded,
 `scripts/verify.sh` at `79826b6` (2026-11-11T11:19:08Z), exit 0. Layer 1 and layer 2 each "All 418 required tests passed". GameTest-ran gate, L3 script self-test, model-log gate and 2-player log gate passed. Layer 4 green: lost wakeups rescued 2, one leaked in-flight close cleared, world-load timeout fix installed, no villageheart model warnings, 2-player session clean. Screenshots 0000 through 0041, including `0037_smithy_golem.png`. Perf worst-batch median 2623 us; 16x16x8 2292 us; stockpile spill 1415 us; snapshot 278 us; full-storage deposit 243 us; village ticker idle tick mean 9.345E-4 ms.
 
 `0037_smithy_golem.png`: open oak Smithy at noon, two iron golems in the doorway (the new one pale, the one at 20 health dark-cracked and vine-covered), smithy marker on the back wall between their heads. The blacksmith and the lit furnace are behind the golems. The client checks for the lit furnace, the blacksmith profession, two golems and HIGH crackiness ran before the south wall was opened.
+
+## 2026-11-11: TASK 8 (m26-scenarios) defence scenarios and the M26 bounds audit
+- `defended_walled` now runs `move_in` after the lamps: villagers inside the claim (hired and unhired) are given a bed inside the existing ring, a floor bell is placed inside if the old one is outside, and beds, job sites and bells that are not strictly inside the ring are removed so nobody walks back out to the old village. The wall was not enlarged (a ring around the dark old village would be ~100 blocks and mobs would spawn inside it). Scripted zombies with `outside` stand in a Chebyshev band 3–8 blocks outside the rectangle, including the south gate. `radius` is still in the action and is not used for that placement. Assertions are unchanged.
+- `defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege` (only `SPAWN_MONSTERS`, `RAIDS` and the like, and turning monsters off would kill natural spawns). The harness replaces the level's immutable spawner list with a wrapper that skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched (M25 owns siege and raid code).
+- `docs/M26-bounds.md` is the tunable audit the plan's 3.9.4 asks for: every DESIGN *(tunable)* and the plan's 3.8.2 values, current numbers (the plan's tool-speed and haul table is stale: stone is ×2.0, `BASE_TICKS_PER_LOG` is 80, `MINER_HAUL_UNITS` is 4000), the tests that follow or pin each one, and a safe range. No value was changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are TASK 11, which is told to read this file.
+- Tests: L1 `OutsideBandTest`, `DefendedScenarioTest`, `ScenarioParserTest`. L2 `moveInPutsVillagersInsideTheRing`, `nightSpawnOutsideStandsOutsideTheRing` (the old 12..20 disc cannot reach the band), `villageSiegeSuppressedInsideClaim` (inside: armed siege untouched; outside in daylight: the real tick closes it). `scripts/verify.sh --fast` exit 0 at c7f109bc plus this work (388 GameTests, perf within caps). No screenshots: nothing visual changed.
+- Five unseeded 10-day runs of each scenario are in the next section. Assertions were not changed.
+- `origin/dev` was already contained in this branch, and the full verify is recorded below. Blockers: none.
+
+## 2026-11-11: TASK 8 unseeded runs (five `defended_walled`, five `defended_nosiege`)
+Seed stays 1 (world seed). Villager AI is unseeded, so the five runs are replicates. Every run finished 10 of 10 days. Exit 0 is PASS, exit 1 is an assertion FAIL. No run exited 2 and none threw in `move_in` or the siege gate. `move_in` logged the same line on every walled run: 8 villagers inside, 8 beds (6 already, 2 added), 13 outside poi blocks removed, bell 660, 70, 864. Every nosiege run logged the siege off inside 80 blocks of the bell at 639, 66, 821 and then moved the centre to the Heart at 641, 64, 821. Natural hostile spawns inside the claim were 0 on every run. Screenshots: none (the harness does not take any).
+
+`defended_walled` is 0 of 5. Guard kills were 9, 6, 8, 2, 3, all under the unchanged bar of 15. Mob deaths were 2, 3, 1, 0, 0, so three runs meet `deaths.mobs <= 1` and two do not. Before this task the same scenario was also 0 of 5, with kills 1/0/0/0/0 and every death an unhired villager in the old village. The deaths below are guards (and one farmer) who were already outside the ring. Nobody unhired died in the old village.
+
+| run | status | mob deaths | kills | what failed | deaths |
+|---|---|---|---|---|---|
+| 1 | FAIL | 2 | 9 | mob deaths, kills | day 2 guard Nera, scripted zombie, both outside, 637 70 858; day 7 guard Peith, zombified by a scripted zombie, both outside, 672 69 847. One scripted hostile was first seen inside the ring on day 5 |
+| 2 | FAIL | 3 | 6 | employed == 4 on day 1 (3 employed, population 6), mob deaths, kills | day 1 guard Gilda, zombified, scripted, outside, 645 71 880 (south of the ring); day 1 farmer Morow, zombified by a converted zombie, outside, 647 69 847 (one block north of the site); day 2 guard Bramine, scripted, outside, 646 66 843. The four hires did happen; two of them were dead by the day-1 snapshot |
+| 3 | FAIL | 1 | 8 | kills | day 3 guard Peey, zombified, scripted, outside, 685 66 855 |
+| 4 | FAIL | 0 | 2 | kills | none. Population stayed 8 |
+| 5 | FAIL | 0 | 3 | kills | day 9 unhired Roa, `minecraft:in_wall`, inside the ring at 662 70 871. Not a mob death, so the deaths bar passed. Two scripted hostiles were first seen inside the ring on day 5 |
+
+`defended_nosiege` is 2 of 5. Kills were 21, 17, 10, 23, 21. Mob deaths were 2, 0, 0, 0, 3. The prep's `defended` (siege still on) was 1 of 5, and 32 of 49 deaths in those earlier runs were siege nights. Turning the siege off inside the claim is the comparison M26 asked for; the other assertions are the same file as `defended`.
+
+| run | status | mob deaths | kills | what failed | deaths |
+|---|---|---|---|---|---|
+| 1 | FAIL | 2 | 21 | mob deaths | day 7 guard Bramton, scripted, 655 64 839 (near the Heart); day 9 unhired Dunley, zombified, scripted, 602 65 843 (the old village, west of the Heart). This is the kill the wall scenario was built to stop |
+| 2 | PASS | 0 | 17 | — | none. Population stayed 8 |
+| 3 | FAIL | 0 | 10 | kills | none. Population ended at 10 |
+| 4 | PASS | 0 | 23 | — | none. Population stayed 8 |
+| 5 | FAIL | 3 | 21 | employed == 4 on day 1 (employed 2), mob deaths, duty samples on day 1 (48 < 100) | day 1 guard Gilley, zombified, scripted, 653 64 833; day 1 guard Morric, zombified, converted, 649 64 837; day 2 lumberjack Corey, zombified, converted, 650 70 852. Both guards died on night 1, which is why the duty-sample bar failed that day |
+
+Doubt: guards still walk out of the ring to fight, and a farmer did too (run 2), so the wall is not keeping hired workers inside. Roa's suffocation on day 9 was inside the ring and is not explained by the night spawn. Neither is a harness throw, and the assertions were left as they are.
+
+`origin/dev` was already an ancestor of this branch (no new commits to merge). Full `scripts/verify.sh` exit 0 at `cebed9d1` (2026-11-11T09:14:24Z): Layer 1 build and unit tests, Layer 2 all 388 required GameTests, the L3 script self-test and the log gates, Layer 4 client GameTests on xvfb (lost-wakeup fix installed, 0 rescues; model log clean; 2-player session clean), perf within caps (worst 2835 us, 16x16x8 2322 us, spill 550, snapshot 270, deposit 217, village ticker mean about 8.3e-4 ms). The 41 client screenshots are the existing Layer 4 set (`0000_village_heart_placed` through `0040_mp_ranks`). This task did not change a screen, so they are not new scenario art. Blockers: none.
+
+GitHub refused the pull request (`must be a collaborator`). The branch is on `origin/m26-scenarios`. Title and description that were refused:
+
+**TASK 8: defence scenarios and M26 groundwork**
+
+| task | branch | state | last verify |
+|---|---|---|---|
+| TASK 8 | `m26-scenarios` | done | `scripts/verify.sh` exit 0 at `cebed9d1` (2026-11-11T09:14:24Z). The results note is `c4661611`. |
+
+`defended_walled` runs `move_in` after the lamps. Villagers inside the claim get a bed inside the existing ring, a floor bell is placed inside if the old one is outside, and beds, job sites and bells that are not strictly inside the ring are removed. The wall was not enlarged. Scripted zombies with `outside` stand in a Chebyshev band 3–8 blocks outside the rectangle, including the south gate. `radius` stays in the action and is not used for that placement. Assertions are unchanged.
+
+`defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege`. The harness wraps the level's spawner list and skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched.
+
+`docs/M26-bounds.md` is the tunable audit (plan 3.9.4). No balance number changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are left for TASK 11.
+
+Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (kills 9/6/8/2/3, mob deaths 2/3/1/0/0, those mob deaths outside the ring). `defended_nosiege` 2 of 5 (kills 21/17/10/23/21, mob deaths 2/0/0/0/3). No run exited 2. Full `scripts/verify.sh` exit 0 at `cebed9d1`: 388 GameTests, Layer 4 clean, perf within caps (worst 2835 us). `origin/dev` was already an ancestor. No balance value, assertion, or `docs/LOOP_STATE.md` edit.
