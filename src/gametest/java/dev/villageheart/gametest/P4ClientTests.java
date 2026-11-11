@@ -72,6 +72,7 @@ final class P4ClientTests {
 				context.waitTicks(1);
 			}
 			if (!"VALID".equals(storage)) throw new AssertionError("storage did not go green: " + storage + " at " + storageMarker);
+			srv.runCommand("forceload add -32 0 -4 20");
 			storageChest = new BlockPos(-18, y, 8);
 			String stocked = srv.computeOnServer(server -> {
 				stockFor(server.overworld(), storageChest, Blueprints.byId("kitchen").orElseThrow(), 64);
@@ -113,6 +114,7 @@ final class P4ClientTests {
 
 	/** A solid pad. Teleport first so the chunk loads, then stand clear of the footprint. */
 	private static void pad(ClientGameTestContext context, TestServerContext srv, int x, int y, int z) {
+		srv.runCommand("forceload add " + (x - 16) + " " + (z - 16) + " " + (x + 16) + " " + (z + 16));
 		srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
 		context.waitTicks(30);
 		srv.computeOnServer(server -> {
