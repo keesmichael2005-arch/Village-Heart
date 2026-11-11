@@ -23,17 +23,22 @@ class GuardChaseTest {
 		assertNull(GuardChase.gateWaypoint(681, 70, 855, 637, 70, 858, gates, false), "already at that gate");
 		assertNull(GuardChase.gateWaypoint(660, 70, 864, 637, 70, 858, gates, true), "a path that reaches needs no gate");
 		assertNull(GuardChase.gateWaypoint(660, 70, 864, 637, 70, 858, new int[0], false));
-		assertNull(GuardChase.gateWaypoint(660, 70, 864, 660, 70, 980, gates, false),
-				"a raider at the spawn ring is walked toward, not sent back to a gate");
 	}
 
 	@Test
-	void aRaiderOnALedgeThePathCannotReachIsPulledDown() {
-		assertTrue(GuardChase.pullDown(true, false, 20, 14));
-		assertFalse(GuardChase.pullDown(true, true, 20, 14), "a path that reaches needs no pull");
-		assertFalse(GuardChase.pullDown(false, false, 20, 14), "an ordinary fight does not pull");
-		assertFalse(GuardChase.pullDown(true, false, 40, 14), "a far raider is walked toward");
-		assertFalse(GuardChase.pullDown(true, false, 20, 2), "a step up is not a ledge");
+	void aPathThatStopsAtTheWallUsesTheGateAndALongStepDoesNot() {
+		assertTrue(GuardChase.useGate(false, 70, 65), "five blocks into the wall is not progress");
+		assertFalse(GuardChase.useGate(false, 100, 50), "a partial path that closes 50 blocks is worth walking");
+		assertFalse(GuardChase.useGate(true, 70, 0), "a path that reaches needs no gate");
+	}
+
+	@Test
+	void aRaiderThePathCannotReachAndThatIsAlreadyCloseIsPulledIn() {
+		assertTrue(GuardChase.pullClose(true, false, 20));
+		assertTrue(GuardChase.pullClose(true, false, 18), "the hole under the Heart is close enough");
+		assertFalse(GuardChase.pullClose(true, true, 20), "a path that reaches needs no pull");
+		assertFalse(GuardChase.pullClose(false, false, 20), "an ordinary fight does not pull");
+		assertFalse(GuardChase.pullClose(true, false, 40), "a far raider is walked toward");
 	}
 
 	@Test

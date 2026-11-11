@@ -310,13 +310,16 @@ public final class GuardCombat {
 			if (f.chase && (path == null || !path.canReach())) {
 				double dx = target.getX() - guard.getX(), dz = target.getZ() - guard.getZ();
 				double horiz = Math.sqrt(dx * dx + dz * dz);
-				boolean pulled = path != null && GuardChase.pullDown(true, false, horiz, target.getY() - guard.getY());
-				if (pulled) {
+				double guardDist = Math.sqrt(guard.blockPosition().distSqr(dest));
+				double endDist = path == null || path.getNodeCount() == 0 ? guardDist
+						: Math.sqrt(path.getEndNode().asBlockPos().distSqr(dest));
+				boolean reaches = path != null && path.canReach();
+				if (GuardChase.pullClose(true, reaches, horiz)) {
 					double h = Math.max(horiz, 0.1);
 					target.teleportTo(guard.getX() + dx / h * 2, guard.getY(), guard.getZ() + dz / h * 2);
 					target.fallDistance = 0;
 					path = nav.createPath(target.blockPosition(), 1, pathLen);
-				} else {
+				} else if (GuardChase.useGate(reaches, guardDist, endDist)) {
 					int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
 							dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
 					if (via != null) {

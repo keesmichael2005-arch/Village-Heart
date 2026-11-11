@@ -26,9 +26,6 @@ public final class GuardChase {
 	 */
 	public static int[] gateWaypoint(int gx, int gy, int gz, int rx, int ry, int rz, int[] gates, boolean directReaches) {
 		if (directReaches || gates == null || gates.length < 3) return null;
-		// a raider still out at the spawn ring is walked toward; the gate is only for a wall that is in the way
-		long sdx = (long) rx - gx, sdy = (long) ry - gy, sdz = (long) rz - gz;
-		if (sdx * sdx + sdy * sdy + sdz * sdz > 48L * 48L) return null;
 		int best = -1;
 		long bestD = Long.MAX_VALUE;
 		for (int i = 0; i + 2 < gates.length; i += 3) {
@@ -46,10 +43,19 @@ public final class GuardChase {
 	}
 
 	/**
-	 * A raider the path cannot reach, close in the horizontal and at least 6 blocks up, is standing on a ledge.
-	 * Combat pulls that raider down to the guard. A far raider is walked toward instead.
+	 * Follow the partial path when it closes at least 12 blocks. A path that stops at a wall does not, and the guard
+	 * leaves through a gate instead. A path that reaches needs no gate.
 	 */
-	public static boolean pullDown(boolean chase, boolean pathReaches, double horizontal, double dy) {
-		return chase && !pathReaches && horizontal <= 32 && dy >= 6;
+	public static boolean useGate(boolean pathReaches, double guardToTarget, double pathEndToTarget) {
+		if (pathReaches) return false;
+		return guardToTarget - pathEndToTarget < 12;
+	}
+
+	/**
+	 * A raider the path cannot reach and that is already within 32 blocks is pulled to the guard: a ledge, or a hole
+	 * under the Heart. A farther raider is walked toward.
+	 */
+	public static boolean pullClose(boolean chase, boolean pathReaches, double horizontal) {
+		return chase && !pathReaches && horizontal <= 32;
 	}
 }
