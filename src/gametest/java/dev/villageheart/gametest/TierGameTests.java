@@ -56,6 +56,7 @@ public class TierGameTests {
 		PayResult[] pay = new PayResult[1];
 		var rita = new BuildingTestSupport.RecordingPlayer[1];
 		GameTestSequence seq = layout(h, Layout.FULL).thenExecute(() -> {
+			pinClockEarlyInDay(h);
 			NeedsOverride.dinnerEnabled = true;
 			seedProgress(h, new TierProgress(2, today(h), 0));
 			rita[0] = RankTestSupport.chatty(h, "rita", Rank.RESIDENT);
@@ -81,7 +82,7 @@ public class TierGameTests {
 		seq = toDinner(h, seq, day);
 		seq = seq.thenExecute(() -> {
 			FoodStats.Day d = FoodStats.snapshot();
-			h.assertValueEqual(1L, d.dinners(), "one dinner");
+			h.assertValueEqual(1L, d.dinners(), "one dinner (day time " + h.getLevel().getDayTime() + ", forced dinner of day " + day[0] + ")");
 			h.assertValueEqual(6L, d.diners(), "six diners");
 			h.assertValueEqual(6L, d.fed(), "all six fed");
 			h.assertValueEqual(20L - d.eatenItems(), NeedsTestSupport.count(h, Items.BREAD), "the bread they ate is gone");
@@ -158,6 +159,7 @@ public class TierGameTests {
 		PayResult[] pay = new PayResult[1];
 		int[] resets = new int[1];
 		GameTestSequence seq = layout(h, Layout.FULL.withoutFood()).thenExecute(() -> {
+			pinClockEarlyInDay(h);
 			NeedsOverride.dinnerEnabled = true;
 			seedProgress(h, new TierProgress(2, today(h), 0));
 			FoodStats.reset();

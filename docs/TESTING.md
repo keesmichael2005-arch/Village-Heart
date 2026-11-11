@@ -417,3 +417,26 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **The older tool tests**: a tool worker with no or a worn tool in a world whose Storage holds wood now stops to craft. Tests whose subject is the old "Needs <tool>" row (`minerNeedsPickaxe`, `noAxeNoLogs`, `hunterNeedsWeapon`, and the L4 `villagersNeedsAxe`) call `SelfCraftSwitch.off()` after the scene (`VillageTestSupport.reset` turns it back on); the row for "no tool and nothing to make one from" is the new `TOOL_NO_MATERIALS` ("Needs axe (no wood)"), shown by `noWoodSaysSo` and the L4 shot.
 - **Restart path**: `SelfCraftRuntime.resetForTests()` + `GearOrders.rebuild(server)` is what a server start does (`SelfCraftRuntime.get` rebuilds the committed orders from the saved records).
 - **Layer 4** `SelfCraftClientTests.villagersTabMakingTool` (`villagers_tab_making_tool.png`): a miner with a saved stone-pickaxe craft ("Making a stone pickaxe") and a lumberjack with an empty Storage ("Needs axe (no wood)").
+
+## Flake root causes (2026-11-09) and the rules they gave
+- **Layer 4: the world-load timeout.** Fabric's `ClientGameTestImpl.waitForWorldLoad` (every `worldBuilder().create()`) polls "a level exists and the loading screen is gone" for
+  1200 client ticks (`TICKS_PER_MINUTE`), then throws `Timeout loading world`. The signal is the right one, the bound is a tick count for wall-clock work (the integrated server
+  prepares its spawn area on worker threads; at load 10+ it sat at "Preparing spawn area: 16%" for 2 min). No API or system property changes it, so the gametest-only client mixin
+  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. A world that never loads still fails. It logs
+  `WORLD_LOAD_TIMEOUT_FIX installed`; `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
+- **Tick budgets and async work.** A GameTest server ticks as fast as it can, so 2200 ticks are a few seconds. Anything that completes on another thread (chunk generation and
+  promotion to entity-ticking, lighting) can take far more ticks than that under load. `forcedChunkGrowsWithoutPlayer` waited 454 ticks for a forced far chunk to start ticking
+  in a full run (7-15 alone) and timed out at 2200 under load. It now generates the chunk and its ring synchronously (`getChunk(..., FULL, true)`) before forcing it: ticking starts in 1 tick.
+- **Own the world's random state.** Random ticks (default 3) grow replanted saplings: `ironAxeOutFellsStoneSideBySide` counted felled logs only inside the original groves, a regrown tree
+  put logs outside them and the axes wore for logs the sampler never saw ("axe wear 115 but 114 logs felled"; reproduced at random_tick_speed 300). Its environment now sets `random_tick_speed` 0
+  and the test asserts it. A test that counts world changes must not leave world generation or growth running.
+- **Own the clock before switching on a clock-driven system.** The day time is whatever earlier tests left and it advances. `villageGoalsTierUpAtDawn` enabled dinner a few dozen ticks before 11000
+  and the village served a natural dinner on top of the forced one ("Expected one dinner to be 1: was 2"; reproduced by starting at 10970). `TierTestSupport.pinClockEarlyInDay` sets
+  1000 and counts today's dinner as served; use it before `NeedsOverride.dinnerEnabled = true`. Not a double count in the game: the second dinner was a real, different one.
+- **A walk that "arrives" must arrive where the work starts.** `WalkTo` returned ARRIVED up to 0.1 block beyond the reach it was given, while every job works only within the reach itself,
+  so a worker 1.5-1.6 blocks from its job block neither walked nor worked, for the rest of the day (a push from the other miner puts it there): `craftPausesOvernightAndSurvivesReload`
+  "progress after the evening: 4003.0". Root fix in `WalkTo`: ARRIVED only when `distance <= reach` (the tolerance is gone; the `-0.2` workaround in `SelfCraftJob` is gone too).
+  Tests: `craftWorksFromJustOutsideTheReach` (1.55 from the job block; progress 4003.0 without the fix) and `WorkerGameTests.walkToNeverArrivesBeyondItsReach` (reach + 0.05 for the reaches 1.5, 2.0, 3.0:
+  not arrived, then walks inside). Every caller (miner, hunter, lumberjack, farmer, builder, cook, deposit trip, self-craft) walks through `WalkTo`, so that test covers them by construction; the full L2 suite is green
+  with the strict rule. Item pickups pass 0.8, which a villager never reaches (it stops at about 0.85): they take by their own `COLLECT_TAKE` distance and ignore ARRIVED, so they are unaffected.
+- A failing `craftPausesOvernight...` prints a 25-tick trace of the worker (position, decision, progress) in its message; a failing side-by-side run lists the ticks where logs and wear disagree.

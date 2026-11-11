@@ -219,7 +219,13 @@ public class SimActionGameTests {
 			// noon, and time frozen: saplings only grow in daylight
 			level.setDayTime(6000);
 			level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, false, level.getServer());
-			level.getChunk(cx, cz);
+			// Generate the forced chunk and its ring synchronously first. A forced chunk is promoted to entity-ticking only once the
+			// chunks around it are generated, and that runs on the chunk system's worker threads: a GameTest server ticks as fast as it can,
+			// so under load the promotion took hundreds of ticks (454 in a full run, more at load 10: "timed out at tick 2202 of 2200").
+			// Blocking here moves that wait out of the tick budget; what is left is the promotion itself (a handful of ticks).
+			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+				level.getChunkSource().getChunk(cx + dx, cz + dz, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, true);
+			}
 			level.setChunkForced(cx, cz, true);
 			level.setChunkForced(sapling.getX() >> 4, sapling.getZ() >> 4, true);
 		}).thenWaitUntil(() -> {
@@ -242,7 +248,8 @@ public class SimActionGameTests {
 			boolean saplingGrew = level.getBlockState(sapling.above()).is(BlockTags.OVERWORLD_NATURAL_LOGS)
 					|| (level.getBlockState(sapling.above()).is(Blocks.OAK_SAPLING) && level.getBlockState(sapling.above()).getValue(net.minecraft.world.level.block.SaplingBlock.STAGE) == 1);
 			h.assertTrue(carrotGrew && saplingGrew, "carrot grew " + carrotGrew + ", sapling grew " + saplingGrew
-					+ " (carrot " + level.getBlockState(farm.above()) + ", sapling " + level.getBlockState(sapling.above()) + ")");
+					+ " (carrot " + level.getBlockState(farm.above()) + ", sapling " + level.getBlockState(sapling.above()) + ")"
+					+ " light carrot " + level.getRawBrightness(farm.above(), 0) + " sapling " + level.getRawBrightness(sapling.above(), 0));
 		}).thenExecute(() -> {
 			level.setChunkForced(cx, cz, false);
 			level.setChunkForced(sapling.getX() >> 4, sapling.getZ() >> 4, false);

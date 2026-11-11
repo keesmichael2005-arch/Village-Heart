@@ -46,6 +46,9 @@ if [ "${1:-}" != "--fast" ]; then
   step "Layer 4: NetworkSynchronizer disconnect-leak fix installed" disconnect-leak-fix.log \
     grep -m1 "DISCONNECT_LEAK_FIX installed" reports/clienttest.log
   echo "    world closes with a leaked in-flight count cleared in layer 4: $(grep -c "DISCONNECT_LEAK_CLEARED" reports/clienttest.log)" >> "$SUMMARY"
+  # The third gametest mixin lengthens the world-load bound of Fabric's client gametest API (1200 ticks, too short at load 10+; docs/TESTING.md).
+  step "Layer 4: world-load timeout fix installed" world-load-fix.log \
+    grep -m1 "WORLD_LOAD_TIMEOUT_FIX installed" reports/clienttest.log
   step "Client log has no villageheart model warnings" model-log-gate.log scripts/check-model-log.sh reports/clienttest.log
   # The 2-player dedicated-server session (MultiplayerClientTests): no server error and no disconnect between its markers.
   step "2-player session: no server errors or disconnects" mp-log-gate.log scripts/check-mp-log.sh reports/clienttest.log
