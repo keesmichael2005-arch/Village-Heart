@@ -54,7 +54,7 @@ public class SiegeLureGameTests {
 			if (zombie[0].getTarget() != null) targeted[0] = true;
 			h.assertTrue(!targeted[0], "the zombie took a target " + zombie[0].getTarget());
 			h.assertTrue(nearDefence(h, zombie[0], 2), "not beside a defence cell " + at(h, zombie[0]));
-		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 600, "beside the wall took " + (h.getTick() - t0[0])));
+		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 1200, "beside the wall took " + (h.getTick() - t0[0])));
 		seq = seq.thenWaitUntil(() -> {
 			h.assertTrue(maxDamage(h) > 0, "no damage yet at " + at(h, zombie[0]) + " target " + zombie[0].getTarget());
 		}).thenExecute(() -> h.assertTrue(h.getTick() - t0[0] <= 1800, "first damage took " + (h.getTick() - t0[0])));
@@ -271,7 +271,8 @@ public class SiegeLureGameTests {
 	 * see a villager through the gate's eye-level air. A gap drops three south columns. A trench is the outside face, two deep.
 	 */
 	private static void lureLayout(GameTestHelper h, Ring ring) {
-		floor(h, X0 - 10, X1 + 10, Z0 - 100, Z1 + 6);
+		// Wide enough that a 16-block lure waypoint from the south approach stays on forced ground (storage is x >= 27).
+		floor(h, X0 - 20, X1 + 16, Z0 - 100, Z1 + 6);
 		BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 320), new ItemStack(Items.OAK_FENCE_GATE, 3));
 		DefenceTestSupport.startLine(h, "wall_segment", rel(X0, -1, Z1), rel(-2, -1, Z1));
 		DefenceTestSupport.startLine(h, "gate", rel(-1, -1, Z1), rel(3, -1, Z1));

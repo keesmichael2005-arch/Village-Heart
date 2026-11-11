@@ -91,7 +91,9 @@ public final class VillageLureGoal extends Goal {
 		}
 		Path path = mob.getNavigation().createPath(waypoint.x, waypoint.y, waypoint.z, 1);
 		if (path == null || path.getNodeCount() == 0) {
-			pauseUntil = mob.tickCount + 100;
+			// A missing sample is not a house in the way. Try another waypoint shortly. The 100 tick wait is for a
+			// partial path that ends off the walls.
+			pauseUntil = mob.tickCount + 20;
 			mob.getNavigation().stop();
 			return true;
 		}
@@ -106,8 +108,16 @@ public final class VillageLureGoal extends Goal {
 	private Vec3 waypoint() {
 		Vec3 at = Vec3.atCenterOf(goal);
 		if (mob.position().distanceTo(at) <= 24) return at;
-		if (!(mob instanceof PathfinderMob pathfinder)) return at;
-		return DefaultRandomPos.getPosTowards(pathfinder, 16, 7, at, Math.PI / 2);
+		if (mob instanceof PathfinderMob pathfinder) {
+			Vec3 sampled = DefaultRandomPos.getPosTowards(pathfinder, 16, 7, at, Math.PI / 2);
+			if (sampled != null) return sampled;
+		}
+		Vec3 from = mob.position();
+		Vec3 delta = at.subtract(from);
+		double len = delta.length();
+		if (len < 1.0E-3) return at;
+		double step = Math.min(10.0, len);
+		return from.add(delta.scale(step / len));
 	}
 
 	private boolean away(MinecraftServer server) {
