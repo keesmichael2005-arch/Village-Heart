@@ -961,3 +961,10 @@ GitHub refused the pull request (`must be a collaborator`). The branch is on `or
 `docs/M26-bounds.md` is the tunable audit (plan 3.9.4). No balance number changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are left for TASK 11.
 
 Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (kills 9/6/8/2/3, mob deaths 2/3/1/0/0, those mob deaths outside the ring). `defended_nosiege` 2 of 5 (kills 21/17/10/23/21, mob deaths 2/0/0/0/3). No run exited 2. Full `scripts/verify.sh` exit 0 at `cebed9d1`: 388 GameTests, Layer 4 clean, perf within caps (worst 2835 us). `origin/dev` was already an ancestor. No balance value, assertion, or `docs/LOOP_STATE.md` edit.
+
+**backlog-small round 1 fixes**
+
+- Hunter: only an away or walking neighbour counts as "arrived" near the marker. A bystander earns one give-up (`YIELD`); a repeat within `HUNTER_RETRY_TICKS` is `UNREACHABLE`. Tests: `HuntApproachTest`, `wallWithABystanderIsStillUnreachable` (NoAI neighbour, walled ground, reported at tick 430), `jamInTheGapIsResolvedWhenTheNeighbourMovesOn` (out at +350). The old `jamIsNotAnUnreachableGround` locked in the hidden unreachable ground and was replaced. The gap test probably also passes on the old code: it is a regression guard. `twoHuntersOneGround` bound stays 450.
+- Plurals: `core/Plural` used by every emerald count and "merchant"; `_one` lang keys removed. `PluralTest`, `WageAlertsTest`, `MarketTextsTest`, `LangCoverageTest` updated.
+- Sim tier source: GameTest `simCollectorReadsTheVillageTier` reads the real `SimMetricsCollector.collect`.
+- `verify.sh --fast` exit 0 (391 GameTests). Next: full verify, then `release-prep`. Open: "Paid %s striking workers" still has no singular.

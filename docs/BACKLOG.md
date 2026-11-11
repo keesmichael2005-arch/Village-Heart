@@ -331,6 +331,7 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Stockpile tab draws "for sale" counts in green even with no merchant ("No merchant: nothing is sold" above green counts); grey them when `merchants == 0`
 - [x] "Market: sold 1 emeralds today": singular/plural
   - **Fixed (backlog-small).** `MarketTexts` picks "1 emerald" and "N emeralds" for the Stockpile line and for `/villageheart market status`. `MarketTextsTest` is red on the old "1 emeralds" string.
+  - **Fixed everywhere (backlog-small r1).** `core/Plural` builds "1 emerald" / "N emeralds" / "1 merchant" and every emerald count (Overview treasury and wages, the treasury-short alert, treasury chat and commands, market) passes it as one `%s`. `PluralTest` is red on any lang text with a fixed noun after `%s`. Not covered: "Paid %s striking workers".
 - [ ] The "Up to N for sale above the reserve" tooltip is never captured in a screenshot
 - [ ] Load flake candidate (not M22): `sim_action_game_tests_forced_chunk_grows_without_player` timed out waiting for the forced chunk to be entity-ticking (tick 2202 of 2200, load ~8 on 4 cores); passed alone and in the next full run
 
