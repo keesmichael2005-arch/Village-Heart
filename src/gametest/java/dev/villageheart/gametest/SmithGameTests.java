@@ -1497,6 +1497,7 @@ public class SmithGameTests {
 				+ smiths[1].getInventory().countItem(Items.IRON_AXE)
 				+ " heldIron " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
 				+ smiths[1].getInventory().countItem(Items.IRON_INGOT)
+				+ " saved " + VillageClaims.current(h.getLevel().getServer()).map(v -> v.smithCrafts().size()).orElse(-1)
 				+ " units " + craftUnits(h, smiths[0]) + "/" + craftUnits(h, smiths[1])
 				+ " trip " + Workers.tripRunning(smiths[0])
 				+ " pos " + smiths[0].blockPosition().toShortString()

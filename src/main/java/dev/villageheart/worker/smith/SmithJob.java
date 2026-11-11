@@ -80,6 +80,8 @@ public final class SmithJob {
 	private static final int VALID_INTERVAL = 100;
 	private static final double REACH = 2.0;
 	private static final double CLOSEST = 1.0;
+	/** A coworker on the last cell stops a delivery about this far from the chest. The tool is still handed over. */
+	private static final double DELIVER_NEAR = 3.0;
 	private static final String JOB = "blacksmith";
 	private static long lastSurplus = Long.MIN_VALUE;
 
@@ -907,7 +909,11 @@ public final class SmithJob {
 			st.needsPlan = true;
 			return;
 		}
-		if (!at(level, v, st, chest, now)) return;
+		if (!at(level, v, st, chest, now)) {
+			// WalkTo gives up when a lumberjack stands on the cell in front of the chest. The path ends one block
+			// short, which is still close enough to put the tool in.
+			if (st.walk.active() || WalkTo.distance(v, chest) > DELIVER_NEAR) return;
+		}
 		ItemStack stack = takeStack(v, itemId);
 		if (stack.isEmpty()) return;
 		if (!insert(level, chest, stack)) {
