@@ -124,8 +124,6 @@ final class SmithClientTests {
 				return e == null ? -1 : e.getId();
 			});
 			if (smithEid < 0) throw new AssertionError("the smith is gone");
-			// The south wall comes out after the build, the way the guard shot opens its wall: a one-block door hides the furnace.
-			srv.runCommand("fill -3 " + y + " 11 2 " + (y + 2) + " 11 minecraft:air");
 			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
 			int fov = context.computeOnClient(mc -> mc.options.fov().get());
 			context.runOnClient(mc -> { mc.options.hideGui = true; mc.options.fov().set(70); });
@@ -160,6 +158,9 @@ final class SmithClientTests {
 				});
 				throw new AssertionError("smithy scene: " + problem + "; server profession " + serverJob);
 			}
+			// The south wall comes out after the checks. A missing wall fires the smith, so the shot is taken before that tick.
+			srv.runCommand("fill -3 " + y + " 11 2 " + (y + 2) + " 11 minecraft:air");
+			context.waitTicks(4);
 			context.takeScreenshot("smithy_golem");
 			context.runOnClient(mc -> { mc.options.hideGui = hideGui; mc.options.fov().set(fov); });
 			srv.runCommand("gamerule advance_time true");
