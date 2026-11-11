@@ -97,6 +97,17 @@ public final class TierTestSupport {
 
 	public static long today(GameTestHelper h) { return WageTestSupport.dayIndex(h); }
 
+	/**
+	 * The test owns the clock before it switches dinner on: the world's day time is whatever earlier tests left (and time advances), so a
+	 * test that started a few dozen ticks before 11000 saw the village serve a natural dinner of today on top of the one it forces
+	 * ("Expected one dinner to be 1: was 2"). Early in the day, today's dinner counted as served: the only dinner is {@link #toDinner}'s.
+	 */
+	public static void pinClockEarlyInDay(GameTestHelper h) {
+		long today = today(h);
+		h.getLevel().setDayTime(today * 24000L + 1000);
+		VillageClaims.data(h.getLevel().getServer()).setLastDinnerDay(today);
+	}
+
 	public static void seedProgress(GameTestHelper h, TierProgress p) {
 		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withTierProgress(p));
 	}

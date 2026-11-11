@@ -5,6 +5,7 @@
 	"client": [
 		"NetworkSynchronizerLostWakeupFix",
 		"DisconnectInFlightLeakFix",
+		"WorldLoadTimeoutFix",
 		"NetworkSynchronizerAccessor"
 	],
 	"injectors": {
