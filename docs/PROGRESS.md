@@ -929,3 +929,4 @@ Planning only, on `blueprints-2`. `docs/plans/P4-blueprints-2.md` audits the bui
   - `0067_quill_saved.png`: the saved small house rebuilt. The camera faces a blank plank wall, so the door is not in frame. The copy did finish.
   - `0068_ghost_half_kitchen.png` and `0069_ghost_preview.png`: red and green dust for cells not placed yet. The preview is red because that second site is outside the claim (the action bar says 176 blocks from the Heart, max 80). The kitchen blueprint is in hand.
 - Doubt: the job-building outsides are one shell, so a reviewer cannot see the smoker versus the grindstone without going inside. The room test covers the furniture. Blocker: the design level, above.
+- `scripts/verify.sh` exit 0 at `0cd7c7d3` (391 GameTests, client screenshots through `0069_ghost_preview.png`, perf within caps).
