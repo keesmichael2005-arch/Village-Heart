@@ -905,3 +905,26 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Findings (`docs/reviews/m26-prep-findings.md`, 20 runs of 10 days): `defended_walled` loses the UNHIRED villagers of the old village, which the ring around the new site does not enclose and where the scripted zombies spawn (all 9 deaths after the fix; 0 hostiles inside the ring in 5 runs; guard kills 0-1). The `defended` run with no re-hires had been wiped out (`no_free_villager`), by vanilla's `VillageSiege` (20 zombies at day time 18000): 32 of 49 deaths in 10 runs came from siege nights; the one siege-free run passed every assertion.
 - No balance number or scenario assertion changed. Results after the fix: `defended_walled` 0/5 (deaths.mobs 2/2/1/2/2, kills 1/0/0/0/0), `defended` 1/5 (deaths 6/0/5/7/4, kills 12/21/24/5/21).
 - Next (orchestrator/M25/M26): decide vanilla sieges inside a claim (M25), move `defended_walled`'s threat to the ring, guard re-hire priority in the harness, guard strength vs three fresh zombies (proposals in the findings). Blockers: none.
+
+## 2026-11-11: TASK 1 finish M23 (Population growth)
+- Merged origin/dev (`c7f109b`, handoff docs) into m23. Product change is in `Courtship`: a `CANT_REACH_WALK_TARGET_SINCE` stamp counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A stroll left a stamp already older than 200 ticks, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). A real cannot-reach of the partner walk still lapses, and the 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C on their spots until the dawn has read them (A and C share a house and a few stroll ticks were swapping the closest pair), then lets them walk.
+- New L2 `staleCannotReachDoesNotEndCourtship`: pair held 7 blocks apart, stamp 5000 ticks old on a block stroll target, brains frozen with NoAI once idle. Red before the fix (`LAPSED/CANNOT_MEET`, approach 0, tick 45) and red again with the `tracks()` guard removed. Restored, then green. NoAI is the test setup: in the full suite a live brain puts the walk target back on the partner before courtship reads a planted stamp, which is a real cannot-reach of that walk. `one_birth_per_day` still uses live brains and passed both layers. No M23 test calls `relativePos`. `outside_pair_cannot_take_claim_bed` logged `NO_BED` plus the dropped bed in both worlds.
+- `scripts/verify.sh --fast` at `e3a2c32` exit 0 (402 GameTests in both layers, perf within caps). Full `scripts/verify.sh` at `4c21c0d` exit 0. Summary:
+
+```
+# Verify run 2026-11-11T09:04:54Z @ 4c21c0d
+- Layer 1: build + unit tests — pass
+- Layer 2: in-world GameTests — All 402 required tests passed
+- GameTest-ran gate, script self-test, model-log gate, 2-player session log gate — pass
+- Layer 4: client GameTests + screenshots — pass
+- lost wakeups rescued in layer 4: 1
+- world closes with a leaked in-flight count cleared in layer 4: 0
+- world-load timeout fix installed — pass
+- client log has no villageheart model warnings — pass
+- 2-player session: no server errors or disconnects — pass
+- perf cap worst case 2583 us; 16x16x8 2176 us; spill 938 us; snapshot 269 us; deposit 205 us; idle tick 7.8e-4 ms
+```
+
+- Screenshots: M23 has no visual change. Layer 4 wrote the existing 41 shots, `0000_village_heart_placed.png` through `0040_mp_ranks.png`. No new shot to describe.
+- `scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions, 10/10 days). Growth log: day 1 licensed and a baby, day 2 licensed and a baby, days 3–5 `NO_FREE_BED`, day 6 licensed and a baby, days 7–10 `NO_FREE_BED`. No `TOO_FAR`, no lapse. Population 8 → 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie; the starter assertions do not mention that death.
+- ROADMAP checkbox left unticked for the orchestrator. Doubts: the new test freezes the brains; the live-brain morning is covered by `one_birth_per_day`, which passed the full suite. Next: one more `--fast` at this docs head, then the PR into `dev`.
