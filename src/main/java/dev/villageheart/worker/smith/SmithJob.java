@@ -179,7 +179,7 @@ public final class SmithJob {
 		SmithRuntime.State st = SmithRuntime.get(level.getServer()).state(v.getUUID());
 		boolean home = DaySchedule.phaseAt(level.getDayTime()) != DayPhase.WORK;
 		String id = SmithCatalog.id(item);
-		return SmithKeep.keep(id, count(v, id), st.keep, st.returning, home, st.overnight.contains(id));
+		return SmithKeep.keep(id, countAll(v, id), st.keep, st.returning, home, st.overnight.contains(id));
 	}
 
 	/** Anything that is not a kept job item is handed in at once. */
@@ -1421,6 +1421,19 @@ public final class SmithJob {
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack s = inv.getItem(i);
 			if (s.is(item) && s.getComponentsPatch().isEmpty()) n += s.getCount();
+		}
+		return n;
+	}
+
+	/** Like {@link #count}, but a damaged piece still counts. The deposit trip uses this so a sword on its way to the anvil is not handed in. */
+	private static int countAll(Villager v, String id) {
+		if (id == null || id.isEmpty()) return 0;
+		int n = 0;
+		var item = SmithCatalog.item(id);
+		var inv = v.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack s = inv.getItem(i);
+			if (s.is(item)) n += s.getCount();
 		}
 		return n;
 	}

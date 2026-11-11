@@ -731,6 +731,7 @@ public class SmithGameTests {
 			spot[0] = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
 			BlockPos origin = h.absolutePos(BlockPos.ZERO);
 			BlockPos at = spot[0].offset(16, 0, 0);
+			glassPen(h.getLevel(), at, true);
 			IronGolem g = h.spawn(EntityType.IRON_GOLEM, new BlockPos(at.getX() - origin.getX(), at.getY() - origin.getY(), at.getZ() - origin.getZ()));
 			g.setPlayerCreated(true);
 			g.setHealth(40f);
@@ -740,11 +741,17 @@ public class SmithGameTests {
 			double dist = golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
 			h.assertTrue(dist > 6, "the golem came within 6 of the spot: " + dist);
 			h.assertTrue(golem[0].getHealth() <= 40.01f, "health moved without iron: " + golem[0].getHealth());
-		}).thenExecute(() -> putStore(h, Items.IRON_INGOT, 3)
-		).thenWaitUntil(() -> {
-			if (golem[0].getHealth() <= 40.01f && golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0])) <= 1.5)
-				sawWaiting[0] = true;
-			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
+		}).thenExecute(() -> {
+			glassPen(h.getLevel(), spot[0].offset(16, 0, 0), false);
+			putStore(h, Items.IRON_INGOT, 3);
+			log("iron delivered, golem " + golem[0].blockPosition() + " dist "
+					+ golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0])));
+		}).thenWaitUntil(() -> {
+			double dist = golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
+			if (golem[0].getHealth() <= 40.01f && dist <= 1.5) sawWaiting[0] = true;
+			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth() + " dist " + dist
+					+ " at " + golem[0].blockPosition() + " iron " + count(h, Items.IRON_INGOT)
+					+ " day " + Math.floorMod(h.getLevel().getDayTime(), 24000L) + " target " + golem[0].getTarget());
 		}).thenExecute(() -> {
 			long units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("GOLEM_REPAIR")).count();
 			h.assertValueEqual(3L, units, "three repair ingots");
@@ -781,6 +788,18 @@ public class SmithGameTests {
 			log("barracks sword repaired to 14");
 			VillageTestSupport.done(h);
 		});
+	}
+
+	/** A 5×5 glass pen, three high, so a golem cannot wander into the wait spot. {@code open} removes it. */
+	private static void glassPen(ServerLevel level, BlockPos centre, boolean close) {
+		for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+			if (Math.abs(dx) != 2 && Math.abs(dz) != 2) continue;
+			for (int dy = 0; dy < 3; dy++) {
+				BlockPos p = centre.offset(dx, dy, dz);
+				if (close) level.setBlock(p, Blocks.GLASS.defaultBlockState(), 3);
+				else if (level.getBlockState(p).is(Blocks.GLASS)) level.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
+			}
+		}
 	}
 
 	private static HeartLocation smithyAt(GameTestHelper h) {

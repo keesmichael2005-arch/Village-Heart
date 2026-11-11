@@ -75,7 +75,7 @@ public final class SmithTestSupport {
 	 * would otherwise find nothing to stand on.
 	 */
 	public static void pave(GameTestHelper h) {
-		for (int x = 0; x <= 31; x++) for (int z = 0; z <= 3; z++) {
+		for (int x = 0; x <= 31; x++) for (int z = 0; z <= 31; z++) {
 			BlockPos p = new BlockPos(x, 0, z);
 			if (h.getBlockState(p).isAir()) h.setBlock(p, Blocks.STONE);
 		}
