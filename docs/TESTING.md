@@ -141,8 +141,16 @@ simulation distance is what keeps a village's surroundings ticking. The sim stan
 
 Concurrency: every run kills only what it started (its process group, plus any process carrying its private `SIM_RUN_TOKEN`), uses its own server port, and locks `$SIM_DIR/.lock`. Different worktrees (each with its own `build/run/sim`) can simulate at the same time; a second run in the same directory is refused (exit 2). On a crash, `simulate.sh` rewrites the report itself: `status: ERROR`, `clean_shutdown: false`, `crash_reports: [...]`.
 
-`days = 0` is a smoke run (boot, locate, claim, baseline, stop; ~35 s). `--reload-at D` stops the server cleanly after day D (tick order: record
+`days = 0` is a smoke run (boot, locate, claim, baseline, stop; ~35 s). A scenario may still list actions on later days; they are not run.
+`--reload-at D` stops the server cleanly after day D (tick order: record
 the day, run due actions, write, halt), restarts on the same world and finishes the run; `reloads` in the report is `[D]`.
+
+## Raid and siege GameTests (M25)
+GameTests share one overworld clock. A test that sets the time of day stays inside the current day (`atTime` in `ZombieSiegeGameTests` and `RaidLayoutGameTests`). `setDayTime` across a 24000 boundary looks like missed dawns to `WageGameTests.frozenWhileHeartUnloaded`. A filter that matches nothing exits 0 with zero tests; `scripts/check-gametest-log.sh` fails that. Pass the filter with `JAVA_TOOL_OPTIONS=-Dfabric-api.gametest.filter=...`, not `./gradlew -D...`.
+
+`RaidLayoutGameTests.raidLayoutValid` (`villageheart-gametest:raid_layout`, structure `raid_yard`) builds `sim/scenarios/raid.json` without the site finder or the raid: grass, the prefabs, the `build` action's walls and gates, the hires. It asserts 438 defence cells, the wall lengths, four guard slots, and a threat score in 400..800.
+
+Layer 3: `scripts/simulate.sh raid` (6 days, seed 1, a 44 by 32 ring, one scripted raid on day 3). `scripts/simulate.sh raid 0` builds day 0 and stops. `scripts/simulate.sh raid_reload --reload-at 3` is the same town with the raid at day 3 tick 20000, and it asserts the raid is active on day 3 and starts once. `scripts/simulate.sh siege` (4 days, 8 zombies on day 2) is reported, not a roadmap gate. `siege.started`, `siege.villager_deaths` and `lure.max_lured` reset when the day is recorded, so those assertions are scoped `from day 1`. The new `build` action takes a blueprint and a site-relative `from`/`to` and advances the line to the end. Prefab words `blast_furnace`, `anvil` and `builders_table` place the Smithy and the Builder's Hut.
 Env: `SIM_TIMEOUT_SECONDS`, `SIM_STALL_SECONDS` (report must change at least this often, default 600), `SIM_START_SECONDS` (default 180), `SIM_GRADLE_CMD`.
 `scripts/test-simulate.sh` (run by `verify.sh`) checks this exit-code contract against a stub server (`scripts/testdata/fake-sim.sh`).
 

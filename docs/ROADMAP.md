@@ -232,7 +232,8 @@ from there instead of hard-coding them.
   `DEPOSIT_TREASURY`/`WITHDRAW_TREASURY` rows (verified: docs/reviews/M12-r1.md and M12-r2.md). Everything else above passed review (docs/reviews/M24-r1.md).
 
 ## M25: Raids and alerts
-- Track A (`m25`): steps 1–8 are in (through the raid harness: 3.7 metrics, `raid` / `golems` / `top_up_villagers` / `worker_level`, and the summary's Raid section). Full `scripts/verify.sh` at `af4a1dd` exited 0 (399 GameTests, Layer 4 passed). Not ticked; steps 9–19 are later tracks.
+- Track A (`m25`): steps 1–8 are in (through the raid harness: 3.7 metrics, `raid` / `golems` / `top_up_villagers` / `worker_level`, and the summary's Raid section). Full `scripts/verify.sh` at `af4a1dd` exited 0 (399 GameTests, Layer 4 passed).
+- `m25-full` (TASK 9) merges track A and track B and continues with steps 16–19. Step 16 is random raids, the young-village cap and the one victory payment. Step 17 is the mod siege, the `siege` and `threats` actions, the 3.17 metrics and the cracked-wall client shot. Step 18 is `sim/scenarios/raid.json`, the `build` action and T-L2-12. Step 19 is the three `raid` runs, `raid_reload`, `siege`, and the doc pass. The milestone stays open until those runs pass.
 - Track B step 9 on `m25-walls` (not this milestone done): walls and gates are recorded (no patrol point, cap 128), threat state saves, gamerules `siege_damage` / `random_raids` / `sieges` default on. Raid tracking, shelter and the death log are track A.
 - Track B step 12 on `m25-walls`: a ravager or vindicator in the tracked raid breaks the wall or gate in front of it and walks through. Fast verify 394/394 at `1ae6cfe`.
 - Track B step 13 on `m25-walls`: at night a zombie with no target is lured to a walled village and breaks a way in. A skeleton, a spider, daytime, a trench, an open gap and a short wall stay as the plan says. Fast verify 402/402 at `0d2cc08`. Creepers are step 14.

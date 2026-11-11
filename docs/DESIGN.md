@@ -579,8 +579,10 @@ Babies are normal vanilla villagers and can be hired as adults.
   As built (M25 track A, step 2): a raid counts when it is still going and its centre or a raider is inside the claim
   (the 80-block sphere, the edge included). The tracker latches that raid by its vanilla id; a different id does not
   replace it. Victory beats a loss, and a loss beats a stop or an over raid; a raid that vanishes is gone. The alert
-  line is danger: coming, the wave and how many raiders are left, or between waves. The screen and the call-up
-  are later steps.
+  line is danger: coming, the wave and how many raiders are left, or between waves. The Overview shows that line,
+  and every loaded qualified guard is called on duty. A random raid rolls once a day at day time 1000 while
+  `villageheart:random_raids` is on (default on). A young village gets a short one. A random victory pays the
+  treasury once. A scripted raid does not add those extra raiders.
   As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
   valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.
   The online owner, stewards and residents are the ones who hear a raid.
@@ -589,7 +591,12 @@ Babies are normal vanilla villagers and can be hired as adults.
   As built (M25 steps 1 and 4): the village keeps the last 32 (cause, day, whether it was in the claim, and whether
   a raid was on). A hired worker is logged wherever they die. Any other villager is logged only inside the claim.
   A conversion within one tick is the same loss as the death, whichever event arrives first. A witch conversion is
-  lightning. A cure is not a death. The Overview rows are a later step.
+  lightning. A cure is not a death. The Overview shows the last three of those rows.
+- **Sieges and walls** (M25): inside a claim, vanilla's zombie siege is replaced by the mod's while `villageheart:sieges`
+  is on (default on). A Hamlet does not get one. The first zombies spawn at day time 18000. `villageheart:siege_damage`
+  (default on) lets zombies, raiders and creepers damage a recorded wall or gate. Gates are the weak point. A hired
+  builder repairs those cells from Storage. The Heart lists the siege and the damaged walls. A group whose spawn chunk
+  is not entity-ticking yet is tried again for 20 ticks, then skipped.
 
 ## 9. Progression: village tiers
 
@@ -633,6 +640,11 @@ client-to-server payloads that the server re-checks (rate limit, open screen, cu
 in the Heart's dimension only). The screen is drawn for a 427 x 240 GUI (854 x 480 at GUI scale 2); tabs and lists are our own widgets.
 Population counts loaded villagers plus recorded workers that are not loaded. Food days use 10 nutrition per adult and 5 per baby a day;
 foods in `#villageheart:not_village_food` do not count.
+
+As built (M25): the Overview lists a raid first (danger: coming, the wave, or between waves), then a zombie siege
+("Zombie siege! N zombies left"), then damaged walls ("Walls damaged: N broken, N cracked", warning, or danger during
+a raid or a siege, and "(no builder)" when nobody is hired to repair). The Villagers tab shows "Repairing" while the
+builder's line is that. Recent deaths are at most three rows.
 
 ### In the world
 - Marker colours (grey, red, green). Right-clicking a marker prints its validation report.
@@ -679,3 +691,8 @@ foods in `#villageheart:not_village_food` do not count.
 - Worker data uses Fabric data attachments on the entity. Village data uses world saved data.
 - **Performance budget**: village logic averages under **1 ms per tick** with 20 villagers, measured by layer 3.
 - Every number marked *(tunable)* belongs in one `core` balance class.
+- **Raids and sieges (M25).** The rules live in `core.raid` and `core.siege`. The world glue is `VillageRaids`, `ZombieSiege`,
+  `SiegeDamage` and `WallRepair`. Three gamerules default on: `villageheart:random_raids`, `villageheart:sieges`,
+  `villageheart:siege_damage`. A raid is latched by its vanilla id and is found again after a reload, so a save in the
+  middle of one does not start a second. GameTests share one overworld clock: a test that sets the time of day stays
+  inside the current day. Crossing 24000 looks like missed dawns to a wage test in the same world.

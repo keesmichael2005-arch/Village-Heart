@@ -374,3 +374,11 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] (sim) Deaths outside the claim radius are not logged: a census drop with no Deaths row (`defended_walled` round 1 run 3: population -2, one row) is a villager that left the radius or died outside it
 - [ ] (sim) Natural hostile spawns other than sieges were 0 within the claim radius on every night of 20 runs (mob cap filled by cave mobs and persistent scripted zombies?). Unchecked; `defended` measures the scripted threat plus sieges, not ordinary night spawns
 - [ ] **T-L2-46** `golemNotPulledDuringRaid` waits until M19 is merged. There is no `SmithyRepairGoal` on this branch, so the test is not written.
+
+## From M25 (step 19)
+- [ ] Guards chase the tracked raid's raiders 16 blocks past the claim edge. A raider stuck outside can hold the raid until the 2-day stop, and guards only fight inside the claim (plan risk 2).
+- [ ] A creeper answer (archers). Guards and golems ignore creepers; the lure budget and the repair loop are what M25 ships (plan risk 4).
+- [ ] Worker celebrations when a raid or a siege ends. Sheltered workers get no celebration in v1.
+- [ ] `defences adopt` for walls a player built before M25. A hand-built wall has no hit points.
+- [ ] A stone-brick wall upgrade. The builder does not change a wall's block.
+- [ ] Guards repairing walls. Repair stays the builder's job, from Storage.
