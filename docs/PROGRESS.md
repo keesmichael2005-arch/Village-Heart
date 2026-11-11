@@ -892,3 +892,6 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `WorkerGameTests` traces and `FarmerGameTests` debug strings use `rel`. The wage emerald search uses `rel`. An unused `relativePos` in the guard patrol check was removed; that check already compared world positions.
 - `scripts/verify.sh --fast` exit 0 (384 GameTests, perf within caps). An earlier full-suite run failed this test at tick 2502 with the oak still standing, plus `gate_game_tests_mobs_still_cannot_pass_the_gate` and `heart_action_game_tests_rate_limited`; both passed on the rerun and are unchanged by this audit.
 - Next: none for this audit. Blockers: none.
+
+## 2026-11-11: P4 blueprints-2 plan
+Planning only, on `blueprints-2`. `docs/plans/P4-blueprints-2.md` audits the builder (boxes, rotate without mirror, one builder per site, full reservation, 1 block/s, dust outline, no scaffold, no slope fill) and splits the agreed blueprint work into seven phases. No feature code. Open questions for Kees are in section 9. A headless client reached the title screen on Xvfb, and a dedicated server logged `Done (2.650s)` after the gitignored EULA file was accepted.
