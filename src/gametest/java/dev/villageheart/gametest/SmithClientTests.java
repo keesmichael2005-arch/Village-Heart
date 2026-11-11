@@ -119,6 +119,11 @@ final class SmithClientTests {
 				return "ok";
 			});
 			if (!posed.equals("ok")) throw new AssertionError(posed);
+			int smithEid = srv.computeOnServer(server -> {
+				var e = server.overworld().getEntity(smithId);
+				return e == null ? -1 : e.getId();
+			});
+			if (smithEid < 0) throw new AssertionError("the smith is gone");
 			// The south wall comes out after the build, the way the guard shot opens its wall: a one-block door hides the furnace.
 			srv.runCommand("fill -3 " + y + " 11 2 " + (y + 2) + " 11 minecraft:air");
 			boolean hideGui = context.computeOnClient(mc -> mc.options.hideGui);
@@ -131,13 +136,9 @@ final class SmithClientTests {
 				var st = mc.level.getBlockState(new BlockPos(-2, fy, 7));
 				if (!st.is(Blocks.BLAST_FURNACE)) return "no blast furnace: " + st;
 				if (!st.getValue(AbstractFurnaceBlock.LIT)) return "the blast furnace is not lit on the client";
-				Villager found = null;
 				List<IronGolem> golems = new ArrayList<>();
-				for (var e : mc.level.entitiesForRendering()) {
-					if (e instanceof Villager v) found = v;
-					if (e instanceof IronGolem g) golems.add(g);
-				}
-				if (found == null) return "no villager on the client";
+				for (var e : mc.level.entitiesForRendering()) if (e instanceof IronGolem g) golems.add(g);
+				if (!(mc.level.getEntity(smithEid) instanceof Villager found)) return "no smith on the client";
 				String got = found.getVillagerData().profession().unwrapKey().orElseThrow().identifier().toString();
 				String want = ModProfessions.key(JobType.BLACKSMITH).identifier().toString();
 				if (!got.equals(want)) return "profession on the client is " + got;
