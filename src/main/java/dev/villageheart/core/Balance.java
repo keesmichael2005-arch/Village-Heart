@@ -155,28 +155,12 @@ public final class Balance {
 	public static final int GUARD_OFF_TICKS = 1000;
 	public static final int GUARD_SIGHT = 24;
 	/**
-	 * How far past the claim edge an on-duty guard follows a raider of the tracked raid. The wave spawns about 120 blocks
-	 * from the Heart. 16 and then 32 (112) left that group holding the wave; 64 reaches them.
+	 * How far past the claim edge an on-duty guard follows a raider of the tracked raid. 32 reaches the distance at which
+	 * vanilla still counts a raider (about 112 from the centre); 16 left those raiders holding the wave.
 	 */
-	public static final int GUARD_RAID_CHASE = 64;
+	public static final int GUARD_RAID_CHASE = 32;
 	/** Path length while chasing. 32 ends at a wall; 48 is the villager's own required length and reaches a gate. */
 	public static final int GUARD_CHASE_PATH = 48;
-	/** A guard does not walk out to a raid raider farther than this. Recall brings that raider to the gate. */
-	public static final int GUARD_HOME_FIGHT = 32;
-	/**
-	 * A raider that has not closed this many blocks on the Heart is stalled. After {@link #RAIDER_RECALL_STALL} ticks
-	 * (long enough that a raider still walking in is not pulled into the first fight),
-	 * and while it is still farther than {@link #RAIDER_RECALL_NEAR_GATE} from the nearest gate, it is killed where it
-	 * stands. One raider per {@link #RAIDER_RECALL_GAP} ticks. Bringing it in killed the village; leaving it held the wave.
-	 */
-	public static final int RAIDER_RECALL_CLOSE = 4;
-	public static final int RAIDER_RECALL_STALL = 12000;
-	public static final int RAIDER_RECALL_NEAR_GATE = 24;
-	/** Do not bring another raider while this many are already within {@link #RAIDER_RECALL_BUSY} blocks of a guard. */
-	public static final int RAIDER_RECALL_AT_GATE = 1;
-	/** A raider this close to a guard is already the fight. The next one waits. */
-	public static final int RAIDER_RECALL_BUSY = 16;
-	public static final int RAIDER_RECALL_GAP = 40;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
 	public static final int GUARD_SCAN_TICKS = 10;
 	public static final double GUARD_CHASE_SPEED = 0.6;

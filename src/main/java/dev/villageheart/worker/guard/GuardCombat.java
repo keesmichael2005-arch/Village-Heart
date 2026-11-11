@@ -272,13 +272,6 @@ public final class GuardCombat {
 			f.retreating = true;
 			if (healthyAlly(level, guard) != null) WorkStats.add("guard", "retreats", 1);
 		}
-		if (f.chase) {
-			double dx = target.getX() - guard.getX(), dz = target.getZ() - guard.getZ();
-			if (GuardChase.holdHome(true, Math.sqrt(dx * dx + dz * dz))) {
-				drop(guard, f, target, now, true);
-				return;
-			}
-		}
 		boolean inReach = guard.isWithinMeleeAttackRange(target);
 		if (f.retreating) {
 			Villager ally = healthyAlly(level, guard);
@@ -315,18 +308,11 @@ public final class GuardCombat {
 			Path path = nav.createPath(dest, 1, pathLen);
 			// a 32-block path into the ring ends at the wall; the gate is the way out, and the next path is toward the raider
 			if (f.chase && (path == null || !path.canReach())) {
-				double guardDist = Math.sqrt(guard.blockPosition().distSqr(dest));
-				double endDist = path == null || path.getNodeCount() == 0 ? guardDist
-						: Math.sqrt(path.getEndNode().asBlockPos().distSqr(dest));
-				boolean reaches = path != null && path.canReach();
-				// a stuck raider is brought to the gate by RaiderRecall. The guard is not teleported onto the pack.
-				if (GuardChase.useGate(reaches, guardDist, endDist)) {
-					int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
-							dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
-					if (via != null) {
-						Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
-						if (viaPath != null) path = viaPath;
-					}
+				int[] via = GuardChase.gateWaypoint(guard.getBlockX(), guard.getBlockY(), guard.getBlockZ(),
+						dest.getX(), dest.getY(), dest.getZ(), gateCells(level), false);
+				if (via != null) {
+					Path viaPath = nav.createPath(new BlockPos(via[0], via[1], via[2]), 1, pathLen);
+					if (viaPath != null) path = viaPath;
 				}
 			}
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
