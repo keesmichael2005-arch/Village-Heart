@@ -5,23 +5,36 @@ import static dev.villageheart.gametest.BuildTestSupport.YARD;
 import dev.villageheart.core.defence.DefenceCell;
 import dev.villageheart.core.defence.DefenceIndex;
 import dev.villageheart.core.defence.DefenceSite;
+import dev.villageheart.core.guard.Shift;
+import dev.villageheart.core.siege.RepairPlanner;
 import dev.villageheart.core.siege.SiegeRecord;
+import dev.villageheart.core.worker.DayPhase;
+import dev.villageheart.siege.SiegeGamerules;
+import dev.villageheart.worker.guard.GuardActivities;
 import dev.villageheart.gametest.BuildTestSupport.With;
 import dev.villageheart.siege.LureSlots;
 import dev.villageheart.siege.PathBudget;
 import dev.villageheart.siege.SiegeDamage;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -102,6 +115,136 @@ public class SiegeLureGameTests {
 			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit by day");
 			h.assertTrue(h.getTick() - t0[0] >= 1200, "still day");
 		}).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	/** T-L2-25b. A guard on duty and a player-built iron golem never take the breaching creeper as a target. */
+	@GameTest(environment = "villageheart-gametest:siege_creeper_guard", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void nobodyHuntsTheBreacher(GameTestHelper h) {
+		Creeper[] creeper = new Creeper[1];
+		Villager[] guard = new Villager[1];
+		IronGolem[] golem = new IronGolem[1];
+		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
+			seeWalls(h);
+			GuardTestSupport.buildBarracks(h, 1);
+			GuardTestSupport.placeBarracks(h);
+		}).thenWaitUntil(() -> GuardTestSupport.assertBarracksValid(h)).thenExecute(() -> {
+			guard[0] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot(), Optional.of(Shift.NIGHT));
+			place(h, guard[0], rel(-12, 0, 3));
+			golem[0] = h.spawn(EntityType.IRON_GOLEM, rel(-14, 0, 3));
+			golem[0].setPlayerCreated(true);
+			golem[0].setPersistenceRequired();
+			h.assertTrue(offPath(h, guard[0]) <= 8, "the guard is off the path " + at(h, guard[0]));
+			h.assertTrue(offPath(h, golem[0]) <= 8, "the golem is off the path " + at(h, golem[0]));
+		}).thenWaitUntil(() -> h.assertTrue(guard[0].getBrain().isActive(GuardActivities.DUTY), "not on duty " + guard[0].getBrain().getActiveActivities()));
+		seq.thenExecute(() -> creeper[0] = creeper(h, rel(X0 - 15, 0, 1))).thenWaitUntil(() -> {
+			h.assertTrue(guard[0].getTarget() != creeper[0], "the guard hunted the creeper");
+			h.assertTrue(dev.villageheart.worker.guard.GuardCombat.targetOf(guard[0].getUUID()).map(id -> !id.equals(creeper[0].getUUID())).orElse(true),
+					"the guard's fight target is the creeper");
+			h.assertTrue(golem[0].getTarget() != creeper[0], "the golem hunted the creeper");
+			h.assertTrue(!creeper[0].isAlive(), "the creeper has not blown");
+			h.assertTrue(creeper[0].getTags().contains(dev.villageheart.siege.CreeperBreachGoal.BREACHER), "it did not light itself");
+			h.assertTrue(westOpen(h), "the west wall is whole");
+		}).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	/** T-L2-26. The blast hurts a villager and leaves the plank house behind the wall alone. */
+	@GameTest(environment = "villageheart-gametest:siege_creeper_house", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void breachSparesHousesBehindWall(GameTestHelper h) {
+		Creeper[] creeper = new Creeper[1];
+		Villager[] villager = new Villager[1];
+		float[] health = new float[1];
+		List<BlockPos> house = List.of(rel(6, 0, Z0 + 2), rel(7, 0, Z0 + 2), rel(6, 1, Z0 + 2), rel(6, 2, Z0 + 2));
+		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
+			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
+			for (BlockPos p : house) h.setBlock(p, Blocks.OAK_PLANKS.defaultBlockState());
+			seeWalls(h);
+			villager[0] = h.spawn(EntityType.VILLAGER, rel(8, 0, Z0 - 3));
+			villager[0].setNoAi(true);
+			health[0] = villager[0].getHealth();
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
+		});
+		seq.thenWaitUntil(() -> h.assertTrue(!creeper[0].isAlive(), "the creeper has not blown")).thenExecute(() -> {
+			for (BlockPos p : house) h.assertTrue(h.getBlockState(p).is(Blocks.OAK_PLANKS), "the house changed at " + p);
+			h.assertTrue(anyBreach(h), "the wall is whole");
+			h.assertTrue(!villager[0].isAlive() || villager[0].getHealth() < health[0], "the villager was not hurt");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** T-L2-27. A creeper chasing a player keeps the vanilla explosion. A repair is what the planner would pick. */
+	@GameTest(environment = "villageheart-gametest:siege_creeper_vanilla", structure = YARD, skyAccess = true, maxTicks = 2500)
+	public void vanillaCreeperStillVanilla(GameTestHelper h) {
+		Creeper[] creeper = new Creeper[1];
+		Map<BlockPos, BlockState> before = new HashMap<>();
+		long[] blew = new long[1];
+		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			server.setDifficulty(Difficulty.NORMAL, true);
+			floor(h, 0, 16, 12, 24);
+			BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 64));
+			DefenceTestSupport.startLine(h, "wall_segment", rel(2, -1, 18), rel(11, -1, 18));
+			DefenceTestSupport.advanceAll(h);
+			seeWalls(h);
+			for (int x = 4; x <= 8; x++) for (int y = -1; y <= 2; y++) for (int z = 16; z <= 21; z++) {
+				BlockPos p = rel(x, y, z);
+				before.put(p, h.getBlockState(p));
+			}
+			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, false, server);
+			creeper[0] = aimed(h, rel(6, 0, 19), rel(6, 0, 20));
+		}).thenWaitUntil(() -> h.assertTrue(!creeper[0].isAlive(), "griefing off, still swelling")).thenExecute(() -> {
+			for (var e : before.entrySet()) h.assertTrue(e.getValue().equals(h.getBlockState(e.getKey())), "griefing off changed " + e.getKey());
+			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
+			creeper[0] = aimed(h, rel(6, 0, 19), rel(6, 0, 21));
+		}).thenWaitUntil(() -> h.assertTrue(!creeper[0].isAlive(), "griefing on, still swelling")).thenExecute(() -> {
+			blew[0] = h.getTick();
+			h.assertTrue(h.getBlockState(rel(6, 0, 18)).isAir(), "no vanilla crater");
+		}).thenWaitUntil(() -> {
+			h.assertTrue(breachedCount(h) >= 1, "the scan has not marked the hole");
+			h.assertTrue(h.getTick() - blew[0] <= 200, "the breach took " + (h.getTick() - blew[0]));
+		}).thenExecute(() -> {
+			h.assertTrue(planned(h), "no repair planned");
+			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
+	 * T-L2-36, the creeper half. Siege damage on: the creeper breaches with mobGriefing off. Off: the goal never starts.
+	 * The zombie half, including a hit stopped mid-way, is {@link SiegeGameTests#siegeDamageGamerule}.
+	 */
+	@GameTest(environment = "villageheart-gametest:siege_creeper_rule", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void siegeDamageGameruleCreeper(GameTestHelper h) {
+		Creeper[] creeper = new Creeper[1];
+		long[] t0 = new long[1];
+		int[] cracks = new int[1];
+		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
+			seeWalls(h);
+			var rules = h.getLevel().getGameRules();
+			var server = h.getLevel().getServer();
+			rules.set(GameRules.MOB_GRIEFING, false, server);
+			rules.set(SiegeGamerules.SIEGE_DAMAGE, true, server);
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(!creeper[0].isAlive(), "the creeper has not blown");
+			h.assertTrue(anyBreach(h), "siege damage did not breach");
+		}).thenExecute(() -> {
+			cracks[0] = maxDamage(h);
+			h.getLevel().getGameRules().set(SiegeGamerules.SIEGE_DAMAGE, false, h.getLevel().getServer());
+			LureSlots.resetForTests();
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
+			t0[0] = h.getTick();
+		});
+		seq.thenWaitUntil(() -> {
+			h.assertTrue(!creeperRunning(creeper[0]), "the goal started with siege damage off");
+			h.assertTrue(!creeper[0].isIgnited(), "it lit with siege damage off");
+			h.assertTrue(maxDamage(h) == cracks[0], "damage changed with the rule off");
+			h.assertTrue(h.getTick() - t0[0] >= 1800, "still watching");
+		}).thenExecute(() -> {
+			h.getLevel().getGameRules().set(SiegeGamerules.SIEGE_DAMAGE, true, h.getLevel().getServer());
+			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
+			VillageTestSupport.done(h);
+		});
 	}
 
 	/** T-L2-21. A skeleton, then a spider, never grows a mod goal and never closes on the ring. */
@@ -218,18 +361,21 @@ public class SiegeLureGameTests {
 		}).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
-	/** T-L2-37, zombie half. A trench stops the zombie on the edge. The creeper half is step 14. */
+	/** T-L2-37. A trench stops the zombie on the edge, and the creeper never lights. */
 	@GameTest(environment = "villageheart-gametest:siege_trench", structure = YARD, skyAccess = true, maxTicks = 3000)
 	public void trenchInFrontOfWall(GameTestHelper h) {
 		Zombie[] zombie = new Zombie[1];
+		Creeper[] creeper = new Creeper[1];
 		long[] t0 = new long[1];
 		var seq = ring(h, Ring.TRENCH).thenExecute(() -> {
 			seeWalls(h);
 			zombie[0] = zombie(h, rel(1, 0, Z0 - 30), false);
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
 			t0[0] = h.getTick();
 		});
 		seq.thenWaitUntil(() -> {
 			h.assertTrue(maxDamage(h) == 0, "the trench let a hit through");
+			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit at the trench");
 			BlockPos p = at(h, zombie[0]);
 			h.assertTrue(p.getZ() >= Z0 - 4, "has not reached the edge " + p);
 			h.assertTrue(h.getTick() - t0[0] >= 1800, "still at the trench");
@@ -373,6 +519,53 @@ public class SiegeLureGameTests {
 		Creeper creeper = h.spawn(EntityType.CREEPER, at);
 		creeper.setPersistenceRequired();
 		return creeper;
+	}
+
+	/** A creeper with a survival player as its target, so the swell is vanilla and the breach goal stays off. */
+	private static Creeper aimed(GameTestHelper h, BlockPos at, BlockPos playerAt) {
+		ServerPlayer player = VillageTestSupport.player(h, "vanilla-creeper-" + at.getZ(), GameType.SURVIVAL);
+		BlockPos abs = h.absolutePos(playerAt);
+		player.teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		Creeper creeper = creeper(h, at);
+		creeper.setTarget(player);
+		return creeper;
+	}
+
+	private static void place(GameTestHelper h, Mob mob, BlockPos at) {
+		BlockPos abs = h.absolutePos(at);
+		mob.teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+	}
+
+	/** Chebyshev distance to the west-wall approach the guard test uses (x from the creeper to the wall, z = 1). */
+	private static int offPath(GameTestHelper h, Mob mob) {
+		BlockPos p = at(h, mob);
+		int x = Math.min(Math.max(p.getX(), X0 - 15), X0);
+		return Math.max(Math.abs(p.getX() - x), Math.abs(p.getZ() - 1));
+	}
+
+	private static boolean westOpen(GameTestHelper h) {
+		for (int y = -1; y <= 1; y++) for (int z = Z0; z <= Z1; z++) if (h.getBlockState(rel(X0, y, z)).isAir()) return true;
+		return false;
+	}
+
+	private static boolean planned(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		var village = VillageClaims.current(server).orElse(null);
+		if (village == null) return false;
+		var damage = SiegeDamage.damage(server);
+		List<RepairPlanner.Cell> cells = new ArrayList<>();
+		for (DefenceCell cell : DefenceIndex.of(village.defences()).cells()) {
+			cells.add(new RepairPlanner.Cell(cell.packed(), cell.kind(), damage.damageAt(cell.packed()), damage.isBreached(cell.packed()), false));
+		}
+		return RepairPlanner.next(false, DayPhase.WORK, cells, village.heart(), Map.of(RepairPlanner.COBBLESTONE, 64))
+				.orElse(null) instanceof RepairPlanner.Repair;
+	}
+
+	private static boolean creeperRunning(Mob mob) {
+		for (var wrapped : ((dev.villageheart.mixin.MobGoalsAccessor) mob).villageheart$goalSelector().getAvailableGoals()) {
+			if (wrapped.getGoal() instanceof dev.villageheart.siege.CreeperBreachGoal && wrapped.isRunning()) return true;
+		}
+		return false;
 	}
 
 	private static int breachedCount(GameTestHelper h) {

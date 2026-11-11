@@ -119,7 +119,7 @@ public final class CreeperBreachGoal extends Goal {
 		}
 		if (best == null) return false;
 		BlockPos pos = new BlockPos(best.pos().x(), best.pos().y(), best.pos().z());
-		BlockPos beside = standBeside(level, index, pos);
+		BlockPos beside = standBeside(level, index, pos, heart);
 		if (beside == null) return false;
 		cell = pos;
 		stand = beside;
@@ -127,12 +127,17 @@ public final class CreeperBreachGoal extends Goal {
 		return true;
 	}
 
-	/** A floor cell next to the wall. A trench has no floor, so the creeper has nowhere to stand and does not light. */
-	private BlockPos standBeside(ServerLevel level, DefenceIndex index, BlockPos wall) {
+	/**
+	 * A floor cell next to the wall, on the outside (at least as far from the Heart as the wall). A trench has no such
+	 * floor, and a cell inside the ring is not a place to light.
+	 */
+	private BlockPos standBeside(ServerLevel level, DefenceIndex index, BlockPos wall, HeartLocation heart) {
+		double wallHeart = distance(wall.getX() + 0.5, wall.getY(), wall.getZ() + 0.5, heart);
 		BlockPos best = null;
 		double bestD = Double.MAX_VALUE;
 		for (BlockPos n : new BlockPos[] {wall.north(), wall.south(), wall.east(), wall.west()}) {
 			if (index.get(Pos.pack(n.getX(), n.getY(), n.getZ())) != null) continue;
+			if (distance(n.getX() + 0.5, n.getY(), n.getZ() + 0.5, heart) < wallHeart) continue;
 			if (!level.getBlockState(n).isAir() || !level.getBlockState(n.above()).isAir()) continue;
 			if (!level.getBlockState(n.below()).isSolid()) continue;
 			double d = creeper.distanceToSqr(n.getX() + 0.5, n.getY(), n.getZ() + 0.5);
