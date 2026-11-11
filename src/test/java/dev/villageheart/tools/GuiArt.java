@@ -7,7 +7,8 @@ import java.util.Map;
 /**
  * GUI sprites. Small ones are 8x8 and drawn at 8 so they stay crisp beside 9px text. Need icons are 16x16,
  * the same size as the item the Heart screen used to render in that slot. Paths match
- * {@code dev.villageheart.client.art.ModTextures}.
+ * {@code dev.villageheart.client.art.ModTextures}. Ink outlines are recolored to cream after drawing: the
+ * Heart panels are near-black and the selected row is #4A4A4A, and #120C10 disappears on both.
  */
 public final class GuiArt {
 	private GuiArt() {}
@@ -259,7 +260,13 @@ public final class GuiArt {
 		m.put(ROOT + "heart/need_food.png", loaf());
 		m.put(ROOT + "heart/need_bed.png", bed());
 		m.put(ROOT + "heart/need_pay.png", pay());
-		// not referenced on this branch: activity badges for m19 and m25, ready to blit when those lines merge
+		lightOutlines(m);
+		return m;
+	}
+
+	/** Activity badges for m19 and m25. Nothing on this branch blits them; they are written to the staging folder. */
+	public static Map<String, BufferedImage> stagedSprites() {
+		Map<String, BufferedImage> m = new LinkedHashMap<>();
 		put8(m, "heart/activity_smithing", anvil());
 		put8(m, "heart/activity_needs_material",
 				".iiiiii.",
@@ -285,12 +292,19 @@ public final class GuiArt {
 				"...CC...", "..CCCC..", ".CCCCCC.", "CCCCCCCC", ".oPPPPo.", ".oPPPPo.", "..oooo..", "........"});
 		put8(m, "heart/activity_no_shelter", new String[] {
 				"...CC...", "..CCCC..", ".CCRCCC.", "CCRRRCCC", ".oRPRPo.", ".oRRRPo.", "..oooo..", "........"});
-		for (Map.Entry<String, BufferedImage> e : m.entrySet()) {
-			String name = e.getKey();
-			BufferedImage img = e.getValue();
-			if (img.getWidth() != img.getHeight()) throw new IllegalStateException(name + " not square");
-		}
+		lightOutlines(m);
 		return m;
+	}
+
+	/** Cream instead of ink, so the silhouette survives the dark list and the selected row. */
+	private static void lightOutlines(Map<String, BufferedImage> m) {
+		for (Map.Entry<String, BufferedImage> e : m.entrySet()) {
+			BufferedImage img = e.getValue();
+			if (img.getWidth() != img.getHeight()) throw new IllegalStateException(e.getKey() + " not square");
+			for (int y = 0; y < img.getHeight(); y++) for (int x = 0; x < img.getWidth(); x++) {
+				if (img.getRGB(x, y) == ArtKit.INK) img.setRGB(x, y, ArtKit.CREAM);
+			}
+		}
 	}
 
 	private static void put8(Map<String, BufferedImage> m, String path, String... rows) {
@@ -335,21 +349,22 @@ public final class GuiArt {
 		return new String[] {".ssssss.", ".sIIIIs.", "..sIIs..", "..sIIs..", ".ssssss.", "ssssssss", "........", "........"};
 	}
 
+	/** A long loaf. A round gold disc sat beside the emerald and read as a coin. */
 	private static BufferedImage loaf() {
 		return ArtKit.icon16(
 				"................",
 				"................",
-				"......oooo......",
-				"....ooyyyyo.....",
-				"...oyYYYYYyo....",
-				"..oyYYYYYYYYo...",
-				"..oYYYYYYYYYo...",
-				"..oYYYYoYYYYo...",
-				"..oYYYYYYYYYo...",
-				"..oyYYYYYYYYo...",
-				"...oyYYYYYyo....",
-				"....ooyyyyo.....",
-				"......oooo......",
+				"................",
+				"................",
+				"...aaaaaaaaaa...",
+				"..aCCCCCCCCCCa..",
+				".aCccccccccccCa.",
+				".aCccccAAccccCa.",
+				".aCccccccccccCa.",
+				"..aCCCCCCCCCCa..",
+				"...aaaaaaaaaa...",
+				"................",
+				"................",
 				"................",
 				"................",
 				"................");

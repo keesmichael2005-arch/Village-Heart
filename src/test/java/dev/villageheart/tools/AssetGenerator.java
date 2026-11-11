@@ -147,8 +147,6 @@ public final class AssetGenerator {
 		out.put(A + "models/item/blueprint.json", json(map(
 				"parent", "minecraft:item/generated", "textures", map("layer0", NS + ":item/blueprint"))));
 		out.put(A + "textures/item/blueprint.png", png(BlueprintArt.render()));
-		// drawn for blueprints-2; that branch's model still samples the blueprint sheet until it is retargeted
-		out.put(A + "textures/item/blueprint_quill.png", png(ExtraArt.quill()));
 
 		// ---- job blocks ----
 		for (JobBlockType t : JobBlockType.values()) {
@@ -206,14 +204,10 @@ public final class AssetGenerator {
 		// ---- block faces that are not job-block enums ----
 		out.put(A + "textures/block/marker_edge.png", png(ExtraArt.markerEdge()));
 		out.put(A + "textures/block/village_heart.png", png(HeartBlockArt.render()));
-		// blueprints-2 still points the scaffold model at bamboo; this is the texture to switch it to
-		out.put(A + "textures/block/builder_scaffold.png", png(ExtraArt.scaffold()));
 
-		// ---- GUI sprites and the refined icon (the mod icon itself stays the release-prep file) ----
 		for (Map.Entry<String, BufferedImage> e : GuiArt.sprites().entrySet()) {
 			out.put(A + e.getKey(), png(e.getValue()));
 		}
-		out.put(A + "icon_refined.png", png(ExtraArt.iconRefined()));
 
 		// ---- loot tables ----
 		for (String id : blockIds()) {
@@ -246,6 +240,19 @@ public final class AssetGenerator {
 		List<Object> axe = new ArrayList<>();
 		for (String id : blockIds()) axe.add(NS + ":" + id);
 		out.put("data/minecraft/tags/block/mineable/axe.json", json(map("replace", false, "values", axe)));
+		return out;
+	}
+
+	/**
+	 * Textures nothing on this branch references. Written under {@code docs/art-staging}, not the jar. The branch
+	 * that wires one copies it to {@code src/main/resources/assets/villageheart/} and keeps the relative path.
+	 */
+	public static Map<String, byte[]> staged() {
+		Map<String, byte[]> out = new LinkedHashMap<>();
+		out.put("textures/item/blueprint_quill.png", png(ExtraArt.quill()));
+		out.put("textures/block/builder_scaffold.png", png(ExtraArt.scaffold()));
+		for (Map.Entry<String, BufferedImage> e : GuiArt.stagedSprites().entrySet()) out.put(e.getKey(), png(e.getValue()));
+		out.put("icon_refined.png", png(ExtraArt.iconRefined()));
 		return out;
 	}
 
@@ -296,6 +303,25 @@ public final class AssetGenerator {
 		}
 		System.out.println("Wrote " + files.size() + " files under " + root);
 		if (args.length > 1) writePreview(Path.of(args[1]));
+		if (args.length > 2) writeStaged(Path.of(args[2]));
+	}
+
+	private static void writeStaged(Path dir) throws IOException {
+		Map<String, byte[]> files = staged();
+		if (Files.isDirectory(dir)) {
+			try (var stream = Files.walk(dir)) {
+				for (Path p : (Iterable<Path>) stream.filter(Files::isRegularFile)::iterator) {
+					String rel = dir.relativize(p).toString().replace('\\', '/');
+					if (rel.endsWith(".png") && !files.containsKey(rel)) Files.delete(p);
+				}
+			}
+		}
+		for (Map.Entry<String, byte[]> e : files.entrySet()) {
+			Path p = dir.resolve(e.getKey());
+			Files.createDirectories(p.getParent());
+			Files.write(p, e.getValue());
+		}
+		System.out.println("Wrote " + files.size() + " staged files under " + dir);
 	}
 
 	private static void blit(Graphics2D g, BufferedImage img, int x, int y, int scale) {
@@ -320,6 +346,11 @@ public final class AssetGenerator {
 			names.add(t.id()); imgs.add(MarkerArt.render(t, "valid"));
 		}
 		for (Map.Entry<String, BufferedImage> e : GuiArt.sprites().entrySet()) {
+			String n = e.getKey();
+			n = n.substring(n.lastIndexOf('/') + 1).replace(".png", "");
+			names.add(n); imgs.add(e.getValue());
+		}
+		for (Map.Entry<String, BufferedImage> e : GuiArt.stagedSprites().entrySet()) {
 			String n = e.getKey();
 			n = n.substring(n.lastIndexOf('/') + 1).replace(".png", "");
 			names.add(n); imgs.add(e.getValue());

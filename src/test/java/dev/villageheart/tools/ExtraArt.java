@@ -24,6 +24,7 @@ public final class ExtraArt {
 		return img;
 	}
 
+	/** End grain: a bark rim, alternating growth rings, and two short axe scars. */
 	public static BufferedImage choppingTop() {
 		BufferedImage img = ArtKit.image(16, 16);
 		for (int y = 0; y < 16; y++) {
@@ -31,37 +32,33 @@ public final class ExtraArt {
 				double r = Math.hypot(x - 7.5, y - 7.5);
 				int c;
 				if (r > 7.15) c = ArtKit.OAK_SH;
-				else if (r > 6.15) c = ArtKit.OAK_DK;
-				else if (r > 4.7) c = ArtKit.OAK;
-				else if (r > 3.4) c = ArtKit.OAK_MD;
-				else if (r > 2.05) c = ArtKit.OAK_HI;
-				else if (r > 0.9) c = ArtKit.OAK_DK;
-				else c = ArtKit.OAK;
+				else c = ((int) (r * 1.7)) % 2 == 0 ? ArtKit.OAK_HI : ArtKit.OAK_DK;
 				img.setRGB(x, y, c);
 			}
 		}
-		// two axe scars, not a copy of the vanilla log's rings
-		for (int i = 0; i < 6; i++) {
-			img.setRGB(4 + i, 5 + i / 2, ArtKit.OAK_SH);
-			img.setRGB(5 + i, 6 + i / 2, ArtKit.INK);
-			img.setRGB(10 - i, 4 + i / 3, ArtKit.OAK_SH);
+		for (int i = 0; i < 5; i++) {
+			img.setRGB(4 + i, 6, ArtKit.OAK_SH);
+			img.setRGB(5 + i, 7, ArtKit.INK);
+			img.setRGB(7 + i, 10, ArtKit.OAK_SH);
 		}
-		img.setRGB(7, 7, ArtKit.GOLD_DK);
-		img.setRGB(8, 8, ArtKit.GOLD_SH);
 		return img;
 	}
 
+	/** Bark: vertical grain, a horizontal crack, and one knot. A diagonal speckle read as coarse dirt. */
 	public static BufferedImage choppingSide() {
 		BufferedImage img = ArtKit.image(16, 16);
 		for (int y = 0; y < 16; y++) {
 			for (int x = 0; x < 16; x++) {
-				int c = ArtKit.OAK_DK;
-				int ridge = (x * 3 + y) % 7;
-				if (ridge == 0) c = ArtKit.OAK_SH;
-				else if (ridge == 1) c = ArtKit.OAK;
-				else if (ridge == 4) c = ArtKit.OAK_MD;
-				if (y == 0) c = ArtKit.lighten(c, 1.15);
-				if (y == 15) c = ArtKit.darken(c, 0.7);
+				int c = switch (x % 4) {
+					case 0 -> ArtKit.OAK_SH;
+					case 1 -> ArtKit.OAK_DK;
+					case 2 -> ArtKit.OAK;
+					default -> ArtKit.OAK_HI;
+				};
+				if (y == 5 || y == 11) c = ArtKit.darken(c, 0.78);
+				if (x >= 6 && x <= 9 && y >= 7 && y <= 10) c = ArtKit.OAK_MD;
+				if (y == 0) c = ArtKit.lighten(c, 1.12);
+				if (y == 15) c = ArtKit.darken(c, 0.72);
 				img.setRGB(x, y, c);
 			}
 		}

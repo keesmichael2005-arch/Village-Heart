@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -74,6 +76,76 @@ class ReferencedTexturesTest {
 		// the prefix scan above must have seen the sprite directory literal, or a rename would skip the java check
 		String textures = Files.readString(project.resolve("src/client/java/dev/villageheart/client/art/ModTextures.java"));
 		assertTrue(JAVA_SPRITE_PREFIX.matcher(textures).find(), "ModTextures no longer names textures/gui/sprites/");
+	}
+
+	/**
+	 * A PNG under {@code textures/} that nothing names is dead weight in the jar. References are model JSON,
+	 * a {@code textures/...png} literal, the job and building sprite ids, and the profession overlay path
+	 * Minecraft loads from the profession id ({@code textures/entity/villager/profession/<id>.png}).
+	 */
+	@Test
+	void noOrphanTextures() throws IOException {
+		Path root = resources();
+		Path project = root.getParent().getParent().getParent();
+		Set<String> referenced = new HashSet<>();
+		try (Stream<Path> files = Files.walk(root.resolve("assets/villageheart"))) {
+			files.filter(p -> p.toString().endsWith(".json")).forEach(p -> collectJson(p, referenced));
+		}
+		for (Path src : List.of(project.resolve("src/main/java"), project.resolve("src/client/java"))) {
+			if (!Files.isDirectory(src)) continue;
+			try (Stream<Path> files = Files.walk(src)) {
+				files.filter(p -> p.toString().endsWith(".java")).forEach(p -> {
+					try {
+						Matcher m = JAVA_PNG.matcher(Files.readString(p));
+						while (m.find()) referenced.add(m.group());
+					} catch (IOException e) {
+						throw new IllegalStateException(e);
+					}
+				});
+			}
+		}
+		for (JobType job : JobType.values()) {
+			referenced.add("textures/gui/sprites/heart/job_" + job.id() + ".png");
+			referenced.add("textures/entity/villager/profession/" + job.id() + ".png");
+		}
+		for (BuildingType type : BuildingType.values()) {
+			referenced.add("textures/gui/sprites/heart/building_" + type.id() + ".png");
+		}
+		List<String> orphans = new ArrayList<>();
+		Path textures = root.resolve("assets/villageheart/textures");
+		try (Stream<Path> files = Files.walk(textures)) {
+			files.filter(p -> p.toString().endsWith(".png")).forEach(p -> {
+				String rel = textures.getParent().relativize(p).toString().replace('\\', '/');
+				if (!referenced.contains(rel)) orphans.add(rel);
+			});
+		}
+		assertTrue(orphans.isEmpty(), "textures nothing references:\n" + String.join("\n", orphans));
+	}
+
+	private static void collectJson(Path file, Set<String> referenced) {
+		Object parsed;
+		try {
+			parsed = Json.parse(Files.readString(file));
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+		collect(parsed, referenced);
+	}
+
+	private static void collect(Object node, Set<String> referenced) {
+		if (node instanceof Map<?, ?> map) {
+			for (Map.Entry<?, ?> e : map.entrySet()) {
+				String key = String.valueOf(e.getKey());
+				Object value = e.getValue();
+				if (value instanceof String s && s.startsWith("villageheart:") && !key.equals("parent") && !key.equals("model")) {
+					referenced.add("textures/" + s.substring("villageheart:".length()) + ".png");
+				} else {
+					collect(value, referenced);
+				}
+			}
+		} else if (node instanceof List<?> list) {
+			for (Object value : list) collect(value, referenced);
+		}
 	}
 
 	private static void checkJson(Path root, Path file, List<String> missing) {

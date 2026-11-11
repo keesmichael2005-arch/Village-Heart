@@ -34,7 +34,6 @@ The blueprint footprint is still coloured vanilla dust. It has no texture slot. 
 | Asset | Path | Where it is used | Before | Now |
 | --- | --- | --- | --- | --- |
 | Mod icon | `assets/villageheart/icon.png` | `fabric.mod.json` | "Mod ID" placeholder | Exact bytes of the release-prep heart-over-a-bell. Not generated |
-| Refined icon | `assets/villageheart/icon_refined.png` | nowhere (on purpose) | — | Same composition, drawn by `ExtraArt.iconRefined`. The mod icon stays the release-prep file |
 | Village Heart | `textures/block/village_heart.png` | `models/block/village_heart.json` (`cube_all`); the item uses that model | flat green square | brass cube, bevel, inlaid heart |
 | Blank Marker | `textures/item/blank_marker.png` | `models/item/blank_marker.json` | flat tan square | oak plaque, empty recess, four brass nails |
 | Blueprint | `textures/item/blueprint.png` | `models/item/blueprint.json` | flat blue sheet | folded sheet, white plan, brass pin |
@@ -42,35 +41,38 @@ The blueprint footprint is still coloured vanilla dust. It has no texture slot. 
 | Marker edge | `textures/block/marker_edge.png` | every marker model `edge` | `minecraft:block/stripped_oak_log` | oak grain. The face is 1px thick, so the texture is a material, not a picture |
 | Builder's Table | `textures/block/builders_table_{top,side,front}.png` | `models/block/builders_table.json` | flat planks and a blue top | planks, pinned plan and ruler, drawer, hammer and a rolled plan |
 | Market stall | `textures/block/market_stall_{front,side,awning}.png` | `models/block/market_stall.json` | flat planks, flat red/white awning | apple crate and an emerald on the counter (rows 0–3 are the rail; the front UV starts at y=4), post, striped awning |
-| Chopping block | `textures/block/chopping_block_{top,side,handle,head}.png` | `models/block/chopping_block.json` | vanilla log and iron | end grain with two axe scars, bark, a wood handle, an iron head. Handle and head are simple materials because the model squashes the whole texture onto a thin cuboid |
+| Chopping block | `textures/block/chopping_block_{top,side,handle,head}.png` | `models/block/chopping_block.json` | vanilla log and iron | growth rings and two axe scars on top, vertical bark grain on the side, a wood handle, an iron head. Handle and head are simple materials because the model squashes the whole texture onto a thin cuboid |
 | Professions | `textures/entity/villager/profession/<job>.png` | the villager profession overlay | flat apron and a 5×5 glyph | same glyph and sash, with a fold and a hem on the front of the robe |
 | Heart tabs | `textures/gui/sprites/heart/tab_{overview,villagers,buildings,stockpile,ranks}.png` | `HeartScreen` tab row, via `ModTextures` | text only | heart, villager, house, chest, crown. 8×8 |
 | Tiers | `textures/gui/sprites/heart/tier_{hamlet,village,town}.png` | overview, next to the tier name | text only | cottage, hall, tower |
 | Ranks | `textures/gui/sprites/heart/rank_{owner,steward,resident,visitor}.png` | member rows | a coloured pip | crown, key, door, shield |
 | Goals | `textures/gui/sprites/heart/goal_{met,open}.png` | overview goals | a filled or empty box | green check, empty stone box |
-| Alerts | `textures/gui/sprites/heart/alert_{danger,warning}.png` | overview alerts | a red or gold bar | red or gold exclamation, drawn in the left padding |
+| Alerts | `textures/gui/sprites/heart/alert_{danger,warning}.png` | overview alerts | a red or gold bar | red or gold exclamation at the left margin; the text starts ten pixels to the right |
 | Row status | `textures/gui/sprites/heart/status_{valid,invalid,unchecked,progress,waiting,blocked}.png` | building rows and build rows | coloured text only | check, cross, dashed box, hammer, hourglass, stop sign. Deferred buildings use the unchecked mark |
 | Jobs | `textures/gui/sprites/heart/job_<job>.png` | villager rows, one per `JobType` | text only | the shared silhouette |
 | Buildings | `textures/gui/sprites/heart/building_<type>.png` | building rows, one per `BuildingType` | text only | the same silhouette, or a place of its own |
-| Needs | `textures/gui/sprites/heart/need_{food,bed,pay}.png` | villager need slots | `renderItem` of bread, red bed, emerald, plus a red slash when unmet | loaf, bed, emerald. The slash is still drawn when the need is unmet |
+| Needs | `textures/gui/sprites/heart/need_{food,bed,pay}.png` | villager need slots | `renderItem` of bread, red bed, emerald, plus a red slash when unmet | a long oak loaf, a bed, an emerald. The slash is still drawn when the need is unmet |
 | Builder's Table GUI | `textures/gui/sprites/table/{blueprint,locked,materials}.png` | `BuildersTableScreen` title, blueprint rows, materials header | text only | sheet, padlock, planks |
 
-Sprites are blitted with `GuiGraphics.blitSprite` at their native size. The id is the path under `textures/gui/sprites/` without `.png`.
+Sprites are blitted with `GuiGraphics.blitSprite` at their native size. The id is the path under `textures/gui/sprites/` without `.png`. Outlines are cream (`#F4F0E4`), not ink, so the shape still reads on an unselected row (`0x99000000`) and on the selected row (`#4A4A4A`).
+
+`ReferencedTexturesTest` fails if a PNG under `assets/villageheart/textures` is not named by a model, by a `textures/...png` literal, by the job or building sprite id, or by the profession overlay path Minecraft loads from the profession id.
 
 ## Ready, wire in when that branch merges
 
-These files are generated and tested as pixels. Nothing on this branch references them, and that branch's code was not edited.
+These files are generated into `docs/art-staging/` and are not in the jar. Copy one to `src/main/resources/assets/villageheart/` (same relative path) when that branch merges, then wire it. That branch's code was not edited.
 
 | Asset | Path | Branch | How to wire it |
 | --- | --- | --- | --- |
-| Blueprint Quill | `textures/item/blueprint_quill.png` | `blueprints-2` | In `models/item/blueprint_quill.json`, set `layer0` to `villageheart:item/blueprint_quill`. It currently points at `villageheart:item/blueprint` |
-| Builder Scaffold | `textures/block/builder_scaffold.png` | `blueprints-2` | In `models/block/builder_scaffold.json`, set `all` to `villageheart:block/builder_scaffold`. It currently points at `minecraft:block/bamboo_block` |
-| Smithing | `textures/gui/sprites/heart/activity_smithing.png` | `m19` | Blit beside `activity.smithing` |
-| Building a golem | `textures/gui/sprites/heart/activity_golem.png` | `m19` | Blit beside `activity.building_golem` |
-| Needs material | `textures/gui/sprites/heart/activity_needs_material.png` | `m19` | Blit beside `activity.needs_material` |
-| Needs villagers | `textures/gui/sprites/heart/activity_needs_villagers.png` | `m19` | Blit beside `activity.needs_villagers` |
-| Sheltering | `textures/gui/sprites/heart/activity_shelter.png` | `m25` | Blit beside `activity.sheltering` |
-| No shelter | `textures/gui/sprites/heart/activity_no_shelter.png` | `m25` | Blit beside `activity.no_shelter` |
+| Refined icon | `docs/art-staging/icon_refined.png` | — | A redraw of the heart-over-a-bell. The mod icon stays the release-prep file |
+| Blueprint Quill | `docs/art-staging/textures/item/blueprint_quill.png` | `blueprints-2` | In `models/item/blueprint_quill.json`, set `layer0` to `villageheart:item/blueprint_quill`. It currently points at `villageheart:item/blueprint` |
+| Builder Scaffold | `docs/art-staging/textures/block/builder_scaffold.png` | `blueprints-2` | In `models/block/builder_scaffold.json`, set `all` to `villageheart:block/builder_scaffold`. It currently points at `minecraft:block/bamboo_block` |
+| Smithing | `docs/art-staging/textures/gui/sprites/heart/activity_smithing.png` | `m19` | Blit beside `activity.smithing` |
+| Building a golem | `docs/art-staging/textures/gui/sprites/heart/activity_golem.png` | `m19` | Blit beside `activity.building_golem` |
+| Needs material | `docs/art-staging/textures/gui/sprites/heart/activity_needs_material.png` | `m19` | Blit beside `activity.needs_material` |
+| Needs villagers | `docs/art-staging/textures/gui/sprites/heart/activity_needs_villagers.png` | `m19` | Blit beside `activity.needs_villagers` |
+| Sheltering | `docs/art-staging/textures/gui/sprites/heart/activity_shelter.png` | `m25` | Blit beside `activity.sheltering` |
+| No shelter | `docs/art-staging/textures/gui/sprites/heart/activity_no_shelter.png` | `m25` | Blit beside `activity.no_shelter` |
 
 `m19` does not add a smith item. There is no item texture to draw for it. `activity.no_work.blacksmith` stays text; the anvil sprite above is the smith's mark.
 
@@ -85,7 +87,7 @@ These files are generated and tested as pixels. Nothing on this branch reference
 | `BlueprintArt` | the blueprint item |
 | `ProfessionArt` | the nine robe overlays |
 | `ExtraArt` | marker edge, quill, scaffold, refined icon |
-| `GuiArt` | every GUI sprite, including the ones not wired yet |
-| `AssetGenerator` | writes the PNGs and the generated JSON, and deletes a generated file that the generator no longer claims |
+| `GuiArt` | every wired GUI sprite, and the staged activity badges |
+| `AssetGenerator` | writes the PNGs and the generated JSON, writes `docs/art-staging/`, and deletes a generated file that the generator no longer claims |
 
 `icon.png` is not claimed. The generator will not overwrite it or delete it.

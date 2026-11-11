@@ -111,11 +111,11 @@ jar {
 // Regenerates the marker / job-block assets from the core enums (see docs/TESTING.md). Commit the output.
 tasks.register('genAssets', JavaExec) {
 	group = 'villageheart'
-	description = 'Regenerate generated assets under src/main/resources and a preview sheet in build/asset-preview'
+	description = 'Regenerate generated assets under src/main/resources, a preview sheet, and docs/art-staging'
 	dependsOn 'testClasses'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'dev.villageheart.tools.AssetGenerator'
-	args file('src/main/resources').absolutePath, file('build/asset-preview').absolutePath
+	args file('src/main/resources').absolutePath, file('build/asset-preview').absolutePath, file('docs/art-staging').absolutePath
 	systemProperty 'java.awt.headless', 'true'
 }
 
