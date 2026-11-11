@@ -3,8 +3,8 @@ package dev.villageheart.core.guard;
 /**
  * The pure rules of a raid chase (M25 step 19, plan risk 2). Combat applies them; the tests do not need a world.
  * A guard follows a raider of the tracked raid past the claim. The walk to the only gate can increase the
- * straight-line distance, and a kill in that margin still belongs to the guard. A direct path that stops at the wall
- * walks to the gate closest to the raider first.
+ * straight-line distance, and a kill in that margin still belongs to the guard. A raider already within 32 blocks
+ * is stepped to. A farther raider whose path stops at the wall is walked to the gate closest to that raider.
  */
 public final class GuardChase {
 	private GuardChase() {}
