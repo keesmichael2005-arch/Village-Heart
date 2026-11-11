@@ -75,6 +75,12 @@ public final class BreedingGate {
 		return s.licence;
 	}
 
+	/** True when {@code v} is a parent of today's active licence (the probe switch does not count). */
+	public static boolean holdsLicence(Villager v) {
+		Snapshot s = snapshot;
+		return s != null && licensed(s, v);
+	}
+
 	/** True when the block is inside the claim sphere of the snapshot (the bed an outsider must not take). */
 	public static boolean claimContains(ResourceKey<Level> dimension, BlockPos pos) {
 		Snapshot s = snapshot;

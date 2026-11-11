@@ -281,9 +281,15 @@ public final class Growth {
 		return Optional.of(Optional.of(bed));
 	}
 
-	/** A bed vanilla took for an unlicensed villager outside the claim lies inside it: give it back (plan 3.2 #6). */
+	/**
+	 * A bed vanilla took is given back (plan 3.2 #6, review M23-r1 item 3) when
+	 * (a) the villager holds today's licence but is not its SEEDED initiator: only the initiator gets the reserved House bed, so a baby of
+	 * the pair can never land in any other bed, wherever it is; or
+	 * (b) the villager holds no licence and the bed lies inside the claim. An unlicensed villager outside the claim keeps vanilla's choice.
+	 */
 	public static boolean mustDropBed(ServerLevel level, Villager v, BlockPos bed) {
-		boolean drop = !seededLicenceOf(v).isPresent() && BreedingGate.claimContains(level.dimension(), bed);
+		if (seededLicenceOf(v).isPresent()) return false;
+		boolean drop = BreedingGate.holdsLicence(v) || BreedingGate.claimContains(level.dimension(), bed);
 		if (drop) GrowthStats.droppedBed();
 		return drop;
 	}
@@ -294,6 +300,8 @@ public final class Growth {
 		GrowthState gs = state(server);
 		License l = gs.licence().filter(x -> x.active() && x.bed().isPresent() && x.bed().getAsLong() == bed.asLong() && x.handedOver()).orElse(null);
 		if (l == null) {
+			// legal vanilla breeding elsewhere (other villages, no claim at all) is none of our business; only a birth in the claim is an alarm
+			if (!BreedingGate.claimContains(level.dimension(), child.blockPosition()) && !BreedingGate.claimContains(level.dimension(), bed)) return;
 			GrowthStats.unlicensedBirth();
 			VillageHeart.LOG.error("[growth] a baby ({}) was born without a licence at bed {}", child.getUUID(), bed.toShortString());
 			return;

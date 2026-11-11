@@ -906,7 +906,6 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - No balance number or scenario assertion changed. Results after the fix: `defended_walled` 0/5 (deaths.mobs 2/2/1/2/2, kills 1/0/0/0/0), `defended` 1/5 (deaths 6/0/5/7/4, kills 12/21/24/5/21).
 - Next (orchestrator/M25/M26): decide vanilla sieges inside a claim (M25), move `defended_walled`'s threat to the ring, guard re-hire priority in the harness, guard strength vs three fresh zombies (proposals in the findings). Blockers: none.
 
-<<<<<<< HEAD
 ## 2026-11-11: TASK 1 finish M23 (Population growth)
 - Merged origin/dev (`c7f109b`, handoff docs) into m23. Product change is in `Courtship`: a `CANT_REACH_WALK_TARGET_SINCE` stamp counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A stroll left a stamp already older than 200 ticks, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). A real cannot-reach of the partner walk still lapses, and the 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C on their spots until the dawn has read them (A and C share a house and a few stroll ticks were swapping the closest pair), then lets them walk.
 - New L2 `staleCannotReachDoesNotEndCourtship`: pair held 7 blocks apart, stamp 5000 ticks old on a block stroll target, brains frozen with NoAI once idle. Red before the fix (`LAPSED/CANNOT_MEET`, approach 0, tick 45) and red again with the `tracks()` guard removed. Restored, then green. NoAI is the test setup: in the full suite a live brain puts the walk target back on the partner before courtship reads a planted stamp, which is a real cannot-reach of that walk. `one_birth_per_day` still uses live brains and passed both layers. No M23 test calls `relativePos`. `outside_pair_cannot_take_claim_bed` logged `NO_BED` plus the dropped bed in both worlds.
@@ -947,7 +946,6 @@ Full verify at `4c21c0d`: Layer 1 pass; Layer 2 "All 402 required tests passed";
 `scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions). Births on days 1, 2 and 6; `NO_FREE_BED` on the other dawns. No `TOO_FAR`, no lapse. Population 8 to 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie.
 
 Doubt: the new test freezes the brains so the stroll stamp stays on the stroll. The live-brain morning is `one_birth_per_day`, which passed both layers of the full verify and of the trailing fast run.
-=======
 ## 2026-11-11: TASK 8 (m26-scenarios) defence scenarios and the M26 bounds audit
 - `defended_walled` now runs `move_in` after the lamps: villagers inside the claim (hired and unhired) are given a bed inside the existing ring, a floor bell is placed inside if the old one is outside, and beds, job sites and bells that are not strictly inside the ring are removed so nobody walks back out to the old village. The wall was not enlarged (a ring around the dark old village would be ~100 blocks and mobs would spawn inside it). Scripted zombies with `outside` stand in a Chebyshev band 3–8 blocks outside the rectangle, including the south gate. `radius` is still in the action and is not used for that placement. Assertions are unchanged.
 - `defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege` (only `SPAWN_MONSTERS`, `RAIDS` and the like, and turning monsters off would kill natural spawns). The harness replaces the level's immutable spawner list with a wrapper that skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched (M25 owns siege and raid code).
@@ -998,4 +996,11 @@ GitHub refused the pull request (`must be a collaborator`). The branch is on `or
 `docs/M26-bounds.md` is the tunable audit (plan 3.9.4). No balance number changed. `sim/tunable-bounds.json`, `tuning.lock` and `check-tuning-diff` are left for TASK 11.
 
 Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (kills 9/6/8/2/3, mob deaths 2/3/1/0/0, those mob deaths outside the ring). `defended_nosiege` 2 of 5 (kills 21/17/10/23/21, mob deaths 2/0/0/0/3). No run exited 2. Full `scripts/verify.sh` exit 0 at `cebed9d1`: 388 GameTests, Layer 4 clean, perf within caps (worst 2835 us). `origin/dev` was already an ancestor. No balance value, assertion, or `docs/LOOP_STATE.md` edit.
->>>>>>> origin/dev
+
+## 2026-11-11: M23 review round 1 fixes (builder)
+- Resolved leftover conflict markers in this file (WIP merge) by keeping both sides. `origin/dev` was already merged.
+- Item 1: `Growth.onBirth` ignores an unlicensed birth when neither the child nor the bed is inside the claim (no counter, no ERROR). Test `vanillaBirthOutsideClaimIsNotUnlicensed`: red before (unlicensed 1, expected 0); mutant "never count" is red.
+- Item 2: test `bornLicenceStopsExemptingParents` (BORN licence: gate blocks, `canBreed` false). Green on the current code; mutant F (`licensed` ignores `l.active()`) is red.
+- Item 3: `Growth.mustDropBed` drops any bed for a licensed villager who is not the SEEDED initiator (new `BreedingGate.holdsLicence`). Test `licensedNonInitiatorDropsOutsideBed`: red before; both mutants red.
+- Tests 2 and 3 force licence state and call the hooks directly; they do not run a full make-love run. New class `GrowthReviewGameTests` is registered in `fabric.mod.json` (the first run silently skipped it).
+- `scripts/verify.sh --fast`: exit 0, 408 GameTests passed. Full `verify.sh`: see next entry.
