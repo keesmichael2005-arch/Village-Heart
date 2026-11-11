@@ -416,13 +416,36 @@ public final class StarterActions {
 
 	private static final Map<String, Standing> STANDING = new java.util.LinkedHashMap<>();
 
-	public static void resetStanding() { STANDING.clear(); }
+	public static void resetStanding() {
+		STANDING.clear();
+		LAST_WAIT.clear();
+	}
+
+	/** The last reason each job's empty slot stayed empty (logged once per change). */
+	private static final Map<String, String> LAST_WAIT = new java.util.HashMap<>();
+
+	/** A standing hire had an empty slot this sample and could not fill it: {@code work.sim.rehire_wait.<job>.<reason>} (see {@code DeathLog}). */
+	private static void rehireWait(String job, String reason) {
+		dev.villageheart.worker.job.WorkStats.add("sim", "rehire_wait." + job + "." + reason, 1);
+		if (!reason.equals(LAST_WAIT.put(job, reason))) VillageHeart.LOG.info("[sim] {} slot empty, not re-hired: {}", job, reason);
+	}
+
+	/** Why {@code hireNow} could not hire: {@code no_building}, {@code no_free_villager} or {@code refused_<result>}. */
+	static final class HireBlocked extends IllegalStateException {
+		final String reason;
+
+		HireBlocked(String reason, String message) {
+			super(message);
+			this.reason = reason;
+		}
+	}
 
 	public static void hire(Host ctx, ScenarioAction a) {
 		JobType job = JobType.byId((String) a.fields().get("job")).orElseThrow();
 		BuildingType type = BuildingType.byId((String) a.fields().get("building")).orElseThrow();
 		boolean teleport = !(a.fields().get("teleport") instanceof Boolean b) || b;
 		hireNow(ctx, job, type, teleport, true);
+		dev.villageheart.worker.job.WorkStats.add("sim", "hires", 1);
 		if (a.fields().get("replace") instanceof Boolean b && b) registerStanding(a);
 	}
 
@@ -443,12 +466,22 @@ public final class StarterActions {
 			long staffed = village.get().workers().stream().filter(w -> w.jobId().equals(e.getKey())).count();
 			if (staffed >= e.getValue().want()) continue;
 			// a guard is hired by day (M18 r3): the one that fell at night is replaced the next morning, not before
-			if (e.getKey().equals(JobType.GUARD.id()) && !dev.villageheart.core.guard.GuardTraining.mayHire(ctx.level().getDayTime())) continue;
+			if (e.getKey().equals(JobType.GUARD.id()) && !dev.villageheart.core.guard.GuardTraining.mayHire(ctx.level().getDayTime())) {
+				rehireWait(e.getKey(), "night");
+				continue;
+			}
 			try {
 				hireNow(ctx, JobType.byId(e.getKey()).orElseThrow(), e.getValue().type(), true, false);
+				dev.villageheart.worker.job.WorkStats.add("sim", "hires", 1);
+				dev.villageheart.worker.job.WorkStats.add("sim", "rehires", 1);
+				LAST_WAIT.remove(e.getKey());
 				VillageHeart.LOG.info("[sim] re-hired a {}", e.getKey());
-			} catch (RuntimeException ex) {
+			} catch (HireBlocked ex) {
+				rehireWait(e.getKey(), ex.reason);
 				VillageHeart.LOG.info("[sim] could not re-hire a {} yet: {}", e.getKey(), ex.getMessage());
+			} catch (RuntimeException ex) {
+				rehireWait(e.getKey(), "error");
+				VillageHeart.LOG.info("[sim] could not re-hire a {} yet: {}", e.getKey(), ex.toString());
 			}
 		}
 	}
@@ -499,7 +532,7 @@ public final class StarterActions {
 			for (Buildings.BuildingView b : Buildings.all(ctx.server())) {
 				if (b.type() == type) why.append(b.status()).append(' ').append(b.verdict().map(v -> v.reasons().toString()).orElse("")).append("; ");
 			}
-			throw new IllegalStateException("no valid " + type.id() + " to hire a " + job.id() + " into: " + why);
+			throw new HireBlocked("no_building", "no valid " + type.id() + " to hire a " + job.id() + " into: " + why);
 		}
 		Buildings.BuildingView b = valid.stream().min(Comparator.comparingDouble(v -> v.marker().distSqr(from))).orElseThrow();
 		VillageState village = VillageClaims.current(ctx.server()).orElseThrow();
@@ -508,7 +541,7 @@ public final class StarterActions {
 			if (v.isBaby() || WorkerAttachments.isWorker(v) || v.getVillagerData().profession().is(VillagerProfession.NITWIT)) continue;
 			candidates.add(v);
 		}
-		if (candidates.isEmpty()) throw new IllegalStateException("no free adult villager to hire as " + job.id());
+		if (candidates.isEmpty()) throw new HireBlocked("no_free_villager", "no free adult villager to hire as " + job.id());
 		candidates.sort(Comparator.<Villager, Boolean>comparing(v -> !v.getVillagerData().profession().is(VillagerProfession.NONE))
 				.thenComparingDouble(v -> v.distanceToSqr(b.marker().getX(), b.marker().getY(), b.marker().getZ())));
 		Villager v = candidates.get(0);
@@ -517,7 +550,7 @@ public final class StarterActions {
 			v.teleportTo(front.getX() + 0.5, front.getY(), front.getZ() + 0.5);
 		}
 		HireResult r = Workers.hire(level, v, job, Optional.of(VillageClaims.locate(b.level(), b.marker())));
-		if (!(r instanceof HireResult.Hired)) throw new IllegalStateException("hire refused: " + r);
+		if (!(r instanceof HireResult.Hired)) throw new HireBlocked("refused_" + r.getClass().getSimpleName().toLowerCase(java.util.Locale.ROOT), "hire refused: " + r);
 		VillageHeart.LOG.info("[sim] hired a {} at {}", job.id(), b.marker().toShortString());
 	}
 }
