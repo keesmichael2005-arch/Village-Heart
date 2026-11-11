@@ -70,6 +70,7 @@ public final class SelfCraftSystem implements VillageSystem {
 			case PICKAXE -> JobType.MINER;
 			case SWORD -> JobType.HUNTER;
 			case HOE -> JobType.FARMER;
+			case HEAD, CHEST, LEGS, FEET -> throw new IllegalStateException("a self-craft is never armour: " + sc.craft().key().need());
 		};
 	}
 

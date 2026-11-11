@@ -23,7 +23,8 @@ class TierChoiceTest {
 
 	@Test
 	void stoneBeatsWoodenWhenBothAreAffordable() {
-		for (GearNeed n : GearNeed.values()) {
+		// Armour needs (M19) are not self-made; this loop stays the four tool needs.
+		for (GearNeed n : GearNeed.tools()) {
 			CraftPlan p = pick(n, stone("cobblestone", 3), sticks(2), planks("oak", 10), logs("oak", 5));
 			assertEquals(CraftTier.STONE, p.recipe().tier(), n.name());
 			// stone from planks for the sticks, again with wood to spare
@@ -133,5 +134,48 @@ class TierChoiceTest {
 		CraftPlan p = pick(GearNeed.PICKAXE, planks("oak", 2), planks("spruce", 1), sticks(2));
 		assertEquals("minecraft:wooden_pickaxe", p.recipe().outputId());
 		takes(p, new ItemCount("minecraft:stick", 2), new ItemCount("minecraft:oak_planks", 2), new ItemCount("minecraft:spruce_planks", 1));
+	}
+
+	private static GearDemand axe() {
+		return new GearDemand(new OrderKey(new dev.villageheart.core.HeartLocation("minecraft:overworld", 1, 64, 1), GearNeed.AXE, 0),
+				"lumberjack", Urgency.U1_MISSING_REQUIRED, SlotState.MISSING,
+				new dev.villageheart.core.HeartLocation("minecraft:overworld", 1, 64, 1), java.util.OptionalInt.empty(), true);
+	}
+
+	private static GearOrder best(GearDemand d, Materials m, int smelt) {
+		return TierChoice.best(d, m, smelt, VillageGear.none(), dev.villageheart.core.smith.SmithSettings.defaults()).orElseThrow();
+	}
+
+	@Test
+	void smithAgreesWithSelfMadeWhenThereAreNoLogs() {
+		Materials m = mats(stone("cobblestone", 3), sticks(2), planks("oak", 5));
+		assertEquals(TierChoice.selfMade(GearNeed.AXE, m).orElseThrow().take(), best(axe(), m, 0).plan().take());
+		Materials logsOnly = mats(logs("oak", 2));
+		assertTrue(TierChoice.best(axe(), logsOnly, 0, VillageGear.none(), dev.villageheart.core.smith.SmithSettings.defaults()).isEmpty());
+		assertEquals("planks", TierChoice.cheapestShort(axe(), logsOnly).cheapestMaterial());
+		assertEquals("minecraft:wooden_axe", TierChoice.selfMade(GearNeed.AXE, logsOnly).orElseThrow().recipe().outputId());
+	}
+
+	@Test
+	void copperIronAndArmourPlans() {
+		GearOrder copper = best(axe(), mats(new StockItem("minecraft:copper_ingot", MaterialRole.COPPER_INGOT, 3), sticks(2)), 0);
+		assertEquals("minecraft:copper_axe", copper.recipe().outputId());
+		takes(copper.plan(), new ItemCount("minecraft:copper_ingot", 3), new ItemCount("minecraft:stick", 2));
+		Materials ore = mats(new StockItem("minecraft:raw_iron", MaterialRole.RAW_IRON, 3), sticks(2), stone("cobblestone", 3));
+		GearOrder iron = best(axe(), ore, 3);
+		assertEquals("minecraft:iron_axe", iron.recipe().outputId());
+		assertEquals(3, iron.prerequisites().stream().filter(r -> r.kind() == dev.villageheart.core.smith.SmithKind.SMELT).count());
+		assertEquals("minecraft:stone_axe", best(axe(), ore, 2).recipe().outputId());
+		GearOrder mixed = best(axe(), mats(planks("oak", 2), planks("spruce", 1), sticks(2)), 0);
+		assertTrue(mixed.plan().take().contains(new ItemCount("minecraft:oak_planks", 2)));
+		assertTrue(mixed.plan().take().contains(new ItemCount("minecraft:spruce_planks", 1)));
+		var barracks = new dev.villageheart.core.HeartLocation("minecraft:overworld", 3, 64, 3);
+		GearDemand chest = new GearDemand(new OrderKey(barracks, GearNeed.CHEST, 0), "guard", Urgency.U3_GUARD_ARMOUR, SlotState.MISSING, barracks,
+				java.util.OptionalInt.empty(), false);
+		GearOrder plate = best(chest, mats(new StockItem("minecraft:iron_ingot", MaterialRole.IRON_INGOT, 8)), 0);
+		assertEquals("minecraft:iron_chestplate", plate.recipe().outputId());
+		assertEquals(0, plate.plan().stickBatches());
+		assertTrue(plate.prerequisites().isEmpty());
+		takes(plate.plan(), new ItemCount("minecraft:iron_ingot", 8));
 	}
 }

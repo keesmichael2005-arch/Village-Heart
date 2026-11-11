@@ -16,11 +16,16 @@ public final class ToolRecipes {
 	private ToolRecipes() {}
 
 	private static List<ToolRecipe> build() {
+		// Self-made tools only. M19 appends armour needs and higher tiers to the enums; those recipes live in SmithRecipes, not here.
 		List<ToolRecipe> out = new ArrayList<>();
-		for (CraftTier t : CraftTier.values()) {
+		for (CraftTier t : List.of(CraftTier.WOODEN, CraftTier.STONE)) {
 			String tag = t == CraftTier.WOODEN ? PLANKS_TAG : STONE_TAG;
-			for (GearNeed n : GearNeed.values()) {
-				int head = switch (n) { case AXE, PICKAXE -> 3; case HOE, SWORD -> 2; };
+			for (GearNeed n : GearNeed.tools()) {
+				int head = switch (n) {
+					case AXE, PICKAXE -> 3;
+					case HOE, SWORD -> 2;
+					case HEAD, CHEST, LEGS, FEET -> throw new IllegalStateException("armour is not a self-made tool");
+				};
 				int sticks = n == GearNeed.SWORD ? 1 : 2;
 				out.add(new ToolRecipe("minecraft:" + t.itemPrefix() + "_" + n.id(), n, t, tag, head, sticks));
 			}
