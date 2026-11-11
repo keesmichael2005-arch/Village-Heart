@@ -46,10 +46,35 @@ public class GrowthCourtshipGameTests {
 
 	// ---- T-L2-2 ---------------------------------------------------------------------------------
 
-	/** Roadmap L2: no free House bed, no baby in three days, although vanilla alone had food and a free bed (outside any House). */
+	/**
+	 * Roadmap L2: no free House bed, no baby in three days, although vanilla alone had food and a free bed (outside any House).
+	 *
+	 * <p>The pair is held next to that bed. In the shared suite a villager who cannot reach a walk target for 1200 ticks makes the night's
+	 * home-walk release the House bed ({@code SetWalkTargetFromBlockMemory}), and the next dawn is {@code TOO_FEW_READY} with one free bed
+	 * instead of {@code NO_FREE_BED}. The brain still ticks, so a missing gate still produces a baby here.
+	 */
 	@GameTest(environment = "villageheart-gametest:growth_no_free_bed", structure = YARD, skyAccess = true, maxTicks = 17500)
 	public void noFreeBedNoBabyInThreeDays(GameTestHelper h) {
 		Villager[] v = new Villager[2];
+		boolean[] hold = {false};
+		h.onEachTick(() -> {
+			if (!hold[0] || v[0] == null) return;
+			for (int i = 0; i < 2; i++) {
+				Villager x = v[i];
+				if (!x.isAlive()) continue;
+				// feet on the grass (y 0). Snapping up every tick stacks fallDistance and they die of the landing.
+				net.minecraft.world.phys.Vec3 post = h.absoluteVec(new net.minecraft.world.phys.Vec3(22.5 + i, 0, 22.5));
+				if (x.distanceToSqr(post) > 16.0) {
+					x.snapTo(post.x, post.y, post.z, 0.0F, 0.0F);
+					x.resetFallDistance();
+					x.setDeltaMovement(0, 0, 0);
+				}
+				x.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+			}
+			var box = new net.minecraft.world.phys.AABB(v[0].blockPosition()).inflate(32);
+			h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.monster.Monster.class, box, e -> true)
+					.forEach(net.minecraft.world.entity.Entity::discard);
+		});
 		GameTestSequence seq = scene(h, 2, 0, 32).thenExecute(() -> WorkerTestSupport.bed(h, YARD_BED))
 				.thenWaitUntil(() -> h.assertTrue(WorkerTestSupport.poiPresent(h, YARD_BED.south()), "the bed outside the House has a POI"))
 				.thenExecute(() -> {
@@ -63,11 +88,14 @@ public class GrowthCourtshipGameTests {
 					for (Villager x : v) breadInPockets(x, 3); // vanilla's canBreed would be true
 					housingNow(h);
 					h.assertTrue(WorkerTestSupport.poiHasSpace(h, YARD_BED.south()), "the yard bed is free");
+					hold[0] = true;
 				});
 		for (int day = 1; day <= 3; day++) {
 			int d = day;
 			seq = toDawn(h, seq).thenExecute(() -> {
-				h.assertTrue(GrowthStats.lastDawn().reason() == Reason.NO_FREE_BED, "day " + d + ": " + GrowthStats.lastDawn());
+				h.assertTrue(GrowthStats.lastDawn().reason() == Reason.NO_FREE_BED, "day " + d + ": " + GrowthStats.lastDawn()
+						+ " homes " + v[0].getBrain().getMemory(MemoryModuleType.HOME) + " " + v[1].getBrain().getMemory(MemoryModuleType.HOME)
+						+ " at " + v[0].blockPosition() + " / " + v[1].blockPosition() + " alive " + v[0].isAlive() + "/" + v[1].isAlive());
 				h.assertTrue(licence(h).filter(l -> l.active()).isEmpty(), "no licence on day " + d);
 			});
 			// days 1 and 2: the whole courtship window of these villagers; day 3: to the end of every IDLE window
