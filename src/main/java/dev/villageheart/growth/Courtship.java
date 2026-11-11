@@ -139,7 +139,10 @@ final class Courtship {
 		}
 		if (server.getTickCount() % WALK_PERIOD != 0) return;
 		long now = level.getGameTime();
-		if (cannotReach(a, now) || cannotReach(b, now)) {
+		// The stamp belongs to the current walk target. A stroll from before this courtship leaves one that is already
+		// older than 200 ticks; reading it here used to lapse the licence on the first walk tick (approach 0, no seed).
+		// Read it before replacing the target, and only when that target is the partner.
+		if ((tracks(a, b) && cannotReach(a, now)) || (tracks(b, a) && cannotReach(b, now))) {
 			Growth.lapse(server, level, LapseReason.CANNOT_MEET);
 			return;
 		}
@@ -159,11 +162,18 @@ final class Courtship {
 		return since.isPresent() && now - since.get() > CANNOT_REACH_TICKS;
 	}
 
+	/** True when {@code v}'s walk target is already the partner (so its cannot-reach stamp is about this walk). */
+	private static boolean tracks(Villager v, Villager partner) {
+		Optional<WalkTarget> wt = v.getBrain().getMemory(MemoryModuleType.WALK_TARGET);
+		return wt.isPresent() && wt.get().getTarget() instanceof EntityTracker t && t.getEntity() == partner;
+	}
+
 	/** Re-issues the walk target only when it is absent or does not follow the partner (so the path is not recomputed every tick). */
 	private static void walkTowards(Villager v, Villager partner) {
-		Optional<WalkTarget> wt = v.getBrain().getMemory(MemoryModuleType.WALK_TARGET);
-		boolean tracking = wt.isPresent() && wt.get().getTarget() instanceof EntityTracker t && t.getEntity() == partner;
-		if (!tracking) BehaviorUtils.setWalkAndLookTargetMemories(v, partner, 0.5F, 1);
+		if (tracks(v, partner)) return;
+		// the previous target's failure stamp must not become this target's
+		v.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+		BehaviorUtils.setWalkAndLookTargetMemories(v, partner, 0.5F, 1);
 	}
 
 	// ---- seeding ---------------------------------------------------------------------------------------

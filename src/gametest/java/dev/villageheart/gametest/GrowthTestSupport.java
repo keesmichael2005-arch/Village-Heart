@@ -107,7 +107,8 @@ public final class GrowthTestSupport {
 	}
 
 	public static String describe(GameTestHelper h) {
-		return "licence " + licence(h).map(l -> l.state() + " seeds " + l.seeds() + " aborts " + l.aborts() + " approach " + l.approachTicks()).orElse("none")
+		return "licence " + licence(h).map(l -> l.state() + l.lapse().map(r -> "/" + r).orElse("") + " seeds " + l.seeds() + " aborts " + l.aborts()
+				+ " approach " + l.approachTicks()).orElse("none")
 				+ ", dawn " + GrowthStats.lastDawn() + ", " + dev.villageheart.growth.BreedTrace.summary() + ", day time " + h.getLevel().getDayTime();
 	}
 

@@ -23,6 +23,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.EntityTracker;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -208,6 +209,61 @@ public class GrowthCourtshipGameTests {
 		});
 	}
 
+	/**
+	 * A cannot-reach stamp left by an earlier stroll is about that stroll, not about the courtship walk. It must not lapse the licence
+	 * the moment the morning window opens (that is what dropped day 2 of {@code oneBirthPerDay} in a full suite: approach 0, no seed).
+	 */
+	@GameTest(environment = "villageheart-gametest:growth_stale_reach", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void staleCannotReachDoesNotEndCourtship(GameTestHelper h) {
+		Villager[] v = new Villager[2];
+		boolean[] pin = {false};
+		double[][] spot = new double[2][3];
+		// hold them 7 apart so the courtship must walk; do not clear CANT_REACH (that stamp is the subject of the test)
+		h.onEachTick(() -> {
+			if (!pin[0] || v[0] == null) return;
+			for (int i = 0; i < 2; i++) {
+				Villager x = v[i];
+				if (!x.isAlive()) continue;
+				if (x.isSleeping()) x.stopSleeping();
+				x.snapTo(spot[i][0], spot[i][1], spot[i][2], 0.0F, 0.0F);
+				x.setDeltaMovement(0, 0, 0);
+				x.resetFallDistance();
+			}
+		});
+		scene(h, 4, 0, 32).thenExecute(() -> {
+			h.getLevel().setDayTime(dayStart(h) + 100);
+			v[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(10, 0, 10));
+			v[1] = WorkerTestSupport.spawnVillager(h, new BlockPos(17, 0, 10));
+			for (Villager x : v) {
+				x.setAge(0);
+				breadInPockets(x, 3);
+			}
+			double[] rx = {10.5, 17.5};
+			for (int i = 0; i < 2; i++) {
+				net.minecraft.world.phys.Vec3 p = h.absoluteVec(new net.minecraft.world.phys.Vec3(rx[i], 0, 10.5));
+				spot[i][0] = p.x;
+				spot[i][1] = p.y;
+				spot[i][2] = p.z;
+				v[i].snapTo(p.x, p.y, p.z, i == 0 ? 90.0F : -90.0F, 0.0F);
+			}
+			pin[0] = true;
+			license(h, v[0], v[1]);
+			h.assertTrue(v[0].distanceTo(v[1]) > dev.villageheart.core.Balance.COURTSHIP_SEED_DISTANCE,
+					"the pair starts out of seed range: " + v[0].distanceTo(v[1]));
+		}).thenWaitUntil(() -> {
+			h.assertTrue(v[0].getBrain().isActive(Activity.IDLE) && v[1].getBrain().isActive(Activity.IDLE), "both are idle");
+			h.assertFalse(v[0].isSleeping() || v[1].isSleeping(), "both are awake");
+		}).thenExecute(() -> {
+			long stale = h.getLevel().getGameTime() - 5000;
+			for (Villager x : v) x.getBrain().setMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE, stale);
+		}).thenIdle(40).thenExecute(() -> {
+			License l = licence(h).orElseThrow(() -> h.assertionException("the licence is still there: " + describe(h)));
+			h.assertTrue(l.state() == LicenceState.APPROACHING || l.state() == LicenceState.SEEDED,
+					"a stale cannot-reach does not end the courtship: " + describe(h));
+			end(h);
+		});
+	}
+
 	/** The same pair with live brains still breeds (the probabilistic twin of the test above). */
 	@GameTest(environment = "villageheart-gametest:growth_parked_breeds", structure = YARD, skyAccess = true, maxTicks = 1200)
 	public void parkedPairStillBreeds(GameTestHelper h) {
@@ -336,12 +392,31 @@ public class GrowthCourtshipGameTests {
 
 	// ---- T-L2-11 --------------------------------------------------------------------------------
 
-	/** A pair that cannot reach each other lapses CANNOT_MEET and is skipped for the next days; growth is not blocked for ever. */
+	/**
+	 * A pair that cannot reach each other lapses CANNOT_MEET and is skipped for the next days; growth is not blocked for ever.
+	 *
+	 * <p>A and B are held on their spots until the dawn snapshot. They stand 3.0 apart and C is 4.5 from A, so a few ticks of strolling
+	 * inside the house (the dawn wait) used to make A and C the closer pair. After the snapshot they walk, and the walls stop them.
+	 */
 	@GameTest(environment = "villageheart-gametest:growth_cannot_meet", structure = YARD, skyAccess = true, maxTicks = 4500)
 	public void cannotMeetLapsesAndIsSkipped(GameTestHelper h) {
 		BlockPos house2 = new BlockPos(15, 0, 14); // right next to House 1: A and B stand 3.0 apart, two walls between them
 		Villager[] v = new Villager[3]; // A, B, C
 		BreedingPair[] ab = new BreedingPair[1];
+		boolean[] pin = {false};
+		double[][] spot = new double[3][3];
+		h.onEachTick(() -> {
+			if (!pin[0] || v[0] == null) return;
+			for (int i = 0; i < 3; i++) {
+				Villager x = v[i];
+				if (!x.isAlive()) continue;
+				if (x.isSleeping()) x.stopSleeping();
+				x.snapTo(spot[i][0], spot[i][1], spot[i][2], 0.0F, 0.0F);
+				x.setDeltaMovement(0, 0, 0);
+				x.resetFallDistance();
+				x.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+			}
+		});
 		GameTestSequence seq = scene(h, 4, 0, 32).thenExecute(() -> {
 			buildHouse(h, house2, 4);
 		}).thenWaitUntil(() -> {
@@ -355,9 +430,15 @@ public class GrowthCourtshipGameTests {
 			home(h, v[0], bedHead(HOUSE1, 3));
 			home(h, v[1], bedHead(house2, 2));
 			home(h, v[2], bedHead(HOUSE1, 0));
-			placeAt(h, v[0], 13.5, 1, 18.5); // A: east end of House 1
-			placeAt(h, v[1], 16.5, 1, 18.5); // B: west end of House 2, 3.0 from A through two walls
-			placeAt(h, v[2], 9.5, 1, 16.5); // C: west end of House 1, 4.5 from A
+			double[] rx = {13.5, 16.5, 9.5};
+			double[] rz = {18.5, 18.5, 16.5};
+			for (int i = 0; i < 3; i++) {
+				net.minecraft.world.phys.Vec3 p = h.absoluteVec(new net.minecraft.world.phys.Vec3(rx[i], 1, rz[i]));
+				spot[i][0] = p.x;
+				spot[i][1] = p.y;
+				spot[i][2] = p.z;
+				v[i].snapTo(p.x, p.y, p.z, 0.0F, 0.0F);
+			}
 			ab[0] = BreedingPair.of(v[0].getUUID(), v[1].getUUID());
 			// seal both doors from outside: nobody can leave either room
 			for (BlockPos o : new BlockPos[] {HOUSE1, house2}) {
@@ -367,11 +448,16 @@ public class GrowthCourtshipGameTests {
 			}
 			housingNow(h);
 			h.assertTrue(housed(h, v[0]) && housed(h, v[1]) && housed(h, v[2]), "all three are housed");
+			h.assertValueEqual(3, dev.villageheart.world.VillageCensus.of(h.getLevel().getServer(), village(h)).size(), "only these three adults are in the census");
+			pin[0] = true;
 		});
 		seq = toDawn(h, seq).thenExecute(() -> {
+			pin[0] = false; // the dawn already read the pinned positions
 			h.assertTrue(GrowthStats.lastDawn().reason() == Reason.LICENSED, "dawn 1: " + GrowthStats.lastDawn());
-			h.assertTrue(licence(h).orElseThrow().pair().equals(ab[0]), "dawn 1 licenses the closest pair, A and B");
-			h.assertValueEqual(0, licence(h).orElseThrow().seeds(), "they never get close enough to be seeded");
+			License dawn = licence(h).orElseThrow();
+			h.assertTrue(dawn.pair().equals(ab[0]), "dawn 1 licenses the closest pair, A and B: " + describe(h) + " pair " + dawn.pair()
+					+ " at " + v[0].blockPosition() + " / " + v[1].blockPosition() + " / " + v[2].blockPosition());
+			h.assertValueEqual(0, dawn.seeds(), "they never get close enough to be seeded");
 		});
 		seq = seq.thenWaitUntil(() -> {
 			License l = licence(h).orElseThrow();
