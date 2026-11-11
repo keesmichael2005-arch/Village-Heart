@@ -632,14 +632,17 @@ public class SmithGameTests {
 		Villager[] smiths = new Villager[2];
 		Villager[] jacks = new Villager[2];
 		BlockPos secondFurnace = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 1);
+		BlockPos secondAnvil = BuildingTestSupport.inside(SmithTestSupport.SMITHY, 3, 0, 2);
 		BlockPos secondBlock = BuildingTestSupport.inside(SmithTestSupport.CAMP, 3, 0, 1);
 		scene(h).thenExecute(() -> {
 			h.setBlock(secondFurnace, Blocks.BLAST_FURNACE);
+			h.setBlock(secondAnvil, Blocks.ANVIL);
 			SmithTestSupport.addLumberCamp(h);
 			h.setBlock(secondBlock, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
 		}).thenWaitUntil(() -> {
 			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
 			h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.BLAST_FURNACE), "furnaces");
+			h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.ANVIL), "anvils");
 			h.assertValueEqual(2, contents(h, SmithTestSupport.campMarker(), BuildingType.LUMBER_CAMP, BuildingRequirements.CHOPPING_BLOCK), "chopping blocks");
 		}).thenExecute(() -> {
 			GearOrders.reset();
