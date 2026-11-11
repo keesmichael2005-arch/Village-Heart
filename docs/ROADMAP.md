@@ -238,6 +238,7 @@ from there instead of hard-coding them.
 
 ## M26: Balance pass
 - Prep done on `m26-prep` (2026-11-11): every L3 report has a death log (who, what, where, origin of the attacker, side of the wall), hire and re-hire counts with the reason a slot stayed empty, and hostile spawn/breach counts. `wall_ring` fixed (the wall and the gate were a one-block step on seed 1's higher ground). Findings and proposed changes: `docs/reviews/m26-prep-findings.md` (the largest killer in `defended` is vanilla's zombie siege). No balance number or assertion changed
+- Scenarios on `m26-scenarios` (TASK 8): `defended_walled` brings the vanilla village inside the ring (`move_in`) and spawns the threat 3–8 blocks outside the wall; `defended_nosiege` is `defended` with vanilla's zombie siege off inside the claim (a harness flag, not a gamerule). The tunable audit and safe ranges are `docs/M26-bounds.md`. No balance number changed
 - [ ] Run the L3 scenarios and tune the *(tunable)* values. Record the before/after metrics in PROGRESS.md
 - **L3**: scenario `full` (all building types, 12 villagers, starts at Hamlet with a starter kit of resources), 30 days, no player input:
       reaches the Village tier, food days left never 0 for more than 1 day in a row, treasury never negative, village logic mean < 1 ms/tick
