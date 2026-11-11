@@ -147,7 +147,7 @@ final class P4ClientTests {
 			return job.id().toString();
 		});
 		context.waitTicks(15);
-		look(context, srv, x + 10, y + 8, z + 12, x + 3, y + 3, z + 3);
+		look(context, srv, x + 14, y + 6, z + 16, x + 2, y + 4, z + 2);
 		sp.getClientWorld().waitForChunksRender();
 		picture(context, "scaffold_mid");
 		String result = srv.computeOnServer(server -> BuildJobs.advance(server, java.util.UUID.fromString(id), Integer.MAX_VALUE).toString());
@@ -243,12 +243,13 @@ final class P4ClientTests {
 		return id.equals("wall_segment") || id.equals("gate") ? new BlueprintParams(6) : BlueprintParams.NONE;
 	}
 
-	/** One blueprint's materials, so a full catalogue cannot crowd the chest before this build's cobble. */
+	/** Tops Storage up to this blueprint's cost. Adding the full cost every time fills the chests and later cobble never lands. */
 	private static void stockFor(net.minecraft.server.level.ServerLevel level, BlockPos chest, Blueprint bp, int extraDirt) {
+		var server = level.getServer();
 		for (var line : bp.materials().lines()) {
 			Item item = itemFor(line.material());
 			if (item == null) continue;
-			int left = line.count() + 4;
+			int left = line.count() + 4 - (int) Math.min(Integer.MAX_VALUE, Stockpiles.count(server, item));
 			while (left > 0) {
 				int n = Math.min(64, left);
 				int stored = Stockpiles.deposit(level, chest, new ItemStack(item, n));
@@ -256,7 +257,7 @@ final class P4ClientTests {
 				left -= stored;
 			}
 		}
-		int dirt = extraDirt;
+		int dirt = extraDirt - (int) Math.min(Integer.MAX_VALUE, Stockpiles.count(server, Items.DIRT));
 		while (dirt > 0) {
 			int n = Math.min(64, dirt);
 			int stored = Stockpiles.deposit(level, chest, new ItemStack(Items.DIRT, n));
