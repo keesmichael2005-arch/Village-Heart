@@ -190,18 +190,48 @@ public final class MarkerArt {
 	public static BufferedImage render(BuildingType type, String status) {
 		Art a = ART.get(type);
 		int frame = FRAMES[java.util.Arrays.asList(STATUSES).indexOf(status)];
+		char[][] glyph = new char[16][16];
+		int[][] flat = new int[16][16];
+		for (int y = 1; y <= 14; y++) {
+			for (int x = 1; x <= 14; x++) {
+				boolean edge = x == 1 || x == 14 || y == 1 || y == 14;
+				if (edge) {
+					flat[y][x] = frame;
+					continue;
+				}
+				char c = '.';
+				if (x >= 3 && x <= 12 && y >= 3 && y <= 12) c = a.glyph()[y - 3].charAt(x - 3);
+				glyph[y][x] = c;
+				flat[y][x] = c == '#' ? a.main() : c == '+' ? a.second() : a.bg();
+			}
+		}
 		BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 		for (int y = 1; y <= 14; y++) {
 			for (int x = 1; x <= 14; x++) {
 				boolean edge = x == 1 || x == 14 || y == 1 || y == 14;
-				img.setRGB(x, y, edge ? frame : a.bg());
-			}
-		}
-		for (int gy = 0; gy < 10; gy++) {
-			for (int gx = 0; gx < 10; gx++) {
-				char c = a.glyph()[gy].charAt(gx);
-				if (c == '#') img.setRGB(3 + gx, 3 + gy, a.main());
-				else if (c == '+') img.setRGB(3 + gx, 3 + gy, a.second());
+				if (edge) {
+					img.setRGB(x, y, frame);
+					continue;
+				}
+				char c = glyph[y][x];
+				if (c == '#' || c == '+') {
+					char up = glyph[y - 1][x];
+					char left = glyph[y][x - 1];
+					char down = y < 14 ? glyph[y + 1][x] : '.';
+					boolean top = up != '#' && up != '+';
+					boolean lit = left != '#' && left != '+';
+					boolean bot = down != '#' && down != '+';
+					int col = flat[y][x];
+					if (top || lit) col = ArtKit.lighten(col, top && lit ? 1.28 : 1.14);
+					else if (bot) col = ArtKit.darken(col, 0.74);
+					img.setRGB(x, y, col);
+				} else if (x == 2 || y == 2) {
+					img.setRGB(x, y, ArtKit.lighten(a.bg(), 1.2));
+				} else if (x == 13 || y == 13) {
+					img.setRGB(x, y, ArtKit.darken(a.bg(), 0.74));
+				} else {
+					img.setRGB(x, y, ArtKit.vary(a.bg(), x, y, 6));
+				}
 			}
 		}
 		return img;
