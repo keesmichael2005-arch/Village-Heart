@@ -27,7 +27,9 @@ import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.golem.GolemGate;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
+import dev.villageheart.core.job.ToolKind;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.worker.job.CampTools;
 import dev.villageheart.worker.gear.ToolStacks;
 import dev.villageheart.worker.job.WorkStats;
 import dev.villageheart.worker.job.WorkerStatuses;
@@ -407,6 +409,93 @@ public class SmithGameTests {
 			h.assertTrue(SmithTestSupport.chestHas(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE), "the stone pickaxe is gone");
 			VillageTestSupport.done(h);
 		});
+	}
+
+	// ---- T-L2-5c --------------------------------------------------------------------------------------
+
+	/**
+	 * A worn tool is replaced by the best tier the village can afford. A worn iron axe is not swapped for a stone one while the lease
+	 * still hands out the iron axe. Each part resets the camp chest, Storage and the clock.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_worn_axe", structure = YARD, skyAccess = true, maxTicks = 20000)
+	public void wornToolReplacedWithBestAffordable(GameTestHelper h) {
+		Villager[] jack = new Villager[1];
+		int[] stoneWorn = {0};
+		int[] ironWorn = {0};
+		scene(h).thenExecute(() -> SmithTestSupport.addLumberCamp(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			stoneWorn[0] = new ItemStack(Items.STONE_AXE).getMaxDamage() - 10;
+			ironWorn[0] = new ItemStack(Items.IRON_AXE).getMaxDamage() - 10;
+			jack[0] = SmithTestSupport.hireLumberjack(h);
+			hire(h);
+			resetCamp(h);
+			putCamp(h, Items.STONE_AXE, stoneWorn[0]);
+			putStore(h, Items.IRON_INGOT, 3);
+			putStore(h, Items.COBBLESTONE, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			log("worn stone axe, iron available");
+		}).thenWaitUntil(() -> {
+			boolean ironAxe = toolDamage(h, SmithTestSupport.campChest(), Items.IRON_AXE, 0);
+			boolean moved = toolDamage(h, SmithTestSupport.smithyChest(), Items.STONE_AXE, stoneWorn[0]);
+			h.assertTrue(ironAxe && count(h, Items.IRON_INGOT) == 0 && count(h, Items.COBBLESTONE) == 3 && moved,
+					"ironAxe " + ironAxe + " iron " + count(h, Items.IRON_INGOT) + " cobble " + count(h, Items.COBBLESTONE) + " moved " + moved);
+		}).thenExecute(() -> {
+			log("iron axe delivered, worn stone axe moved to the smithy");
+			resetCamp(h);
+			putCamp(h, Items.STONE_AXE, stoneWorn[0]);
+			putStore(h, Items.COBBLESTONE, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			log("worn stone axe, only cobble");
+		}).thenWaitUntil(() -> {
+			boolean fresh = toolDamage(h, SmithTestSupport.campChest(), Items.STONE_AXE, 0);
+			h.assertTrue(fresh && count(h, Items.COBBLESTONE) == 0 && count(h, Items.STICK) == 0,
+					"fresh stone " + fresh + " cobble " + count(h, Items.COBBLESTONE) + " sticks " + count(h, Items.STICK));
+		}).thenExecute(() -> {
+			log("stone axe delivered");
+			resetCamp(h);
+			putCamp(h, Items.IRON_AXE, ironWorn[0]);
+			putStore(h, Items.COBBLESTONE, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			log("worn iron axe, only cobble");
+		}).thenWaitUntil(() -> {
+			boolean stone = toolDamage(h, SmithTestSupport.campChest(), Items.STONE_AXE, 0);
+			var lease = CampTools.lease(h.getLevel().getServer(), jack[0], ToolKind.AXE, null);
+			boolean iron = lease instanceof CampTools.Held held && held.lease().stack().is(Items.IRON_AXE);
+			h.assertTrue(stone && iron && count(h, Items.COBBLESTONE) == 0 && count(h, Items.STICK) == 0,
+					"stone " + stone + " lease " + lease + " cobble " + count(h, Items.COBBLESTONE) + " sticks " + count(h, Items.STICK));
+		}).thenExecute(() -> {
+			log("stone axe delivered, lease still the iron axe");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static void resetCamp(GameTestHelper h) {
+		for (BlockPos rel : new BlockPos[] {SmithTestSupport.campChest(), SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2(), SmithTestSupport.smithyChest()}) {
+			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+			for (int i = 0; i < box.getContainerSize(); i++) box.setItem(i, ItemStack.EMPTY);
+			box.setChanged();
+		}
+	}
+
+	private static void putCamp(GameTestHelper h, net.minecraft.world.item.Item item, int damage) {
+		ItemStack stack = new ItemStack(item);
+		stack.setDamageValue(damage);
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.campChest()));
+		box.setItem(0, stack);
+		box.setChanged();
+	}
+
+	private static boolean toolDamage(GameTestHelper h, BlockPos rel, net.minecraft.world.item.Item item, int damage) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+		for (int i = 0; i < box.getContainerSize(); i++) {
+			ItemStack s = box.getItem(i);
+			if (s.is(item) && s.getDamageValue() == damage) return true;
+		}
+		return false;
 	}
 
 	private static boolean pickWorn(GameTestHelper h) {
