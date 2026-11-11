@@ -35,6 +35,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			DefenceClientTests.walledSection(context);
 			return;
 		}
+		if ("raid".equals(System.getProperty("villageheart.l4.only"))) {
+			RaidClientTests.raidOverview(context);
+			return;
+		}
 		if ("guards".equals(System.getProperty("villageheart.l4.only"))) {
 			GuardClientTests.guardOnDuty(context);
 			GuardClientTests.villagersTabGuards(context);

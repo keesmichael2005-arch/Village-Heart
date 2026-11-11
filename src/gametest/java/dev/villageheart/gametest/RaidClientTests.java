@@ -62,6 +62,10 @@ final class RaidClientTests {
 				String claim = srv.computeOnServer(server -> dev.villageheart.world.VillageClaims.claim(server.overworld(), heart,
 						server.getPlayerList().getPlayers().get(0)).name());
 				if (!claim.equals("CLAIMED")) throw new AssertionError("the claim failed: " + claim);
+				srv.computeOnServer(server -> {
+					dev.villageheart.world.VillageClaims.data(server).update(v -> v.withTier(dev.villageheart.core.Tier.VILLAGE));
+					return 0;
+				});
 
 				HeartScreenClientTests.room(srv, -9, y, 3, 3, "storage_marker");
 				srv.runCommand("setblock -8 " + y + " 7 minecraft:chest");
@@ -70,17 +74,18 @@ final class RaidClientTests {
 				srv.runCommand("setblock -2 " + y + " 7 minecraft:composter");
 				srv.runCommand("setblock 0 " + y + " 10 minecraft:torch");
 				srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
-				HeartScreenClientTests.room(srv, 10, y, 5, 4, "barracks_marker");
-				srv.runCommand("setblock 11 " + y + " 7 minecraft:grindstone");
-				srv.runCommand("setblock 12 " + y + " 8 minecraft:red_bed[facing=south,part=foot]");
-				srv.runCommand("setblock 12 " + y + " 9 minecraft:red_bed[facing=south,part=head]");
-				srv.runCommand("setblock 14 " + y + " 7 minecraft:chest");
-				srv.runCommand("setblock 15 " + y + " 10 minecraft:torch");
+				srv.runCommand("fill 7 " + (y - 1) + " 5 16 " + (y + 4) + " 14 minecraft:air");
+				HeartScreenClientTests.room(srv, 8, y, 5, 4, "barracks_marker");
+				srv.runCommand("setblock 9 " + y + " 7 minecraft:grindstone[face=floor,facing=north]");
+				srv.runCommand("setblock 9 " + y + " 8 minecraft:red_bed[facing=south,part=foot]");
+				srv.runCommand("setblock 9 " + y + " 9 minecraft:red_bed[facing=south,part=head]");
+				srv.runCommand("setblock 12 " + y + " 7 minecraft:chest");
+				srv.runCommand("setblock 12 " + y + " 10 minecraft:torch");
 				context.waitTicks(2);
 
 				BlockPos storageMarker = new BlockPos(-7, y + 2, 11);
 				BlockPos farmMarker = new BlockPos(0, y + 2, 12);
-				BlockPos barracksMarker = new BlockPos(13, y + 2, 12);
+				BlockPos barracksMarker = new BlockPos(11, y + 2, 12);
 				String state = "";
 				for (int i = 0; i < 200; i++) {
 					state = srv.computeOnServer(server -> HeartScreenClientTests.marker(server.overworld(), storageMarker) + ","
@@ -89,7 +94,18 @@ final class RaidClientTests {
 					if (state.equals("VALID,VALID,VALID")) break;
 					context.waitTicks(1);
 				}
-				if (!state.equals("VALID,VALID,VALID")) throw new AssertionError("expected three green plaques, got " + state);
+				if (!state.equals("VALID,VALID,VALID")) {
+					String why = srv.computeOnServer(server -> {
+						StringBuilder sb = new StringBuilder();
+						for (var b : dev.villageheart.building.Buildings.all(server)) {
+							sb.append(b.type().id()).append('=').append(b.status());
+							b.verdict().ifPresent(v -> sb.append(v.reasons()));
+							sb.append("; ");
+						}
+						return sb.toString();
+					});
+					throw new AssertionError("expected three green plaques, got " + state + " " + why);
+				}
 
 				HeartScreenClientTests.summon(srv, FARMER, "Ada", 4, y, 3);
 				HeartScreenClientTests.summon(srv, GUARD, null, 6, y, 3);
@@ -104,6 +120,10 @@ final class RaidClientTests {
 				if (hires.length != 2 || !hires[0].startsWith("Hired") || !hires[1].startsWith("Hired")) {
 					throw new AssertionError("the hires failed: " + hired);
 				}
+				srv.computeOnServer(server -> {
+					dev.villageheart.world.VillageClaims.data(server).update(v -> v.withTreasury(64));
+					return 0;
+				});
 
 				boolean village = false;
 				for (int i = 0; i < 200 && !village; i++) {
