@@ -154,6 +154,8 @@ public final class Balance {
 	public static final int GUARD_DUTY_TICKS = 12000;
 	public static final int GUARD_OFF_TICKS = 1000;
 	public static final int GUARD_SIGHT = 24;
+	/** How far past the claim edge an on-duty guard follows a raider of the tracked raid. */
+	public static final int GUARD_RAID_CHASE = 16;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;
 	public static final int GUARD_SCAN_TICKS = 10;
 	public static final double GUARD_CHASE_SPEED = 0.6;

@@ -166,6 +166,26 @@ public final class VillageRaids implements VillageSystem {
 		return n;
 	}
 
+	/**
+	 * Living raiders of the tracked raid that are still inside the claim plus {@link Balance#GUARD_RAID_CHASE}.
+	 * On-duty guards follow these even when they have walked past the claim edge.
+	 */
+	public static List<Raider> chaseTargets(ServerLevel level) {
+		Optional<VillageState> state = VillageClaims.current(level.getServer());
+		if (state.isEmpty() || state.get().threats().raid().isEmpty()) return List.of();
+		Raid raid = level.getRaids().get(state.get().threats().raid().get().vanillaId());
+		if (raid == null) return List.of();
+		HeartLocation heart = state.get().heart();
+		List<Raider> out = new ArrayList<>();
+		double r = Balance.CLAIM_RADIUS + Balance.GUARD_RAID_CHASE;
+		for (Raider raider : raid.getAllRaiders()) {
+			if (!raider.isAlive()) continue;
+			double dx = raider.getX() - heart.x(), dy = raider.getY() - heart.y(), dz = raider.getZ() - heart.z();
+			if (dx * dx + dy * dy + dz * dz <= r * r) out.add(raider);
+		}
+		return out;
+	}
+
 	/** The raid whose centre or a raider is inside the claim. {@code getRaidAt} would also match a raid that is only nearby. */
 	private static Raid raidOnClaim(ServerLevel level, VillageState village) {
 		Raid byRaider = null;

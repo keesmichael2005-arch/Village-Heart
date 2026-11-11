@@ -461,6 +461,7 @@ public final class StarterActions {
 
 	/** Called every 100 ticks: a standing hire whose job has nobody gets a replacement (a worker died). */
 	public static void maintain(Host ctx) {
+		RaidSim.keepGolemCount(ctx.level());
 		Optional<VillageState> village = VillageClaims.current(ctx.server());
 		if (village.isEmpty()) return;
 		sampleNotTicking(ctx, village.get());

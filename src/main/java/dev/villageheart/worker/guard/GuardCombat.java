@@ -3,6 +3,7 @@ package dev.villageheart.worker.guard;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.VillageState;
+import dev.villageheart.core.guard.GuardChase;
 import dev.villageheart.core.guard.GuardTargets;
 import dev.villageheart.core.job.WorkUnit;
 import dev.villageheart.world.VillageClaims;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -58,7 +60,9 @@ public final class GuardCombat {
 		double bestDist = Double.MAX_VALUE;
 		int shortPaths;
 		final Map<UUID, Long> ignoreUntil = new HashMap<>();
-		boolean navigating, retreating;
+		boolean navigating, retreating, chase;
+		/** Last block of a raid chase. Changing it while the path runs is progress, even if the straight line got longer. */
+		BlockPos progressCell;
 		int switchedAt = -1;
 	}
 
@@ -70,7 +74,9 @@ public final class GuardCombat {
 		// kill credit by the guard's UUID: the source's entity is the guard itself
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (!(source.getEntity() instanceof Villager v) || !Guards.isGuard(v) || !(entity instanceof Enemy)) return;
-			if (!(entity.level() instanceof ServerLevel level) || !inClaim(level, entity)) return;
+			if (!(entity.level() instanceof ServerLevel level)) return;
+			boolean raiderWithinChase = entity instanceof Raider && inClaimPlus(level, entity, Balance.GUARD_RAID_CHASE);
+			if (!GuardChase.killCounts(inClaim(level, entity), raiderWithinChase)) return;
 			WorkXp.award(v, WorkUnit.HOSTILE_KILLED, 1);
 			WorkStats.add("guard", "kills", 1);
 		});
@@ -146,12 +152,12 @@ public final class GuardCombat {
 			if (k != null && k != GuardTargets.Kind.CREEPER && k != GuardTargets.Kind.UNREACHABLE) {
 				f.ignoreUntil.remove(hb.getUUID());
 				target = hb;
-				acquire(level, guard, f, target, now);
+				acquire(level, guard, f, target, now, chasing(level, hb));
 			}
 		}
 		if (target == null && (now + guard.getId()) % Balance.GUARD_SCAN_TICKS == 0) {
 			target = scan(level, guard, f, now);
-			if (target != null) acquire(level, guard, f, target, now);
+			if (target != null) acquire(level, guard, f, target, now, chasing(level, target));
 		}
 		if (target == null) return;
 		fight(level, guard, f, target, now);
@@ -159,10 +165,18 @@ public final class GuardCombat {
 
 	private static boolean shouldGiveUp(ServerLevel level, Villager guard, Fight f, Mob target, long now) {
 		boolean duty = guard.getBrain().isActive(GuardActivities.DUTY);
-		if (duty && !inClaimPlus(level, target, 8) && !(guard.getLastHurtByMob() == target)) return true;
+		int margin = f.chase ? Balance.GUARD_RAID_CHASE : 8;
+		if (duty && !inClaimPlus(level, target, margin) && !(guard.getLastHurtByMob() == target)) return true;
 		double d = guard.distanceTo(target);
 		if (d + 1.0 <= f.bestDist) {
 			f.bestDist = d;
+			f.bestAt = now;
+		}
+		// the east gates are the way out of the ring; that walk increases the straight-line distance, and it is still a chase
+		BlockPos cell = guard.blockPosition();
+		boolean cellChanged = f.progressCell == null || !f.progressCell.equals(cell);
+		if (GuardChase.detourCounts(f.chase, f.navigating, guard.getNavigation().isInProgress(), cellChanged)) {
+			f.progressCell = cell;
 			f.bestAt = now;
 		}
 		return now - f.bestAt > Balance.GUARD_GIVE_UP_TICKS;
@@ -183,8 +197,10 @@ public final class GuardCombat {
 		if (ignore && target != null) f.ignoreUntil.put(target.getUUID(), now + IGNORE_TICKS);
 		f.target = null;
 		f.retreating = false;
+		f.chase = false;
 		f.bestDist = Double.MAX_VALUE;
 		f.shortPaths = 0;
+		f.progressCell = null;
 		if (f.navigating) {
 			guard.getNavigation().stop();
 			guard.getBrain().eraseMemory(MemoryModuleType.PATH);
@@ -198,26 +214,43 @@ public final class GuardCombat {
 				m -> m.isAlive() && m != guard && !(m instanceof Villager) && !f.ignoreUntil.containsKey(m.getUUID()));
 		List<GuardTargets.Candidate> candidates = new ArrayList<>();
 		Map<Integer, Mob> byId = new HashMap<>();
-		for (Mob m : mobs) {
-			GuardTargets.Kind k = kind(m);
-			if (k == null) continue;
-			boolean hurtMe = guard.getLastHurtByMob() == m && guard.tickCount - guard.getLastHurtByMobTimestamp() < 100;
-			boolean targetsVillager = m.getTarget() instanceof Villager;
-			candidates.add(new GuardTargets.Candidate(m.getId(), k, guard.distanceToSqr(m), inClaim(level, m), guard.getSensing().hasLineOfSight(m),
-					targetsVillager, hurtMe));
-			byId.put(m.getId(), m);
+		for (Mob m : mobs) addCandidate(level, guard, m, candidates, byId);
+		for (Raider raider : dev.villageheart.raid.VillageRaids.chaseTargets(level)) {
+			if (byId.containsKey(raider.getId()) || f.ignoreUntil.containsKey(raider.getUUID())) continue;
+			addCandidate(level, guard, raider, candidates, byId);
 		}
 		GuardTargets.Mode mode = guard.getBrain().isActive(GuardActivities.DUTY) ? GuardTargets.Mode.DUTY : GuardTargets.Mode.OFF;
 		return GuardTargets.choose(candidates, mode).map(c -> byId.get(c.id())).orElse(null);
 	}
 
-	private static void acquire(ServerLevel level, Villager guard, Fight f, Mob target, long now) {
+	private static void addCandidate(ServerLevel level, Villager guard, Mob m, List<GuardTargets.Candidate> candidates, Map<Integer, Mob> byId) {
+		GuardTargets.Kind k = kind(m);
+		if (k == null) return;
+		boolean hurtMe = guard.getLastHurtByMob() == m && guard.tickCount - guard.getLastHurtByMobTimestamp() < 100;
+		boolean targetsVillager = m.getTarget() instanceof Villager;
+		candidates.add(new GuardTargets.Candidate(m.getId(), k, guard.distanceToSqr(m), inClaim(level, m), guard.getSensing().hasLineOfSight(m),
+				targetsVillager, hurtMe, chasing(level, m)));
+		byId.put(m.getId(), m);
+	}
+
+	/** A living raider of the tracked raid, still within the claim plus {@link Balance#GUARD_RAID_CHASE}. */
+	private static boolean chasing(ServerLevel level, Mob target) {
+		if (!(target instanceof Raider)) return false;
+		for (Raider raider : dev.villageheart.raid.VillageRaids.chaseTargets(level)) {
+			if (raider.getId() == target.getId()) return true;
+		}
+		return false;
+	}
+
+	private static void acquire(ServerLevel level, Villager guard, Fight f, Mob target, long now, boolean chase) {
 		if (TRACE) dev.villageheart.VillageHeart.LOG.info("[guard] {} @{} acquires {} at {} (guard hp {}, activities {})", guard.getId(), now, target.getType(), target.blockPosition(), guard.getHealth(), guard.getBrain().getActiveActivities());
 		f.target = target.getUUID();
+		f.chase = chase;
 		f.bestDist = guard.distanceTo(target);
 		f.bestAt = now;
 		f.lastPathAt = Long.MIN_VALUE / 2;
 		f.shortPaths = 0;
+		f.progressCell = null;
 		if (guard.isSleeping()) guard.stopSleeping();
 		// the defend override: a guard that would go to bed (wounded) fights first; it is back in bed when the fight is over
 		if (guard.getBrain().isActive(Activity.REST)) guard.getBrain().setActiveActivityIfPossible(GuardActivities.OFF);
@@ -268,7 +301,7 @@ public final class GuardCombat {
 			f.lastPathAt = now;
 			Path path = nav.createPath(target.blockPosition(), 1, 32);
 			boolean near = guard.distanceToSqr(target) <= 9.0; // next to the target a path to its own cell may be empty: not a failure
-			if (!near && target.onGround() && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
+			if (!f.chase && !near && target.onGround() && (path == null || !path.canReach() && path.getNodeCount() > 0 && path.getEndNode().asBlockPos().distSqr(target.blockPosition()) > 4)) {
 				if (++f.shortPaths >= 8) {
 					drop(guard, f, target, now, true);
 					return;

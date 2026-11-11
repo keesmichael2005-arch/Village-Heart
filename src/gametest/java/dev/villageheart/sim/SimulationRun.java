@@ -262,6 +262,7 @@ public final class SimulationRun implements Host {
 
 	private void setup() {
 		// random raids and zombie sieges stay off unless the scenario opts in (M25 3.12, 3.17). siege_damage stays on.
+		RaidSim.rememberGolems(scenario == null ? java.util.List.of() : scenario.actions());
 		boolean threatsOn = scenario != null && scenario.threats();
 		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.RANDOM_RAIDS, threatsOn, server);
 		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.SIEGES, threatsOn, server);
@@ -313,6 +314,7 @@ public final class SimulationRun implements Host {
 		collector.setCentre(Vec3.atCenterOf(heart));
 		resumeLogAt = level.getGameTime() + 400; // the entities of the force-loaded chunks are there a moment later
 		StarterActions.resetStanding();
+		RaidSim.rememberGolems(scenario.actions());
 		for (ScenarioAction a : scenario.actions()) {
 			if (a.type().equals("hire") && a.fields().get("replace") instanceof Boolean b && b) StarterActions.registerStanding(a);
 		}

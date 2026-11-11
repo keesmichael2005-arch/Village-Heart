@@ -7,9 +7,9 @@ import java.util.Optional;
 
 /**
  * Which mob a guard fights (M18 3.3). Never a creeper (guards are melee) and never a flying one; a neutral mob (enderman, zombified piglin)
- * only when it targets a villager or hurt this guard. DUTY: in the claim (or it hurt me). OFF / self-defence: only what hurt me, or a
- * hostile or raider within {@link Balance#GUARD_SELF_DEFENCE_RANGE} that targets a villager. Must be visible unless it hurt me.
- * Priority: hurt me, targets a villager, nearest, lower id.
+ * only when it targets a villager or hurt this guard. DUTY: in the claim (or it hurt me, or {@code chase} on a raider of the tracked raid).
+ * OFF / self-defence: only what hurt me, or a hostile or raider within {@link Balance#GUARD_SELF_DEFENCE_RANGE} that targets a villager.
+ * Must be visible unless it hurt me or it is that chase. Priority: hurt me, targets a villager, nearest, lower id.
  */
 public final class GuardTargets {
 	private GuardTargets() {}
@@ -18,7 +18,8 @@ public final class GuardTargets {
 
 	public enum Mode { DUTY, OFF }
 
-	public record Candidate(int id, Kind kind, double distSq, boolean inClaim, boolean visible, boolean targetsVillager, boolean hurtMe) {}
+	public record Candidate(int id, Kind kind, double distSq, boolean inClaim, boolean visible, boolean targetsVillager, boolean hurtMe,
+			boolean chase) {}
 
 	public static Optional<Candidate> choose(List<Candidate> candidates, Mode mode) {
 		double range2 = (double) Balance.GUARD_SELF_DEFENCE_RANGE * Balance.GUARD_SELF_DEFENCE_RANGE;
@@ -29,9 +30,10 @@ public final class GuardTargets {
 
 	private static boolean eligible(Candidate c, Mode mode, double range2) {
 		if (c.kind() == Kind.CREEPER || c.kind() == Kind.UNREACHABLE) return false;
-		if (!c.visible() && !c.hurtMe()) return false;
+		boolean chasing = c.chase() && c.kind() == Kind.RAIDER;
+		if (!c.visible() && !c.hurtMe() && !chasing) return false;
 		if (c.kind() == Kind.NEUTRAL && !c.targetsVillager() && !c.hurtMe()) return false;
-		if (mode == Mode.DUTY) return c.inClaim() || c.hurtMe();
+		if (mode == Mode.DUTY) return c.inClaim() || c.hurtMe() || chasing;
 		if (c.hurtMe()) return true;
 		return (c.kind() == Kind.HOSTILE || c.kind() == Kind.RAIDER) && c.distSq() <= range2 && c.targetsVillager();
 	}

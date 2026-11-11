@@ -41,8 +41,28 @@ public final class RaidSim {
 		start(ctx.level(), ctx.player().player, ctx.heart(), omen, scaled);
 	}
 
+	/** The count the scenario asked for. -1 until the golems action. A later village-spawned golem is removed again. */
+	private static int wantedGolems = -1;
+
 	static void golems(SimulationRun ctx, ScenarioAction a) {
-		setGolems(ctx.level(), ((Number) a.fields().get("count")).intValue());
+		wantedGolems = ((Number) a.fields().get("count")).intValue();
+		setGolems(ctx.level(), wantedGolems);
+	}
+
+	/** A new server process does not remember the action. Resume reads it off the scenario again. */
+	static void rememberGolems(Iterable<ScenarioAction> actions) {
+		wantedGolems = -1;
+		if (actions == null) return;
+		for (ScenarioAction a : actions) {
+			if (a.type().equals("golems")) wantedGolems = ((Number) a.fields().get("count")).intValue();
+		}
+	}
+
+	/** Puts the claim back to the scenario's golem count when a world golem has walked in or been spawned. */
+	public static void keepGolemCount(ServerLevel level) {
+		if (wantedGolems < 0) return;
+		if (VillageClaims.current(level.getServer()).isEmpty()) return;
+		setGolems(level, wantedGolems);
 	}
 
 	static void topUp(SimulationRun ctx, ScenarioAction a) {

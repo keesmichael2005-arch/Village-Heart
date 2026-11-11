@@ -1047,3 +1047,16 @@ M25 is not ticked on the roadmap. Steps 9-19 belong to later tracks.
 - One `villageheart:shelter` activity, using track A's beds and doors. A running siege shelters the same way as a nearby raid. `ShelterDuringThreat` is gone. `VillageState` keeps the death log and uses the siege `ThreatState`. `AlertCode` stays append-only. The Heart row for a builder whose repair line is "Repairing" is the new `ActivityKind.REPAIRING`. "Repairs need …" stays "Needs materials". The siege sentence on the Heart waits for step 17.
 - Unit tests (`./gradlew --no-daemon test`) passed on the merged tree. GameTests are next (`scripts/verify.sh --fast`).
 - Decisions: docs/plans/M25.md section 8, "Track A + track B".
+
+## 2026-11-11: TASK 9 steps 16–19 (in progress)
+- Steps 16–18 are on `m25-full`. Step 19's scenarios, docs, and the siege spawn retry are committed through `e2c238d`. `scripts/verify.sh --fast` at that commit: exit 0, 434 GameTests, VERIFY:0 (`/tmp/verify-fast3.log`). Full `scripts/verify.sh` has not been run yet.
+- T-L3-1 before the chase, three `simulate.sh raid` runs on `e2c238d`, seed 1, 6 days, site 638,69,848 (44×32), Heart 641,64,821. All FAIL on `sum(raid.victories) == 1` and `sum(losses+stopped+gone) == 0`. Outcome stopped, waves_total 5. `raid.spawn_min_distance` stayed -1; the wave ring was not entity-ticking and the raid action forced those chunks. Wall side in the death log is empty (no `wall_ring`); inside/outside is the site rectangle. No assertion was loosened. `raid.json` was not edited after run 1.
+
+| run | start villagers | call-up | night guards | outcome | end tick | waves | raiders killed | guard kills | golems | deaths | wall |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 12 | 11 | woke (day 4 duty_samples 960, guards_night 3) | stopped | 98020 | 1 | 3 | 0 | 2 from day 3 | 2 pillager arrows, both outside (Butcher 636,64,794; Mason 585,66,824) | no breach |
+| 2 | 12 | 14 | woke (day 4 duty_samples 960) | stopped | 98040 | 1 | 0 | 0 during the raid; 5 on day 5 after the stop | 1 | 3 pillager arrows outside during the raid (Villager 626,64,791; Farmer 579,64,808; Mason 609,66,819); Lumberjack 652,65,821 on day 5, also outside | no breach. Last raiders on the north wall, inside the claim |
+| 3 | 12 | 16 | woke (day 4 duty_samples 960) | stopped | 98040 | 2 | 11 | 6 on day 3 | 1 | none | vindicator broke 2 on day 3; builder repaired 3 on day 5; noon breach 0 on the last day |
+
+- The three runs that count are the ones after the chase (`Balance.GUARD_RAID_CHASE` 16, detour still counts as closing, golem count reapplied every 100 ticks and restored on reload). Those runs, `raid_reload`, `siege`, and the re-runs of starter / defended / defended_walled are not in this note yet.
+- Left after that: full `scripts/verify.sh` exit 0, tick the M25 roadmap line only if the three raids pass, PR into `dev`.
