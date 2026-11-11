@@ -40,6 +40,8 @@ public final class VillageTestSupport {
 		MinecraftServer server = h.getLevel().getServer();
 		dev.villageheart.gametest.raid.RaidStart.stopAll(h.getLevel(), h.absolutePos(BlockPos.ZERO), 160);
 		dev.villageheart.raid.VillageRaids.clearForTests();
+		dev.villageheart.raid.ThreatScheduler.clearForTests();
+		dev.villageheart.core.siege.Threat.clearForce();
 		dev.villageheart.raid.RaidNotices.setSinkForTest(null);
 		dev.villageheart.raid.RaiderKills.clearForTests();
 		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);

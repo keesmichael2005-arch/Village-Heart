@@ -47,7 +47,8 @@ public final class RaiderKills {
 		var state = VillageClaims.current(level.getServer());
 		if (state.isEmpty() || state.get().threats().raid().isEmpty()) return;
 		if (state.get().threats().raid().get().vanillaId() != id.getAsInt()) return;
-		NOTES.put(raider.getUUID(), new Note(id.getAsInt(), level.getServer().getTickCount(), false));
+		boolean extra = raider.getTags().contains(ThreatScheduler.EXTRA_TAG);
+		NOTES.put(raider.getUUID(), new Note(id.getAsInt(), level.getServer().getTickCount(), extra));
 	}
 
 	private static void confirm(LivingEntity entity) {

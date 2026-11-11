@@ -87,6 +87,7 @@ class RaidTrackerTest {
 		RaidRecord again = step(Optional.empty(), going(1, true, 1), reads).next().orElseThrow();
 		RaidTracker.Step victory = step(Optional.of(again), ended(1, true, false, true), reads);
 		assertEquals(RaidOutcome.VICTORY, victory.ended().orElseThrow().outcome());
+		assertEquals(3, victory.ended().orElseThrow().wavesSpawned(), "the closing facts supply the wave count");
 		RaidTracker.Step laterStop = step(victory.next(), ended(1, false, false, true), reads);
 		assertTrue(laterStop.ended().isEmpty(), "a stop after the record closed does not overwrite the victory");
 		assertTrue(laterStop.next().isEmpty());

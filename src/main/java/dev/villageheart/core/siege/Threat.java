@@ -10,6 +10,17 @@ import dev.villageheart.core.Tier;
 public final class Threat {
 	private Threat() {}
 
+	/** A test pins the score. Null uses {@link #score}. */
+	private static Double forced;
+
+	public static void forceForTest(double score) { forced = score; }
+
+	public static void clearForce() { forced = null; }
+
+	public static double current(int adults, double wealth, int defenceCells, Tier tier) {
+		return forced != null ? forced : score(adults, wealth, defenceCells, tier);
+	}
+
 	public static double score(int adults, double wealth, int defenceCells, Tier tier) {
 		double bonus = switch (tier) {
 			case HAMLET -> 0;

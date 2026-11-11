@@ -101,6 +101,7 @@
 	"gui.villageheart.heart.alert.workplace_invalid_one": "1 worker has no valid workplace",
 	"gui.villageheart.heart.alert.workplace_invalid": "%s workers have no valid workplace",
 	"gui.villageheart.heart.alert.raid_coming": "Raid coming! Guards are called to duty",
+	"gui.villageheart.heart.alert.raid_pending": "A raid is coming",
 	"gui.villageheart.heart.alert.raid_wave": "Raid! Wave %s, %s raiders left",
 	"gui.villageheart.heart.alert.raid_between": "Raid: wave %s beaten, the next one is coming",
 	"gui.villageheart.heart.alert.strike_one": "1 worker is on strike: deposit emeralds at the Heart",

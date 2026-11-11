@@ -81,14 +81,22 @@ public final class VillageRaids implements VillageSystem {
 		boolean changed = !next.equals(village.threats().raid()) || step.ended().isPresent();
 		if (!changed) return;
 		Optional<RaidRecord> raid = next;
+		int threatDay = dev.villageheart.core.siege.ThreatRoll.day(level.getGameTime());
+		Optional<RaidRecord> closing = step.ended().isPresent() ? village.threats().raid() : Optional.empty();
 		VillageClaims.data(server).update(s -> {
 			Optional<RaidRecord> kept = keepCounts(s.threats().raid(), raid);
 			VillageState out = s.withRaid(kept);
-			if (step.ended().isPresent()) out = out.withLastRaid(Optional.of(step.ended().get()));
+			if (step.ended().isPresent()) {
+				out = out.withLastRaid(Optional.of(step.ended().get()));
+				out = out.withThreats(out.threats().withLastRaidEndDay(threatDay));
+			}
 			return out;
 		});
 		if (step.started()) RaidNotices.started(server);
 		step.ended().ifPresent(summary -> RaidNotices.ended(server, summary));
+		if (closing.isPresent() && step.ended().isPresent() && step.ended().get().outcome() == dev.villageheart.core.raid.RaidOutcome.VICTORY) {
+			ThreatScheduler.grant(server, closing.get(), threatDay);
+		}
 	}
 
 	/** A death or a kill in this same tick already raised the saved counts. The wave update must not put the old number back. */
@@ -96,6 +104,7 @@ public final class VillageRaids implements VillageSystem {
 		if (saved.isEmpty() || next.isEmpty() || saved.get().vanillaId() != next.get().vanillaId()) return next;
 		RaidRecord was = saved.get();
 		RaidRecord now = next.get();
+		if (was.extrasForWave() > now.extrasForWave()) now = now.withExtrasForWave(was.extrasForWave());
 		if (was.villagerDeaths() > now.villagerDeaths()) now = now.withVillagerDeaths(was.villagerDeaths());
 		if (was.raidersKilled() > now.raidersKilled() || was.extraRaidersKilled() > now.extraRaidersKilled()) {
 			now = now.withKills(Math.max(was.raidersKilled(), now.raidersKilled()), Math.max(was.extraRaidersKilled(), now.extraRaidersKilled()));

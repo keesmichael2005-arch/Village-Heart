@@ -38,6 +38,12 @@ class RaidAlertsTest {
 		assertEquals(RaidAlerts.BETWEEN, between.text().key());
 		assertEquals("Raid: wave 2 beaten, the next one is coming", between.text().english());
 		legal(between.text());
+
+		var waiting = RaidAlerts.pending();
+		assertEquals(AlertCode.RAID, waiting.code());
+		assertEquals(RaidAlerts.PENDING, waiting.text().key());
+		assertEquals("A raid is coming", waiting.text().english());
+		legal(waiting.text());
 	}
 
 	@Test void omenBonusAndACappedRaid() {

@@ -219,6 +219,9 @@ public final class HeartFacts {
 		dev.villageheart.core.tier.TierInputs tierInputs = dev.villageheart.tier.TierFacts.inputs(server, state, censusIds);
 		java.util.List<dev.villageheart.core.heart.AlertLine> extra = new java.util.ArrayList<>();
 		state.threats().raid().ifPresent(raid -> extra.add(dev.villageheart.core.raid.RaidAlerts.line(raid)));
+		if (state.threats().raid().isEmpty() && state.threats().pending().isPresent()) {
+			extra.add(dev.villageheart.core.raid.RaidAlerts.pending());
+		}
 		java.util.List<dev.villageheart.core.heart.DeathRow> deaths = new java.util.ArrayList<>();
 		for (dev.villageheart.core.death.DeathEntry e : state.deaths().recent(dev.villageheart.core.heart.HeartLimits.MAX_DEATH_ROWS)) {
 			deaths.add(new dev.villageheart.core.heart.DeathRow(e.name(), e.jobId(), e.cause(), e.day(), e.duringRaid()));

@@ -41,6 +41,7 @@ class LangCoverageTest {
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_coming", "Raid coming! Guards are called to duty"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_pending", "A raid is coming"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_wave", "Raid! Wave %s, %s raiders left"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_between", "Raid: wave %s beaten, the next one is coming")};
 		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());

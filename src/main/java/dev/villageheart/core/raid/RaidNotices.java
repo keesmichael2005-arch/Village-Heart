@@ -13,10 +13,16 @@ import java.util.UUID;
 public final class RaidNotices {
 	public static final String START = "A raid is coming to %s! Guards are called to duty.";
 	public static final String END = "The raid on %s is over: %s. %s villagers lost.";
+	public static final String GATHERING = "Raiders are gathering near %s!";
+	public static final String PAID = "Victory! The raid on %s is beaten: +%s emeralds to the treasury";
 
 	private RaidNotices() {}
 
 	public static String start(String village) { return START.formatted(village); }
+
+	public static String gathering(String village) { return GATHERING.formatted(village); }
+
+	public static String paid(String village, int emeralds) { return PAID.formatted(village, emeralds); }
 
 	public static String end(String village, RaidOutcome outcome, int villagersLost) {
 		String how = switch (outcome) {

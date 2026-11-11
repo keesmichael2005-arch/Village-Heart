@@ -21,9 +21,36 @@ public final class ThreatRules {
 
 	public static double siegeChance(double threat) { return Math.min(0.20, 0.04 + 0.02 * threat); }
 
+	/** A test asks for the next roll to succeed. It stays set until a roll is actually allowed. */
+	private static boolean forceRaid;
+	/** A test shortens the grace and the gap. Null uses {@link Balance}. */
+	private static Integer graceForTest;
+	private static Integer gapForTest;
+
+	/** The next allowed raid roll succeeds, whatever the seeded chance was. */
+	public static void forceRoll() { forceRaid = true; }
+
+	public static boolean raidForced() { return forceRaid; }
+
+	public static void clearRaidForce() { forceRaid = false; }
+
+	/** Grace and gap of 0 let a brand-new village roll. Cleared with {@link #clearForTest()}. */
+	public static void graceAndGapForTest(int grace, int gap) {
+		graceForTest = grace;
+		gapForTest = gap;
+	}
+
+	public static void clearForTest() {
+		forceRaid = false;
+		graceForTest = null;
+		gapForTest = null;
+	}
+
 	public static boolean mayRollRaid(Tier tier, int ageDays, int daysSinceRaid, boolean tracked, boolean pending, Gates gates) {
-		if (tier == Tier.HAMLET || ageDays < Balance.RAID_GRACE_DAYS) return false;
-		if (daysSinceRaid != ThreatState.NO_DAY && daysSinceRaid < Balance.RAID_GAP_DAYS) return false;
+		int grace = graceForTest == null ? Balance.RAID_GRACE_DAYS : graceForTest;
+		int gap = gapForTest == null ? Balance.RAID_GAP_DAYS : gapForTest;
+		if (tier == Tier.HAMLET || ageDays < grace) return false;
+		if (daysSinceRaid != ThreatState.NO_DAY && daysSinceRaid < gap) return false;
 		if (tracked || pending || gates.peaceful() || !gates.randomRaids() || !gates.vanillaRaids()) return false;
 		return true;
 	}

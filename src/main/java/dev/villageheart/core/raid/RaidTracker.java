@@ -59,9 +59,9 @@ public final class RaidTracker {
 		RaidRecord cur = current.get();
 		if (!facts.present()) return close(cur, RaidOutcome.GONE, now, villagersNow);
 		if (facts.vanillaId() != cur.vanillaId()) return new Step(current, Optional.empty(), false);
-		if (facts.victory()) return close(cur, RaidOutcome.VICTORY, now, villagersNow);
-		if (facts.loss()) return close(cur, RaidOutcome.LOSS, now, villagersNow);
-		if (facts.stopped() || facts.over()) return close(cur, RaidOutcome.STOPPED, now, villagersNow);
+		if (facts.victory()) return close(cur.updated(facts), RaidOutcome.VICTORY, now, villagersNow);
+		if (facts.loss()) return close(cur.updated(facts), RaidOutcome.LOSS, now, villagersNow);
+		if (facts.stopped() || facts.over()) return close(cur.updated(facts), RaidOutcome.STOPPED, now, villagersNow);
 		return new Step(Optional.of(cur.updated(facts)), Optional.empty(), false);
 	}
 

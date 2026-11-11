@@ -58,6 +58,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.siege.SiegeGamerules.register();
 		dev.villageheart.siege.SiegeGoals.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:raids", dev.villageheart.raid.VillageRaids.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:threats", dev.villageheart.raid.ThreatScheduler.INSTANCE);
 		dev.villageheart.raid.VillageThreats.install();
 		dev.villageheart.raid.RaiderKills.register();
 		LOG.info("Village Heart loaded");

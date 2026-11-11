@@ -51,6 +51,12 @@ public record RaidRecord(int vanillaId, RaidOrigin origin, RaidPlan plan, long s
 				extrasForWave, extraKilled, allGuardsOnDutyAt);
 	}
 
+	public RaidRecord withExtrasForWave(int wave) {
+		return new RaidRecord(vanillaId, origin, plan, startedAt, startDay, villagersAtStart, guardsAtStart, guardsQualifiedAtStart,
+				guardsWoundedAtStart, guardsUnloadedAtStart, wavesTotal, wavesSpawned, raidersAlive, betweenWaves, villagerDeaths,
+				raidersKilled, wave, extraRaidersKilled, allGuardsOnDutyAt);
+	}
+
 	public RaidRecord withAllGuardsOnDutyAt(long at) {
 		return new RaidRecord(vanillaId, origin, plan, startedAt, startDay, villagersAtStart, guardsAtStart, guardsQualifiedAtStart,
 				guardsWoundedAtStart, guardsUnloadedAtStart, wavesTotal, wavesSpawned, raidersAlive, betweenWaves, villagerDeaths,

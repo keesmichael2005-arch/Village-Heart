@@ -48,4 +48,16 @@ public record ThreatState(Optional<RaidRecord> raid, Optional<RaidSummary> lastR
 	public ThreatState withDamage(DefenceDamage damage) {
 		return new ThreatState(raid, lastRaid, pending, siege, lastSiege, lastRaidEndDay, lastSiegeDay, lastRewardDay, lastRaidRollDay, lastSiegeRollDay, damage);
 	}
+
+	public ThreatState withLastRaidEndDay(int day) {
+		return new ThreatState(raid, lastRaid, pending, siege, lastSiege, day, lastSiegeDay, lastRewardDay, lastRaidRollDay, lastSiegeRollDay, damage);
+	}
+
+	public ThreatState withLastRewardDay(int day) {
+		return new ThreatState(raid, lastRaid, pending, siege, lastSiege, lastRaidEndDay, lastSiegeDay, day, lastRaidRollDay, lastSiegeRollDay, damage);
+	}
+
+	public ThreatState withRollDays(int raidRollDay, int siegeRollDay) {
+		return new ThreatState(raid, lastRaid, pending, siege, lastSiege, lastRaidEndDay, lastSiegeDay, lastRewardDay, raidRollDay, siegeRollDay, damage);
+	}
 }

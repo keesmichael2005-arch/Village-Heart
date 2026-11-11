@@ -31,6 +31,16 @@ public final class RaidNotices {
 		tell(server, name -> dev.villageheart.core.raid.RaidNotices.end(name, summary.outcome(), summary.villagerDeaths()));
 	}
 
+	/** The 600-tick wait for a postponed raid has begun. */
+	public static void gathering(MinecraftServer server) {
+		tell(server, dev.villageheart.core.raid.RaidNotices::gathering);
+	}
+
+	/** A random victory paid the treasury. */
+	public static void paid(MinecraftServer server, int emeralds) {
+		tell(server, name -> dev.villageheart.core.raid.RaidNotices.paid(name, emeralds));
+	}
+
 	private static void tell(MinecraftServer server, java.util.function.Function<String, String> text) {
 		var state = VillageClaims.current(server);
 		if (state.isEmpty()) return;
