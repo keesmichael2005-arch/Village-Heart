@@ -92,24 +92,28 @@ final class P4ClientTests {
 		context.takeScreenshot("slope_foundation_side");
 	}
 
-	/** A solid pad laid on the server, then the player stands clear so they are not an entity in the build. */
+	/** A solid pad. Teleport first so the chunk loads, then stand clear of the footprint. */
 	private static void pad(ClientGameTestContext context, TestServerContext srv, int x, int y, int z) {
+		srv.runCommand("tp @a " + x + " " + (y + 4) + " " + z);
+		context.waitTicks(30);
 		srv.computeOnServer(server -> {
 			var level = server.overworld();
+			level.getChunk(x >> 4, z >> 4);
 			var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
 			var dirt = net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState();
 			var grass = net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState();
 			var air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
-			for (int dx = -24; dx <= 24; dx++) for (int dz = -24; dz <= 24; dz++) {
+			for (int dx = -16; dx <= 16; dx++) for (int dz = -16; dz <= 16; dz++) {
+				level.getChunk((x + dx) >> 4, (z + dz) >> 4);
 				BlockPos column = new BlockPos(x + dx, y, z + dz);
 				level.setBlock(column.below(3), stone, 3);
 				level.setBlock(column.below(2), dirt, 3);
 				level.setBlock(column.below(1), grass, 3);
-				for (int dy = 0; dy <= 14; dy++) level.setBlock(column.above(dy), air, 3);
+				for (int dy = 0; dy <= 12; dy++) level.setBlock(column.above(dy), air, 3);
 			}
 			return 0;
 		});
-		srv.runCommand("tp @a " + (x + 30) + " " + (y + 4) + " " + (z + 30));
+		srv.runCommand("tp @a " + (x + 24) + " " + (y + 4) + " " + (z + 24));
 		context.waitTicks(5);
 	}
 
@@ -217,12 +221,18 @@ final class P4ClientTests {
 
 	private static void stockAll(net.minecraft.server.level.ServerLevel level, BlockPos chest) {
 		java.util.Map<Item, Integer> need = new java.util.LinkedHashMap<>();
+		// dirt before the bulky stacks, so a full chest cannot skip the foundation
+		need.put(Items.DIRT, 1200);
 		need.put(Items.COBBLESTONE, 1600);
 		need.put(Items.OAK_PLANKS, 2800);
 		need.put(Items.OAK_LOG, 600);
-		need.put(Items.DIRT, 800);
 		need.put(Items.OAK_FENCE, 200);
 		need.put(Items.OAK_FENCE_GATE, 32);
+		need.put(Items.OAK_DOOR, 32);
+		need.put(Items.GLASS_PANE, 128);
+		need.put(Items.OAK_STAIRS, 400);
+		need.put(Items.WHITE_BED, 16);
+		need.put(Items.TORCH, 64);
 		List<Blueprint> plans = new ArrayList<>(Blueprints.all());
 		plans.add(Blueprints.SMALL_HOUSE);
 		for (Blueprint bp : plans) {
@@ -233,9 +243,6 @@ final class P4ClientTests {
 			}
 		}
 		for (Item item : MarkerBlocks.ITEMS.values()) if (item != null) need.merge(item, 4, Integer::sum);
-		need.merge(Items.DIRT, 400, Integer::sum);
-		// dirt first: the slope and any hole under a floor must not lose out to later stacks
-		for (int i = 0; i < 8; i++) Stockpiles.deposit(level, chest, new ItemStack(Items.DIRT, 64));
 		for (var e : need.entrySet()) {
 			int left = e.getValue();
 			while (left > 0) {
