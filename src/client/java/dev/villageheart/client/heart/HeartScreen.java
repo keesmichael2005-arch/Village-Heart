@@ -1053,7 +1053,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		Identifier statusIcon = switch (b.status()) {
 			case VALID -> ModTextures.STATUS_VALID;
 			case INVALID -> ModTextures.STATUS_INVALID;
-			case UNCHECKED -> ModTextures.STATUS_UNCHECKED;
+			case UNCHECKED, DEFERRED -> ModTextures.STATUS_UNCHECKED;
 		};
 		ModTextures.blit(g, statusIcon, x + 240, y + 1, 8);
 		text(g, status, x + 250, y + 2, 80, color, AREA_BODY, grp);

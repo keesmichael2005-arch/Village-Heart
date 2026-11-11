@@ -275,7 +275,7 @@ public final class GuiArt {
 		return m;
 	}
 
-	private static void put8(Map<String, BufferedImage> m, String path, String[] rows) {
+	private static void put8(Map<String, BufferedImage> m, String path, String... rows) {
 		if (rows.length != 8) throw new IllegalStateException(path);
 		for (String row : rows) if (row.length() != 8) throw new IllegalStateException(path + " '" + row + "'");
 		m.put(ROOT + path + ".png", ArtKit.sprite(rows));
