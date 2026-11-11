@@ -28,7 +28,8 @@ final class SmithClientTests {
 
 	/**
 	 * A Town Smithy. The blacksmith finishes a golem build that was saved at 7990 ticks, so the new golem is the one the build spawns at
-	 * the wait spot. A second golem at 30 health stands beside it. Time and weather stay frozen and both golems have no AI.
+	 * the wait spot. A second golem at 20 health stands beside it (crackiness HIGH; 30 of 100 is MEDIUM in this version). Time and weather stay
+	 * frozen and both golems have no AI.
 	 */
 	static void smithyGolem(ClientGameTestContext context) {
 		dev.villageheart.needs.NeedsOverride.wagesEnabled = false;
@@ -102,7 +103,7 @@ final class SmithClientTests {
 				cracked.setYBodyRot(0.0F);
 				cracked.setYHeadRot(0.0F);
 				server.overworld().addFreshEntity(cracked);
-				cracked.setHealth(30.0F);
+				cracked.setHealth(20.0F);
 				cracked.setNoAi(true);
 				if (!"HIGH".equals(cracked.getCrackiness().name()))
 					return "crackiness " + cracked.getCrackiness() + " at health " + cracked.getHealth();
