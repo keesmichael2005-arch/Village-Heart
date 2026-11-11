@@ -20,6 +20,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -67,6 +68,40 @@ public class SiegeLureGameTests {
 			h.assertTrue(h.getTick() - t0[0] <= 3600, "inside took " + (h.getTick() - t0[0]));
 			VillageTestSupport.done(h);
 		});
+	}
+
+	/**
+	 * T-L2-25. At night a creeper walks to the wall, lights, and leaves a two-cell hole plus a crack. By day it never lights.
+	 */
+	@GameTest(environment = "villageheart-gametest:siege_creeper_wall", structure = YARD, skyAccess = true, maxTicks = 5000)
+	public void creeperBreachesWall(GameTestHelper h) {
+		Creeper[] creeper = new Creeper[1];
+		long[] t0 = new long[1];
+		BlockPos floor = rel(6, -1, Z0 - 3);
+		BlockPos air = rel(6, 0, Z0 - 3);
+		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
+			seeWalls(h);
+			h.assertTrue(h.getBlockState(floor).is(Blocks.STONE), "the floor is stone");
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
+			t0[0] = h.getTick();
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertTrue(!creeper[0].isAlive(), "the creeper has not blown");
+			h.assertTrue(breachedCount(h) >= 2, "the hole is " + breachedCount(h));
+			h.assertTrue(cracked(h) >= 1, "no crack around the hole");
+		}).thenExecute(() -> {
+			h.assertTrue(h.getTick() - t0[0] <= 600, "the breach took " + (h.getTick() - t0[0]));
+			h.assertTrue(h.getBlockState(floor).is(Blocks.STONE), "the blast took the floor");
+			h.assertTrue(h.getBlockState(air).isAir(), "the blast took the air");
+			h.getLevel().setDayTime(3000);
+			LureSlots.resetForTests();
+			creeper[0] = creeper(h, rel(6, 0, Z0 - 15));
+			t0[0] = h.getTick();
+		});
+		seq.thenWaitUntil(() -> {
+			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit by day");
+			h.assertTrue(h.getTick() - t0[0] >= 1200, "still day");
+		}).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
 	/** T-L2-21. A skeleton, then a spider, never grows a mod goal and never closes on the ring. */
@@ -332,6 +367,33 @@ public class SiegeLureGameTests {
 		var server = h.getLevel().getServer();
 		SiegeDamage.scan(server, VillageClaims.current(server).orElseThrow(), -1);
 		LureSlots.resetForTests();
+	}
+
+	private static Creeper creeper(GameTestHelper h, BlockPos at) {
+		Creeper creeper = h.spawn(EntityType.CREEPER, at);
+		creeper.setPersistenceRequired();
+		return creeper;
+	}
+
+	private static int breachedCount(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		var village = VillageClaims.current(server).orElse(null);
+		if (village == null) return 0;
+		int n = 0;
+		for (var cell : DefenceIndex.of(village.defences()).cells()) if (SiegeDamage.isBreached(server, cell.packed())) n++;
+		return n;
+	}
+
+	private static int cracked(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		var village = VillageClaims.current(server).orElse(null);
+		if (village == null) return 0;
+		var damage = SiegeDamage.damage(server);
+		int n = 0;
+		for (var cell : DefenceIndex.of(village.defences()).cells()) {
+			if (!damage.isBreached(cell.packed()) && damage.damageAt(cell.packed()) > 0) n++;
+		}
+		return n;
 	}
 
 	private static Zombie zombie(GameTestHelper h, BlockPos at, boolean helmet) {

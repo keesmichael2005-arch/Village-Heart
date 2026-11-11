@@ -19,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.zombie.Drowned;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
@@ -99,13 +100,16 @@ public final class LureSlots {
 		int r = Balance.LURE_RADIUS;
 		AABB box = new AABB(heart.x() - r, heart.y() - r, heart.z() - r, heart.x() + r + 1, heart.y() + r + 1, heart.z() + r + 1);
 		List<LureBudget.Mob> mobs = new ArrayList<>();
-		for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, box, LureSlots::counts)) {
-			if (zombie.getTarget() != null) continue;
-			double dist = distance(zombie, heart);
-			if (dist > r) continue;
-			mobs.add(new LureBudget.Mob(zombie.getUUID(), zombie.getTags().contains(SIEGE_TAG), dist, true));
-		}
+		for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, box, LureSlots::counts)) consider(mobs, zombie, heart, r);
+		for (Creeper creeper : level.getEntitiesOfClass(Creeper.class, box, c -> c.isAlive() && !c.isRemoved())) consider(mobs, creeper, heart, r);
 		admitted = new HashSet<>(LureBudget.admit(mobs));
+	}
+
+	private static void consider(List<LureBudget.Mob> mobs, Mob mob, HeartLocation heart, int radius) {
+		if (mob.getTarget() != null) return;
+		double dist = distance(mob, heart);
+		if (dist > radius) return;
+		mobs.add(new LureBudget.Mob(mob.getUUID(), mob.getTags().contains(SIEGE_TAG), dist, true));
 	}
 
 	private static boolean counts(Zombie zombie) {
