@@ -938,3 +938,9 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - The gate sits on the north wall. A south gate's eye-level air lets the zombie see a villager and take a target before it hits. The beside-the-wall bound is 1200 ticks: the specified wander arrived in 794, and 600 is a straight walk. "Never had a target" is checked until the zombie is beside the wall.
 - `scripts/verify.sh --fast` at `0d2cc08`: exit 0 (L1 green, L2 402/402, L3 self-test, perf).
 - Next: step 14, creeper breach. The builder repair of T-L2-40 stays in step 15.
+
+## 2026-11-11: M25 track B step 14 (creeper breach)
+- `CreeperBreachGoal` walks a creeper that holds a lure slot to the nearest wall or gate and lights it beside the cell. `CreeperExplodeMixin` spends that blast on defence cells. A creeper with a target keeps the vanilla explosion. Creepers share the 24 lure slots with the zombies.
+- Each creeper GameTest passed alone (1 required test): T-L2-25 `creeperBreachesWall`, T-L2-25b `nobodyHuntsTheBreacher`, T-L2-26 `breachSparesHousesBehindWall`, T-L2-27 `vanillaCreeperStillVanilla`, T-L2-36 `siegeDamageGameruleCreeper`, T-L2-37 `trenchInFrontOfWall` (zombie and creeper). The trench was run twice more after the stand fix and passed both times.
+- A stand has to be outside the ring, with its feet on the ground the wall was built on. The trench bottom is lower than that, so a creeper that drops in does not light. T-L2-27 plans the repair with `RepairPlanner.next`; the builder is step 15.
+- Fast verify is next. The builder repair of T-L2-40 stays in step 15.
