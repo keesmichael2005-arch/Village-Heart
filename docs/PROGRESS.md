@@ -960,3 +960,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `build` no longer runs the GameTest suite. Fabric had wired it into `check`, and that run discovered the tests in a different order from `gradlew runGameTest`. `scripts/verify.sh` still runs the suite once, as layer 2.
 - `scripts/verify.sh --fast` at `07cdca8`: exit 0 (L1 green, L2 411/411, L3 self-test, perf).
 - Deviations: docs/plans/M25.md section 8. Next for this track: merge `dev`, then the full verify. Steps 16–19 stay with the orchestrator.
+
+## 2026-11-11: M25 track B full verify
+- `origin/dev` was already contained in `m25-walls` (`c7f109b`). The merge was already up to date.
+- `scripts/verify.sh` at `e2dbfb4`: exit 0. L1 green, L2 411/411, L3 self-test, L4 client tests and the three NetworkSynchronizer checks green (1 lost wakeup rescued, 0 disconnect leaks), model log and the 2-player session clean, perf green. Screenshots of the walled section, the closed gate, and the watchtower show the cobblestone wall, the fence gate, and the shaft with its ladder.
+- Steps 9–15 are on `m25-walls`. Steps 16–19 stay with the orchestrator.
