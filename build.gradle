@@ -70,6 +70,12 @@ test {
 	testLogging { events "failed"; exceptionFormat "full" }
 }
 
+// `check` (and so `build`) schedules unit tests and the headless GameTests together. A fight or a walk then misses
+// its tick bound: the same commit's dedicated runGameTest passed. Run the GameTests only after the unit tests.
+tasks.named("runGameTest").configure {
+	mustRunAfter(tasks.named("test"))
+}
+
 // Wall-clock performance limits (tests tagged "perf"). Not part of `test`/`build`: verify.sh runs it alone, after the other
 // Gradle steps, because timings are meaningless while other tasks compete for the CPU.
 tasks.register('perfTest', Test) {
