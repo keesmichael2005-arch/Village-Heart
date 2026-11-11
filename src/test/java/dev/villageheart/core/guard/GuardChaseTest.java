@@ -26,6 +26,13 @@ class GuardChaseTest {
 	}
 
 	@Test
+	void aGuardDoesNotWalkOutToARaiderBeyondTheHomeFight() {
+		assertTrue(GuardChase.holdHome(true, 40), "the ledge is recall's job");
+		assertFalse(GuardChase.holdHome(true, 32), "the gate is close enough to fight");
+		assertFalse(GuardChase.holdHome(false, 40), "an ordinary fight still closes");
+	}
+
+	@Test
 	void aPathThatStopsAtTheWallUsesTheGateAndALongStepDoesNot() {
 		assertTrue(GuardChase.useGate(false, 20, 18), "two blocks into the wall, and the raider is close");
 		assertFalse(GuardChase.useGate(false, 70, 65), "a far raider is recalled, not chased out to the ledge");

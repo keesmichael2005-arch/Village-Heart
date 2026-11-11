@@ -1,5 +1,7 @@
 package dev.villageheart.core.guard;
 
+import dev.villageheart.core.Balance;
+
 /**
  * The pure rules of a raid chase (M25 step 19, plan risk 2). Combat applies them; the tests do not need a world.
  * A guard follows a raider of the tracked raid past the claim. The walk to the only gate can increase the
@@ -43,13 +45,18 @@ public final class GuardChase {
 		return new int[] { gates[best], gates[best + 1], gates[best + 2] };
 	}
 
+	/** A chase farther than the home fight is not started. Recall brings that raider to the gate. */
+	public static boolean holdHome(boolean chase, double horizontal) {
+		return chase && horizontal > Balance.GUARD_HOME_FIGHT;
+	}
+
 	/**
 	 * Follow the partial path when it closes at least 12 blocks. A path that stops at a wall does not, and the guard
-	 * leaves through a gate instead, but only when the raider is already within 32 blocks. A farther raider is brought
-	 * to the gate by recall. Walking out to it is how the guards died on the ledge.
+	 * leaves through a gate instead, but only when the raider is already within the home fight. A farther raider is
+	 * brought to the gate by recall.
 	 */
 	public static boolean useGate(boolean pathReaches, double guardToTarget, double pathEndToTarget) {
-		if (pathReaches || guardToTarget > 32) return false;
+		if (pathReaches || guardToTarget > Balance.GUARD_HOME_FIGHT) return false;
 		return guardToTarget - pathEndToTarget < 12;
 	}
 

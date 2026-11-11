@@ -272,6 +272,13 @@ public final class GuardCombat {
 			f.retreating = true;
 			if (healthyAlly(level, guard) != null) WorkStats.add("guard", "retreats", 1);
 		}
+		if (f.chase) {
+			double dx = target.getX() - guard.getX(), dz = target.getZ() - guard.getZ();
+			if (GuardChase.holdHome(true, Math.sqrt(dx * dx + dz * dz))) {
+				drop(guard, f, target, now, true);
+				return;
+			}
+		}
 		boolean inReach = guard.isWithinMeleeAttackRange(target);
 		if (f.retreating) {
 			Villager ally = healthyAlly(level, guard);
