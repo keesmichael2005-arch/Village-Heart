@@ -1,6 +1,8 @@
 package dev.villageheart.gametest;
 
+import dev.villageheart.block.JobBlocks;
 import dev.villageheart.core.building.BuildingType;
+import dev.villageheart.core.building.JobBlockType;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.worker.HireResult;
@@ -80,6 +82,8 @@ public final class SmithTestSupport {
 
 	public static final BlockPos SMITHY = new BlockPos(8, 0, 4);
 	public static final BlockPos STORE = new BlockPos(16, 0, 4);
+	/** South of the Smithy, clear of its shell (z 4..9) and of Storage. Interior 5×4. */
+	public static final BlockPos CAMP = new BlockPos(8, 0, 16);
 
 	public static BlockPos smithyMarker() { return BuildingTestSupport.markerPos(SMITHY, 4); }
 
@@ -96,6 +100,27 @@ public final class SmithTestSupport {
 	public static BlockPos storeChest1() { return BuildingTestSupport.inside(STORE, 0, 0, 1); }
 
 	public static BlockPos storeChest2() { return BuildingTestSupport.inside(STORE, 2, 0, 1); }
+
+	public static BlockPos campMarker() { return BuildingTestSupport.markerPos(CAMP, 5); }
+
+	public static BlockPos campChest() { return BuildingTestSupport.inside(CAMP, 4, 0, 3); }
+
+	public static BlockPos campSpawn() { return BuildingTestSupport.inside(CAMP, 1, 0, 1); }
+
+	/** A valid Lumber Camp. The caller waits until the marker reads VALID. */
+	public static void addLumberCamp(GameTestHelper h) {
+		BuildingTestSupport.room(h, CAMP, 5, 4);
+		h.setBlock(BuildingTestSupport.inside(CAMP, 0, 0, 0), JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+		h.setBlock(campChest(), Blocks.CHEST);
+		h.setBlock(BuildingTestSupport.inside(CAMP, 2, 0, 3), Blocks.TORCH);
+		BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, campMarker(), Direction.NORTH);
+	}
+
+	public static boolean chestHas(GameTestHelper h, BlockPos rel, Item item) {
+		var c = StockpileTestSupport.container(h, rel);
+		for (int i = 0; i < c.getContainerSize(); i++) if (c.getItem(i).is(item)) return true;
+		return false;
+	}
 
 	/** One-way blocks from the blast furnace to the Storage door. */
 	public static int walkBlocks() {
@@ -143,6 +168,13 @@ public final class SmithTestSupport {
 	public static boolean lit(GameTestHelper h) { return h.getBlockState(furnace()).getValue(AbstractFurnaceBlock.LIT); }
 
 	public static void setDayTime(GameTestHelper h, long t) { h.getLevel().setDayTime(t); }
+
+	public static Villager hireLumberjack(GameTestHelper h) {
+		Villager v = WorkerTestSupport.spawnVillager(h, campSpawn());
+		HireResult r = Workers.hire(h.getLevel(), v, JobType.LUMBERJACK, Optional.empty());
+		h.assertTrue(r instanceof HireResult.Hired, "the lumberjack was hired: " + r);
+		return v;
+	}
 
 	public static Villager hire(GameTestHelper h) {
 		Villager v = WorkerTestSupport.spawnVillager(h, spawnSpot());

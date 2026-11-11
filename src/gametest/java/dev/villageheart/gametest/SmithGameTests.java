@@ -22,6 +22,7 @@ import dev.villageheart.core.smith.SmithRecipe;
 import dev.villageheart.core.smith.SmithRecipes;
 import dev.villageheart.golem.GolemGate;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.worker.smith.SmithRuntime;
 import dev.villageheart.world.VillageClaims;
 import java.util.ArrayList;
 import java.util.List;
@@ -236,6 +237,37 @@ public class SmithGameTests {
 			h.assertValueEqual(800, bank(h), "heat left in the furnace");
 			h.assertTrue(sawLit[0], "the furnace was lit while smelting");
 			h.assertFalse(lit(h), "the furnace is dark once the ore is gone");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-5e --------------------------------------------------------------------------------------
+
+	/** Five oak planks and an empty Lumber Camp: a wooden axe, made slowly, and the two spare sticks back in Storage. */
+	@GameTest(environment = "villageheart-gametest:smith_wooden_axe", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void bootstrapWoodenAxe(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> SmithTestSupport.addLumberCamp(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			putStore(h, Items.OAK_PLANKS, 5);
+			setDayTime(h, 1000);
+			SmithTestSupport.hireLumberjack(h);
+			smith[0] = hire(h);
+			log("wooden axe camp ready");
+		}).thenWaitUntil(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			boolean axe = SmithTestSupport.chestHas(h, SmithTestSupport.campChest(), Items.WOODEN_AXE);
+			h.assertTrue(axe && count(h, Items.OAK_PLANKS) == 0 && count(h, Items.STICK) == 2,
+					"axe " + axe + " planks " + count(h, Items.OAK_PLANKS) + " sticks " + count(h, Items.STICK) + " units " + units);
+		}).thenExecute(() -> {
+			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
+			long crafts = units.stream().filter(u -> u.kind().equals("CRAFT")).count();
+			h.assertValueEqual(1L, crafts, "one craft: " + units);
+			long commit = units.stream().filter(u -> u.kind().equals("COMMIT")).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+			long finish = units.stream().filter(u -> u.kind().equals("CRAFT")).mapToLong(SmithRuntime.Unit::tick).findFirst().orElse(-1);
+			log("wooden axe commit " + commit + " finish " + finish + " delta " + (finish - commit));
+			h.assertTrue(finish - commit >= 600 - 20, "commit to finish was " + (finish - commit) + ", wanted >= 580");
 			VillageTestSupport.done(h);
 		});
 	}
