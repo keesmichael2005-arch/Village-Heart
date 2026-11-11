@@ -232,7 +232,8 @@ final class P4ClientTests {
 		}
 		context.waitTicks(10);
 		boolean small = blueprint.equals("training_yard") || blueprint.equals("lamp_post") || blueprint.equals("farm_plot");
-		if (shot.equals("quill_saved")) look(context, srv, x + 3, y + 3, z + 16, x + 3, y + 2, z + 4);
+		// the small house door is in the north wall (low z), facing south into the room
+		if (shot.equals("quill_saved")) look(context, srv, x + 3, y + 3, z - 6, x + 3, y + 2, z + 1);
 		else if (small) look(context, srv, x + 7, y + 3, z + 9, x + 1, y + 1, z + 2);
 		else look(context, srv, x + 12, y + 6, z + 14, x + 3, y + 2, z + 3);
 		context.waitTicks(8);

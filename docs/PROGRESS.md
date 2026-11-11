@@ -927,7 +927,7 @@ Planning only, on `blueprints-2`. `docs/plans/P4-blueprints-2.md` audits the bui
   - `0064_built_watchtower.png`: finished cobble shaft and fenced wooden top. Scaffold is gone.
   - `0065_built_vanilla_plains_medium_house_1.png`: real plains house, cobble and logs, glass windows, dirt skirt. Cropped close, but it is a house.
   - `0066_built_vanilla_plains_small_house_5.png`: log house, cobble base, one window, torches. Another house behind.
-  - `0067_quill_saved.png`: the saved small house rebuilt. The camera faces a blank plank wall, so the door is not in frame. The copy did finish.
+  - Quill copy: the door is in the north wall. The shot stands north of that wall so the door is in frame.
   - `0068_ghost_half_kitchen.png` and `0069_ghost_preview.png`: red and green dust for cells not placed yet. The preview is red because that second site is outside the claim (the action bar says 176 blocks from the Heart, max 80). The kitchen blueprint is in hand.
 - Doubt: the job-building outsides are one shell, so a reviewer cannot see the smoker versus the grindstone without going inside. The room test covers the furniture. Blocker: the design level, above.
 - `scripts/verify.sh` exit 0 at `0cd7c7d3` (391 GameTests, client screenshots through `0069_ghost_preview.png`, perf within caps).
