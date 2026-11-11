@@ -924,4 +924,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `MobGoalsAccessor`, `SiegeGoals` on entity load (one of each goal), `PathBudget` (2 paths a tick), `BreachGoal` for a ravager and a vindicator in the tracked raid. `TrackedRaids.track` stores the vanilla raid id; track A still owns the tracker.
 - Zombie lure, zombie breach, and creeper breach are installed so a reload cannot double them, and their `canUse` stays false until steps 13 and 14.
 - Tests written, not yet run: T-L2-17 `ravagerBreaksWallInTwoHits`, T-L2-18 `vindicatorChopsGate`, T-L2-19 `goalsInstalledOnce`.
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, tests green alone)
+- Each of T-L2-17, T-L2-18 and T-L2-19 passed alone (1 required test). A tracked raid needs an occupied village bell and a difficulty above Peaceful, or vanilla stops it on the first tick. The ring is wide so the south wall is the closest face to the bell. The ravager stands on the south edge of the block in front of that wall. Both raiders target the villager inside, and they walk through once the opening is clear.
+- Fast verify not re-run yet.
 - The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.

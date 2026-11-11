@@ -263,12 +263,13 @@ public class SiegeGameTests {
 	public void ravagerBreaksWallInTwoHits(GameTestHelper h) {
 		net.minecraft.world.entity.monster.Ravager[] idle = new net.minecraft.world.entity.monster.Ravager[1];
 		net.minecraft.world.entity.monster.Ravager[] ravager = new net.minecraft.world.entity.monster.Ravager[1];
+		net.minecraft.world.entity.npc.villager.Villager[] villager = new net.minecraft.world.entity.npc.villager.Villager[1];
 		int[] sawSix = new int[1];
 		boolean[] running = new boolean[1];
 		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			closedRing(h, false);
-			var villager = h.spawn(EntityType.VILLAGER, rel(4, 0, 4));
-			villager.setNoAi(true);
+			villager[0] = h.spawn(EntityType.VILLAGER, rel(4, 0, 4));
+			villager[0].setNoAi(true);
 			idle[0] = spawnRavager(h, mobSpot());
 		});
 		seq = seq.thenIdle(600).thenExecute(() -> {
@@ -276,8 +277,10 @@ public class SiegeGameTests {
 			h.assertTrue(SiegeDamage.damage(server).damageAt(packed(h, attackCell())) == 0, "a ravager in no raid leaves the wall");
 			h.assertTrue(h.getBlockState(attackCell()).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "the cell is still cobble");
 			idle[0].discard();
-			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(rel(1, 1, 1)));
+			claimBell(h);
+			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(BuildingTestSupport.BELL));
 			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, mobSpot(), EntityType.RAVAGER, false);
+			ravager[0].setTarget(villager[0]);
 			sawSix[0] = 0;
 			running[0] = false;
 		});
@@ -290,6 +293,7 @@ public class SiegeGameTests {
 			SiegeDamage.scan(server, VillageClaims.current(server).orElseThrow(), -1);
 			var raid = h.getLevel().getRaids().get(VillageClaims.current(server).orElseThrow().threats().raid().orElseThrow().vanillaId());
 			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, mobSpot(), EntityType.RAVAGER, true);
+			ravager[0].setTarget(villager[0]);
 			h.assertTrue(!ravager[0].getPassengers().isEmpty(), "a pillager is riding");
 			sawSix[0] = 0;
 			running[0] = false;
@@ -303,14 +307,18 @@ public class SiegeGameTests {
 	@GameTest(environment = "villageheart-gametest:siege_vindicator", structure = YARD, skyAccess = true, maxTicks = 2000)
 	public void vindicatorChopsGate(GameTestHelper h) {
 		net.minecraft.world.entity.monster.illager.Vindicator[] vindicator = new net.minecraft.world.entity.monster.illager.Vindicator[1];
+		net.minecraft.world.entity.npc.villager.Villager[] villager = new net.minecraft.world.entity.npc.villager.Villager[1];
 		int[] saw = new int[1];
 		boolean[] running = new boolean[1];
 		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			closedRing(h, true);
-			h.spawn(EntityType.VILLAGER, rel(4, 0, 4)).setNoAi(true);
+			villager[0] = h.spawn(EntityType.VILLAGER, rel(4, 0, 4));
+			villager[0].setNoAi(true);
 			var server = h.getLevel().getServer();
-			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(rel(1, 1, 1)));
+			claimBell(h);
+			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(BuildingTestSupport.BELL));
 			vindicator[0] = (net.minecraft.world.entity.monster.illager.Vindicator) joinRaider(h, raid, mobSpot(), EntityType.VINDICATOR, false);
+			vindicator[0].setTarget(villager[0]);
 			h.assertTrue(h.getBlockState(attackCell()).is(net.minecraft.world.level.block.Blocks.OAK_FENCE_GATE), "the attack cell is the gate: " + h.getBlockState(attackCell()));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "BreachGoal runs at the gate", () -> {
@@ -383,29 +391,52 @@ public class SiegeGameTests {
 		h.assertTrue(VillageTestSupport.rel(h, mob.blockPosition()).getZ() > ATTACK_Z, "inside " + VillageTestSupport.rel(h, mob.blockPosition()));
 	}
 
-	/** South wall of the ring. The bell at (1, 1) sits inside, so a raid centred on it has to come through this face. */
-	private static final int RING_X0 = -6, RING_X1 = 8, RING_Z0 = -6, RING_Z1 = 8;
+	/**
+	 * A raid stops on its first tick unless the centre is a vanilla village: an occupied POI in the village tag. The villager in
+	 * these tests has no AI, so it never takes the bell. Take it here, the same claim a villager's brain would make.
+	 */
+	private static void claimBell(GameTestHelper h) {
+		BlockPos bell = h.absolutePos(BuildingTestSupport.BELL);
+		var taken = h.getLevel().getPoiManager().take(type -> type.is(net.minecraft.tags.PoiTypeTags.VILLAGE), (type, pos) -> pos.equals(bell), bell, 1);
+		h.assertTrue(taken.isPresent(), "the bell's meeting point was free to claim");
+		h.assertTrue(h.getLevel().isVillage(bell), "the claimed bell is a vanilla village");
+	}
+
+	/**
+	 * South wall of the ring. The bell at (1, 1) sits inside, so a raid centred on it has to come through this face.
+	 * The other three faces are far enough that this face is the closest a mob can stand to the bell. A tight ring ties
+	 * the east face, and the path then ends there instead of on the wall in front of the mob.
+	 */
+	private static final int RING_X0 = -12, RING_X1 = 14, RING_Z0 = -6, RING_Z1 = 14;
+	/** Floor around the ring. Stops short of the grid Storage at x=27. Extra room to the south, where a stroll walks. */
+	private static final int FLOOR_X0 = RING_X0 - 8, FLOOR_X1 = RING_X1 + 8, FLOOR_Z0 = RING_Z0 - 24, FLOOR_Z1 = RING_Z1 + 4;
 	private static final int ATTACK_X = 1, ATTACK_Z = RING_Z0;
 
 	private static BlockPos attackCell() { return rel(ATTACK_X, 0, ATTACK_Z); }
 
 	private static BlockPos mobSpot() { return rel(ATTACK_X, 0, ATTACK_Z - 1); }
 
+	/**
+	 * A ravager is 1.95 wide. Centred in the block south of the wall, its body is inside the cobble and the push moves it off
+	 * the cell {@code BreachChoice} aims at (exactly one block toward the goal). Stand on the south edge of that block.
+	 */
+	private static final double RAVAGER_Z_IN_BLOCK = 0.01;
+
 	private static void closedRing(GameTestHelper h, boolean gate) {
-		// The mob stands just outside the structure. Force those chunks so its goals tick.
-		BlockPos cornerA = h.absolutePos(rel(RING_X0 - 2, 0, RING_Z0 - 2));
-		BlockPos cornerB = h.absolutePos(rel(RING_X1 + 2, 0, RING_Z1 + 2));
+		// The mob stands just outside the structure. Force those chunks so its goals tick, and give it a floor so a stroll cannot drop it off the pad.
+		BlockPos cornerA = h.absolutePos(rel(FLOOR_X0, 0, FLOOR_Z0));
+		BlockPos cornerB = h.absolutePos(rel(FLOOR_X1, 0, FLOOR_Z1));
 		int cx0 = Math.min(cornerA.getX(), cornerB.getX()) >> 4, cx1 = Math.max(cornerA.getX(), cornerB.getX()) >> 4;
 		int cz0 = Math.min(cornerA.getZ(), cornerB.getZ()) >> 4, cz1 = Math.max(cornerA.getZ(), cornerB.getZ()) >> 4;
 		for (int cx = cx0; cx <= cx1; cx++) for (int cz = cz0; cz <= cz1; cz++) h.getLevel().setChunkForced(cx, cz, true);
-		for (int x = RING_X0 - 2; x <= RING_X1 + 2; x++) for (int z = RING_Z0 - 2; z <= RING_Z1 + 2; z++) {
+		for (int x = FLOOR_X0; x <= FLOOR_X1; x++) for (int z = FLOOR_Z0; z <= FLOOR_Z1; z++) {
 			h.setBlock(rel(x, -1, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
 			for (int y = 0; y <= 4; y++) {
 				if ((x == 1 || x == 3) && z == 1) continue; // bell and Heart
 				h.setBlock(rel(x, y, z), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
 			}
 		}
-		BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 256), new ItemStack(Items.OAK_FENCE_GATE, 3));
+		BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 512), new ItemStack(Items.OAK_FENCE_GATE, 3));
 		// Corners belong to one segment. A second segment on the same cell is rejected, and the ring would have a gap.
 		DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0, -1, RING_Z1), rel(RING_X1, -1, RING_Z1));
 		DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0, -1, RING_Z0), rel(RING_X0, -1, RING_Z1 - 1));
@@ -425,7 +456,7 @@ public class SiegeGameTests {
 		var level = h.getLevel();
 		var ravager = EntityType.RAVAGER.create(level, net.minecraft.world.entity.EntitySpawnReason.EVENT);
 		BlockPos abs = h.absolutePos(at);
-		ravager.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		ravager.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + RAVAGER_Z_IN_BLOCK);
 		ravager.setPersistenceRequired();
 		level.addFreshEntity(ravager);
 		return ravager;
@@ -437,9 +468,10 @@ public class SiegeGameTests {
 		net.minecraft.world.entity.raid.Raider raider = type.create(level, net.minecraft.world.entity.EntitySpawnReason.EVENT);
 		if (raider == null) throw new AssertionError("did not create the raider");
 		BlockPos abs = h.absolutePos(at);
-		raider.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		double zIn = type == EntityType.RAVAGER ? RAVAGER_Z_IN_BLOCK : 0.5;
+		raider.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + zIn);
 		raid.joinRaid(level, 1, raider, abs, false);
-		raider.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+		raider.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + zIn);
 		raider.setPersistenceRequired();
 		h.assertTrue(raider.getCurrentRaid() != null && dev.villageheart.siege.TrackedRaids.member(level, raider), "joined the tracked raid");
 		if (ridden) {
