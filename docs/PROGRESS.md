@@ -943,4 +943,5 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `CreeperBreachGoal` walks a creeper that holds a lure slot to the nearest wall or gate and lights it beside the cell. `CreeperExplodeMixin` spends that blast on defence cells. A creeper with a target keeps the vanilla explosion. Creepers share the 24 lure slots with the zombies.
 - Each creeper GameTest passed alone (1 required test): T-L2-25 `creeperBreachesWall`, T-L2-25b `nobodyHuntsTheBreacher`, T-L2-26 `breachSparesHousesBehindWall`, T-L2-27 `vanillaCreeperStillVanilla`, T-L2-36 `siegeDamageGameruleCreeper`, T-L2-37 `trenchInFrontOfWall` (zombie and creeper). The trench was run twice more after the stand fix and passed both times.
 - A stand has to be outside the ring, with its feet on the ground the wall was built on. The trench bottom is lower than that, so a creeper that drops in does not light. T-L2-27 plans the repair with `RepairPlanner.next`; the builder is step 15.
-- Fast verify is next. The builder repair of T-L2-40 stays in step 15.
+- `scripts/verify.sh --fast` at `196391d`: exit 0 (L1 green, L2 407/407, L3 self-test, perf).
+- Next: step 15, builder repairs and the DEFENCE_DAMAGED alert. The builder repair of T-L2-40 stays there.
