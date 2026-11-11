@@ -579,8 +579,11 @@ Babies are normal vanilla villagers and can be hired as adults.
   As built (M25 track A, step 2): a raid counts when it is still going and its centre or a raider is inside the claim
   (the 80-block sphere, the edge included). The tracker latches that raid by its vanilla id; a different id does not
   replace it. Victory beats a loss, and a loss beats a stop or an over raid; a raid that vanishes is gone. The alert
-  line is danger: coming, the wave and how many raiders are left, or between waves. The screen, the call-up and
-  shelter are later steps.
+  line is danger: coming, the wave and how many raiders are left, or between waves. The screen and the call-up
+  are later steps.
+  As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
+  valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.
+  The online owner, stewards and residents are the ones who hear a raid.
 - **Hunger and homelessness**: these slow or stop work (§4). Villagers **do not die** of either.
 - Deaths are tracked (cause and day) for the Overview tab and the simulation metrics.
   As built (M25 step 1): the village keeps the last 32 (cause, day, whether it was in the claim, and whether a raid

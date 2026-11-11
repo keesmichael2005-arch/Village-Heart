@@ -110,6 +110,10 @@ public final class Balance {
 	public static final int DEATH_LOG_MAX = 32;
 	/** How often a tracked raid re-reads waves, raiders and guards. The raid's status is read every tick. */
 	public static final int RAID_CHECK_TICKS = 20;
+	/** How close a sheltering worker must get, and how far it may drift before it walks again. */
+	public static final double SHELTER_ARRIVE = 1.5;
+	public static final double SHELTER_DRIFT = 4;
+	public static final int SHELTER_REPATH_TICKS = 100;
 	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;

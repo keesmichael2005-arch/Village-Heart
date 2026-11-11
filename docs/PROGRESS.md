@@ -895,3 +895,8 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `core.raid`: facts, plan, record, summary, tracker, the danger alert line. A raid latches by vanilla id when its centre or a raider is in the claim. Victory beats loss beats a stop; a missing raid is gone. A different id does not replace the latched one.
 - `VillageState.threats` (raid + last raid only) and codec key `threats`. A bad raid or last raid drops that value and keeps the village. Empty threats are omitted.
 - Tests: `RaidTrackerTest` (T-L1-3 and the claim edge), `RaidAlertsTest` (T-L1-4), `VillageCodecsTest.raidRoundTripAndABadRaid`. Mutation: ignoring a raider inside the claim turned `outsideDoesNotStartUnlessARaiderIsInside` and `claimEdgeCountsARaiderAt79AndNotAt81` red. Next: step 3, shelter.
+
+## 2026-11-11: M25 track A step 3 (shelter rules)
+- `ShelterPlanner` picks the worker's own House bed, else the nearest free House bed, else the nearest room door. Ties break by distance, then x, z, y. `RaidActivity.shelter` keeps a worker who is asleep at home in bed. `RaidNotices.audience` is the online owner, stewards and residents.
+- `ActivityKind` appends `SHELTERING` and `NO_SHELTER` (ordinals 32 and 33). The Heart text for both is in now, because every activity needs a lang line.
+- Tests: `ShelterPlannerTest`, `RaidActivityTest`, `RaidFactsTest`, `RaidNoticesTest`. Mutation: sheltering a sleeper who has a home turned `whoShelters` red. Next: step 4, death-log glue.

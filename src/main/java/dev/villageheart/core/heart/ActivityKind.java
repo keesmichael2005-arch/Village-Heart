@@ -18,5 +18,7 @@ public enum ActivityKind {
 	/** M18: a guard on its rounds, in a fight, fetching gear, sparring, or wounded and resting. Appended. */
 	PATROLLING, FIGHTING, EQUIPPING, TRAINING, WOUNDED,
 	/** M22: the merchant sold today's limit / the treasury is full. Appended. */
-	DAILY_LIMIT, TREASURY_FULL
+	DAILY_LIMIT, TREASURY_FULL,
+	/** M25: a worker heading indoors for a raid, or with nowhere to go. Appended. */
+	SHELTERING, NO_SHELTER
 }
