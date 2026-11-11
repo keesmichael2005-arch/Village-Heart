@@ -368,70 +368,169 @@ public class GrowthCourtshipGameTests {
 	/**
 	 * Vanilla breeding just outside the claim must not fill the village's beds: the only free bed within 48 blocks of the pair lies inside the
 	 * claim, and the make-love hook gives it back.
+	 *
+	 * <p>The pair stands on the heart's own Y, 88 blocks east of it (the sphere is 80; the bed is at 76, twelve blocks away, inside a villager's
+	 * path range). An earlier setup used the world ground, which is a few blocks below the heart, so horizontal 82 was only about 2 blocks outside
+	 * the sphere: in the full suite a stroll walked them in, {@code canBreed} became false, and no make-love run ever started
+	 * ({@code births=0 aborts={}}). The leash keeps that stroll from crossing the sphere, and every other free bed in range is removed so a
+	 * neighbour test's bed cannot be the one vanilla takes.
 	 */
 	@GameTest(environment = "villageheart-gametest:growth_outside_pair", structure = YARD, skyAccess = true, maxTicks = 4500)
 	public void outsidePairCannotTakeClaimBed(GameTestHelper h) {
 		Villager[] v = new Villager[2];
-		BlockPos[] bed = new BlockPos[1];
+		BlockPos[] bedHead = new BlockPos[1];
 		int[] chunks = new int[4];
+		boolean[] watch = {false};
+		long[] finishedAt = {-1};
+		// registered from the test body (never from a callback): holds the pair outside the claim and seeds one make-love run
+		h.onEachTick(() -> {
+			if (!watch[0] || v[0] == null) return;
+			// hold them until the assertions: a stroll after the run is still up to 10 blocks, enough to step inside from dx 88
+			leashOutside(h, v);
+			if (BreedTrace.finished(v[0].getUUID())) {
+				if (finishedAt[0] < 0) finishedAt[0] = h.getTick();
+				return;
+			}
+			nearby(h, v[0], v[1]);
+			if (!v[0].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET) && v[0].canBreed() && v[1].canBreed()) {
+				v[0].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1]);
+			}
+		});
 		GameTestSequence seq = scene(h, 2, 0, 32).thenExecute(() -> {
 			HeartLocation hl = village(h).heart();
-			bed[0] = new BlockPos(hl.x() + 76, hl.y(), hl.z()); // inside the claim (80), 6 blocks from the pair
-			chunks[0] = (hl.x() + 70) >> 4;
-			chunks[1] = (hl.x() + 96) >> 4;
+			bedHead[0] = new BlockPos(hl.x() + 76, hl.y(), hl.z() + 1); // foot is one north; 76 < 80, inside the sphere
+			chunks[0] = (hl.x() + 64) >> 4;
+			chunks[1] = (hl.x() + 100) >> 4;
 			chunks[2] = (hl.z() - 16) >> 4;
 			chunks[3] = (hl.z() + 16) >> 4;
 			for (int cx = chunks[0]; cx <= chunks[1]; cx++) for (int cz = chunks[2]; cz <= chunks[3]; cz++) h.getLevel().setChunkForced(cx, cz, true);
 		}).thenWaitUntil(() -> {
-			for (int cx = chunks[0]; cx <= chunks[1]; cx++) for (int cz = chunks[2]; cz <= chunks[3]; cz++) {
-				h.assertTrue(h.getLevel().isLoaded(new BlockPos(cx << 4, bed[0].getY(), cz << 4)), "chunk " + cx + "," + cz + " is loaded");
-			}
+			BlockPos spot = new BlockPos(village(h).heart().x() + 88, village(h).heart().y(), village(h).heart().z());
+			h.assertTrue(h.getLevel().isPositionEntityTicking(spot) && h.getLevel().isPositionEntityTicking(bedHead[0]),
+					"the pad and the bed are entity-ticking (a forced chunk): pad " + h.getLevel().isPositionEntityTicking(spot) + " bed "
+							+ h.getLevel().isPositionEntityTicking(bedHead[0]));
 		}).thenExecute(() -> {
 			HeartLocation hl = village(h).heart();
+			carvePad(h, hl);
 			net.minecraft.world.level.block.state.BlockState bedState = Blocks.RED_BED.defaultBlockState()
 					.setValue(net.minecraft.world.level.block.BedBlock.FACING, net.minecraft.core.Direction.SOUTH);
-			// the claim's bed, and one home bed for each of the pair (so they do not go looking for the claim's)
-			// the ground at both places (the Heart is a few blocks above it)
-			int gy = h.getLevel().getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, hl.x() + 82, hl.z());
-			bed[0] = new BlockPos(bed[0].getX(), gy, bed[0].getZ());
-			setBed(h, bed[0], bedState);
-			BlockPos far = new BlockPos(hl.x() + 82, gy, hl.z());
+			BlockPos claimFoot = bedHead[0].north();
+			setBed(h, claimFoot, bedState);
+			// home beds beside the pair, same X, so walking home cannot enter the claim
+			BlockPos far = new BlockPos(hl.x() + 88, hl.y(), hl.z());
+			setBed(h, far.north(6), bedState);
 			setBed(h, far.north(8), bedState);
-			setBed(h, far.north(10), bedState);
-			for (int i = 0; i < 2; i++) {
-				v[i] = WorkerTestSupport.spawnVillager(h, new BlockPos(2, 0, 2));
-				v[i].snapTo(far.getX() + 0.5 + i * 2, far.getY(), far.getZ() + 0.5, 0.0F, 0.0F);
-				v[i].setAge(0);
-				breadInPockets(v[i], 3);
-			}
-			h.getLevel().setDayTime(dayStart(h) + 100);
-		}).thenWaitUntil(() -> h.assertTrue(h.getLevel().getPoiManager().getType(bed[0].south()).isPresent(), "the claim's bed has a POI"))
+			clearStrangers(h, far); // before the pair exists: the box must not discard them
+		}).thenWaitUntil(() -> h.assertTrue(h.getLevel().getPoiManager().getType(bedHead[0]).isPresent(), "the claim's bed has a POI"))
 				.thenExecute(() -> {
-					BlockPos far = new BlockPos(village(h).heart().x() + 82, bed[0].getY(), village(h).heart().z());
-					claimBedAbs(h, v[0], far.north(8).south());
-					claimBedAbs(h, v[1], far.north(10).south());
-					h.assertFalse(BreedingGate.blocks(v[0]), "the pair is outside the claim: vanilla applies");
+					HeartLocation hl = village(h).heart();
+					BlockPos far = new BlockPos(hl.x() + 88, hl.y(), hl.z());
+					for (int i = 0; i < 2; i++) {
+						v[i] = WorkerTestSupport.spawnVillager(h, new BlockPos(2, 0, 2));
+						v[i].snapTo(far.getX() + 0.3 + i * 1.2, far.getY(), far.getZ() + 0.5, i == 0 ? 90.0F : -90.0F, 0.0F);
+						v[i].setAge(0);
+						breadInPockets(v[i], 3);
+					}
+					claimBedAbs(h, v[0], far.north(6).south());
+					claimBedAbs(h, v[1], far.north(8).south());
+					h.getLevel().setDayTime(dayStart(h) + 100);
 				});
-		for (int i = 0; i < 80; i++) {
-			seq = seq.thenExecuteAfter(30, () -> {
-				if (!BreedTrace.finished(v[0].getUUID()) && !v[0].getBrain().hasMemoryValue(MemoryModuleType.BREED_TARGET) && v[0].canBreed() && v[1].canBreed()) {
-					v[0].getBrain().setMemory(MemoryModuleType.BREED_TARGET, v[1]);
-				}
-			});
-		}
-		seq.thenExecute(() -> {
-			var path = v[0].getNavigation().createPath(bed[0].south(), 1);
-			h.assertTrue(GrowthStats.droppedBeds() >= 1, "vanilla's run took the claim's bed and the hook gave it back: " + BreedTrace.summary() + " space "
-					+ spaceAbs(h, bed[0].south()) + " path " + (path == null ? "null" : path.canReach()) + " pair at " + v[0].blockPosition() + " bed " + bed[0] + " tick "
-					+ h.getLevel().getGameTime() + " loaded " + h.getLevel().isLoaded(bed[0]) + " type " + h.getLevel().getPoiManager().getType(bed[0].south()));
-			h.assertTrue(BreedTrace.aborts(BreedTrace.Abort.NO_BED, false) >= 1, "and the run ended as a NO_BED abort: " + BreedTrace.summary());
-			h.assertTrue(h.getLevel().getPoiManager().getInSquare(t -> true, bed[0].south(), 0, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE)
-					.anyMatch(r -> r.getPos().equals(bed[0].south())), "the claim's bed still has a free ticket");
+		seq = seq.thenWaitUntil(() -> {
+			clearForeignBeds(h, bedHead[0]);
+			long free = freeHomeBeds(h, bedHead[0]);
+			h.assertValueEqual(1L, free, "the claim bed is the only free bed within 48 blocks");
+		}).thenExecute(() -> {
+			long phase = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			h.assertTrue(phase >= 10 && phase < 500, "the pair is in the morning idle window: phase " + phase);
+			h.assertFalse(BreedingGate.blocks(v[0]) || BreedingGate.blocks(v[1]), "the pair is outside the claim: vanilla applies");
+			h.assertTrue(BreedingGate.claimContains(h.getLevel().dimension(), bedHead[0]), "the bed is inside the claim");
+			h.assertTrue(v[0].distanceToSqr(v[1]) < 5.0, "the pair starts inside the birth distance: " + v[0].distanceTo(v[1]));
+			h.assertTrue(v[0].canBreed() && v[1].canBreed(), "vanilla canBreed is true out here");
+			watch[0] = true;
+		});
+		// one make-love run is 275-324 ticks; 800 covers the start plus that run
+		seq.thenIdle(800).thenExecute(() -> {
+			watch[0] = false;
+			var path = v[0].getNavigation().createPath(bedHead[0], 1);
+			h.assertTrue(BreedTrace.finished(v[0].getUUID()), "the initiator's make-love run ended: " + outsideDiag(h, v, bedHead[0], path));
+			h.assertTrue(GrowthStats.droppedBeds() >= 1, "vanilla's run took the claim's bed and the hook gave it back: " + outsideDiag(h, v, bedHead[0], path));
+			h.assertTrue(BreedTrace.aborts(BreedTrace.Abort.NO_BED, false) >= 1, "and the run ended as a NO_BED abort: " + outsideDiag(h, v, bedHead[0], path));
+			h.assertFalse(BreedingGate.blocks(v[0]) || BreedingGate.blocks(v[1]), "the pair is still outside the claim: " + v[0].blockPosition());
+			h.assertTrue(spaceAbs(h, bedHead[0]), "the claim's bed still has a free ticket");
 			h.assertTrue(babies(h).isEmpty(), "no baby in the test area");
+			h.assertValueEqual(0, GrowthStats.unlicensedBirths(), "no unlicensed birth");
+			log("T-L2-12: run finished at test tick " + finishedAt[0] + " " + BreedTrace.summary());
 			for (Villager x : v) x.discard();
 			for (int cx = chunks[0]; cx <= chunks[1]; cx++) for (int cz = chunks[2]; cz <= chunks[3]; cz++) h.getLevel().setChunkForced(cx, cz, false);
 			end(h);
 		});
+	}
+
+	/** Puts the pair back on its pad (8 blocks outside the sphere; a stroll is up to 10) and drops mobs that would panic them. */
+	private static void leashOutside(GameTestHelper h, Villager[] v) {
+		HeartLocation hl = village(h).heart();
+		for (int i = 0; i < 2; i++) {
+			Villager x = v[i];
+			if (x.isSleeping()) x.stopSleeping();
+			x.snapTo(hl.x() + 88.3 + i * 1.2, hl.y(), hl.z() + 0.5, i == 0 ? 90.0F : -90.0F, 0.0F);
+		}
+		var level = h.getLevel();
+		net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(v[0].blockPosition()).inflate(24);
+		level.getEntitiesOfClass(net.minecraft.world.entity.monster.Monster.class, box, e -> true).forEach(net.minecraft.world.entity.Entity::discard);
+	}
+
+	/** Stone floor and air from the claim bed out to the pad, so a neighbour test's leftover blocks cannot block the path or the line of sight. */
+	private static void carvePad(GameTestHelper h, HeartLocation hl) {
+		var level = h.getLevel();
+		for (int x = hl.x() + 74; x <= hl.x() + 92; x++) for (int z = hl.z() - 10; z <= hl.z() + 4; z++) {
+			level.setBlock(new BlockPos(x, hl.y() - 1, z), Blocks.STONE.defaultBlockState(), 3);
+			for (int y = 0; y <= 2; y++) level.setBlock(new BlockPos(x, hl.y() + y, z), Blocks.AIR.defaultBlockState(), 3);
+		}
+	}
+
+	/** Villagers and bells left by earlier tests in this reused world, within the pair's breeding range. */
+	private static void clearStrangers(GameTestHelper h, BlockPos pad) {
+		var level = h.getLevel();
+		net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(pad).inflate(48);
+		level.getEntitiesOfClass(Villager.class, box, e -> true).forEach(net.minecraft.world.entity.Entity::discard);
+		level.getEntitiesOfClass(net.minecraft.world.entity.monster.Monster.class, box, e -> true).forEach(net.minecraft.world.entity.Entity::discard);
+		var poi = level.getPoiManager();
+		for (var rec : poi.getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING), pad, 48,
+				net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).toList()) {
+			BlockPos p = rec.getPos().immutable();
+			if (level.getBlockState(p).is(Blocks.BELL)) level.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
+			else poi.remove(p);
+		}
+	}
+
+	/** Drops every free HOME bed in range except the one this test placed inside the claim. */
+	private static void clearForeignBeds(GameTestHelper h, BlockPos keepHead) {
+		var level = h.getLevel();
+		var poi = level.getPoiManager();
+		for (var rec : poi.getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME), keepHead, 48,
+				net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE).toList()) {
+			if (rec.getPos().equals(keepHead)) continue;
+			BlockPos p = rec.getPos().immutable();
+			net.minecraft.world.level.block.state.BlockState s = level.getBlockState(p);
+			if (s.is(net.minecraft.tags.BlockTags.BEDS)) {
+				level.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
+				BlockPos other = p.relative(s.getValue(net.minecraft.world.level.block.BedBlock.FACING),
+						s.getValue(net.minecraft.world.level.block.BedBlock.PART)
+								== net.minecraft.world.level.block.state.properties.BedPart.FOOT ? 1 : -1);
+				if (level.getBlockState(other).is(net.minecraft.tags.BlockTags.BEDS)) level.setBlock(other, Blocks.AIR.defaultBlockState(), 3);
+			} else poi.remove(p);
+		}
+	}
+
+	private static long freeHomeBeds(GameTestHelper h, BlockPos around) {
+		return h.getLevel().getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME), around, 48,
+				net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE).count();
+	}
+
+	private static String outsideDiag(GameTestHelper h, Villager[] v, BlockPos bedHead, net.minecraft.world.level.pathfinder.Path path) {
+		return BreedTrace.summary() + " space " + spaceAbs(h, bedHead) + " path " + (path == null ? "null" : path.canReach()) + " pair " + v[0].blockPosition()
+				+ " / " + v[1].blockPosition() + " bed " + bedHead + " blocks " + BreedingGate.blocks(v[0]) + " phase "
+				+ Math.floorMod(h.getLevel().getDayTime(), 24000L) + " tick " + h.getTick();
 	}
 
 	private static void setBed(GameTestHelper h, BlockPos footAbs, net.minecraft.world.level.block.state.BlockState bedState) {
