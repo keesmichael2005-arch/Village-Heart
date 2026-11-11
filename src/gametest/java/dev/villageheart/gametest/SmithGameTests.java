@@ -39,7 +39,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -793,7 +792,163 @@ public class SmithGameTests {
 		});
 	}
 
-	/** A 5×5 glass pen, three high, so a golem cannot wander into the wait spot. {@code open} removes it. */
+	// ---- T-L2-2d --------------------------------------------------------------------------------------
+
+	/** Two hurt golems share one Smithy. Only one is repaired at a time, and six ingots finish both. */
+	@GameTest(environment = "villageheart-gametest:smith_two_golems", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void twoGolemsTakeTurns(GameTestHelper h) {
+		IronGolem[] a = new IronGolem[1];
+		IronGolem[] b = new IronGolem[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			putStore(h, Items.IRON_INGOT, 6);
+			setDayTime(h, 2000);
+			hire(h);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			BlockPos spot = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			a[0] = summonHurt(h, spot.offset(14, 0, 0), 40f);
+			b[0] = summonHurt(h, spot.offset(18, 0, 0), 40f);
+			log("two golems at " + a[0].blockPosition() + " and " + b[0].blockPosition());
+		}).thenWaitUntil(() -> {
+			int mid = 0;
+			if (a[0].getHealth() > 41f && a[0].getHealth() < 95f) mid++;
+			if (b[0].getHealth() > 41f && b[0].getHealth() < 95f) mid++;
+			h.assertTrue(mid <= 1, "two golems were repaired at once");
+			h.assertTrue(a[0].getHealth() > 90f && b[0].getHealth() > 90f, "health " + a[0].getHealth() + " and " + b[0].getHealth());
+		}).thenExecute(() -> {
+			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "six ingots used");
+			log("both golems repaired, one at a time");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-2e --------------------------------------------------------------------------------------
+
+	/** A golem above half health stays away. A golem reloaded from NBT still has the repair goal and gets mended. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_reload", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void healthyAndLoadedGolems(GameTestHelper h) {
+		IronGolem[] healthy = new IronGolem[1];
+		IronGolem[] hurt = new IronGolem[1];
+		BlockPos[] spot = new BlockPos[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			setDayTime(h, 2000);
+			hire(h);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			spot[0] = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			BlockPos far = h.absolutePos(new BlockPos(28, 1, 24));
+			glassPen(h.getLevel(), far, true);
+			healthy[0] = summonHurt(h, far, 60f);
+			IronGolem born = summonHurt(h, spot[0].offset(6, 0, 0), 40f);
+			hurt[0] = reloadGolem(h, born);
+			h.assertTrue(hasRepairGoal(hurt[0]), "the reloaded golem has the repair goal");
+			h.assertTrue(Math.abs(hurt[0].getHealth() - 40f) < 0.1f, "reloaded health " + hurt[0].getHealth());
+			log("healthy penned, hurt reloaded");
+		}).thenExecuteFor(1200, () -> {
+			double dist = healthy[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
+			h.assertTrue(dist > 6, "the healthy golem came within 6: " + dist);
+			h.assertTrue(healthy[0].getHealth() > 59f, "healthy golem was repaired");
+		}).thenExecute(() -> putStore(h, Items.IRON_INGOT, 3)
+		).thenWaitUntil(() -> h.assertTrue(hurt[0].isAlive() && hurt[0].getHealth() > 90f,
+				"reloaded " + (hurt[0].isRemoved() ? "removed " + hurt[0].getRemovalReason() : "health " + hurt[0].getHealth() + " at " + hurt[0].blockPosition())))
+		).thenExecute(() -> {
+			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "three ingots used on the reloaded golem");
+			log("reloaded golem repaired, healthy one stayed away");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-8 ---------------------------------------------------------------------------------------
+
+	/** A saved build survives the smith being reloaded, and breaking the Smithy gives the materials back once. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_refund", structure = YARD, skyAccess = true, maxTicks = 14000)
+	public void golemBuildSurvivesReloadAndRefunds(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.pen(h, 4);
+			seedBuild(h, 4000);
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+			log("reload build seeded at 4000");
+		}).thenWaitUntil(() -> h.assertTrue(
+				SmithRuntime.activity(h.getLevel().getServer(), smith[0].getUUID()) == dev.villageheart.core.heart.ActivityKind.BUILDING_GOLEM,
+				"activity " + SmithRuntime.activity(h.getLevel().getServer(), smith[0].getUUID()))
+		).thenExecute(() -> {
+			h.assertTrue(buildProgress(h) >= 3800, "progress before the reload " + buildProgress(h));
+			smith[0] = LumberTestSupport.reloadEntity(h.getLevel(), smith[0]);
+			h.assertTrue(buildProgress(h) >= 3800, "progress after the reload " + buildProgress(h));
+			log("smith reloaded, progress " + buildProgress(h));
+		}).thenWaitUntil(() -> h.assertValueEqual(1, SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80), "the golem"))
+		.thenExecute(() -> {
+			h.assertTrue(buildProgress(h) < 0, "the first build is still saved");
+			seedBuild(h, 100);
+			h.setBlock(SmithTestSupport.smithyMarker(), Blocks.AIR);
+			log("smithy marker removed");
+		}).thenExecuteFor(200, () -> { }).thenExecute(() -> {
+			h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "refunded ingots");
+			h.assertValueEqual(1L, count(h, Items.CARVED_PUMPKIN), "refunded pumpkin");
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().golemBuilds().isEmpty(), "the build entry is gone");
+		}).thenExecuteFor(400, () -> {
+			h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "ingots doubled");
+			h.assertValueEqual(1L, count(h, Items.CARVED_PUMPKIN), "pumpkin doubled");
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().golemBuilds().isEmpty(), "the build came back");
+		}).thenExecute(() -> {
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.SMITHY, SmithTestSupport.smithyMarker(), net.minecraft.core.Direction.NORTH);
+		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, SmithTestSupport.smithyMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			for (BlockPos rel : new BlockPos[] {SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2()}) {
+				var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+				for (int i = 0; i < box.getContainerSize(); i++) box.setItem(i, new ItemStack(Items.DIRT, 64));
+				box.setChanged();
+			}
+			var first = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.storeChest1()));
+			first.setItem(0, ItemStack.EMPTY);
+			seedBuild(h, 50);
+			h.setBlock(SmithTestSupport.smithyMarker(), Blocks.AIR);
+			log("full storage, marker removed again");
+		}).thenExecuteFor(200, () -> { }).thenExecute(() -> {
+			h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "the ingots took the free slot");
+			h.assertValueEqual(0L, count(h, Items.CARVED_PUMPKIN), "the pumpkin did not fit");
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.CARVED_PUMPKIN), "the pumpkin is on the ground");
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().golemBuilds().isEmpty(), "no build left");
+			log("partial refund: ingots stored, pumpkin dropped");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** A 5×5 glass pen, three high, so a golem cannot wander into the wait spot. {@code close} builds it. */
+	private static IronGolem summonHurt(GameTestHelper h, BlockPos absolute, float health) {
+		BlockPos origin = h.absolutePos(BlockPos.ZERO);
+		IronGolem g = h.spawn(EntityType.IRON_GOLEM, new BlockPos(absolute.getX() - origin.getX(), absolute.getY() - origin.getY(), absolute.getZ() - origin.getZ()));
+		g.setPlayerCreated(true);
+		g.setHealth(health);
+		return g;
+	}
+
+	private static IronGolem reloadGolem(GameTestHelper h, IronGolem g) {
+		ServerLevel level = h.getLevel();
+		var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess());
+		g.saveWithoutId(out);
+		var tag = out.buildResult();
+		tag.remove("UUID");
+		BlockPos origin = h.absolutePos(BlockPos.ZERO);
+		BlockPos rel = new BlockPos(g.getBlockX() - origin.getX(), g.getBlockY() - origin.getY(), g.getBlockZ() - origin.getZ());
+		g.discard();
+		// An addFreshEntity copy is not persistence-required, and the last run had it removed before the repair.
+		// Spawn through the helper (that sets persistence and tracks the entity), then load the saved data onto it.
+		IronGolem copy = h.spawn(EntityType.IRON_GOLEM, rel);
+		copy.load(net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+		copy.setPersistenceRequired();
+		copy.setPlayerCreated(true);
+		return copy;
+	}
+
+	private static boolean hasRepairGoal(IronGolem g) {
+		var goals = ((dev.villageheart.gametest.mixin.MobGoalAccessor) (Object) g).villageheart$goals();
+		for (var wrapped : goals.getAvailableGoals()) if (wrapped.getGoal() instanceof dev.villageheart.golem.SmithyRepairGoal) return true;
+		return false;
+	}
+
 	private static void glassPen(ServerLevel level, BlockPos centre, boolean close) {
 		for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
 			if (Math.abs(dx) != 2 && Math.abs(dz) != 2) continue;
