@@ -22,6 +22,7 @@ public final class SiegeSystem implements VillageSystem {
 
 	@Override
 	public void tick(MinecraftServer server, VillageState village) {
+		BreachNotices.observe(server);
 		if (village.defences().isEmpty() && village.threats().damage().isEmpty()) return;
 		try (var t = VillageTicker.section()) {
 			long time = server.overworld().getGameTime();

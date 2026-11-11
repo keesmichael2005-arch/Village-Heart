@@ -73,6 +73,8 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.guard.PatrolPoints.invalidate();
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
 		dev.villageheart.siege.SiegeDamage.resetForTests();
+		dev.villageheart.siege.BreachNotices.resetForTests();
+		dev.villageheart.worker.build.WallRepair.resetForTests();
 		dev.villageheart.siege.PathBudget.resetForTests();
 		dev.villageheart.siege.LureSlots.resetForTests();
 		dev.villageheart.siege.TrackedRaids.restoreDifficulty(server);

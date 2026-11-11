@@ -68,6 +68,20 @@ public final class SiegeDamage {
 
 	public static void resetForTests() { LIVE.clear(); }
 
+	/** Drops the crack and the breach at this cell and writes that through to the claim. */
+	public static void repair(MinecraftServer server, long packed) {
+		VillageState village = VillageClaims.current(server).orElse(null);
+		if (village == null) return;
+		Live live = live(server, village);
+		live.damage = live.damage.without(packed);
+		flush(server);
+		ServerLevel level = dev.villageheart.worker.Workers.levelOf(server, village.heart());
+		if (level == null) return;
+		Pos p = Pos.unpack(packed);
+		BlockPos pos = new BlockPos(p.x(), p.y(), p.z());
+		level.destroyBlockProgress(crackId(village.heart(), level, pos), pos, -1);
+	}
+
 	/** Copies the live cracks and breaches into the claim so a save sees them. */
 	public static void flush(MinecraftServer server) {
 		Live live = LIVE.get(server);

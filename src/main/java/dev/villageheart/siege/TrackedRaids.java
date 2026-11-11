@@ -70,6 +70,33 @@ public final class TrackedRaids {
 		return raid;
 	}
 
+	/**
+	 * Test stand-in for a raid whose waves are held. The vanilla raid would spawn a group on its next tick; this pushes that
+	 * timer out so a repair test can watch the builder shelter without a wave arriving.
+	 */
+	public static void holdWaves(Raid raid) {
+		try {
+			var cooldown = Raid.class.getDeclaredField("raidCooldownTicks");
+			cooldown.setAccessible(true);
+			cooldown.setInt(raid, 1_000_000);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException("could not hold the raid's waves", e);
+		}
+	}
+
+	/** Stops the vanilla raid and clears the tracked record, so workers leave shelter on the next brain update. */
+	public static void stop(MinecraftServer server) {
+		var village = VillageClaims.current(server);
+		if (village.isEmpty()) return;
+		village.get().threats().raid().ifPresent(record -> {
+			for (ServerLevel level : server.getAllLevels()) {
+				Raid raid = level.getRaids().get(record.vanillaId());
+				if (raid != null && !raid.isStopped()) raid.stop();
+			}
+		});
+		VillageClaims.data(server).update(v -> v.withThreats(v.threats().withRaid(Optional.empty())));
+	}
+
 	/** {@code getNearbyRaid} compares this value to a distance squared. 96 blocks, same as {@code ServerLevel.getRaidAt}. */
 	private static final int RAID_NEIGHBOUR_SQR = 96 * 96;
 

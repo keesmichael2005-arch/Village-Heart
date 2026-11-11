@@ -70,6 +70,13 @@ public final class WorkerBrain {
 	public static final Activity GO_HOME = Registry.register(BuiltInRegistries.ACTIVITY,
 			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "go_home"), new Activity("go_home"));
 
+	/**
+	 * Hired workers stand aside while a raid or a siege is tracked. The smallest stand-in for track A's shelter:
+	 * no beds, no doors, no death log. Guards keep their own schedule.
+	 */
+	public static final Activity SHELTER = Registry.register(BuiltInRegistries.ACTIVITY,
+			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "shelter"), new Activity("shelter"));
+
 	/** Brains installed by {@link #install}, so the worker system can notice a worker running a vanilla brain. */
 	private static final java.util.Map<Brain<?>, JobType> INSTALLED = new WeakHashMap<>();
 
@@ -87,10 +94,15 @@ public final class WorkerBrain {
 		return built != null && built == WorkerAttachments.get(v).map(WorkerData::job).orElse(null);
 	}
 
-	/** The activity this worker should be in now: a guard follows its shift (M18), every other job the day shape. */
+	/** The activity this worker should be in now: a guard follows its shift (M18), every other job shelters while the village is under attack, else the day shape. */
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
+		if (underAttack(level)) return SHELTER;
 		return activityFor(level.getDayTime());
+	}
+
+	private static boolean underAttack(ServerLevel level) {
+		return dev.villageheart.world.VillageClaims.current(level.getServer()).map(v -> v.threats().underAttack()).orElse(false);
 	}
 
 	/** The activity a worker should be in at this day time. */
@@ -140,6 +152,7 @@ public final class WorkerBrain {
 				p(0, WakeUp.create()),
 				p(0, ReactToBell.create()),
 				p(0, SetRaidStatus.create()),
+				p(0, new ShelterDuringThreat()),
 				p(1, new MoveToTargetSink()),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14), WorkerBrain::bedIsFree)),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));
@@ -184,6 +197,10 @@ public final class WorkerBrain {
 		brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.RAID, VillagerGoalPackages.getRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.HIDE, VillagerGoalPackages.getHidePackage(profession, SPEED));
+		brain.addActivity(SHELTER, ImmutableList.of(
+				p(2, new DoNothing(20, 40)),
+				look(),
+				p(99, new UpdateWorkerActivity())));
 		brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
 		brain.setDefaultActivity(Activity.IDLE);
 		brain.setActiveActivityIfPossible(activityFor(villager.level().getDayTime()));

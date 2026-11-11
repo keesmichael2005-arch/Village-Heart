@@ -213,9 +213,9 @@ public class SiegeGameTests {
 	 * T-L2-40. A missing watchtower key is dropped, and the same key recorded as a breach keeps the site and its patrol point.
 	 * The builder walking over to replace the shaft is step 15.
 	 */
-	@GameTest(environment = "villageheart-gametest:siege_watchtower_breach", structure = YARD, skyAccess = true, maxTicks = 900)
+	@GameTest(environment = "villageheart-gametest:siege_watchtower_breach", structure = YARD, skyAccess = true, maxTicks = 6000)
 	public void watchtowerBreachKeepsSite(GameTestHelper h) {
-		BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
+		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.TOWN);
 			BuildTestSupport.stock(h, DefenceTestSupport.towerMaterials(2));
 			BuildTestSupport.startBuild(h, dev.villageheart.core.blueprint.Blueprints.WATCHTOWER, BuildTestSupport.GROUND, dev.villageheart.core.blueprint.Rotation4.NONE);
@@ -233,6 +233,32 @@ public class SiegeGameTests {
 			dev.villageheart.defence.DefenceSystem.refresh(server, VillageClaims.current(server).orElseThrow());
 			var left = VillageClaims.current(server).orElseThrow().defences();
 			h.assertTrue(left.size() == 1 && left.get(0).blueprintId().equals("watchtower"), "the breached tower stays: " + left);
+			h.assertTrue(dev.villageheart.defence.Defences.patrolPoints(server).size() == 1, "and it is still a patrol point");
+			h.getLevel().setDayTime(2000);
+			for (int x = 16; x <= 30; x++) for (int z = 2; z <= 20; z++) h.setBlock(rel(x, -1, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+			BuildingTestSupport.room(h, BuildTestSupport.HUT, 5, 4);
+			h.setBlock(BuildTestSupport.table(), dev.villageheart.block.JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.BUILDERS_TABLE));
+			h.setBlock(BuildTestSupport.hutChest(), net.minecraft.world.level.block.Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(BuildTestSupport.HUT, 2, 0, 3), net.minecraft.world.level.block.Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.BUILDERS_HUT, BuildTestSupport.hutMarker(), net.minecraft.core.Direction.NORTH);
+			BuildTestSupport.stock(h, new ItemStack(Items.LADDER, 4));
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, BuildTestSupport.hutMarker(), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenExecute(() -> BuildTestSupport.hireBuilder(h));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 3000, "the builder replaces the shaft", () -> {
+			var server = h.getLevel().getServer();
+			var site = VillageClaims.current(server).orElseThrow().defences().get(0);
+			for (var key : Defences.keys(site)) {
+				BlockPos pos = new BlockPos(key.at().x(), key.at().y(), key.at().z());
+				h.assertTrue(h.getBlockState(VillageTestSupport.rel(h, pos)).is(net.minecraft.world.level.block.Blocks.LADDER), "shaft " + key.at());
+				h.assertTrue(!SiegeDamage.damage(server).isBreached(key.at().pack()), "the breach is still recorded at " + key.at());
+				h.assertTrue(!VillageClaims.current(server).orElseThrow().threats().damage().isBreached(key.at().pack()), "the saved breach is still at " + key.at());
+			}
+		});
+		seq.thenExecute(() -> {
+			var server = h.getLevel().getServer();
+			var left = VillageClaims.current(server).orElseThrow().defences();
+			h.assertTrue(left.size() == 1 && left.get(0).blueprintId().equals("watchtower"), "the repaired tower stays: " + left);
 			h.assertTrue(dev.villageheart.defence.Defences.patrolPoints(server).size() == 1, "and it is still a patrol point");
 			VillageTestSupport.done(h);
 		});
