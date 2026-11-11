@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "defended_walled",
-  "description": "M18: the realistic twin of `defended`. The same village (starter, a tier-Village Barracks with two guards that each start with a wooden sword and no armour, a Training Yard), plus a two-high cobblestone wall on the edge of the site with ONE oak fence gate (hired workers and guards open it, mobs cannot), fence-post lamps with torches every 7 blocks inside and a torch every 6 blocks on the wall, and the same scripted threat (3 zombies at tick 14000 of days 1..9) placed OUTSIDE the wall. The assertions are those of `defended`, unchanged.",
+  "description": "M18: the realistic twin of `defended`. The same village (starter, a tier-Village Barracks with two guards that each start with a wooden sword and no armour, a Training Yard), plus a two-high cobblestone wall on the edge of the site with ONE oak fence gate (hired workers and guards open it, mobs cannot), fence-post lamps with torches every 7 blocks inside and a torch every 6 blocks on the wall. `move_in` brings the vanilla villagers, their beds, their job sites and the bell inside that ring (extra beds on open grass when the houses are short). The scripted threat (3 zombies at tick 14000 of days 1..9) stands 3-8 blocks outside the wall, on every side including the gate, instead of in the old village. The assertions are those of `defended`, unchanged.",
   "default_days": 10,
   "actions": [
     {
@@ -207,6 +207,13 @@
         32
       ],
       "spacing": 7
+    },
+    {
+      "action": "move_in",
+      "size": [
+        44,
+        32
+      ]
     },
     {
       "action": "hire",

@@ -15,7 +15,7 @@ public final class ScenarioParser {
 	}
 
 	/** Must match the keys of dev.villageheart.sim.SimActions (gametest source set). */
-	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire", "tier", "training_yard", "night_spawn", "wall_ring", "lamps");
+	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire", "tier", "training_yard", "night_spawn", "wall_ring", "lamps", "move_in");
 
 	public static Scenario parse(String fileName, String json) {
 		Map<String, Object> m;
@@ -85,7 +85,12 @@ public final class ScenarioParser {
 		}
 		boolean usesBase = assertions.stream().anyMatch(a -> a.contains("@base"));
 		if (usesBase && baseline == null) throw new ScenarioParseException(where + "an assertion uses @base but the scenario has no \"baseline\"");
-		return new Scenario(name, description, dd.intValue(), seed, actions, assertions, baseline);
+		boolean villageSiege = true;
+		if (m.containsKey("village_siege")) {
+			if (!(m.get("village_siege") instanceof Boolean b)) throw new ScenarioParseException(where + "village_siege must be true or false");
+			villageSiege = b;
+		}
+		return new Scenario(name, description, dd.intValue(), seed, actions, assertions, baseline, villageSiege);
 	}
 
 	private static int intField(Map<?, ?> m, String k, int dflt, String at) {

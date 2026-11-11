@@ -84,6 +84,7 @@ public final class ActionSpecs {
 				ints(f, "size", 2, 8, 200);
 				integer(f, "spacing", 7, 3, 16);
 			}
+			case "move_in" -> ints(f, "size", 2, 8, 200);
 			case "night_spawn" -> {
 				String mob = str(f, "mob");
 				if (!mob.contains(":")) throw new IllegalArgumentException("mob must be a namespaced entity id: " + mob);
