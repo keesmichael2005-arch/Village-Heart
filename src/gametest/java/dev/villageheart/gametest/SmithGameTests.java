@@ -657,12 +657,15 @@ public class SmithGameTests {
 			h.assertValueEqual(1L, craftUnits(h, smiths[1]), "the second smith's axe");
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
 			log("two axes, one from each smith");
+			GearOrders.reset();
 			resetCamp(h);
 			putStore(h, Items.IRON_INGOT, 6);
 			putStore(h, Items.STICK, 4);
-			setDayTime(h, 1000);
 		}).thenWaitUntil(() -> {
-			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), "both crafts committed");
+			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]),
+					"crafts " + craftAt(h, smiths[0]) + " " + craftAt(h, smiths[1]) + " day " + day
+							+ " iron " + count(h, Items.IRON_INGOT) + " orders " + GearOrders.size());
 		}).thenExecute(() -> {
 			h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired");
 			log("second smith fired mid-craft");
