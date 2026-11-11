@@ -16,8 +16,9 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * A flat creative dimension entered from the Builder's Table. The survival inventory is put back on the way out, and anything gathered in
- * the plot is destroyed. On 1.21.11 the level is not created: stems live in the world preset, not in {@code data/<mod>/dimension}, and Fabric's
- * dimensions API only ignores a missing stem in an old save. {@link #enter} returns false until a level exists.
+ * the plot is destroyed. The stem is {@code data/villageheart/dimension/design.json} (registry {@code dimension}). A normal new world unions that
+ * registry into the preset in {@code WorldDimensions.bake}. The GameTest server bakes the flat preset against an empty stem registry, so no level
+ * is created here and {@link #enter} returns false.
  */
 public final class DesignWorld {
 	public static final ResourceKey<Level> DIMENSION = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "design"));

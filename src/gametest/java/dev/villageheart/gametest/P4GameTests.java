@@ -30,6 +30,12 @@ public class P4GameTests {
 	@GameTest(maxTicks = 100)
 	public void designPlotDoesNotReturnItems(GameTestHelper h) {
 		var server = h.getLevel().getServer();
+		for (var layer : net.minecraft.server.RegistryLayer.values()) {
+			var found = server.registries().getLayer(layer).lookup(net.minecraft.core.registries.Registries.LEVEL_STEM);
+			var ids = found.map(r -> r.listElementIds().map(k -> k.identifier().toString()).toList()).orElse(java.util.List.of());
+			dev.villageheart.VillageHeart.LOG.info("DESIGN_LAYER {} present={} {}", layer, found.isPresent(), ids);
+		}
+		dev.villageheart.VillageHeart.LOG.info("DESIGN_LEVELS {}", server.levelKeys());
 		if (!DesignWorld.available(server)) {
 			h.assertFalse(server.levelKeys().toString().contains("villageheart:design"),
 					"the datapack file did not create a level: " + server.levelKeys());
