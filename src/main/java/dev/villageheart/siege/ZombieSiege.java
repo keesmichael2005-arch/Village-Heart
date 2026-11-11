@@ -52,6 +52,9 @@ public final class ZombieSiege {
 	private static int nextGroup;
 	private static int groupTotal;
 	private static int gap;
+	/** A chunk forced on the spawn tick is not entity-ticking yet. The group is tried again before it is skipped. */
+	private static int tickingWaits;
+	private static final int TICKING_TRIES = 20;
 	private static int[] counts = new int[0];
 	private static double baseAngle;
 	private static int spawnDistance;
@@ -60,6 +63,7 @@ public final class ZombieSiege {
 
 	public static void clearForTests() {
 		nextGroup = 0;
+		tickingWaits = 0;
 		groupTotal = 0;
 		gap = 0;
 		counts = new int[0];
@@ -149,6 +153,7 @@ public final class ZombieSiege {
 		for (int i = 0; i < groups; i++) counts[i] = base + (i < extra ? 1 : 0);
 		groupTotal = groups;
 		nextGroup = 0;
+		tickingWaits = 0;
 		gap = 0;
 		spawnDistance = ThreatRules.spawnDistance(outermost(village));
 		long seed = level.getSeed() ^ (ThreatRoll.day(level.getGameTime()) * 0x9E3779B97F4A7C15L);
@@ -163,13 +168,21 @@ public final class ZombieSiege {
 		if (gap > 0) return;
 		BlockPos heart = heart(village);
 		while (nextGroup < groupTotal) {
-			int group = nextGroup++;
+			int group = nextGroup;
 			double angle = baseAngle + group * Math.PI * 2 / Math.max(1, groupTotal);
 			BlockPos at = find(server, level, heart, angle);
 			if (at == null) {
+				if (lastMiss.startsWith("not ticking") && tickingWaits < TICKING_TRIES) {
+					tickingWaits++;
+					return;
+				}
 				VillageHeart.LOG.warn("[siege] group {} had no cell at {} blocks from the Heart ({})", group, spawnDistance, lastMiss);
+				nextGroup++;
+				tickingWaits = 0;
 				continue;
 			}
+			nextGroup++;
+			tickingWaits = 0;
 			for (int i = 0; i < counts[group]; i++) spawnOne(server, level, at);
 			gap = 2;
 			return;
@@ -271,6 +284,7 @@ public final class ZombieSiege {
 		}
 		groupTotal = 0;
 		nextGroup = 0;
+		tickingWaits = 0;
 		gap = 0;
 		int day = ThreatRoll.day(level.getGameTime());
 		VillageClaims.data(server).update(s -> s.withThreats(s.threats()
