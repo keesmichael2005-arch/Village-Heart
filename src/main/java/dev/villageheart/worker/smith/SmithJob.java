@@ -939,7 +939,7 @@ public final class SmithJob {
 		if (stack.isEmpty()) return;
 		if (!insert(level, chest, stack)) {
 			Stockpiles.deposit(level, v.blockPosition(), stack);
-			if (!stack.isEmpty()) v.getInventory().addItem(stack);
+			keepOrDrop(v, stack);
 			st.blockedUntil.put(key, now + Balance.SMITH_DELIVERY_BACKOFF);
 			WorkStats.add(JOB, "delivery_failed", 1);
 			st.blockedHint = buildingName(level.getServer(), key.building()) + " chest is full";
@@ -1136,14 +1136,18 @@ public final class SmithJob {
 		BlockPos at = hit.inPlace() ? hit.chest() : SmithyLayout.anvil(level.getServer(), data.building(), SmithyLayout.block(data.jobBlock()))
 				.orElse(SmithyLayout.block(data.jobBlock()));
 		if (!at(level, v, st, at, now)) return;
-		BlockEntity be = level.getBlockEntity(hit.chest());
-		if (!(be instanceof net.minecraft.world.Container c)) {
+		// A Storage hit names the site's anchor, which need not be a chest; its gear is carried, so only an in-place repair needs a chest.
+		net.minecraft.world.Container c = level.getBlockEntity(hit.chest()) instanceof net.minecraft.world.Container found ? found : null;
+		if (c == null && !st.repairReturn) {
 			st.mode = SmithRuntime.Mode.IDLE;
 			st.needsPlan = true;
 			return;
 		}
 		ItemStack stack = st.repairReturn ? carriedDamaged(v, hit.job().itemId())
 				: hit.slot() >= 0 && hit.slot() < c.getContainerSize() ? c.getItem(hit.slot()) : ItemStack.EMPTY;
+		// A player may have swapped the scanned item for another damaged one since the scan: that one is not this job's to repair
+		// with this job's material. The next scan finds it again as a job of its own.
+		if (!stack.isEmpty() && !SmithCatalog.id(stack.getItem()).equals(hit.job().itemId())) stack = ItemStack.EMPTY;
 		if (stack.isEmpty() || RepairRules.units(stack.getDamageValue(), stack.getMaxDamage()) < 1) {
 			finishRepair(level, v, st);
 			return;
@@ -1162,10 +1166,18 @@ public final class SmithJob {
 				finishRepair(level, v, st);
 				return;
 			}
-			v.getInventory().addItem(got);
+			ItemStack rest = v.getInventory().addItem(got);
+			if (!rest.isEmpty()) {
+				// No room for the material: it goes back to Storage (never lost), and nothing is repaired this round.
+				Stockpiles.deposit(level, v.blockPosition(), rest);
+				keepOrDrop(v, rest);
+				finishRepair(level, v, st);
+				return;
+			}
 		}
 		if (remove(v, hit.job().materialId(), 1) < 1) return;
 		stack.setDamageValue(RepairRules.after(stack.getDamageValue(), stack.getMaxDamage(), 1));
+		if (c != null && !st.repairReturn) c.setChanged();
 		v.swing(InteractionHand.MAIN_HAND);
 		WorkXp.award(v, WorkUnit.ITEM_SMITHED, 1);
 		WorkStats.add(JOB, "repair_units", 1);
@@ -1195,18 +1207,34 @@ public final class SmithJob {
 		RepairScan.Hit hit = st.repairQueue.get(st.repairQueueIndex);
 		if (st.repairHit == null) {
 			if (!at(level, v, st, hit.chest(), now)) return;
-			BlockEntity be = level.getBlockEntity(hit.chest());
-			if (!(be instanceof net.minecraft.world.Container c) || hit.slot() < 0 || hit.slot() >= c.getContainerSize()) {
-				st.repairQueueIndex++;
-				return;
+			ItemStack stack;
+			if (hit.storageKey() != null) {
+				// Storage gear is found by item and damage, not by slot.
+				if (!v.getInventory().canAddItem(hit.storageKey().toStack(1))) {
+					st.repairQueueIndex++;
+					return;
+				}
+				stack = Stockpiles.withdraw(level, v.blockPosition(), hit.storageKey(), 1, v.getUUID());
+				if (stack.isEmpty()) {
+					st.repairQueueIndex++;
+					return;
+				}
+			} else {
+				BlockEntity be = level.getBlockEntity(hit.chest());
+				if (!(be instanceof net.minecraft.world.Container c) || hit.slot() < 0 || hit.slot() >= c.getContainerSize()) {
+					st.repairQueueIndex++;
+					return;
+				}
+				stack = c.getItem(hit.slot());
+				// No room to carry it: it stays where it is (taking it out of the chest first would lose it).
+				if (stack.isEmpty() || !v.getInventory().canAddItem(stack)) {
+					st.repairQueueIndex++;
+					return;
+				}
+				c.setItem(hit.slot(), ItemStack.EMPTY);
+				c.setChanged();
 			}
-			ItemStack stack = c.getItem(hit.slot());
-			if (stack.isEmpty()) {
-				st.repairQueueIndex++;
-				return;
-			}
-			c.setItem(hit.slot(), ItemStack.EMPTY);
-			v.getInventory().addItem(stack);
+			keepOrDrop(v, stack);
 			st.keep.add(SmithCatalog.id(stack.getItem()));
 			st.repairHit = hit;
 			st.repairReturn = true;
@@ -1216,7 +1244,9 @@ public final class SmithJob {
 		if (!at(level, v, st, hit.chest(), now)) return;
 		ItemStack stack = takeStack(v, hit.job().itemId());
 		if (!stack.isEmpty()) insert(level, hit.chest(), stack);
-		if (!stack.isEmpty()) v.getInventory().addItem(stack);
+		// The chest is full again (or gone): Storage takes it, else the smith keeps it and hands it in. Never dropped silently.
+		if (!stack.isEmpty()) Stockpiles.deposit(level, hit.chest(), stack);
+		keepOrDrop(v, stack);
 		st.keep.remove(hit.job().itemId());
 		st.repairHit = null;
 		st.repairReturn = false;
@@ -1581,12 +1611,14 @@ public final class SmithJob {
 			if (have.isEmpty()) {
 				c.setItem(i, stack.copy());
 				stack.setCount(0);
+				c.setChanged();
 				return true;
 			}
 			if (ItemStack.isSameItemSameComponents(have, stack) && have.getCount() < have.getMaxStackSize()) {
 				int n = Math.min(stack.getCount(), have.getMaxStackSize() - have.getCount());
 				have.grow(n);
 				stack.shrink(n);
+				c.setChanged();
 				if (stack.isEmpty()) return true;
 			}
 		}

@@ -338,6 +338,21 @@ class SmithPlannerTest {
 		assertInstanceOf(SmithDecision.StartGolem.class, decide(fetching));
 	}
 
+	@Test
+	void aSmithWithNoFreeSlotStartsNoRepairTrip() {
+		SmithFacts f = SmithFacts.morning();
+		f.chestRepair = new RepairJob("minecraft:iron_sword", 150, 250, "minecraft:iron_ingot");
+		f.fetchRepairs = List.of(new RepairJob("minecraft:iron_chestplate", 60, 240, "minecraft:iron_ingot"));
+		f.stock = Map.of("minecraft:iron_ingot", 16L);
+		assertInstanceOf(SmithDecision.RepairInPlace.class, decide(f));
+		f.freeSlots = 0;
+		assertFalse(decide(f) instanceof SmithDecision.RepairInPlace, "repair with no room for the ingot: " + decide(f));
+		f.chestRepair = null;
+		assertFalse(decide(f) instanceof SmithDecision.FetchForRepair, "a fetch with no room to carry the gear: " + decide(f));
+		f.freeSlots = 1;
+		assertInstanceOf(SmithDecision.FetchForRepair.class, decide(f));
+	}
+
 	private static SmithFacts golemReady() {
 		SmithFacts f = SmithFacts.morning();
 		f.golemAllowed = true;

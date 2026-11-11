@@ -1318,7 +1318,11 @@ public class SmithGameTests {
 
 	// ---- creeper --------------------------------------------------------------------------------------
 
-	/** An iron golem inside the claim does not take a creeper as its target. */
+	/**
+	 * An iron golem never takes a creeper as its target (owner decision: nobody attacks creepers). Vanilla's nearest-attackable goal
+	 * already skips creepers, so the test forces the other routes: a direct setTarget, and the hurt-by goal after a creeper hurts it.
+	 * The control is a zombie, which the same calls do hand over.
+	 */
 	@GameTest(environment = "villageheart-gametest:smith_creeper", structure = YARD, skyAccess = true, maxTicks = 400)
 	public void golemIgnoresCreeper(GameTestHelper h) {
 		IronGolem[] golem = new IronGolem[1];
@@ -1331,6 +1335,15 @@ public class SmithGameTests {
 			c.setNoAi(true);
 			golem[0] = g;
 			creeper[0] = c;
+			var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(4, 0, 26));
+			zombie.setNoAi(true);
+			g.setTarget(zombie);
+			h.assertTrue(g.getTarget() == zombie, "control: a zombie can be the golem's target");
+			g.setTarget(null);
+			zombie.discard();
+			g.setTarget(c);
+			h.assertTrue(!(g.getTarget() instanceof Creeper), "setTarget handed the golem a creeper");
+			g.setLastHurtByMob(c);
 		}).thenExecuteFor(80, () -> {
 			h.assertTrue(!(golem[0].getTarget() instanceof Creeper), "the golem targeted " + golem[0].getTarget());
 			h.assertTrue(creeper[0].isAlive() && !creeper[0].isRemoved(), "the creeper is gone");
@@ -1505,6 +1518,148 @@ public class SmithGameTests {
 			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "the three ingots were used");
 			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
 			log("no-iron golem repaired after the delivery");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/**
+	 * The golem has to stand on the wait spot, not just near it. A wide mob's path ends on a node corner and counts as done about 0.7
+	 * short of it, so approaching from some sides it stopped 1.4 to 1.7 blocks away, outside the 1.5 radius, and sat there until the
+	 * walk timed out (golemWithoutIronWaits flaked about one run in three). This golem starts on the corner a stalled one was seen
+	 * on (spot + (2.0, 1.0), 1.58 from the centre): it has to come inside the radius within 150 ticks.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_golem_spot", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void golemStandsOnTheWaitSpot(GameTestHelper h) {
+		IronGolem[] golem = new IronGolem[1];
+		BlockPos[] spot = new BlockPos[1];
+		double[] closest = {Double.MAX_VALUE};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			putStore(h, Items.IRON_INGOT, 3);
+			setDayTime(h, 2000);
+			// The smith only has to be working so that the golem is offered the spot. Frozen, it cannot walk past the golem and nudge
+			// it onto the spot, which would hide the stall this test is about.
+			hire(h).setNoAi(true);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			spot[0] = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			golem[0] = summonHurt(h, spot[0], 40f);
+			golem[0].snapTo(spot[0].getX() + 2.0, spot[0].getY(), spot[0].getZ() + 1.0, 90f, 0f);
+			double start = golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
+			h.assertTrue(start > Balance.GOLEM_WAIT_RADIUS && start < 1.7, "the golem starts just outside the radius: " + start);
+			log("spot " + spot[0] + " golem starts " + start + " from its centre");
+		}).thenExecuteFor(150, () -> closest[0] = Math.min(closest[0],
+				golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0])))
+		).thenExecute(() -> {
+			// About 1.6 blocks to walk. A stalled golem waits for the walk timeout (1200 ticks) and then a cooldown.
+			h.assertTrue(closest[0] <= Balance.GOLEM_WAIT_RADIUS, "no arrival within 150 ticks, closest " + closest[0]);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- M19 review round 1: items 5, 7 and 9 ----------------------------------------------------------
+
+	/**
+	 * Damaged gear in Storage is fetched, mended at the anvil and put back (the scan used to list it and the fetch skipped every Storage
+	 * hit, so the smith walked to the chest and back forever and never got to anything below repairs).
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_storage_repair", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void repairsStorageGear(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> {
+			ItemStack sword = new ItemStack(Items.IRON_SWORD);
+			sword.setDamageValue(150);
+			StockpileTestSupport.container(h, SmithTestSupport.storeChest1()).setItem(0, sword);
+			putStore(h, Items.IRON_INGOT, 5);
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> {
+			ItemStack s = storedSword(h);
+			h.assertTrue(s != null && s.getDamageValue() < 62, "storage sword " + (s == null ? "missing" : s.getDamageValue()) + " world "
+					+ SmithTestSupport.worldCount(h, Items.IRON_SWORD) + " carried " + smith[0].getInventory().countItem(Items.IRON_SWORD)
+					+ " units " + SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).size());
+		}).thenExecute(() -> {
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.IRON_SWORD), "one sword in the world");
+			h.assertValueEqual(3L, count(h, Items.IRON_INGOT), "two ingots spent");
+			h.assertValueEqual(0L, SmithTestSupport.groundCount(h, Items.IRON_SWORD), "swords on the ground");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static ItemStack storedSword(GameTestHelper h) {
+		for (BlockPos chest : new BlockPos[] {SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2()}) {
+			var c = StockpileTestSupport.container(h, chest);
+			for (int i = 0; i < c.getContainerSize(); i++) if (c.getItem(i).is(Items.IRON_SWORD)) return c.getItem(i);
+		}
+		return null;
+	}
+
+	/**
+	 * A smith whose eight slots are always full never loses gear: the sword stays in the Barracks chest (no fetch without room, and
+	 * nothing is taken out of a chest it cannot carry), and once there is room it is mended as before.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_full_inventory", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void noGearIsLostWhenTheSmithIsFull(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		boolean[] fill = {true};
+		scene(h).thenExecute(() -> SmithTestSupport.addBarracks(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.barracksMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.barracksChest()));
+			ItemStack sword = new ItemStack(Items.IRON_SWORD);
+			sword.setDamageValue(200);
+			chest.setItem(0, sword);
+			putStore(h, Items.IRON_INGOT, 6);
+			// Storage is full, so the junk in the smith's pockets cannot be handed in (a deposit trip ends FULL) and he works with full
+			// pockets. Otherwise a smith with junk would just keep depositing it.
+			for (BlockPos rel : new BlockPos[] {SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2()}) {
+				var box = StockpileTestSupport.container(h, rel);
+				for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).isEmpty()) box.setItem(i, new ItemStack(Items.COBBLESTONE, 64));
+				box.setChanged();
+			}
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+		}).thenExecuteFor(1500, () -> {
+			var inv = smith[0].getInventory();
+			for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).isEmpty()) inv.setItem(i, new ItemStack(Items.DIRT));
+			h.assertValueEqual(1, SmithTestSupport.worldCount(h, Items.IRON_SWORD), "the sword was lost while the smith was full");
+			h.assertValueEqual(0L, SmithTestSupport.groundCount(h, Items.IRON_SWORD), "the sword was dropped");
+		}).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.barracksChest()));
+			h.assertTrue(chest.getItem(0).is(Items.IRON_SWORD) && chest.getItem(0).getDamageValue() == 200, "the sword is still in the chest, unrepaired");
+			h.assertValueEqual(6L, count(h, Items.IRON_INGOT), "no ingot was spent or lost");
+			var inv = smith[0].getInventory();
+			for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).is(Items.DIRT)) inv.setItem(i, ItemStack.EMPTY);
+		}).thenWaitUntil(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.barracksChest()));
+			ItemStack s = chest.getItem(0);
+			h.assertTrue(s.is(Items.IRON_SWORD) && s.getDamageValue() == 14, "barracks sword " + (s.isEmpty() ? "empty" : s.getDamageValue()));
+		}).thenExecute(() -> VillageTestSupport.done(h));
+	}
+
+	/**
+	 * A player swaps the scanned sword for another damaged item while the smith is at it. The job's iron is not spent on it: the repair
+	 * ends, and the new item is a job of its own (here it needs leather, which the village has none of).
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_repair_swap", structure = YARD, skyAccess = true, maxTicks = 4000)
+	public void repairStopsWhenTheItemIsSwapped(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> {
+			ItemStack sword = new ItemStack(Items.IRON_SWORD);
+			sword.setDamageValue(150);
+			StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).setItem(0, sword);
+			putStore(h, Items.IRON_INGOT, 10);
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().anyMatch(u -> u.kind().equals("REPAIR")),
+				"the first repair unit")
+		).thenExecute(() -> {
+			ItemStack plate = new ItemStack(Items.LEATHER_CHESTPLATE);
+			plate.setDamageValue(60);
+			StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).setItem(0, plate);
+		}).thenExecuteFor(600, () -> { }).thenExecute(() -> {
+			ItemStack s = StockpileTestSupport.container(h, SmithTestSupport.smithyChest()).getItem(0);
+			h.assertTrue(s.is(Items.LEATHER_CHESTPLATE) && s.getDamageValue() == 60, "the swapped chestplate was repaired with iron: " + s);
+			h.assertValueEqual(9L, count(h, Items.IRON_INGOT), "only the one ingot of the real job was spent");
 			VillageTestSupport.done(h);
 		});
 	}

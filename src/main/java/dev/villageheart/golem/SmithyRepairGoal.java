@@ -27,6 +27,8 @@ import net.minecraft.world.phys.Vec3;
  * One golem per Smithy. Server thread only.
  */
 public final class SmithyRepairGoal extends Goal {
+	/** How far past the wait radius a finished path may stop; the move control closes the gap. */
+	private static final double NAV_SLACK = 1.5;
 	private final IronGolem golem;
 	private SmithyRepairs.Offer offer;
 	private long started;
@@ -82,6 +84,11 @@ public final class SmithyRepairGoal extends Goal {
 		if (now - lastMove >= 40) {
 			golem.getNavigation().moveTo(offer.spot().getX() + 0.5, offer.spot().getY(), offer.spot().getZ() + 0.5, 0.8);
 			lastMove = now;
+		}
+		// A wide mob's path ends on a node corner and counts as done within about 0.7 of it, so the golem can stop 1.4 to 1.7 blocks short
+		// of the spot, outside GOLEM_WAIT_RADIUS, and stay there until the walk times out. The last stretch is walked with the move control.
+		if (golem.getNavigation().isDone() && dist <= Balance.GOLEM_WAIT_RADIUS + NAV_SLACK) {
+			golem.getMoveControl().setWantedPosition(offer.spot().getX() + 0.5, offer.spot().getY(), offer.spot().getZ() + 0.5, 0.6);
 		}
 	}
 

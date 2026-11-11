@@ -9,6 +9,7 @@
 		"VillagerBrainMixin",
 		"VillagerGolemSpawnMixin",
 		"IronGolemGoalsMixin",
+		"MobCreeperTargetMixin",
 		"WalkNodeEvaluatorMixin"
 	],
 	"injectors": {

@@ -24,7 +24,8 @@ import net.minecraft.world.item.Items;
 
 /** Damaged gear the smith can mend: the Smithy chest in place, Barracks and Storage by carrying them home. */
 public final class RepairScan {
-	public record Hit(BlockPos chest, int slot, SmithFacts.RepairJob job, boolean inPlace, boolean barracks) {}
+	/** {@code slot} is -1 for Storage gear, which is found by {@code storageKey} (item and damage), not by slot. */
+	public record Hit(BlockPos chest, int slot, SmithFacts.RepairJob job, boolean inPlace, boolean barracks, @org.jetbrains.annotations.Nullable StackKey storageKey) {}
 
 	private static final Item[] MATERIALS = {Items.IRON_INGOT, Items.COPPER_INGOT, Items.GOLD_INGOT, Items.LEATHER, Items.DIAMOND};
 
@@ -38,7 +39,7 @@ public final class RepairScan {
 			BlockPos chest = new BlockPos(p.x(), p.y(), p.z());
 			Container c = container(server, chest);
 			if (c == null) continue;
-			for (int i = 0; i < c.getContainerSize(); i++) add(out, c.getItem(i), chest, i, true, false);
+			for (int i = 0; i < c.getContainerSize(); i++) add(out, c.getItem(i), chest, i, true, false, null);
 		}
 		return out;
 	}
@@ -55,7 +56,7 @@ public final class RepairScan {
 					ItemStack s = c.getItem(i);
 					if (s.isEmpty() || s.getMaxDamage() <= 0) continue;
 					if (s.getDamageValue() < s.getMaxDamage() / 4) continue;
-					add(out, s, chest.pos(), i, false, true);
+					add(out, s, chest.pos(), i, false, true, null);
 				}
 			}
 		}
@@ -72,19 +73,19 @@ public final class RepairScan {
 			if (level.isEmpty()) continue;
 			BlockPos chest = Stockpiles.nearestHolding(level.get(), from, total.key(), null).orElse(null);
 			if (chest == null) continue;
-			add(out, probe, chest, -1, false, false);
+			add(out, probe, chest, -1, false, false, total.key());
 		}
 		return out;
 	}
 
-	private static void add(List<Hit> out, ItemStack stack, BlockPos chest, int slot, boolean inPlace, boolean barracks) {
+	private static void add(List<Hit> out, ItemStack stack, BlockPos chest, int slot, boolean inPlace, boolean barracks, StackKey storageKey) {
 		if (stack.isEmpty() || stack.getMaxDamage() <= 0 || !stack.isDamaged()) return;
 		int units = RepairRules.units(stack.getDamageValue(), stack.getMaxDamage());
 		if (units < 1) return;
 		String material = materialOf(stack);
 		if (material == null) return;
 		String id = SmithCatalog.id(stack.getItem());
-		out.add(new Hit(chest, slot, new SmithFacts.RepairJob(id, stack.getDamageValue(), stack.getMaxDamage(), material), inPlace, barracks));
+		out.add(new Hit(chest, slot, new SmithFacts.RepairJob(id, stack.getDamageValue(), stack.getMaxDamage(), material), inPlace, barracks, storageKey));
 	}
 
 	private static String materialOf(ItemStack stack) {

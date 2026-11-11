@@ -60,9 +60,12 @@ public final class SmithPlanner {
 		if (urgent.isPresent()) return urgent.get();
 		if (f.buildSaved && f.buildOwnedByMe) return new SmithDecision.BuildGolem();
 
-		if (f.chestRepair != null && repairable(f, f.chestRepair, Balance.SMITH_DONE_BY))
+		// A repair moves items through the smith's own inventory. With no free slot it would only walk to a chest, find no room and come
+		// back, over and over, ahead of everything below it.
+		boolean room = f.freeSlots >= 1;
+		if (room && f.chestRepair != null && repairable(f, f.chestRepair, Balance.SMITH_DONE_BY))
 			return new SmithDecision.RepairInPlace(f.chestRepair);
-		List<RepairJob> fetch = fetchable(f);
+		List<RepairJob> fetch = room ? fetchable(f) : List.of();
 		if (!fetch.isEmpty()) return new SmithDecision.FetchForRepair(fetch);
 
 		Optional<SmithDecision> later = takeOrder(f, LATER);
