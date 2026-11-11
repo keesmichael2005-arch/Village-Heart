@@ -362,7 +362,8 @@ public class SmithGameTests {
 
 	/**
 	 * A miner that really hauls, with a fresh stone pickaxe and iron in Storage. The smith does not upgrade a working tool.
-	 * The worn line (20 remaining) is 12 hauls away, so a day that hauls at most 11 never reaches it.
+	 * The worn line (20 remaining) is 12 hauls away, so a day that hauls at most 11 never reaches it. The shaft is in the deep band,
+	 * so hauls bring raw iron and coal and the smith smelts them: the placed 30 ingots are not spent, and the count may rise.
 	 */
 	@GameTest(environment = "villageheart-gametest:smith_working_pick", structure = YARD, skyAccess = true, maxTicks = 10600)
 	public void workingPickaxeNotReplaced(GameTestHelper h) {
@@ -389,13 +390,17 @@ public class SmithGameTests {
 			boolean craft = units.stream().anyMatch(u -> u.kind().equals("COMMIT") || u.kind().equals("CRAFT"));
 			boolean delivered = WorkStats.get("smith", "delivered") > delivered0[0];
 			if (craft || delivered) h.assertTrue(pickWorn(h), "a craft or delivery while the stone pickaxe was not worn");
+			h.assertTrue(count(h, Items.IRON_INGOT) >= 30, "the placed iron was spent: " + count(h, Items.IRON_INGOT));
+			h.assertValueEqual(4L, count(h, Items.STICK), "sticks");
+			h.assertValueEqual(3L, count(h, Items.COBBLESTONE), "cobble");
 		}).thenExecute(() -> {
 			long hauls = WorkStats.get("miner", "hauls") - hauls0[0];
-			log("hauls " + hauls + " day " + (h.getLevel().getDayTime() % 24000) + " hint " + SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()));
+			long iron = count(h, Items.IRON_INGOT);
+			log("hauls " + hauls + " iron " + iron + " day " + (h.getLevel().getDayTime() % 24000) + " hint " + SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()));
 			h.assertTrue(hauls >= 1 && hauls <= 11, "hauls " + hauls);
 			var units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID());
 			h.assertTrue(units.stream().noneMatch(u -> u.kind().equals("CRAFT") || u.kind().equals("COMMIT")), "a craft happened: " + units);
-			h.assertValueEqual(30L, count(h, Items.IRON_INGOT), "iron");
+			h.assertTrue(iron >= 30, "iron " + iron);
 			h.assertValueEqual(4L, count(h, Items.STICK), "sticks");
 			h.assertValueEqual(3L, count(h, Items.COBBLESTONE), "cobble");
 			h.assertTrue(SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()) == SmithDecision.Hint.NO_WORK, "hint");
