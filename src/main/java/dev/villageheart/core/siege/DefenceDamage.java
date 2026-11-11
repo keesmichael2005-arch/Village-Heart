@@ -28,6 +28,28 @@ public record DefenceDamage(Map<Long, Integer> cracked, List<Long> breached) {
 
 	public boolean isBreached(long packed) { return breached.contains(packed); }
 
+	/**
+	 * One hit on a cell. A breached cell is unchanged. An unbreakable cell stops at {@code hp - 1}. At {@code hp} a breakable cell
+	 * becomes a breach and its crack is cleared.
+	 */
+	public DefenceDamage struck(long packed, int hit, int hp, boolean breakable) {
+		if (isBreached(packed) || hit <= 0) return this;
+		int next = damageAt(packed) + hit;
+		java.util.Map<Long, Integer> cracks = new LinkedHashMap<>(cracked);
+		java.util.List<Long> holes = new ArrayList<>(breached);
+		if (next >= hp) {
+			if (!breakable) {
+				cracks.put(packed, Math.max(1, hp - 1));
+				return new DefenceDamage(cracks, holes);
+			}
+			cracks.remove(packed);
+			if (!holes.contains(packed)) holes.add(packed);
+			return new DefenceDamage(cracks, holes);
+		}
+		cracks.put(packed, next);
+		return new DefenceDamage(cracks, holes);
+	}
+
 	/** Flat {@code [pos, damage, ...]} in packed-position order, the on-disk shape. */
 	public List<Long> flatCracked() {
 		List<Long> out = new ArrayList<>(cracked.size() * 2);
