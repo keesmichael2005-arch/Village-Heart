@@ -231,18 +231,18 @@ final class P4ClientTests {
 
 	private static void stockAll(net.minecraft.server.level.ServerLevel level, BlockPos chest) {
 		java.util.Map<Item, Integer> need = new java.util.LinkedHashMap<>();
-		// dirt before the bulky stacks, so a full chest cannot skip the foundation
-		need.put(Items.DIRT, 1200);
-		need.put(Items.COBBLESTONE, 1600);
-		need.put(Items.OAK_PLANKS, 2800);
-		need.put(Items.OAK_LOG, 600);
-		need.put(Items.OAK_FENCE, 200);
+		// walls first; dirt last and capped, so it cannot fill Storage before the cobble fits
+		need.put(Items.COBBLESTONE, 768);
+		need.put(Items.OAK_PLANKS, 1400);
+		need.put(Items.OAK_LOG, 400);
+		need.put(Items.OAK_FENCE, 128);
 		need.put(Items.OAK_FENCE_GATE, 32);
 		need.put(Items.OAK_DOOR, 32);
 		need.put(Items.GLASS_PANE, 128);
-		need.put(Items.OAK_STAIRS, 400);
+		need.put(Items.OAK_STAIRS, 256);
 		need.put(Items.WHITE_BED, 16);
 		need.put(Items.TORCH, 64);
+		need.put(Items.DIRT, 256);
 		List<Blueprint> plans = new ArrayList<>(Blueprints.all());
 		plans.add(Blueprints.SMALL_HOUSE);
 		for (Blueprint bp : plans) {
@@ -253,6 +253,7 @@ final class P4ClientTests {
 			}
 		}
 		for (Item item : MarkerBlocks.ITEMS.values()) if (item != null) need.merge(item, 4, Integer::sum);
+		need.put(Items.DIRT, 512);
 		for (var e : need.entrySet()) {
 			int left = e.getValue();
 			while (left > 0) {
