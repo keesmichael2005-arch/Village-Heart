@@ -58,7 +58,9 @@ final class P4ClientTests {
 			if (!claim.equals("CLAIMED")) throw new AssertionError("claim: " + claim);
 			srv.computeOnServer(server -> { VillageClaims.data(server).update(v -> v.withTier(Tier.TOWN)); return 0; });
 			HeartScreenClientTests.room(srv, -20, y, 7, 5, "storage_marker");
-			for (int i = 0; i < 6; i++) srv.runCommand("setblock " + (-18 + i) + " " + y + " 8 minecraft:chest");
+			for (int row = 0; row < 3; row++) for (int i = 0; i < 6; i++) {
+				srv.runCommand("setblock " + (-18 + i) + " " + y + " " + (8 + row) + " minecraft:chest");
+			}
 			BlockPos storageMarker = new BlockPos(-16, y + 2, 13);
 			String storage = "";
 			for (int i = 0; i < 200 && !"VALID".equals(storage); i++) {
