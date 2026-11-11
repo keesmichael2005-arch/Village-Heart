@@ -653,6 +653,8 @@ public class SmithGameTests {
 			jacks[1] = SmithTestSupport.hireLumberjack(h);
 			smiths[0] = hireEitherFurnace(h);
 			smiths[1] = hireEitherFurnace(h);
+			standAtFurnace(h, smiths[0]);
+			standAtFurnace(h, smiths[1]);
 			log("two smiths, two lumberjacks");
 		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes in the camp")
 		).thenExecute(() -> {
@@ -669,6 +671,8 @@ public class SmithGameTests {
 			long now = h.getLevel().getDayTime();
 			long day = Math.floorMod(now, 24000L);
 			setDayTime(h, now - day + 24000L + 1000L);
+			standAtFurnace(h, smiths[0]);
+			standAtFurnace(h, smiths[1]);
 		}).thenExecuteFor(500, () -> { }).thenExecute(() -> {
 			log("part2 morning " + part2(h, smiths, Math.floorMod(h.getLevel().getDayTime(), 24000L))
 					+ " carried " + smiths[0].getInventory().countItem(Items.IRON_INGOT) + "/"
@@ -1450,6 +1454,16 @@ public class SmithGameTests {
 	private static boolean leasesAxe(GameTestHelper h, Villager jack) {
 		return CampTools.lease(h.getLevel().getServer(), jack, ToolKind.AXE, null) instanceof CampTools.Held held
 				&& held.lease().stack().is(Items.IRON_AXE);
+	}
+
+	/** Puts the smith on their furnace so the two of them are not left in the same block after a delivery. */
+	private static void standAtFurnace(GameTestHelper h, Villager smith) {
+		var data = smith.getAttached(WorkerAttachments.WORKER);
+		if (data == null) return;
+		BlockPos f = SmithyLayout.block(data.jobBlock());
+		smith.teleportTo(f.getX() + 0.5, f.getY(), f.getZ() - 0.5);
+		smith.setDeltaMovement(0, 0, 0);
+		smith.getNavigation().stop();
 	}
 
 	/** Either blast furnace. {@link SmithTestSupport#hire} insists on the first one, and the second smith takes the other. */
