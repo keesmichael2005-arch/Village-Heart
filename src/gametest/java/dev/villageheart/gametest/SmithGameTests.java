@@ -848,10 +848,11 @@ public class SmithGameTests {
 			double dist = healthy[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
 			h.assertTrue(dist > 6, "the healthy golem came within 6: " + dist);
 			h.assertTrue(healthy[0].getHealth() > 59f, "healthy golem was repaired");
-		}).thenExecute(() -> putStore(h, Items.IRON_INGOT, 3)
-		).thenWaitUntil(() -> h.assertTrue(hurt[0].isAlive() && hurt[0].getHealth() > 90f,
-				"reloaded " + (hurt[0].isRemoved() ? "removed " + hurt[0].getRemovalReason() : "health " + hurt[0].getHealth() + " at " + hurt[0].blockPosition())))
-		).thenExecute(() -> {
+		}).thenExecute(() -> putStore(h, Items.IRON_INGOT, 3)).thenWaitUntil(() -> {
+			String state = hurt[0].isRemoved() ? "removed " + hurt[0].getRemovalReason()
+					: "health " + hurt[0].getHealth() + " at " + hurt[0].blockPosition();
+			h.assertTrue(hurt[0].isAlive() && hurt[0].getHealth() > 90f, "reloaded " + state);
+		}).thenExecute(() -> {
 			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "three ingots used on the reloaded golem");
 			log("reloaded golem repaired, healthy one stayed away");
 			VillageTestSupport.done(h);
