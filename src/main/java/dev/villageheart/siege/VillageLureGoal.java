@@ -3,7 +3,6 @@ package dev.villageheart.siege;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.defence.DefenceIndex;
-import dev.villageheart.core.room.Pos;
 import dev.villageheart.world.VillageClaims;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
@@ -91,16 +90,16 @@ public final class VillageLureGoal extends Goal {
 			return true;
 		}
 		Path path = mob.getNavigation().createPath(waypoint.x, waypoint.y, waypoint.z, 1);
-		if (path != null && path.canReach()) {
-			mob.getNavigation().moveTo(path, 1.0);
+		if (path == null || path.getNodeCount() == 0) {
+			pauseUntil = mob.tickCount + 100;
+			mob.getNavigation().stop();
 			return true;
 		}
-		if (path != null && endsOnDefence(level, path)) {
+		if (!path.canReach() && besideDefence(level)) {
 			mob.getNavigation().stop();
 			return false;
 		}
-		pauseUntil = mob.tickCount + 100;
-		mob.getNavigation().stop();
+		mob.getNavigation().moveTo(path, 1.0);
 		return true;
 	}
 
@@ -121,12 +120,17 @@ public final class VillageLureGoal extends Goal {
 		return dx * dx + dy * dy + dz * dz > (double) Balance.LURE_RADIUS * Balance.LURE_RADIUS;
 	}
 
-	private boolean endsOnDefence(ServerLevel level, Path path) {
+	private boolean besideDefence(ServerLevel level) {
 		var village = VillageClaims.current(level.getServer());
-		if (village.isEmpty() || path.getNodeCount() == 0) return false;
+		if (village.isEmpty()) return false;
 		DefenceIndex index = DefenceIndex.of(village.get().defences());
-		BlockPos end = path.getNodePos(path.getNodeCount() - 1);
-		if (index.get(Pos.pack(end.getX(), end.getY(), end.getZ())) != null) return true;
-		return index.get(Pos.pack(end.getX(), end.getY() - 1, end.getZ())) != null;
+		for (var cell : index.near(mob.getBlockX(), mob.getBlockY(), mob.getBlockZ(), 2)) {
+			var p = cell.pos();
+			int dx = Math.abs(p.x() - mob.getBlockX());
+			int dy = Math.abs(p.y() - mob.getBlockY());
+			int dz = Math.abs(p.z() - mob.getBlockZ());
+			if (Math.max(dx, Math.max(dy, dz)) <= 1) return true;
+		}
+		return false;
 	}
 }
