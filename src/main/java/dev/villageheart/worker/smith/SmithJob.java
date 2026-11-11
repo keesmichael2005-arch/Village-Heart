@@ -1222,6 +1222,7 @@ public final class SmithJob {
 	}
 
 	private static void abortFetch(ServerLevel level, Villager v, SmithRuntime.State st, long now) {
+		handIn(level, v);
 		Stockpiles.reservations(level.getServer()).release(v.getUUID());
 		st.wanted.clear();
 		if (st.order != null && st.mode == SmithRuntime.Mode.FETCH) GearOrders.release(st.order.key());
