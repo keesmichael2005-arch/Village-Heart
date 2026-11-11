@@ -12,9 +12,12 @@ import java.util.UUID;
  * ("have" is what a new build could still reserve), and the builds in progress. Records and lists only, so {@code equals} is the refresh dedupe.
  */
 public record TableSnapshot(Rank viewerRank, Tier tier, List<TableBlueprint> blueprints, List<TableBuild> builds) {
-	/** One page of the catalogue. The screen scrolls; the wire cap is high enough for the vanilla houses plus saved blueprints. */
-	public static final int MAX_BLUEPRINTS = 160;
-	public static final int MAX_MATERIALS = 128;
+	/**
+	 * The screen scrolls. 128 leaves room for the authored buildings, the 51 vanilla houses, and saved ones.
+	 * 64 materials covers the largest village-house palette (50 states) plus the bed and door the import may add.
+	 */
+	public static final int MAX_BLUEPRINTS = 128;
+	public static final int MAX_MATERIALS = 64;
 
 	public TableSnapshot {
 		Objects.requireNonNull(viewerRank, "viewerRank");

@@ -68,7 +68,8 @@ class TableCodecsTest {
 		ByteBuf buf = Unpooled.buffer();
 		TableCodecs.SNAPSHOT.encode(buf, worst);
 		System.out.println("builders table snapshot worst case: " + buf.readableBytes() + " bytes");
-		assertTrue(buf.readableBytes() < 512 * 1024, "worst case " + buf.readableBytes());
+		// A full catalogue of 64-type houses does not fit in the old half-meg budget. It stays under the 1 MiB vanilla S2C cap.
+		assertTrue(buf.readableBytes() < 1024 * 1024, "worst case " + buf.readableBytes());
 		assertEquals(worst, TableCodecs.SNAPSHOT.decode(buf));
 	}
 
