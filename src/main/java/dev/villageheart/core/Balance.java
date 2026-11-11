@@ -170,7 +170,7 @@ public final class Balance {
 	public static final int RAIDER_RECALL_STALL = 200;
 	public static final int RAIDER_RECALL_NEAR_GATE = 24;
 	/** Do not bring another raider while this many are already within {@link #RAIDER_RECALL_NEAR_GATE} of a gate. */
-	public static final int RAIDER_RECALL_AT_GATE = 2;
+	public static final int RAIDER_RECALL_AT_GATE = 1;
 	public static final int RAIDER_RECALL_OUTSIDE = 4;
 	public static final int RAIDER_RECALL_GAP = 40;
 	public static final int GUARD_SELF_DEFENCE_RANGE = 8;

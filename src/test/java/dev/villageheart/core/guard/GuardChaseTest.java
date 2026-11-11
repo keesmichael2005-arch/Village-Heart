@@ -27,9 +27,10 @@ class GuardChaseTest {
 
 	@Test
 	void aPathThatStopsAtTheWallUsesTheGateAndALongStepDoesNot() {
-		assertTrue(GuardChase.useGate(false, 70, 65), "five blocks into the wall is not progress");
+		assertTrue(GuardChase.useGate(false, 20, 18), "two blocks into the wall, and the raider is close");
+		assertFalse(GuardChase.useGate(false, 70, 65), "a far raider is recalled, not chased out to the ledge");
 		assertFalse(GuardChase.useGate(false, 100, 50), "a partial path that closes 50 blocks is worth walking");
-		assertFalse(GuardChase.useGate(true, 70, 0), "a path that reaches needs no gate");
+		assertFalse(GuardChase.useGate(true, 20, 0), "a path that reaches needs no gate");
 	}
 
 	@Test

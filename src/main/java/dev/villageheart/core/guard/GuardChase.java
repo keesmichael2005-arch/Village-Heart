@@ -45,10 +45,11 @@ public final class GuardChase {
 
 	/**
 	 * Follow the partial path when it closes at least 12 blocks. A path that stops at a wall does not, and the guard
-	 * leaves through a gate instead. A path that reaches needs no gate.
+	 * leaves through a gate instead, but only when the raider is already within 32 blocks. A farther raider is brought
+	 * to the gate by recall. Walking out to it is how the guards died on the ledge.
 	 */
 	public static boolean useGate(boolean pathReaches, double guardToTarget, double pathEndToTarget) {
-		if (pathReaches) return false;
+		if (pathReaches || guardToTarget > 32) return false;
 		return guardToTarget - pathEndToTarget < 12;
 	}
 

@@ -584,9 +584,10 @@ Babies are normal vanilla villagers and can be hired as adults.
   `villageheart:random_raids` is on (default on). A young village gets a short one. A random victory pays the
   treasury once. A scripted raid does not add those extra raiders. An on-duty guard follows a raider of the
   tracked raid up to 64 blocks past the claim, with or without a sight line. A direct path that stops at the wall
-  walks to the nearest gate when that path does not close at least 12 blocks. A longer step is walked.
+  walks to the nearest gate when that path does not close at least 12 blocks and the raider is already within 32 blocks.
+  A farther raider is not chased out. A longer step is walked.
   A raider that has not closed 4 blocks on the Heart for 200 ticks, and is still more than 24 blocks from the nearest
-  gate, is placed 4 blocks outside that gate, one raider every 40 ticks, and only while fewer than 2 raiders are already
+  gate, is placed 4 blocks outside that gate, one raider every 40 ticks, and only while no raider is already
   within 24 blocks of a gate. The guard is not moved onto the pack, and the
   raider is not dropped inside the ring. The walk out to a gate still
   counts as closing, and a kill inside that margin counts as the guard's.
