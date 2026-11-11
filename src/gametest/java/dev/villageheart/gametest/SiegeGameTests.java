@@ -267,17 +267,17 @@ public class SiegeGameTests {
 		boolean[] running = new boolean[1];
 		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			closedRing(h, false);
-			var villager = h.spawn(EntityType.VILLAGER, rel(2, 0, 2));
+			var villager = h.spawn(EntityType.VILLAGER, rel(4, 0, 4));
 			villager.setNoAi(true);
-			idle[0] = spawnRavager(h, rel(2, 0, -5));
+			idle[0] = spawnRavager(h, mobSpot());
 		});
 		seq = seq.thenIdle(600).thenExecute(() -> {
 			var server = h.getLevel().getServer();
-			h.assertTrue(SiegeDamage.damage(server).damageAt(packed(h, rel(2, 0, -4))) == 0, "a ravager in no raid leaves the wall");
-			h.assertTrue(h.getBlockState(rel(2, 0, -4)).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "the cell is still cobble");
+			h.assertTrue(SiegeDamage.damage(server).damageAt(packed(h, attackCell())) == 0, "a ravager in no raid leaves the wall");
+			h.assertTrue(h.getBlockState(attackCell()).is(net.minecraft.world.level.block.Blocks.COBBLESTONE), "the cell is still cobble");
 			idle[0].discard();
 			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(rel(1, 1, 1)));
-			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, rel(2, 0, -5), EntityType.RAVAGER, false);
+			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, mobSpot(), EntityType.RAVAGER, false);
 			sawSix[0] = 0;
 			running[0] = false;
 		});
@@ -285,11 +285,11 @@ public class SiegeGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the ravager is inside the 2x3 hole", () -> inside(h, ravager[0], sawSix, 6));
 		seq = seq.thenExecute(() -> {
 			ravager[0].discard();
-			for (int x = 2; x <= 3; x++) for (int y = 0; y <= 2; y++) h.setBlock(rel(x, y, -4), net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState());
+			for (int x = ATTACK_X; x <= ATTACK_X + 1; x++) for (int y = 0; y <= 2; y++) h.setBlock(rel(x, y, ATTACK_Z), net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState());
 			var server = h.getLevel().getServer();
 			SiegeDamage.scan(server, VillageClaims.current(server).orElseThrow(), -1);
 			var raid = h.getLevel().getRaids().get(VillageClaims.current(server).orElseThrow().threats().raid().orElseThrow().vanillaId());
-			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, rel(2, 0, -5), EntityType.RAVAGER, true);
+			ravager[0] = (net.minecraft.world.entity.monster.Ravager) joinRaider(h, raid, mobSpot(), EntityType.RAVAGER, true);
 			h.assertTrue(!ravager[0].getPassengers().isEmpty(), "a pillager is riding");
 			sawSix[0] = 0;
 			running[0] = false;
@@ -307,10 +307,11 @@ public class SiegeGameTests {
 		boolean[] running = new boolean[1];
 		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			closedRing(h, true);
-			h.spawn(EntityType.VILLAGER, rel(2, 0, 2)).setNoAi(true);
+			h.spawn(EntityType.VILLAGER, rel(4, 0, 4)).setNoAi(true);
 			var server = h.getLevel().getServer();
 			var raid = dev.villageheart.siege.TrackedRaids.track(server, BuildingTestSupport.owner(), h.absolutePos(rel(1, 1, 1)));
-			vindicator[0] = (net.minecraft.world.entity.monster.illager.Vindicator) joinRaider(h, raid, rel(2, 0, -5), EntityType.VINDICATOR, false);
+			vindicator[0] = (net.minecraft.world.entity.monster.illager.Vindicator) joinRaider(h, raid, mobSpot(), EntityType.VINDICATOR, false);
+			h.assertTrue(h.getBlockState(attackCell()).is(net.minecraft.world.level.block.Blocks.OAK_FENCE_GATE), "the attack cell is the gate: " + h.getBlockState(attackCell()));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "BreachGoal runs at the gate", () -> {
 			noteBreach(h, vindicator[0], saw, running, 4);
@@ -318,11 +319,11 @@ public class SiegeGameTests {
 			h.assertTrue(!doorRunning(vindicator[0]), "not the wooden-door goal");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the vindicator walks through the gate", () -> {
-			int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, rel(2, 0, -4)));
+			int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 			if (d == 4) saw[0] = 4;
 			h.assertTrue(saw[0] == 4, "the gate was hit for 4");
-			h.assertTrue(h.getBlockState(rel(2, 0, -4)).isAir(), "the gate cell is open");
-			h.assertTrue(VillageTestSupport.rel(h, vindicator[0].blockPosition()).getZ() > -4, "through the gate");
+			h.assertTrue(h.getBlockState(attackCell()).isAir(), "the gate cell is open");
+			h.assertTrue(VillageTestSupport.rel(h, vindicator[0].blockPosition()).getZ() > ATTACK_Z, "through the gate");
 			var damage = SiegeDamage.damage(h.getLevel().getServer());
 			for (DefenceCell cell : DefenceIndex.of(VillageClaims.current(h.getLevel().getServer()).orElseThrow().defences()).cells()) {
 				if (cell.kind() != DefenceKind.STONE) continue;
@@ -367,35 +368,51 @@ public class SiegeGameTests {
 
 	private static void noteBreach(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, boolean[] running, int hit) {
 		if (breachRunning(mob)) running[0] = true;
-		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, rel(2, 0, -4)));
+		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 		if (d == hit) saw[0] = hit;
-		h.assertTrue(running[0] || saw[0] == hit || h.getBlockState(rel(2, 0, -4)).isAir(), "BreachGoal has run");
+		h.assertTrue(running[0] || saw[0] == hit || h.getBlockState(attackCell()).isAir(), "BreachGoal has run");
 	}
 
 	private static void inside(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, int hit) {
-		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, rel(2, 0, -4)));
+		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 		if (d == hit) saw[0] = hit;
 		h.assertTrue(saw[0] == hit, "the first hit was " + hit + ", saw " + saw[0]);
-		for (int x = 2; x <= 3; x++) for (int y = 0; y <= 2; y++) {
-			h.assertTrue(h.getBlockState(rel(x, y, -4)).isAir(), "hole " + x + "," + y);
+		for (int x = ATTACK_X; x <= ATTACK_X + 1; x++) for (int y = 0; y <= 2; y++) {
+			h.assertTrue(h.getBlockState(rel(x, y, ATTACK_Z)).isAir(), "hole " + x + "," + y);
 		}
-		h.assertTrue(VillageTestSupport.rel(h, mob.blockPosition()).getZ() > -4, "inside " + VillageTestSupport.rel(h, mob.blockPosition()));
+		h.assertTrue(VillageTestSupport.rel(h, mob.blockPosition()).getZ() > ATTACK_Z, "inside " + VillageTestSupport.rel(h, mob.blockPosition()));
 	}
 
+	/** South wall of the ring. The bell at (1, 1) sits inside, so a raid centred on it has to come through this face. */
+	private static final int RING_X0 = -6, RING_X1 = 8, RING_Z0 = -6, RING_Z1 = 8;
+	private static final int ATTACK_X = 1, ATTACK_Z = RING_Z0;
+
+	private static BlockPos attackCell() { return rel(ATTACK_X, 0, ATTACK_Z); }
+
+	private static BlockPos mobSpot() { return rel(ATTACK_X, 0, ATTACK_Z - 1); }
+
 	private static void closedRing(GameTestHelper h, boolean gate) {
-		for (int x = -6; x <= 10; x++) for (int z = -6; z <= 10; z++) h.setBlock(rel(x, -1, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		for (int x = RING_X0 - 2; x <= RING_X1 + 2; x++) for (int z = RING_Z0 - 2; z <= RING_Z1 + 2; z++) {
+			h.setBlock(rel(x, -1, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+			for (int y = 0; y <= 4; y++) {
+				if ((x == 1 || x == 3) && z == 1) continue; // bell and Heart
+				h.setBlock(rel(x, y, z), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+			}
+		}
 		BuildTestSupport.stock(h, new ItemStack(Items.COBBLESTONE, 256), new ItemStack(Items.OAK_FENCE_GATE, 3));
-		DefenceTestSupport.startLine(h, "wall_segment", rel(-4, -1, 8), rel(8, -1, 8));
-		DefenceTestSupport.startLine(h, "wall_segment", rel(-4, -1, -4), rel(-4, -1, 8));
-		DefenceTestSupport.startLine(h, "wall_segment", rel(8, -1, -4), rel(8, -1, 8));
+		// Corners belong to one segment. A second segment on the same cell is rejected, and the ring would have a gap.
+		DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0, -1, RING_Z1), rel(RING_X1, -1, RING_Z1));
+		DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0, -1, RING_Z0), rel(RING_X0, -1, RING_Z1 - 1));
+		DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X1, -1, RING_Z0), rel(RING_X1, -1, RING_Z1 - 1));
 		if (gate) {
-			DefenceTestSupport.startLine(h, "wall_segment", rel(-4, -1, -4), rel(-1, -1, -4));
-			DefenceTestSupport.startLine(h, "gate", rel(0, -1, -4), rel(4, -1, -4));
-			DefenceTestSupport.startLine(h, "wall_segment", rel(5, -1, -4), rel(8, -1, -4));
+			DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0 + 1, -1, RING_Z0), rel(-2, -1, RING_Z0));
+			DefenceTestSupport.startLine(h, "gate", rel(-1, -1, RING_Z0), rel(3, -1, RING_Z0));
+			DefenceTestSupport.startLine(h, "wall_segment", rel(4, -1, RING_Z0), rel(RING_X1 - 1, -1, RING_Z0));
 		} else {
-			DefenceTestSupport.startLine(h, "wall_segment", rel(-4, -1, -4), rel(8, -1, -4));
+			DefenceTestSupport.startLine(h, "wall_segment", rel(RING_X0 + 1, -1, RING_Z0), rel(RING_X1 - 1, -1, RING_Z0));
 		}
 		DefenceTestSupport.advanceAll(h);
+		h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().defences().size() >= 4, "the ring is recorded");
 	}
 
 	private static net.minecraft.world.entity.monster.Ravager spawnRavager(GameTestHelper h, BlockPos at) {
@@ -418,6 +435,7 @@ public class SiegeGameTests {
 		raid.joinRaid(level, 1, raider, abs, false);
 		raider.setPos(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
 		raider.setPersistenceRequired();
+		h.assertTrue(raider.getCurrentRaid() != null && dev.villageheart.siege.TrackedRaids.member(level, raider), "joined the tracked raid");
 		if (ridden) {
 			var pillager = EntityType.PILLAGER.create(level, net.minecraft.world.entity.EntitySpawnReason.EVENT);
 			pillager.setPos(raider.getX(), raider.getY(), raider.getZ());
