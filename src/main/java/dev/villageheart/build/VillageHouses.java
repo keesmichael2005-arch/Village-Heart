@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -32,9 +33,13 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Property;
 
 /**
@@ -102,7 +107,9 @@ public final class VillageHouses {
 		int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
 		int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
 		record At(int x, int y, int z, BlockState state) {}
+		record Entrance(int x, int y, int z, String facing) {}
 		List<At> cells = new ArrayList<>();
+		List<Entrance> entrances = new ArrayList<>();
 		for (Tag raw : blocks) {
 			if (!(raw instanceof CompoundTag c)) continue;
 			int[] pos = c.getIntArray("pos").orElse(null);
@@ -114,7 +121,16 @@ public final class VillageHouses {
 			int state = c.getInt("state").orElse(0);
 			if (state < 0 || state >= palette.size()) continue;
 			BlockState st = palette.get(state);
-			if (st.isAir() || st.is(Blocks.STRUCTURE_VOID) || st.is(Blocks.JIGSAW) || st.is(Blocks.STRUCTURE_BLOCK)) continue;
+			// A jigsaw is a slot, not a wall. The template says what it becomes (the floor plank, the front step).
+			// structure_void and a jigsaw whose final state is void stay air, so they do not punch a hole.
+			if (st.is(Blocks.JIGSAW)) {
+				CompoundTag nbt = c.getCompoundOrEmpty("nbt");
+				if (nbt.getStringOr("name", "").endsWith("building_entrance")) {
+					entrances.add(new Entrance(pos[0], pos[1], pos[2], horizontal(nbt.getStringOr("orientation", ""))));
+				}
+				st = finalState(c);
+			}
+			if (st.isAir() || st.is(Blocks.STRUCTURE_VOID) || st.is(Blocks.STRUCTURE_BLOCK) || st.is(Blocks.JIGSAW)) continue;
 			cells.add(new At(pos[0], pos[1], pos[2], st));
 			minX = Math.min(minX, pos[0]); minY = Math.min(minY, pos[1]); minZ = Math.min(minZ, pos[2]);
 			maxX = Math.max(maxX, pos[0]); maxY = Math.max(maxY, pos[1]); maxZ = Math.max(maxZ, pos[2]);
@@ -127,8 +143,26 @@ public final class VillageHouses {
 		if (!housePath) return "not a house template";
 		Map<Long, BlockState> world = new HashMap<>();
 		for (At a : cells) world.put(Pos.pack(a.x - minX, a.y - minY, a.z - minZ), a.state);
+		boolean anyDoor = false;
+		for (BlockState st : world.values()) if (RoomCells.of(st).door() == DoorPart.LOWER) anyDoor = true;
+		if (!anyDoor) {
+			for (Entrance en : entrances) {
+				int x = en.x() - minX, y = Math.max(en.y() - minY, 1), z = en.z() - minZ;
+				long lower = Pos.pack(x, y, z), upper = Pos.pack(x, y + 1, z);
+				if (world.containsKey(lower) || world.containsKey(upper)) continue;
+				Direction facing = Direction.byName(en.facing());
+				if (facing == null || !facing.getAxis().isHorizontal()) facing = Direction.NORTH;
+				BlockState door = Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+						.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER);
+				world.put(lower, door);
+				world.put(upper, door.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.UPPER));
+				if (y + 1 >= h) h = y + 2;
+				break;
+			}
+		}
 		HouseView view = new HouseView(world, h);
 		String doorFail = null;
+		String rulesFail = null;
 		for (var e : world.entrySet()) {
 			Cell cell = RoomCells.of(e.getValue());
 			if (cell.door() != DoorPart.LOWER) continue;
@@ -136,14 +170,37 @@ public final class VillageHouses {
 			for (Dir inward : new Dir[] {Dir.NORTH, Dir.SOUTH, Dir.EAST, Dir.WEST}) {
 				var scan = RoomScanner.scanFromDoor(view, door, inward);
 				if (!scan.enclosed()) {
-					doorFail = scan.problems().isEmpty() ? "not enclosed" : scan.problems().get(0).toString();
+					if (doorFail == null) doorFail = scan.problems().isEmpty() ? "not enclosed" : scan.problems().get(0).toString();
 					continue;
 				}
 				var verdict = BuildingRules.checkRoom(BuildingType.HOUSE, RoomFacts.of(scan),
 						new BuildingRules.CheckContext(Tier.VILLAGE, null, null, 0));
 				if (!verdict.reasons().isEmpty()) {
-					doorFail = verdict.reasons().get(0).message();
-					continue;
+					String msg = verdict.reasons().get(0).message();
+					// A workplace template is enclosed and big enough, but the bed lives in another piece. Put one in an empty floor pair.
+					if (msg.toLowerCase(java.util.Locale.ROOT).contains("bed") && scan.floorArea() >= 14) {
+						long[] placed = placeBed(world, scan);
+						if (placed != null) {
+							var again = RoomScanner.scanFromDoor(view, door, inward);
+							var againVerdict = again.enclosed()
+									? BuildingRules.checkRoom(BuildingType.HOUSE, RoomFacts.of(again),
+											new BuildingRules.CheckContext(Tier.VILLAGE, null, null, 0))
+									: null;
+							if (againVerdict != null && againVerdict.reasons().isEmpty()) {
+								scan = again;
+								verdict = againVerdict;
+							} else {
+								world.remove(placed[0]);
+								world.remove(placed[1]);
+								rulesFail = againVerdict == null || againVerdict.reasons().isEmpty() ? msg : againVerdict.reasons().get(0).message();
+								continue;
+							}
+						}
+					}
+					if (!verdict.reasons().isEmpty()) {
+						rulesFail = msg;
+						continue;
+					}
 				}
 				Dir outward = inward.opposite();
 				Pos marker = door.offset(outward).offset(Dir.UP).offset(Dir.UP);
@@ -155,6 +212,7 @@ public final class VillageHouses {
 				return offer(id, world, w, h, d, marker, outward) ? "pass" : "could not build the blueprint";
 			}
 		}
+		if (rulesFail != null) return rulesFail;
 		return doorFail == null ? "no door" : doorFail;
 	}
 
@@ -285,6 +343,57 @@ public final class VillageHouses {
 			out.add(state);
 		}
 		return out;
+	}
+
+	/** Two empty floor cells become a white bed, so a workplace piece can pass the same bed rule as a player house. */
+	private static long[] placeBed(Map<Long, BlockState> world, dev.villageheart.core.room.RoomScan scan) {
+		java.util.Set<Long> floor = new java.util.HashSet<>();
+		for (long k : scan.interior()) {
+			Pos p = Pos.unpack(k);
+			BlockState below = world.get(Pos.pack(p.x(), p.y() - 1, p.z()));
+			if (below != null && !below.isAir()) floor.add(k);
+		}
+		for (long k : floor) {
+			Pos foot = Pos.unpack(k);
+			for (Dir d : new Dir[] {Dir.EAST, Dir.SOUTH, Dir.WEST, Dir.NORTH}) {
+				Pos head = foot.offset(d);
+				if (!floor.contains(head.pack())) continue;
+				Direction facing = Direction.byName(d.name().toLowerCase(java.util.Locale.ROOT));
+				if (facing == null) continue;
+				BlockState state = Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.FACING, facing).setValue(BedBlock.PART, BedPart.FOOT)
+						.setValue(BlockStateProperties.OCCUPIED, false);
+				world.put(foot.pack(), state);
+				world.put(head.pack(), state.setValue(BedBlock.PART, BedPart.HEAD));
+				return new long[] {foot.pack(), head.pack()};
+			}
+		}
+		return null;
+	}
+
+	private static String horizontal(String orientation) {
+		for (String part : orientation.split("_")) {
+			if (part.equals("north") || part.equals("south") || part.equals("east") || part.equals("west")) return part;
+		}
+		return "north";
+	}
+
+	/** {@code minecraft:oak_planks} or {@code minecraft:oak_stairs[facing=east,half=bottom]}. */
+	private static BlockState finalState(CompoundTag block) {
+		String raw = block.getCompoundOrEmpty("nbt").getStringOr("final_state", "minecraft:air");
+		int bracket = raw.indexOf('[');
+		String name = bracket < 0 ? raw : raw.substring(0, bracket);
+		String props = bracket < 0 ? "" : raw.substring(bracket + 1, raw.endsWith("]") ? raw.length() - 1 : raw.length());
+		Block blockType = BuiltInRegistries.BLOCK.getOptional(Identifier.parse(name)).orElse(Blocks.AIR);
+		BlockState state = blockType.defaultBlockState();
+		if (props.isEmpty()) return state;
+		for (String part : props.split(",")) {
+			int eq = part.indexOf('=');
+			if (eq <= 0) continue;
+			String key = part.substring(0, eq);
+			String value = part.substring(eq + 1);
+			for (Property<?> p : state.getProperties()) if (p.getName().equals(key)) state = set(state, p, value);
+		}
+		return state;
 	}
 
 	private static <T extends Comparable<T>> BlockState set(BlockState state, Property<T> p, String value) {

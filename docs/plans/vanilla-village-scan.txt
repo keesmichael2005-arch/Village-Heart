@@ -1,3 +1,12 @@
+# Vanilla village structure scan
+# Real non-zombie /houses/ templates: 152 (plains, desert, savanna, taiga, snowy). Offered: 51.
+# Streets, decor, town centers and zombie copies are in this list too and are not offered.
+# The room check is unchanged: enclosed, floor of at least 12, a bed, a light.
+# Import only: a jigsaw is replaced by its final_state (planks, dirt, the front step). structure_void stays air.
+# A template with no door gets an oak door in the empty cell the building_entrance jigsaw marks.
+# A workplace that is already big enough and enclosed, but has no bed, gets a white bed so it meets the same bed rule.
+# Anything still failing is smaller than that floor, open to the sky, or has no place for the door or the bed.
+
 FAIL minecraft:village/common/animals/cat_black — no blocks
 FAIL minecraft:village/common/animals/cat_british — no blocks
 FAIL minecraft:village/common/animals/cat_calico — no blocks
@@ -12,7 +21,7 @@ FAIL minecraft:village/common/animals/cows_1 — no blocks
 FAIL minecraft:village/common/animals/horses_1 — no blocks
 FAIL minecraft:village/common/animals/horses_2 — no blocks
 FAIL minecraft:village/common/animals/horses_3 — no blocks
-FAIL minecraft:village/common/animals/horses_4 — no blocks
+FAIL minecraft:village/common/animals/horses_4 — not a house template
 FAIL minecraft:village/common/animals/horses_5 — no blocks
 FAIL minecraft:village/common/animals/pigs_1 — no blocks
 FAIL minecraft:village/common/animals/sheep_1 — no blocks
@@ -24,34 +33,34 @@ FAIL minecraft:village/decays/grass_16x16 — not a house template
 FAIL minecraft:village/decays/grass_9x9 — not a house template
 FAIL minecraft:village/desert/camel_spawn — no blocks
 FAIL minecraft:village/desert/desert_lamp_1 — not a house template
-FAIL minecraft:village/desert/houses/desert_animal_pen_1 — no door
-FAIL minecraft:village/desert/houses/desert_animal_pen_2 — no door
-FAIL minecraft:village/desert/houses/desert_armorer_1 — RoomProblem[kind=WRONG_SIDE, pos=(1, 1, 3)]
-FAIL minecraft:village/desert/houses/desert_butcher_shop_1 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 2)]
-FAIL minecraft:village/desert/houses/desert_cartographer_house_1 — RoomProblem[kind=WRONG_SIDE, pos=(4, 3, 4)]
-FAIL minecraft:village/desert/houses/desert_farm_1 — no door
+FAIL minecraft:village/desert/houses/desert_animal_pen_1 — RoomProblem[kind=ROOF_MISSING, pos=(4, 1, -1)]
+FAIL minecraft:village/desert/houses/desert_animal_pen_2 — RoomProblem[kind=ROOF_MISSING, pos=(4, 1, -1)]
+PASS minecraft:village/desert/houses/desert_armorer_1 — pass
+FAIL minecraft:village/desert/houses/desert_butcher_shop_1 — Room too small: floor 5 of 12
+FAIL minecraft:village/desert/houses/desert_cartographer_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 2, 0)]
+FAIL minecraft:village/desert/houses/desert_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 2)]
 FAIL minecraft:village/desert/houses/desert_farm_2 — no door
-FAIL minecraft:village/desert/houses/desert_fisher_1 — RoomProblem[kind=WRONG_SIDE, pos=(4, 1, 7)]
-FAIL minecraft:village/desert/houses/desert_fletcher_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 9)]
-FAIL minecraft:village/desert/houses/desert_large_farm_1 — no door
-FAIL minecraft:village/desert/houses/desert_library_1 — RoomProblem[kind=WALL_GAP, pos=(3, 1, 0)]
-FAIL minecraft:village/desert/houses/desert_mason_1 — RoomProblem[kind=ROOF_MISSING, pos=(1, 4, 6)]
-FAIL minecraft:village/desert/houses/desert_medium_house_1 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 3)]
-FAIL minecraft:village/desert/houses/desert_medium_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(6, 3, 1)]
-FAIL minecraft:village/desert/houses/desert_shepherd_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(5, 1, 3)]
-FAIL minecraft:village/desert/houses/desert_small_house_1 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 2)]
-FAIL minecraft:village/desert/houses/desert_small_house_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 2)]
-FAIL minecraft:village/desert/houses/desert_small_house_3 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 4)]
-FAIL minecraft:village/desert/houses/desert_small_house_4 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 4)]
-FAIL minecraft:village/desert/houses/desert_small_house_5 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 1)]
-FAIL minecraft:village/desert/houses/desert_small_house_6 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 2)]
-FAIL minecraft:village/desert/houses/desert_small_house_7 — RoomProblem[kind=WRONG_SIDE, pos=(5, 1, 1)]
-FAIL minecraft:village/desert/houses/desert_small_house_8 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 0)]
-FAIL minecraft:village/desert/houses/desert_tannery_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(4, 2, 2)]
-FAIL minecraft:village/desert/houses/desert_temple_1 — no door
-FAIL minecraft:village/desert/houses/desert_temple_2 — no door
-FAIL minecraft:village/desert/houses/desert_tool_smith_1 — RoomProblem[kind=WRONG_SIDE, pos=(4, 5, 2)]
-FAIL minecraft:village/desert/houses/desert_weaponsmith_1 — no door
+FAIL minecraft:village/desert/houses/desert_fisher_1 — Needs 1 more bed
+PASS minecraft:village/desert/houses/desert_fletcher_house_1 — pass
+FAIL minecraft:village/desert/houses/desert_large_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 2, 5)]
+PASS minecraft:village/desert/houses/desert_library_1 — pass
+PASS minecraft:village/desert/houses/desert_mason_1 — pass
+PASS minecraft:village/desert/houses/desert_medium_house_1 — pass
+FAIL minecraft:village/desert/houses/desert_medium_house_2 — Room too small: floor 6 of 12
+FAIL minecraft:village/desert/houses/desert_shepherd_house_1 — RoomProblem[kind=WALL_GAP, pos=(3, 2, 3)]
+FAIL minecraft:village/desert/houses/desert_small_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/desert/houses/desert_small_house_2 — Room too small: floor 9 of 12
+FAIL minecraft:village/desert/houses/desert_small_house_3 — Room too small: floor 8 of 12
+FAIL minecraft:village/desert/houses/desert_small_house_4 — RoomProblem[kind=WALL_GAP, pos=(2, 2, 0)]
+FAIL minecraft:village/desert/houses/desert_small_house_5 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 2)]
+FAIL minecraft:village/desert/houses/desert_small_house_6 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 1)]
+FAIL minecraft:village/desert/houses/desert_small_house_7 — Room too small: floor 10 of 12
+FAIL minecraft:village/desert/houses/desert_small_house_8 — Room too small: floor 9 of 12
+FAIL minecraft:village/desert/houses/desert_tannery_1 — Room too small: floor 10 of 12
+FAIL minecraft:village/desert/houses/desert_temple_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 2, 4)]
+FAIL minecraft:village/desert/houses/desert_temple_2 — RoomProblem[kind=ROOF_MISSING, pos=(0, 2, 4)]
+PASS minecraft:village/desert/houses/desert_tool_smith_1 — pass
+FAIL minecraft:village/desert/houses/desert_weaponsmith_1 — RoomProblem[kind=WRONG_SIDE, pos=(5, 1, 1)]
 FAIL minecraft:village/desert/streets/corner_01 — not a house template
 FAIL minecraft:village/desert/streets/corner_02 — not a house template
 FAIL minecraft:village/desert/streets/crossroad_01 — not a house template
@@ -98,42 +107,42 @@ FAIL minecraft:village/desert/zombie/town_centers/desert_meeting_point_2 — not
 FAIL minecraft:village/desert/zombie/town_centers/desert_meeting_point_3 — not a house template
 FAIL minecraft:village/desert/zombie/villagers/nitwit — no blocks
 FAIL minecraft:village/desert/zombie/villagers/unemployed — no blocks
-FAIL minecraft:village/plains/houses/plains_accessory_1 — no door
+FAIL minecraft:village/plains/houses/plains_accessory_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, -1)]
 FAIL minecraft:village/plains/houses/plains_animal_pen_1 — no door
 FAIL minecraft:village/plains/houses/plains_animal_pen_2 — no door
 FAIL minecraft:village/plains/houses/plains_animal_pen_3 — no door
-FAIL minecraft:village/plains/houses/plains_armorer_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 4)]
-FAIL minecraft:village/plains/houses/plains_big_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 5)]
-FAIL minecraft:village/plains/houses/plains_butcher_shop_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(6, 1, 6)]
-FAIL minecraft:village/plains/houses/plains_butcher_shop_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_cartographer_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
+PASS minecraft:village/plains/houses/plains_armorer_house_1 — pass
+PASS minecraft:village/plains/houses/plains_big_house_1 — pass
+PASS minecraft:village/plains/houses/plains_butcher_shop_1 — pass
+PASS minecraft:village/plains/houses/plains_butcher_shop_2 — pass
+PASS minecraft:village/plains/houses/plains_cartographer_1 — pass
 FAIL minecraft:village/plains/houses/plains_fisher_cottage_1 — Room too small: floor 9 of 12
-FAIL minecraft:village/plains/houses/plains_fletcher_house_1 — RoomProblem[kind=ROOF_MISSING, pos=(1, 4, 3)]
-FAIL minecraft:village/plains/houses/plains_large_farm_1 — no door
-FAIL minecraft:village/plains/houses/plains_library_1 — RoomProblem[kind=WALL_GAP, pos=(2, 5, 7)]
-FAIL minecraft:village/plains/houses/plains_library_2 — RoomProblem[kind=WALL_GAP, pos=(1, 6, 5)]
-FAIL minecraft:village/plains/houses/plains_masons_house_1 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 3)]
+PASS minecraft:village/plains/houses/plains_fletcher_house_1 — pass
+FAIL minecraft:village/plains/houses/plains_large_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 3)]
+PASS minecraft:village/plains/houses/plains_library_1 — pass
+PASS minecraft:village/plains/houses/plains_library_2 — pass
+PASS minecraft:village/plains/houses/plains_masons_house_1 — pass
 PASS minecraft:village/plains/houses/plains_medium_house_1 — pass
-FAIL minecraft:village/plains/houses/plains_medium_house_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 6)]
-FAIL minecraft:village/plains/houses/plains_meeting_point_4 — no door
-FAIL minecraft:village/plains/houses/plains_meeting_point_5 — no door
-FAIL minecraft:village/plains/houses/plains_shepherds_house_1 — Needs 1 more bed
-FAIL minecraft:village/plains/houses/plains_small_farm_1 — no door
-FAIL minecraft:village/plains/houses/plains_small_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_small_house_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_small_house_3 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_small_house_4 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
+PASS minecraft:village/plains/houses/plains_medium_house_2 — pass
+FAIL minecraft:village/plains/houses/plains_meeting_point_4 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 7)]
+FAIL minecraft:village/plains/houses/plains_meeting_point_5 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 4)]
+PASS minecraft:village/plains/houses/plains_shepherds_house_1 — pass
+FAIL minecraft:village/plains/houses/plains_small_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 3)]
+FAIL minecraft:village/plains/houses/plains_small_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/plains/houses/plains_small_house_2 — Room too small: floor 9 of 12
+FAIL minecraft:village/plains/houses/plains_small_house_3 — Room too small: floor 9 of 12
+FAIL minecraft:village/plains/houses/plains_small_house_4 — Room too small: floor 9 of 12
 PASS minecraft:village/plains/houses/plains_small_house_5 — pass
-FAIL minecraft:village/plains/houses/plains_small_house_6 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_small_house_7 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_small_house_8 — RoomProblem[kind=WALL_GAP, pos=(0, 3, 4)]
-FAIL minecraft:village/plains/houses/plains_stable_1 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 7)]
-FAIL minecraft:village/plains/houses/plains_stable_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 10)]
-FAIL minecraft:village/plains/houses/plains_tannery_1 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 7)]
-FAIL minecraft:village/plains/houses/plains_temple_3 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/plains/houses/plains_temple_4 — RoomProblem[kind=WRONG_SIDE, pos=(2, 0, 3)]
-FAIL minecraft:village/plains/houses/plains_tool_smith_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 9)]
-FAIL minecraft:village/plains/houses/plains_weaponsmith_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 6)]
+FAIL minecraft:village/plains/houses/plains_small_house_6 — Room too small: floor 6 of 12
+PASS minecraft:village/plains/houses/plains_small_house_7 — pass
+FAIL minecraft:village/plains/houses/plains_small_house_8 — Room too small: floor 9 of 12
+FAIL minecraft:village/plains/houses/plains_stable_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 6)]
+FAIL minecraft:village/plains/houses/plains_stable_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 9)]
+FAIL minecraft:village/plains/houses/plains_tannery_1 — Needs 1 more bed
+PASS minecraft:village/plains/houses/plains_temple_3 — pass
+FAIL minecraft:village/plains/houses/plains_temple_4 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 0, 2)]
+PASS minecraft:village/plains/houses/plains_tool_smith_1 — pass
+PASS minecraft:village/plains/houses/plains_weaponsmith_1 — pass
 FAIL minecraft:village/plains/plains_lamp_1 — not a house template
 FAIL minecraft:village/plains/streets/corner_01 — not a house template
 FAIL minecraft:village/plains/streets/corner_02 — not a house template
@@ -202,37 +211,37 @@ FAIL minecraft:village/plains/zombie/town_centers/plains_meeting_point_2 — not
 FAIL minecraft:village/plains/zombie/town_centers/plains_meeting_point_3 — not a house template
 FAIL minecraft:village/plains/zombie/villagers/nitwit — no blocks
 FAIL minecraft:village/plains/zombie/villagers/unemployed — no blocks
-FAIL minecraft:village/savanna/houses/savanna_animal_pen_1 — no door
+FAIL minecraft:village/savanna/houses/savanna_animal_pen_1 — RoomProblem[kind=ROOF_MISSING, pos=(4, 1, -1)]
 FAIL minecraft:village/savanna/houses/savanna_animal_pen_2 — no door
 FAIL minecraft:village/savanna/houses/savanna_animal_pen_3 — no door
-FAIL minecraft:village/savanna/houses/savanna_armorer_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/savanna/houses/savanna_butchers_shop_1 — Needs 1 more bed
+FAIL minecraft:village/savanna/houses/savanna_armorer_1 — Room too small: floor 8 of 12
+PASS minecraft:village/savanna/houses/savanna_butchers_shop_1 — pass
 FAIL minecraft:village/savanna/houses/savanna_butchers_shop_2 — Room too small: floor 6 of 12
-FAIL minecraft:village/savanna/houses/savanna_cartographer_1 — RoomProblem[kind=WALL_GAP, pos=(1, 3, 4)]
-FAIL minecraft:village/savanna/houses/savanna_fisher_cottage_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 6, 4)]
-FAIL minecraft:village/savanna/houses/savanna_fletcher_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(6, 1, 5)]
+FAIL minecraft:village/savanna/houses/savanna_cartographer_1 — Room too small: floor 10 of 12
+FAIL minecraft:village/savanna/houses/savanna_fisher_cottage_1 — Room too small: floor 3 of 12
+PASS minecraft:village/savanna/houses/savanna_fletcher_house_1 — pass
 FAIL minecraft:village/savanna/houses/savanna_large_farm_1 — no door
-FAIL minecraft:village/savanna/houses/savanna_large_farm_2 — no door
-FAIL minecraft:village/savanna/houses/savanna_library_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(4, 3, 3)]
-FAIL minecraft:village/savanna/houses/savanna_mason_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 4)]
-FAIL minecraft:village/savanna/houses/savanna_medium_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 9)]
-FAIL minecraft:village/savanna/houses/savanna_medium_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(5, 1, 9)]
+FAIL minecraft:village/savanna/houses/savanna_large_farm_2 — RoomProblem[kind=ROOF_MISSING, pos=(5, 2, -1)]
+FAIL minecraft:village/savanna/houses/savanna_library_1 — Room too small: floor 10 of 12
+PASS minecraft:village/savanna/houses/savanna_mason_1 — pass
+FAIL minecraft:village/savanna/houses/savanna_medium_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_medium_house_2 — Room too small: floor 9 of 12
 FAIL minecraft:village/savanna/houses/savanna_shepherd_1 — Room too small: floor 9 of 12
-FAIL minecraft:village/savanna/houses/savanna_small_farm — no door
-FAIL minecraft:village/savanna/houses/savanna_small_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 5)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 5)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_3 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 5)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_4 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(5, 1, 5)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_5 — RoomProblem[kind=WALL_GAP, pos=(4, 0, 3)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_6 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_7 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 5)]
-FAIL minecraft:village/savanna/houses/savanna_small_house_8 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
+FAIL minecraft:village/savanna/houses/savanna_small_farm — RoomProblem[kind=ROOF_MISSING, pos=(1, 2, -1)]
+FAIL minecraft:village/savanna/houses/savanna_small_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_2 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_3 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_4 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_5 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_6 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_7 — Room too small: floor 9 of 12
+FAIL minecraft:village/savanna/houses/savanna_small_house_8 — Room too small: floor 6 of 12
 FAIL minecraft:village/savanna/houses/savanna_tannery_1 — Room too small: floor 10 of 12
-FAIL minecraft:village/savanna/houses/savanna_temple_1 — RoomProblem[kind=WALL_GAP, pos=(6, 1, 4)]
-FAIL minecraft:village/savanna/houses/savanna_temple_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 4)]
-FAIL minecraft:village/savanna/houses/savanna_tool_smith_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 7)]
+PASS minecraft:village/savanna/houses/savanna_temple_1 — pass
+PASS minecraft:village/savanna/houses/savanna_temple_2 — pass
+FAIL minecraft:village/savanna/houses/savanna_tool_smith_1 — Room too small: floor 9 of 12
 FAIL minecraft:village/savanna/houses/savanna_weaponsmith_1 — Room too small: floor 10 of 12
-FAIL minecraft:village/savanna/houses/savanna_weaponsmith_2 — RoomProblem[kind=ROOF_MISSING, pos=(2, 5, 6)]
+PASS minecraft:village/savanna/houses/savanna_weaponsmith_2 — pass
 FAIL minecraft:village/savanna/savanna_lamp_post_01 — not a house template
 FAIL minecraft:village/savanna/streets/corner_01 — not a house template
 FAIL minecraft:village/savanna/streets/corner_03 — not a house template
@@ -300,36 +309,36 @@ FAIL minecraft:village/savanna/zombie/town_centers/savanna_meeting_point_3 — n
 FAIL minecraft:village/savanna/zombie/town_centers/savanna_meeting_point_4 — not a house template
 FAIL minecraft:village/savanna/zombie/villagers/nitwit — no blocks
 FAIL minecraft:village/savanna/zombie/villagers/unemployed — no blocks
-FAIL minecraft:village/snowy/houses/snowy_animal_pen_1 — no door
-FAIL minecraft:village/snowy/houses/snowy_animal_pen_2 — no door
-FAIL minecraft:village/snowy/houses/snowy_armorer_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_armorer_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 1)]
-FAIL minecraft:village/snowy/houses/snowy_butchers_shop_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 5)]
-FAIL minecraft:village/snowy/houses/snowy_butchers_shop_2 — RoomProblem[kind=ROOF_MISSING, pos=(0, 2, 4)]
-FAIL minecraft:village/snowy/houses/snowy_cartographer_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 5)]
-FAIL minecraft:village/snowy/houses/snowy_farm_1 — no door
-FAIL minecraft:village/snowy/houses/snowy_farm_2 — no door
-FAIL minecraft:village/snowy/houses/snowy_fisher_cottage — RoomProblem[kind=WALL_GAP, pos=(3, 2, 3)]
-FAIL minecraft:village/snowy/houses/snowy_fletcher_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_library_1 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_masons_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(4, 2, 6)]
-FAIL minecraft:village/snowy/houses/snowy_masons_house_2 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 4)]
-FAIL minecraft:village/snowy/houses/snowy_medium_house_1 — RoomProblem[kind=ROOF_MISSING, pos=(6, 2, 5)]
-FAIL minecraft:village/snowy/houses/snowy_medium_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(8, 1, 1)]
-FAIL minecraft:village/snowy/houses/snowy_medium_house_3 — RoomProblem[kind=WRONG_SIDE, pos=(1, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_shepherds_house_1 — RoomProblem[kind=WALL_GAP, pos=(3, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 4)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 1)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_3 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 4)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_4 — RoomProblem[kind=WRONG_SIDE, pos=(2, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_5 — RoomProblem[kind=WRONG_SIDE, pos=(1, 1, 2)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_6 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_7 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_small_house_8 — RoomProblem[kind=WRONG_SIDE, pos=(1, 1, 2)]
-FAIL minecraft:village/snowy/houses/snowy_tannery_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 4)]
-FAIL minecraft:village/snowy/houses/snowy_temple_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/snowy/houses/snowy_tool_smith_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 2)]
-FAIL minecraft:village/snowy/houses/snowy_weapon_smith_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(1, 1, 5)]
+FAIL minecraft:village/snowy/houses/snowy_animal_pen_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 4)]
+FAIL minecraft:village/snowy/houses/snowy_animal_pen_2 — RoomProblem[kind=ROOF_MISSING, pos=(3, 1, -1)]
+PASS minecraft:village/snowy/houses/snowy_armorer_house_1 — pass
+FAIL minecraft:village/snowy/houses/snowy_armorer_house_2 — Room too small: floor 8 of 12
+FAIL minecraft:village/snowy/houses/snowy_butchers_shop_1 — Room too small: floor 8 of 12
+FAIL minecraft:village/snowy/houses/snowy_butchers_shop_2 — Room too small: floor 9 of 12
+PASS minecraft:village/snowy/houses/snowy_cartographer_house_1 — pass
+FAIL minecraft:village/snowy/houses/snowy_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 2)]
+FAIL minecraft:village/snowy/houses/snowy_farm_2 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 2)]
+FAIL minecraft:village/snowy/houses/snowy_fisher_cottage — Room too small: floor 6 of 12
+PASS minecraft:village/snowy/houses/snowy_fletcher_house_1 — pass
+PASS minecraft:village/snowy/houses/snowy_library_1 — pass
+FAIL minecraft:village/snowy/houses/snowy_masons_house_1 — Needs 1 more bed
+PASS minecraft:village/snowy/houses/snowy_masons_house_2 — pass
+PASS minecraft:village/snowy/houses/snowy_medium_house_1 — pass
+PASS minecraft:village/snowy/houses/snowy_medium_house_2 — pass
+PASS minecraft:village/snowy/houses/snowy_medium_house_3 — pass
+PASS minecraft:village/snowy/houses/snowy_shepherds_house_1 — pass
+FAIL minecraft:village/snowy/houses/snowy_small_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/snowy/houses/snowy_small_house_2 — Room too small: floor 8 of 12
+FAIL minecraft:village/snowy/houses/snowy_small_house_3 — Room too small: floor 4 of 12
+FAIL minecraft:village/snowy/houses/snowy_small_house_4 — Room too small: floor 11 of 12
+PASS minecraft:village/snowy/houses/snowy_small_house_5 — pass
+FAIL minecraft:village/snowy/houses/snowy_small_house_6 — Room too small: floor 8 of 12
+FAIL minecraft:village/snowy/houses/snowy_small_house_7 — Room too small: floor 6 of 12
+FAIL minecraft:village/snowy/houses/snowy_small_house_8 — Room too small: floor 9 of 12
+PASS minecraft:village/snowy/houses/snowy_tannery_1 — pass
+PASS minecraft:village/snowy/houses/snowy_temple_1 — pass
+FAIL minecraft:village/snowy/houses/snowy_tool_smith_1 — Room too small: floor 8 of 12
+FAIL minecraft:village/snowy/houses/snowy_weapon_smith_1 — Needs 1 more bed
 FAIL minecraft:village/snowy/snowy_lamp_post_01 — not a house template
 FAIL minecraft:village/snowy/snowy_lamp_post_02 — not a house template
 FAIL minecraft:village/snowy/snowy_lamp_post_03 — not a house template
@@ -389,33 +398,33 @@ FAIL minecraft:village/snowy/zombie/town_centers/snowy_meeting_point_2 — not a
 FAIL minecraft:village/snowy/zombie/town_centers/snowy_meeting_point_3 — not a house template
 FAIL minecraft:village/snowy/zombie/villagers/nitwit — no blocks
 FAIL minecraft:village/snowy/zombie/villagers/unemployed — no blocks
-FAIL minecraft:village/taiga/houses/taiga_animal_pen_1 — no door
-FAIL minecraft:village/taiga/houses/taiga_armorer_2 — no door
-FAIL minecraft:village/taiga/houses/taiga_armorer_house_1 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/taiga/houses/taiga_butcher_shop_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(6, 1, 4)]
-FAIL minecraft:village/taiga/houses/taiga_cartographer_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 2)]
-FAIL minecraft:village/taiga/houses/taiga_fisher_cottage_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(3, 2, 9)]
-FAIL minecraft:village/taiga/houses/taiga_fletcher_house_1 — RoomProblem[kind=WALL_GAP, pos=(2, 1, 5)]
-FAIL minecraft:village/taiga/houses/taiga_large_farm_1 — no door
-FAIL minecraft:village/taiga/houses/taiga_large_farm_2 — no door
-FAIL minecraft:village/taiga/houses/taiga_library_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(4, 1, 2)]
-FAIL minecraft:village/taiga/houses/taiga_masons_house_1 — RoomProblem[kind=WALL_GAP, pos=(1, 2, 4)]
-FAIL minecraft:village/taiga/houses/taiga_medium_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 6, 1)]
-FAIL minecraft:village/taiga/houses/taiga_medium_house_2 — RoomProblem[kind=WALL_GAP, pos=(2, 0, 4)]
-FAIL minecraft:village/taiga/houses/taiga_medium_house_3 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 9)]
-FAIL minecraft:village/taiga/houses/taiga_medium_house_4 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(3, 1, 7)]
-FAIL minecraft:village/taiga/houses/taiga_shepherds_house_1 — Needs 1 more bed
+FAIL minecraft:village/taiga/houses/taiga_animal_pen_1 — RoomProblem[kind=WALL_GAP, pos=(6, 2, 5)]
+FAIL minecraft:village/taiga/houses/taiga_armorer_2 — RoomProblem[kind=ROOF_MISSING, pos=(0, 1, 2)]
+PASS minecraft:village/taiga/houses/taiga_armorer_house_1 — pass
+PASS minecraft:village/taiga/houses/taiga_butcher_shop_1 — pass
+FAIL minecraft:village/taiga/houses/taiga_cartographer_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/taiga/houses/taiga_fisher_cottage_1 — Room too small: floor 9 of 12
+PASS minecraft:village/taiga/houses/taiga_fletcher_house_1 — pass
+FAIL minecraft:village/taiga/houses/taiga_large_farm_1 — RoomProblem[kind=ROOF_MISSING, pos=(0, 2, 2)]
+FAIL minecraft:village/taiga/houses/taiga_large_farm_2 — RoomProblem[kind=ROOF_MISSING, pos=(3, 1, 7)]
+PASS minecraft:village/taiga/houses/taiga_library_1 — pass
+FAIL minecraft:village/taiga/houses/taiga_masons_house_1 — Needs 1 more bed
+FAIL minecraft:village/taiga/houses/taiga_medium_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/taiga/houses/taiga_medium_house_2 — Room too small: floor 6 of 12
+PASS minecraft:village/taiga/houses/taiga_medium_house_3 — pass
+PASS minecraft:village/taiga/houses/taiga_medium_house_4 — pass
+PASS minecraft:village/taiga/houses/taiga_shepherds_house_1 — pass
 FAIL minecraft:village/taiga/houses/taiga_small_farm_1 — no door
-FAIL minecraft:village/taiga/houses/taiga_small_house_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 2, 2)]
-FAIL minecraft:village/taiga/houses/taiga_small_house_2 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 1)]
-FAIL minecraft:village/taiga/houses/taiga_small_house_3 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 1)]
-FAIL minecraft:village/taiga/houses/taiga_small_house_4 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 6)]
-FAIL minecraft:village/taiga/houses/taiga_small_house_5 — RoomProblem[kind=WALL_GAP, pos=(0, 1, 3)]
-FAIL minecraft:village/taiga/houses/taiga_tannery_1 — RoomProblem[kind=WALL_GAP, pos=(1, 1, 6)]
-FAIL minecraft:village/taiga/houses/taiga_temple_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(5, 1, 8)]
-FAIL minecraft:village/taiga/houses/taiga_tool_smith_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(4, 1, 6)]
-FAIL minecraft:village/taiga/houses/taiga_weaponsmith_1 — RoomProblem[kind=DOORWAY_BLOCKED, pos=(2, 1, 2)]
-FAIL minecraft:village/taiga/houses/taiga_weaponsmith_2 — no door
+FAIL minecraft:village/taiga/houses/taiga_small_house_1 — Room too small: floor 9 of 12
+FAIL minecraft:village/taiga/houses/taiga_small_house_2 — Room too small: floor 9 of 12
+FAIL minecraft:village/taiga/houses/taiga_small_house_3 — Room too small: floor 9 of 12
+FAIL minecraft:village/taiga/houses/taiga_small_house_4 — Room too small: floor 1 of 12
+FAIL minecraft:village/taiga/houses/taiga_small_house_5 — Room too small: floor 9 of 12
+PASS minecraft:village/taiga/houses/taiga_tannery_1 — pass
+PASS minecraft:village/taiga/houses/taiga_temple_1 — pass
+PASS minecraft:village/taiga/houses/taiga_tool_smith_1 — pass
+FAIL minecraft:village/taiga/houses/taiga_weaponsmith_1 — Room too small: floor 6 of 12
+FAIL minecraft:village/taiga/houses/taiga_weaponsmith_2 — RoomProblem[kind=ROOF_MISSING, pos=(2, 1, -1)]
 FAIL minecraft:village/taiga/streets/corner_01 — not a house template
 FAIL minecraft:village/taiga/streets/corner_02 — not a house template
 FAIL minecraft:village/taiga/streets/corner_03 — not a house template
@@ -436,7 +445,7 @@ FAIL minecraft:village/taiga/taiga_decoration_1 — not a house template
 FAIL minecraft:village/taiga/taiga_decoration_2 — not a house template
 FAIL minecraft:village/taiga/taiga_decoration_3 — not a house template
 FAIL minecraft:village/taiga/taiga_decoration_4 — not a house template
-FAIL minecraft:village/taiga/taiga_decoration_5 — no blocks
+FAIL minecraft:village/taiga/taiga_decoration_5 — not a house template
 FAIL minecraft:village/taiga/taiga_decoration_6 — not a house template
 FAIL minecraft:village/taiga/taiga_lamp_post_1 — not a house template
 FAIL minecraft:village/taiga/town_centers/taiga_meeting_point_1 — not a house template

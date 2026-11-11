@@ -14,12 +14,15 @@ public class VanillaHouseGameTests {
 		var rows = VillageHouses.rows();
 		h.assertTrue(rows.size() >= 400, "scanned " + rows.size());
 		int pass = 0;
+		int houses = 0;
 		StringBuilder report = new StringBuilder();
 		for (var row : rows) {
 			h.assertFalse(row.reason() == null || row.reason().isBlank(), row.id());
+			boolean house = row.id().contains("/houses/") && !row.id().contains("/zombie/");
+			if (house) houses++;
 			if (row.offered()) {
 				pass++;
-				h.assertTrue(row.id().contains("/houses/") && !row.id().contains("/zombie/"), row.id());
+				h.assertTrue(house, row.id());
 				String slug = row.id().substring(row.id().lastIndexOf('/') + 1);
 				h.assertTrue(Blueprints.byId("vanilla_" + slug).isPresent(), "offered " + row.id());
 			} else {
@@ -27,8 +30,11 @@ public class VanillaHouseGameTests {
 			}
 			report.append(row.offered() ? "PASS " : "FAIL ").append(row.id()).append(" — ").append(row.reason()).append('\n');
 		}
-		VillageHeart.LOG.info("VANILLA_SCAN {} pass of {}\n{}", pass, rows.size(), report);
-		h.assertTrue(pass > 0, "no vanilla house passed the room check");
+		VillageHeart.LOG.info("VANILLA_SCAN {} pass of {} ({} real houses)\n{}", pass, rows.size(), houses, report);
+		h.assertValueEqual(152, houses, "non-zombie /houses/ templates across the five village biomes");
+		// Import fixes (jigsaw final state, a door at a marked empty entrance, a bed in a big workplace) got this to 51.
+		// A drop means a house that used to pass the unchanged room check no longer does.
+		h.assertTrue(pass >= 51, "vanilla houses offered " + pass + ", expected at least 51");
 		var server = h.getLevel().getServer();
 		VillageHeart.LOG.info("DESIGN_DIMENSION {} levels {}", DesignWorld.available(server) ? "present" : "missing", server.levelKeys());
 		h.succeed();
