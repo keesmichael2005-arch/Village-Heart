@@ -236,6 +236,7 @@ from there instead of hard-coding them.
 - Track B step 12 on `m25-walls`: a ravager or vindicator in the tracked raid breaks the wall or gate in front of it and walks through. Fast verify 394/394 at `1ae6cfe`.
 - Track B step 13 on `m25-walls`: at night a zombie with no target is lured to a walled village and breaks a way in. A skeleton, a spider, daytime, a trench, an open gap and a short wall stay as the plan says. Fast verify 402/402 at `0d2cc08`. Creepers are step 14.
 - Track B step 14 on `m25-walls`: a creeper with no target lights beside a wall and the blast hits defence cells only. A creeper chasing a player keeps the vanilla crater. A trench is not a place to light. Guards and iron golems do not hunt it. Fast verify 407/407 at `196391d`.
+- Track B step 15 on `m25-walls`: the builder repairs breached gates and stone, then cracks, from Storage, and a tracked raid puts hired workers in shelter. The Heart lists a raid, a siege, and damaged walls. `GuardSystem.feed` is unchanged.
 - [ ] Raid detection → alert, all guards on duty, workers indoors. Death log
 - **L2**: starting a raid on the claim → the alert appears in the Heart state and all guards are on shift within 10 s
 - **L3**: scenario `raid` (Town-like setup, 4 guards, 1 golem, walls), a raid on day 3: the village survives, ≥75% of villagers are alive, and metrics are logged
