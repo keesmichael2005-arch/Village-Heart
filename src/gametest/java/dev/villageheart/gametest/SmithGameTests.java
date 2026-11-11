@@ -42,7 +42,9 @@ import dev.villageheart.core.job.ToolKind;
 import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.worker.Workers;
 import dev.villageheart.worker.gear.GearOrders;
+import dev.villageheart.worker.gear.SelfCraftRuntime;
 import dev.villageheart.worker.gear.SelfCraftSwitch;
+import dev.villageheart.worker.gear.SmithService;
 import dev.villageheart.worker.job.CampTools;
 import dev.villageheart.worker.gear.ToolStacks;
 import dev.villageheart.worker.job.WorkStats;
@@ -552,6 +554,115 @@ public class SmithGameTests {
 	private static String activityWords(GameTestHelper h, Villager v) {
 		var row = HeartTestSupport.snapshot(h, Rank.OWNER).villagers().stream().filter(r -> r.id().equals(v.getUUID())).findFirst().orElseThrow();
 		return HeartTexts.EN.get(HeartTexts.activityKey(row.activity(), row.jobId()));
+	}
+
+	// ---- T-L2-5m --------------------------------------------------------------------------------------
+
+	/**
+	 * A smith busy with a saved diamond axe does not take the miner's pickaxe. The miner waits out the fallback, then makes a stone
+	 * pickaxe. The lumberjack's axe slot stays the smith's order, so that lumberjack never starts a self-craft.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_self_fallback", structure = YARD, skyAccess = true, maxTicks = 9000)
+	public void selfCraftFallbackWhileSmithBusy(GameTestHelper h) {
+		Villager[] jack = new Villager[1];
+		Villager[] miner = new Villager[1];
+		Villager[] smith = new Villager[1];
+		long[] t0 = {-1};
+		long[] started = {-1};
+		long[] openAtStart = {-1};
+		String[] startedRecipe = {""};
+		boolean[] jackCrafted = {false};
+		boolean[] smithTookPick = {false};
+		boolean[] diamondCrafted = {false};
+		SelfCraftTestSupport.Sampler sampler = new SelfCraftTestSupport.Sampler();
+		h.onEachTick(() -> {
+			sampler.sample(h);
+			if (jack[0] != null && h.getTick() % 20 == 0 && SelfCraftTestSupport.record(h, jack[0].getUUID()).isPresent()) jackCrafted[0] = true;
+			if (miner[0] != null && t0[0] >= 0 && h.getTick() > t0[0] && started[0] < 0 && h.getTick() % 20 == 0) {
+				h.assertValueEqual("Needs pickaxe", activityWords(h, miner[0]), "status");
+				h.assertTrue(smithServes(h), "the smith is not serving");
+				h.assertValueEqual(0, mineOrders(h), "a pickaxe order is open");
+				h.assertTrue(SelfCraftTestSupport.record(h, miner[0].getUUID()).isEmpty(), "the miner self-crafted early");
+			}
+			if (miner[0] != null && started[0] < 0 && fallbackStarted(h, miner[0])) {
+				started[0] = h.getTick();
+				var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(miner[0].getUUID());
+				openAtStart[0] = st == null ? -1 : st.slotOpenTicks;
+				var rec = SelfCraftTestSupport.record(h, miner[0].getUUID());
+				if (rec.isPresent()) startedRecipe[0] = rec.get().craft().recipeId();
+				else if (st != null && st.fetching != null) startedRecipe[0] = st.fetching.plan().recipe().outputId();
+			}
+			if (smith[0] != null && !diamondCrafted[0] && SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream()
+					.anyMatch(u -> u.kind().equals("CRAFT") && u.id().equals("minecraft:diamond_axe"))) diamondCrafted[0] = true;
+			if (diamondCrafted[0]) {
+				var order = GearOrders.heldBy(smith[0].getUUID());
+				if (order.isPresent() && order.get().key().need() == GearNeed.PICKAXE) smithTookPick[0] = true;
+			}
+		});
+		scene(h).thenExecute(() -> {
+			SelfCraftSwitch.reset();
+			SmithTestSupport.addLumberCamp(h);
+			SmithTestSupport.addMine(h);
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, SmithTestSupport.mineMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, MineTestSupport.shaftMarker(0, SmithTestSupport.SHAFT), dev.villageheart.block.MarkerStatus.VALID);
+		}).thenExecute(() -> {
+			putStore(h, Items.COBBLESTONE, 3);
+			putStore(h, Items.STICK, 2);
+			setDayTime(h, 1000);
+			jack[0] = SmithTestSupport.hireLumberjack(h);
+			miner[0] = SmithTestSupport.hireMiner(h);
+			smith[0] = hire(h);
+			seedDiamondAxe(h, smith[0]);
+			t0[0] = h.getTick();
+		}).thenWaitUntil(() -> h.assertTrue(started[0] >= 0, "the fallback has not started")
+		).thenExecute(() -> {
+			long at = started[0] - t0[0];
+			log("fallback at " + at + " open " + openAtStart[0] + " recipe " + startedRecipe[0]);
+			h.assertTrue(at >= 2900 && at <= 3100, "the fallback window: " + at);
+			h.assertTrue(openAtStart[0] >= Balance.SELF_CRAFT_FALLBACK_TICKS, "work ticks at the start: " + openAtStart[0]);
+			h.assertValueEqual("minecraft:stone_pickaxe", startedRecipe[0], "the fallback recipe");
+			var order = GearOrders.heldBy(miner[0].getUUID());
+			h.assertTrue(order.isPresent() && order.get().key().need() == GearNeed.PICKAXE, "the miner holds the pickaxe key: " + order);
+			h.assertTrue(GearOrders.heldBy(smith[0].getUUID()).map(o -> o.key().need() != GearNeed.PICKAXE).orElse(true), "the smith holds the miner's key");
+		}).thenWaitUntil(() -> h.assertValueEqual(1, chestCount(h, SmithTestSupport.mineChest(), Items.STONE_PICKAXE), "the stone pickaxe")
+		).thenExecute(() -> {
+			h.assertTrue(diamondCrafted[0], "the diamond axe never finished");
+			h.assertFalse(smithTookPick[0], "the smith ordered the miner's key after the diamond axe");
+			h.assertFalse(jackCrafted[0], "the lumberjack self-crafted");
+			h.assertFalse(sampler.committed(jack[0].getUUID()), "the lumberjack committed: " + sampler.log);
+			h.assertValueEqual("minecraft:stone_pickaxe", sampler.recipeOf(miner[0].getUUID()), "the miner made the pickaxe");
+			h.assertValueEqual(0, chestCount(h, SmithTestSupport.mineChest(), Items.WOODEN_PICKAXE), "a wooden pickaxe");
+			h.assertValueEqual(0, chestCount(h, SmithTestSupport.mineChest(), Items.IRON_PICKAXE), "an iron pickaxe");
+			h.assertValueEqual(0, chestCount(h, SmithTestSupport.mineChest(), Items.DIAMOND_PICKAXE), "a diamond pickaxe");
+			h.assertTrue(SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream()
+					.noneMatch(u -> u.id().contains("pickaxe")), "the smith crafted a pickaxe");
+			log("fallback finished, diamond axe crafted, miner kept the key");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	/** A saved diamond axe at progress 0 for the Lumber Camp's axe slot 0, already the smith's order. */
+	private static void seedDiamondAxe(GameTestHelper h, Villager smith) {
+		HeartLocation camp = BuildingTestSupport.loc(h, SmithTestSupport.campMarker());
+		HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+		OrderKey key = new OrderKey(camp, GearNeed.AXE, 0);
+		GearCraft craft = new GearCraft("minecraft:diamond_axe", key, 0, List.of(
+				new ItemCount("minecraft:diamond", 3), new ItemCount("minecraft:stick", 2)));
+		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withSmithCraft(furnace, new SmithCraft(craft, camp)));
+		GearOrders.claim(key, smith.getUUID(), h.getTick(), true);
+	}
+
+	private static boolean smithServes(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		return VillageClaims.current(server).map(v -> SmithService.servesNow(server, v)).orElse(false);
+	}
+
+	private static boolean fallbackStarted(GameTestHelper h, Villager miner) {
+		if (SelfCraftTestSupport.record(h, miner.getUUID()).isPresent()) return true;
+		var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(miner.getUUID());
+		return st != null && st.fetching != null;
 	}
 
 	// ---- T-L2-5b --------------------------------------------------------------------------------------
