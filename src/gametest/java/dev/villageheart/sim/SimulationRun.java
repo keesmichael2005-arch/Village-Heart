@@ -147,7 +147,8 @@ public final class SimulationRun implements Host {
 			r.schedule = new ActionSchedule(r.scenario.actions());
 			if (r.scenario.seed() != null) r.seed = r.scenario.seed();
 			for (ScenarioAction a : r.scenario.actions()) {
-				if (a.day() > r.request.days()) {
+				// A zero-day smoke builds day 0 and leaves later actions unrun. A shorter run that still asks for days refuses them.
+				if (r.request.days() > 0 && a.day() > r.request.days()) {
 					throw new IllegalArgumentException("action \"" + a.type() + "\" is on day " + a.day() + " but only " + r.request.days() + " days run");
 				}
 				if (!SimActions.ALL.containsKey(a.type())) throw new IllegalArgumentException("no implementation for action " + a.type());

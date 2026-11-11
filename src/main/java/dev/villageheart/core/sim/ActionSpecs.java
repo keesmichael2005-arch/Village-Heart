@@ -14,7 +14,7 @@ public final class ActionSpecs {
 	private ActionSpecs() {}
 
 	public static final Set<String> DOORS = Set.of("north", "south", "east", "west");
-	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target");
+	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target", "blast_furnace", "anvil", "builders_table");
 	public static final Set<String> CROPS = Set.of("carrots", "potatoes", "wheat", "beetroots");
 
 	/** @throws IllegalArgumentException naming the bad field; unknown action types are not this class's business. */
@@ -102,6 +102,12 @@ public final class ActionSpecs {
 			case "threats" -> {
 				bool(f, "random_raids");
 				bool(f, "sieges");
+			}
+			case "build" -> {
+				String id = str(f, "blueprint");
+				if (dev.villageheart.core.blueprint.Blueprints.byId(id).isEmpty()) throw new IllegalArgumentException("blueprint: unknown " + id);
+				ints(f, "from", 2, 0, 200);
+				ints(f, "to", 2, 0, 200);
 			}
 			case "night_spawn" -> {
 				String mob = str(f, "mob");

@@ -306,6 +306,9 @@ public final class StarterActions {
 				case "crafting_table" -> Blocks.CRAFTING_TABLE.defaultBlockState();
 				case "grindstone" -> Blocks.GRINDSTONE.defaultBlockState();
 				case "target" -> Blocks.TARGET.defaultBlockState();
+				case "blast_furnace" -> Blocks.BLAST_FURNACE.defaultBlockState();
+				case "anvil" -> Blocks.ANVIL.defaultBlockState();
+				case "builders_table" -> JobBlocks.BLOCKS.get(JobBlockType.BUILDERS_TABLE).defaultBlockState();
 				default -> JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK).defaultBlockState();
 			};
 			set(level, p, state);

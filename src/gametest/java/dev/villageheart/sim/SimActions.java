@@ -47,7 +47,8 @@ public final class SimActions {
 			Map.entry("top_up_villagers", RaidSim::topUp),
 			Map.entry("worker_level", RaidSim::workerLevel),
 			Map.entry("siege", SimActions::siege),
-			Map.entry("threats", SimActions::threats));
+			Map.entry("threats", SimActions::threats),
+			Map.entry("build", BuildActions::build));
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");

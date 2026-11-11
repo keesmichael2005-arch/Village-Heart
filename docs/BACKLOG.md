@@ -373,3 +373,4 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] (M26 harness) Standing re-hires fill slots in scenario order (farmer, lumberjack, guard): after a bad night the first free villager becomes the farmer. A player would re-arm the guard first
 - [ ] (sim) Deaths outside the claim radius are not logged: a census drop with no Deaths row (`defended_walled` round 1 run 3: population -2, one row) is a villager that left the radius or died outside it
 - [ ] (sim) Natural hostile spawns other than sieges were 0 within the claim radius on every night of 20 runs (mob cap filled by cave mobs and persistent scripted zombies?). Unchecked; `defended` measures the scripted threat plus sieges, not ordinary night spawns
+- [ ] **T-L2-46** `golemNotPulledDuringRaid` waits until M19 is merged. There is no `SmithyRepairGoal` on this branch, so the test is not written.

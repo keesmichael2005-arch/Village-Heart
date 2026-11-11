@@ -27,7 +27,8 @@ class ActionSpecsTest {
 				+ "{\"action\":\"top_up_villagers\",\"adults\":4,\"at\":[2,2]},"
 				+ "{\"action\":\"worker_level\",\"job\":\"guard\",\"level\":2},"
 				+ "{\"action\":\"siege\",\"day\":2,\"zombies\":8},"
-				+ "{\"action\":\"threats\",\"random_raids\":true,\"sieges\":false}"));
+				+ "{\"action\":\"threats\",\"random_raids\":true,\"sieges\":false},"
+				+ "{\"action\":\"build\",\"blueprint\":\"wall_segment\",\"from\":[0,0],\"to\":[9,0]}"));
 	}
 
 	@Test void typosNameTheField() {
@@ -57,5 +58,8 @@ class ActionSpecsTest {
 		bad("{\"action\":\"siege\",\"day\":1,\"zombies\":21}", "zombies");
 		bad("{\"action\":\"threats\",\"random_raids\":true}", "sieges");
 		bad("{\"action\":\"threats\",\"random_raids\":\"yes\",\"sieges\":true}", "random_raids");
+		bad("{\"action\":\"build\",\"from\":[0,0],\"to\":[9,0]}", "blueprint");
+		bad("{\"action\":\"build\",\"blueprint\":\"castle\",\"from\":[0,0],\"to\":[9,0]}", "unknown castle");
+		bad("{\"action\":\"build\",\"blueprint\":\"wall_segment\",\"from\":[0],\"to\":[9,0]}", "from");
 	}
 }

@@ -30,7 +30,7 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * The raid actions (M25 step 8): start a raid whose centre is in the claim, set the golem count, top the adult census up,
- * and set one job's level. {@code scaled: true} is accepted and does not add raiders; that scale is step 16.
+ * and set one job's level. {@code scaled: true} is accepted and does not add raiders. RaidScale extras belong to a random raid.
  */
 public final class RaidSim {
 	private RaidSim() {}
@@ -66,7 +66,7 @@ public final class RaidSim {
 			throw new IllegalStateException("raid centre " + center + " is outside the claim");
 		}
 		forceRing(level, center);
-		if (scaled) VillageHeart.LOG.info("[sim] raid scaled=true is accepted; RaidScale extras are step 16 and are not applied");
+		if (scaled) VillageHeart.LOG.info("[sim] raid scaled=true: a scripted raid does not add RaidScale extras; those belong to a random raid");
 		return raid;
 	}
 
