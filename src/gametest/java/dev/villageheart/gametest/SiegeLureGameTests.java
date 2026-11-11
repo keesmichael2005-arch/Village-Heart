@@ -374,8 +374,9 @@ public class SiegeLureGameTests {
 			t0[0] = h.getTick();
 		});
 		seq.thenWaitUntil(() -> {
-			h.assertTrue(maxDamage(h) == 0, "the trench let a hit through");
-			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit at the trench");
+			h.assertTrue(maxDamage(h) == 0, "the trench let a hit through, zombie " + at(h, zombie[0]) + " creeper " + at(h, creeper[0])
+					+ " lit " + creeper[0].isIgnited() + " tag " + creeper[0].getTags().contains(dev.villageheart.siege.CreeperBreachGoal.BREACHER));
+			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit at the trench " + at(h, creeper[0]));
 			BlockPos p = at(h, zombie[0]);
 			h.assertTrue(p.getZ() >= Z0 - 4, "has not reached the edge " + p);
 			h.assertTrue(h.getTick() - t0[0] >= 1800, "still at the trench");

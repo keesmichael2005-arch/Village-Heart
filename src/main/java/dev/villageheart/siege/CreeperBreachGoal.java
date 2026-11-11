@@ -100,6 +100,7 @@ public final class CreeperBreachGoal extends Goal {
 		HeartLocation heart = village.heart();
 		double fromHeart = distance(creeper.getX(), creeper.getY(), creeper.getZ(), heart);
 		DefenceCell best = null;
+		DefenceSite bestSite = null;
 		double bestD = Double.MAX_VALUE;
 		for (DefenceCell candidate : index.near(creeper.getBlockX(), creeper.getBlockY(), creeper.getBlockZ(), Balance.CREEPER_SEEK_RADIUS)) {
 			if (candidate.kind() != DefenceKind.STONE && candidate.kind() != DefenceKind.GATE) continue;
@@ -115,11 +116,12 @@ public final class CreeperBreachGoal extends Goal {
 			if (d < bestD) {
 				bestD = d;
 				best = candidate;
+				bestSite = site;
 			}
 		}
-		if (best == null) return false;
+		if (best == null || bestSite == null) return false;
 		BlockPos pos = new BlockPos(best.pos().x(), best.pos().y(), best.pos().z());
-		BlockPos beside = standBeside(level, index, pos, heart);
+		BlockPos beside = standBeside(level, index, pos, heart, bestSite.ground().y());
 		if (beside == null) return false;
 		cell = pos;
 		stand = beside;
@@ -128,14 +130,16 @@ public final class CreeperBreachGoal extends Goal {
 	}
 
 	/**
-	 * A floor cell next to the wall, on the outside (at least as far from the Heart as the wall). A trench has no such
-	 * floor, and a cell inside the ring is not a place to light.
+	 * A floor cell next to the wall, on the outside (at least as far from the Heart as the wall), with its feet on the
+	 * ground the wall was built on. The bottom of a trench is a floor too, but it is below that ground, so it is not a
+	 * place to light. A cell inside the ring is not either.
 	 */
-	private BlockPos standBeside(ServerLevel level, DefenceIndex index, BlockPos wall, HeartLocation heart) {
+	private BlockPos standBeside(ServerLevel level, DefenceIndex index, BlockPos wall, HeartLocation heart, int groundY) {
 		double wallHeart = distance(wall.getX() + 0.5, wall.getY(), wall.getZ() + 0.5, heart);
 		BlockPos best = null;
 		double bestD = Double.MAX_VALUE;
 		for (BlockPos n : new BlockPos[] {wall.north(), wall.south(), wall.east(), wall.west()}) {
+			if (n.getY() < groundY + 1) continue;
 			if (index.get(Pos.pack(n.getX(), n.getY(), n.getZ())) != null) continue;
 			if (distance(n.getX() + 0.5, n.getY(), n.getZ() + 0.5, heart) < wallHeart) continue;
 			if (!level.getBlockState(n).isAir() || !level.getBlockState(n.above()).isAir()) continue;
