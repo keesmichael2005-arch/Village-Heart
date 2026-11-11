@@ -653,10 +653,10 @@ public class FarmerGameTests {
 	private static String looseDescription(GameTestHelper h, net.minecraft.world.item.Item item, Villager v) {
 		StringBuilder sb = new StringBuilder("loose ").append(item).append(": ");
 		for (var e : h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(60.0))) {
-			if (e.getItem().is(item)) sb.append(e.getItem().getCount()).append(" at ").append(e.blockPosition().subtract(h.absolutePos(BlockPos.ZERO))).append(" age ").append(e.getAge())
+			if (e.getItem().is(item)) sb.append(e.getItem().getCount()).append(" at ").append(VillageTestSupport.rel(h, e.blockPosition())).append(" age ").append(e.getAge())
 					.append(" dist ").append(Math.round(e.distanceTo(v) * 10) / 10.0).append(" blacklisted ").append(FarmRuntime.get(h.getLevel().getServer()).itemBlacklisted(e.getUUID(), h.getLevel().getGameTime())).append("; ");
 		}
-		return sb.append("farmer at ").append(v.blockPosition().subtract(h.absolutePos(BlockPos.ZERO))).append(" [").append(inventory(v)).append("]").toString();
+		return sb.append("farmer at ").append(VillageTestSupport.rel(h, v.blockPosition())).append(" [").append(inventory(v)).append("]").toString();
 	}
 
 	// ---- T-L2-10 ---------------------------------------------------------------------------------

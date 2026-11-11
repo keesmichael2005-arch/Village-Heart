@@ -161,6 +161,18 @@ public final class VillageTestSupport {
 		}
 	}
 
+	/**
+	 * Test-relative block of a world position. {@code GameTestHelper.relativePos} is not the inverse of {@code absolutePos}:
+	 * it rotates by the test rotation plus 180°, so on an unrotated test a round trip lands on the mirrored cell.
+	 * This subtracts the origin. Our tests are never rotated; a rotated structure fails here.
+	 */
+	public static BlockPos rel(GameTestHelper h, BlockPos abs) {
+		BlockPos origin = h.absolutePos(BlockPos.ZERO);
+		BlockPos rel = abs.subtract(origin);
+		if (!h.absolutePos(rel).equals(abs)) throw new AssertionError("the test is rotated; positions cannot be mapped back: " + abs);
+		return rel;
+	}
+
 	public static int emeralds(GameTestHelper h, BlockPos relPos, double radius) {
 		int n = 0;
 		for (ItemEntity e : h.getEntities(EntityType.ITEM, relPos, radius)) {
