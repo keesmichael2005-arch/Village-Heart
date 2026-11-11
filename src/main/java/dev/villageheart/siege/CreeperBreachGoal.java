@@ -156,7 +156,7 @@ public final class CreeperBreachGoal extends Goal {
 	private void repath() {
 		repathAt = creeper.tickCount + Balance.LURE_REPATH_TICKS;
 		if (!(creeper.level() instanceof ServerLevel level) || stand == null) return;
-		if (!PathBudget.take(level.getServer())) {
+		if (!PathBudget.take(level.getServer(), creeper.getUUID())) {
 			repathAt = creeper.tickCount + 1;
 			return;
 		}

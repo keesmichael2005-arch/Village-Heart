@@ -124,7 +124,7 @@ public final class BreachGoal extends Goal {
 		int now = mob.tickCount;
 		if (now - lastPathTick < 40 && lastPathTick >= 0) return pathBlocked && pathClose;
 		MinecraftServer server = ((ServerLevel) mob.level()).getServer();
-		if (!PathBudget.take(server)) return false;
+		if (!PathBudget.take(server, mob.getUUID())) return false;
 		lastPathTick = now;
 		Path path = mob.getNavigation().createPath(goal, 1);
 		BlockPos through = path == null ? null : defenceOn(path);
@@ -225,7 +225,7 @@ public final class BreachGoal extends Goal {
 		int now = mob.tickCount;
 		if (now - lastTargetTick < 40 && lastTargetTick >= 0) return lastTargetReachable;
 		MinecraftServer server = ((ServerLevel) mob.level()).getServer();
-		if (!PathBudget.take(server)) return false;
+		if (!PathBudget.take(server, mob.getUUID())) return false;
 		lastTargetTick = now;
 		Path path = mob.getNavigation().createPath(target, 1);
 		lastTargetReachable = path != null && path.canReach() && defenceOn(path) == null;

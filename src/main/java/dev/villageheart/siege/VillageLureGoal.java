@@ -86,7 +86,7 @@ public final class VillageLureGoal extends Goal {
 			return true;
 		}
 		MinecraftServer server = level.getServer();
-		if (!PathBudget.take(server)) {
+		if (!PathBudget.take(server, mob.getUUID())) {
 			repathAt = mob.tickCount + 1;
 			return true;
 		}
