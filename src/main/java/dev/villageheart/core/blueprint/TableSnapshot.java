@@ -14,7 +14,7 @@ import java.util.UUID;
 public record TableSnapshot(Rank viewerRank, Tier tier, List<TableBlueprint> blueprints, List<TableBuild> builds) {
 	/** One page of the catalogue. The screen scrolls; the wire cap is high enough for the vanilla houses plus saved blueprints. */
 	public static final int MAX_BLUEPRINTS = 160;
-	public static final int MAX_MATERIALS = 20;
+	public static final int MAX_MATERIALS = 128;
 
 	public TableSnapshot {
 		Objects.requireNonNull(viewerRank, "viewerRank");
