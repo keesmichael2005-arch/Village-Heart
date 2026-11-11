@@ -594,6 +594,223 @@ public class SmithGameTests {
 		}).thenExecute(() -> VillageTestSupport.done(h));
 	}
 
+	// ---- T-L2-1b --------------------------------------------------------------------------------------
+
+	/** Population 4 cannot start a golem. A fourth pen villager lifts the cap and a build is saved. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_cap", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void golemCapHolds(GameTestHelper h) {
+		Villager[] smith = new Villager[1];
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			SmithTestSupport.pen(h, 3);
+			putStore(h, Items.IRON_INGOT, 50);
+			putStore(h, Items.CARVED_PUMPKIN, 2);
+			setDayTime(h, 1000);
+			smith[0] = hire(h);
+		}).thenWaitUntil(() -> h.assertTrue(SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()) == SmithDecision.Hint.NEEDS_VILLAGERS,
+				"hint " + SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()))
+		).thenExecuteFor(3000, () -> {
+			h.assertTrue(buildProgress(h) < 0, "a build was saved under the cap: " + buildProgress(h));
+			h.assertValueEqual(50L, count(h, Items.IRON_INGOT), "ingots");
+			h.assertTrue(SmithRuntime.hint(h.getLevel().getServer(), smith[0].getUUID()) == SmithDecision.Hint.NEEDS_VILLAGERS, "hint drifted");
+		}).thenExecute(() -> {
+			WorkerTestSupport.spawnVillager(h, new BlockPos(3, 1, 12));
+			log("fourth pen villager added");
+		}).thenExecuteFor(400, () -> { }).thenExecute(() -> {
+			h.assertTrue(buildProgress(h) >= 0, "no build within 400 ticks, progress " + buildProgress(h));
+			log("cap lifted, progress " + buildProgress(h));
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-1c --------------------------------------------------------------------------------------
+
+	/**
+	 * A golem that just appeared still counts. The next build waits for more villagers. The first phase runs the clock to dusk, so the
+	 * cap-lift check starts a fresh work period at day time 2000.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_golem_cap_counts", structure = YARD, skyAccess = true, maxTicks = 30000)
+	public void golemCapCountsFinishedGolem(GameTestHelper h) {
+		boolean[] spawned = {false};
+		int[] watch = {0};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			SmithTestSupport.pen(h, 4);
+			putStore(h, Items.IRON_INGOT, 72);
+			putStore(h, Items.CARVED_PUMPKIN, 2);
+			take(h, Items.IRON_INGOT, 36);
+			take(h, Items.CARVED_PUMPKIN, 1);
+			seedBuild(h, 7800);
+			setDayTime(h, 1000);
+			hire(h);
+			log("seeded golem build at 7800, iron " + count(h, Items.IRON_INGOT));
+		}).thenExecuteFor(10000, () -> {
+			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			int progress = buildProgress(h);
+			int golems = SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80);
+			if (!spawned[0] && golems >= 1) {
+				spawned[0] = true;
+				h.assertTrue(progress < 0, "the first build is still saved");
+				h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "iron after the first golem");
+			}
+			if (spawned[0] && watch[0] < 200) {
+				watch[0]++;
+				h.assertTrue(progress < 0, "a second build started in the stale window, progress " + progress);
+				h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "iron in the stale window");
+				h.assertValueEqual(1, golems, "golems in the stale window");
+			} else if (spawned[0] && day < 11000) {
+				h.assertTrue(progress < 0, "a second build started before dusk, progress " + progress);
+				h.assertValueEqual(36L, count(h, Items.IRON_INGOT), "iron before dusk");
+				h.assertValueEqual(1, golems, "golems before dusk");
+			}
+		}).thenExecute(() -> {
+			h.assertTrue(spawned[0], "the first golem never appeared");
+			h.assertTrue(watch[0] >= 200, "stale window was " + watch[0] + " ticks");
+			for (int i = 0; i < 5; i++) WorkerTestSupport.spawnVillager(h, new BlockPos(1 + (i % 3), 1, 14));
+			setDayTime(h, 2000);
+			log("population lifted, day reset to 2000");
+		}).thenExecuteFor(400, () -> { }).thenExecute(() -> {
+			h.assertTrue(buildProgress(h) >= 0, "no second build within 400 ticks, progress " + buildProgress(h));
+			log("second build progress " + buildProgress(h));
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-1d --------------------------------------------------------------------------------------
+
+	/** A build at 6000 in the late afternoon pauses at dusk and finishes the next morning. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_night", structure = YARD, skyAccess = true, maxTicks = 22000)
+	public void golemBuildPausesAtNight(GameTestHelper h) {
+		boolean[] night = {false};
+		boolean[] dawn = {false};
+		int[] frozen = {-1};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			SmithTestSupport.pen(h, 4);
+			seedBuild(h, 6000);
+			setDayTime(h, 9000);
+			hire(h);
+			log("night build seeded at 6000, day 9000");
+		}).thenExecuteFor(19000, () -> {
+			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+			int progress = buildProgress(h);
+			int golems = SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80);
+			if (day >= 11000 || (night[0] && day < 1000)) h.assertValueEqual(0, golems, "a golem appeared overnight");
+			if (!night[0] && day >= 11100 && day < 12000) {
+				night[0] = true;
+				frozen[0] = progress;
+				h.assertTrue(progress >= 0 && progress < 8000, "progress at dusk " + progress);
+				log("dusk progress " + progress);
+			}
+			if (night[0] && (day >= 11100 || day < 1000)) h.assertValueEqual(frozen[0], progress, "progress moved overnight");
+			if (night[0] && day >= 1000 && day < 11000) dawn[0] = true;
+		}).thenExecute(() -> {
+			h.assertTrue(night[0], "dusk was not sampled");
+			h.assertTrue(dawn[0], "the next morning was not sampled");
+			h.assertValueEqual(1, SmithTestSupport.golemsNear(h.getLevel(), h.absolutePos(BlockPos.ZERO), 80), "the golem after dawn");
+			h.assertTrue(buildProgress(h) < 0, "the build is still saved");
+			log("golem finished after dawn, dusk progress was " + frozen[0]);
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-2b --------------------------------------------------------------------------------------
+
+	/** With no ingots the golem stays away. Three ingots and it comes in to be repaired. */
+	@GameTest(environment = "villageheart-gametest:smith_golem_no_iron", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void golemWithoutIronWaits(GameTestHelper h) {
+		IronGolem[] golem = new IronGolem[1];
+		Villager[] smith = new Villager[1];
+		BlockPos[] spot = new BlockPos[1];
+		boolean[] sawWaiting = {false};
+		scene(h).thenExecute(() -> {
+			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
+			setDayTime(h, 2000);
+			smith[0] = hire(h);
+			var scan = SmithyLayout.scan(h.getLevel().getServer(), BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker())).orElseThrow();
+			spot[0] = SmithyLayout.waitSpot(h.getLevel(), scan).orElseThrow();
+			BlockPos origin = h.absolutePos(BlockPos.ZERO);
+			BlockPos at = spot[0].offset(16, 0, 0);
+			IronGolem g = h.spawn(EntityType.IRON_GOLEM, new BlockPos(at.getX() - origin.getX(), at.getY() - origin.getY(), at.getZ() - origin.getZ()));
+			g.setPlayerCreated(true);
+			g.setHealth(40f);
+			golem[0] = g;
+			log("no-iron golem at " + at + " spot " + spot[0]);
+		}).thenExecuteFor(1200, () -> {
+			double dist = golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0]));
+			h.assertTrue(dist > 6, "the golem came within 6 of the spot: " + dist);
+			h.assertTrue(golem[0].getHealth() <= 40.01f, "health moved without iron: " + golem[0].getHealth());
+		}).thenExecute(() -> putStore(h, Items.IRON_INGOT, 3)
+		).thenWaitUntil(() -> {
+			if (golem[0].getHealth() <= 40.01f && golem[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(spot[0])) <= 1.5)
+				sawWaiting[0] = true;
+			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
+		}).thenExecute(() -> {
+			long units = SmithRuntime.unitsOf(h.getLevel().getServer(), smith[0].getUUID()).stream().filter(u -> u.kind().equals("GOLEM_REPAIR")).count();
+			h.assertValueEqual(3L, units, "three repair ingots");
+			h.assertTrue(sawWaiting[0], "the golem waited at the spot before the first heal");
+			h.assertValueEqual(0, SmithTestSupport.ironTotal(h), "the three ingots were used");
+			h.assertTrue(golem[0].getHealth() > 90f, "health " + golem[0].getHealth());
+			log("no-iron golem repaired after the delivery");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	// ---- T-L2-7 ---------------------------------------------------------------------------------------
+
+	/** An iron sword in the Barracks chest is carried to the anvil and put back at damage 14. */
+	@GameTest(environment = "villageheart-gametest:smith_barracks_repair", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void repairsBarracksGear(GameTestHelper h) {
+		scene(h).thenExecute(() -> SmithTestSupport.addBarracks(h)).thenWaitUntil(() ->
+				BuildingTestSupport.assertStatus(h, SmithTestSupport.barracksMarker(), dev.villageheart.block.MarkerStatus.VALID)
+		).thenExecute(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.barracksChest()));
+			ItemStack sword = new ItemStack(Items.IRON_SWORD);
+			sword.setDamageValue(200);
+			chest.setItem(0, sword);
+			putStore(h, Items.IRON_INGOT, 4);
+			setDayTime(h, 1000);
+			hire(h);
+			log("barracks sword damage 200");
+		}).thenWaitUntil(() -> {
+			var chest = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(SmithTestSupport.barracksChest()));
+			ItemStack s = chest.getItem(0);
+			h.assertTrue(s.is(Items.IRON_SWORD) && s.getDamageValue() == 14, "barracks sword " + (s.isEmpty() ? "empty" : s.getDamageValue()));
+		}).thenExecute(() -> {
+			h.assertValueEqual(1L, count(h, Items.IRON_INGOT), "one ingot left");
+			log("barracks sword repaired to 14");
+			VillageTestSupport.done(h);
+		});
+	}
+
+	private static HeartLocation smithyAt(GameTestHelper h) {
+		return BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker());
+	}
+
+	private static int buildProgress(GameTestHelper h) {
+		return VillageClaims.current(h.getLevel().getServer()).map(v -> v.golemProgress(smithyAt(h))).orElse(-1);
+	}
+
+	private static void seedBuild(GameTestHelper h, int progress) {
+		VillageClaims.data(h.getLevel().getServer()).update(v -> v.withGolemBuild(smithyAt(h), progress));
+	}
+
+	private static void take(GameTestHelper h, net.minecraft.world.item.Item item, int n) {
+		int left = n;
+		for (BlockPos rel : new BlockPos[] {SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2()}) {
+			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+			for (int i = 0; i < box.getContainerSize() && left > 0; i++) {
+				ItemStack stack = box.getItem(i);
+				if (!stack.is(item) || !stack.getComponentsPatch().isEmpty()) continue;
+				int use = Math.min(left, stack.getCount());
+				stack.shrink(use);
+				left -= use;
+			}
+			box.setChanged();
+		}
+		h.assertValueEqual(0, left, "could not take " + n + " of " + item);
+	}
+
 	/** Storage, the smith's hands and one villager's worn slots. Cheap enough to sample every tick. */
 	private static int gearSeen(GameTestHelper h, Villager who, net.minecraft.world.item.Item item) {
 		int n = (int) count(h, item);

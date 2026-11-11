@@ -1092,7 +1092,8 @@ public final class SmithJob {
 			st.needsPlan = true;
 			return;
 		}
-		ItemStack stack = hit.slot() >= 0 && hit.slot() < c.getContainerSize() ? c.getItem(hit.slot()) : ItemStack.EMPTY;
+		ItemStack stack = st.repairReturn ? carriedDamaged(v, hit.job().itemId())
+				: hit.slot() >= 0 && hit.slot() < c.getContainerSize() ? c.getItem(hit.slot()) : ItemStack.EMPTY;
 		if (stack.isEmpty() || RepairRules.units(stack.getDamageValue(), stack.getMaxDamage()) < 1) {
 			finishRepair(level, v, st);
 			return;
@@ -1123,14 +1124,15 @@ public final class SmithJob {
 	}
 
 	private static void finishRepair(ServerLevel level, Villager v, SmithRuntime.State st) {
+		st.repairAcc = 0;
+		st.walk.release(v);
 		if (st.repairReturn && st.repairHit != null) {
-			// the piece was fetched: put it back on the next tick of FETCH_REPAIR
+			st.mode = SmithRuntime.Mode.FETCH_REPAIR;
+			return;
 		}
 		st.repairHit = null;
-		st.repairAcc = 0;
 		st.mode = st.repairQueue.isEmpty() ? SmithRuntime.Mode.IDLE : SmithRuntime.Mode.FETCH_REPAIR;
 		st.needsPlan = st.mode == SmithRuntime.Mode.IDLE;
-		st.walk.release(v);
 	}
 
 	private static void fetchRepairTick(ServerLevel level, Villager v, WorkerData data, SmithRuntime.State st, long now) {
@@ -1435,6 +1437,17 @@ public final class SmithJob {
 			left -= take;
 		}
 		return n - left;
+	}
+
+	/** A damaged piece the smith is carrying home to repair. Damage lives in the component patch, so {@link #count} skips it. */
+	private static ItemStack carriedDamaged(Villager v, String id) {
+		var item = SmithCatalog.item(id);
+		var inv = v.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack s = inv.getItem(i);
+			if (!s.isEmpty() && s.is(item) && s.isDamaged()) return s;
+		}
+		return ItemStack.EMPTY;
 	}
 
 	private static ItemStack takeStack(Villager v, String id) {
