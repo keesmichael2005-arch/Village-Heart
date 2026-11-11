@@ -12,6 +12,9 @@ import java.util.Set;
 import java.util.UUID;
 import dev.villageheart.core.blueprint.BuildJob;
 import dev.villageheart.core.defence.DefenceSite;
+import dev.villageheart.core.guard.GuardShift;
+import dev.villageheart.core.guard.Shift;
+import dev.villageheart.core.guard.ShiftBalancer;
 
 /**
  * Immutable snapshot of the one claimed village.
@@ -24,14 +27,22 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Map<UUID, Rank> ranks, List<KnownPlayer> known, int treasury, Tier tier,
 		List<BuildingRecord> buildings, List<WorkerRecord> workers, List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences,
 		List<dev.villageheart.core.gear.SelfCraft> selfCrafts, dev.villageheart.core.tier.TierProgress tierProgress,
-		Map<HeartLocation, Integer> smokerHeat) {
+		Map<HeartLocation, Integer> smokerHeat, Map<UUID, GuardShift> guardShifts) {
+
+	/** Without guard shifts (the shape before M18). */
+	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
+			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
+			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences, List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
+			dev.villageheart.core.tier.TierProgress tierProgress, Map<HeartLocation, Integer> smokerHeat) {
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, Map.of());
+	}
 
 	/** Without smoker heat (the shape before M13). */
 	public VillageState(HeartLocation heart, UUID owner, String ownerName, long claimedAtGameTime, Map<UUID, Rank> ranks,
 			List<KnownPlayer> known, int treasury, Tier tier, List<BuildingRecord> buildings, List<WorkerRecord> workers,
 			List<TreeTask> treeTasks, List<BuildJob> builds, List<DefenceSite> defences, List<dev.villageheart.core.gear.SelfCraft> selfCrafts,
 			dev.villageheart.core.tier.TierProgress tierProgress) {
-		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, Map.of());
+		this(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, Map.of(), Map.of());
 	}
 
 	/** Without tier progress (the shape before M14). */
@@ -97,6 +108,8 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 			if (e.getValue() == null || e.getValue() < 0) throw new IllegalArgumentException("smoker heat must be >= 0: " + e);
 		}
 		smokerHeat = Map.copyOf(smokerHeat);
+		Objects.requireNonNull(guardShifts, "guardShifts");
+		guardShifts = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(guardShifts));
 		selfCrafts = List.copyOf(selfCrafts);
 		Set<UUID> seenCrafters = new HashSet<>();
 		for (dev.villageheart.core.gear.SelfCraft c : selfCrafts) {
@@ -173,7 +186,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	private VillageState copy(UUID newOwner, String newOwnerName, Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown,
 			int newTreasury, Tier newTier, List<BuildingRecord> newBuildings, List<WorkerRecord> newWorkers) {
 		return new VillageState(heart, newOwner, newOwnerName, claimedAtGameTime, newRanks, newKnown, newTreasury, newTier,
-				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat);
+				newBuildings, newWorkers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
 	}
 
 	private VillageState withRanksAndKnown(Map<UUID, Rank> newRanks, List<KnownPlayer> newKnown) {
@@ -320,7 +333,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 
 	public VillageState withTierProgress(dev.villageheart.core.tier.TierProgress p) {
 		Objects.requireNonNull(p, "tierProgress");
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, p);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, p, smokerHeat, guardShifts);
 	}
 
 	public Optional<BuildingRecord> building(HeartLocation marker) {
@@ -355,7 +368,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(w, "worker");
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.add(w);
-		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, copy);
+		return withWorkersRebalanced(copy);
 	}
 
 	/** Remove the record of {@code villager}; a no-op when there is none. */
@@ -363,7 +376,57 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (worker(villager).isEmpty()) return this;
 		List<WorkerRecord> copy = new ArrayList<>(workers);
 		copy.removeIf(o -> o.villager().equals(villager));
-		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, copy);
+		return withWorkersRebalanced(copy);
+	}
+
+	// ---- guard shifts (M18) ----
+
+	/** The guards in hiring order (the list order of the records). */
+	public List<UUID> guardIds() {
+		return guardIds(workers);
+	}
+
+	/** The guards in hiring order with their mirror level and the given XP (0 when unknown): what {@link ShiftBalancer} ranks. */
+	private static List<ShiftBalancer.Guard> guardRank(List<WorkerRecord> records, Map<UUID, Integer> xp) {
+		List<ShiftBalancer.Guard> out = new ArrayList<>();
+		for (WorkerRecord w : records) {
+			if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) out.add(new ShiftBalancer.Guard(w.villager(), w.level(), xp.getOrDefault(w.villager(), 0)));
+		}
+		return out;
+	}
+
+	private static List<UUID> guardIds(List<WorkerRecord> records) {
+		List<UUID> out = new ArrayList<>();
+		for (WorkerRecord w : records) if (dev.villageheart.core.worker.JobType.GUARD.id().equals(w.jobId())) out.add(w.villager());
+		return out;
+	}
+
+	/** The shift of a guard (auto or pinned); empty for a villager that is no guard. */
+	public Optional<GuardShift> guardShift(UUID villager) { return Optional.ofNullable(guardShifts.get(villager)); }
+
+	private VillageState withWorkersRebalanced(List<WorkerRecord> next) {
+		Map<UUID, GuardShift> shifts = ShiftBalancer.assign(guardRank(next, java.util.Map.of()), guardShifts);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, next, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, shifts);
+	}
+
+	/** Pins a guard to a shift, or (empty) back to automatic keeping the side it is on; a no-op for a villager that is no guard. */
+	public VillageState withGuardPin(UUID villager, Optional<Shift> pin) {
+		GuardShift now = guardShifts.get(villager);
+		if (now == null) return this;
+		Map<UUID, GuardShift> next = new java.util.LinkedHashMap<>(guardShifts);
+		next.put(villager, pin.map(sh -> new GuardShift(sh, true)).orElse(new GuardShift(now.shift(), false)));
+		return withGuardShifts(ShiftBalancer.assign(guardRank(workers, java.util.Map.of()), next));
+	}
+
+	/** Re-ranks the guards with their XP (the state mirrors levels only): seniors take the nights. Returns {@code this} when nothing moves. */
+	public VillageState withGuardSeniority(Map<UUID, Integer> xp) {
+		Map<UUID, GuardShift> next = ShiftBalancer.assign(guardRank(workers, xp), guardShifts);
+		return next.equals(guardShifts) ? this : withGuardShifts(next);
+	}
+
+	/** Replaces the shift map as given (the codec rebalances on load). */
+	public VillageState withGuardShifts(Map<UUID, GuardShift> next) {
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, smokerHeat, next);
 	}
 
 	public List<WorkerRecord> workersAt(HeartLocation building) {
@@ -377,7 +440,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		Objects.requireNonNull(t, "task");
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.add(t);
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
 	}
 
 	/** Remove the task whose first base cell is {@code key}; a no-op when there is none. */
@@ -385,7 +448,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		if (treeTask(key).isEmpty()) return this;
 		List<TreeTask> next = new ArrayList<>(treeTasks);
 		next.removeIf(t -> t.key().equals(key));
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, next, builds, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
 	}
 
 	public Optional<TreeTask> treeTask(HeartLocation key) {
@@ -428,7 +491,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withBuilds(List<BuildJob> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress, smokerHeat);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, next, defences, selfCrafts, tierProgress, smokerHeat, guardShifts);
 	}
 
 	// ---- defence sites (M21) ----
@@ -456,7 +519,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withDefences(List<DefenceSite> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress, smokerHeat);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, next, selfCrafts, tierProgress, smokerHeat, guardShifts);
 	}
 
 	// ---- self-made tools (M19a) --------------------------------------------------------------------------------------------
@@ -481,7 +544,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withSelfCrafts(List<dev.villageheart.core.gear.SelfCraft> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress, smokerHeat);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, next, tierProgress, smokerHeat, guardShifts);
 	}
 
 	// ---- smoker heat (M13) ----
@@ -507,7 +570,7 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 	}
 
 	private VillageState withSmokerHeat(Map<HeartLocation, Integer> next) {
-		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, next);
+		return new VillageState(heart, owner, ownerName, claimedAtGameTime, ranks, known, treasury, tier, buildings, workers, treeTasks, builds, defences, selfCrafts, tierProgress, next, guardShifts);
 	}
 
 	public boolean isHeartAt(HeartLocation loc) {

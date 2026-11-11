@@ -7,6 +7,8 @@ import com.mojang.datafixers.util.Pair;
 import dev.villageheart.VillageHeart;
 import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
+import dev.villageheart.core.worker.JobType;
+import dev.villageheart.core.worker.WorkerData;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -69,17 +71,26 @@ public final class WorkerBrain {
 			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "go_home"), new Activity("go_home"));
 
 	/** Brains installed by {@link #install}, so the worker system can notice a worker running a vanilla brain. */
-	private static final Set<Brain<?>> INSTALLED = Collections.newSetFromMap(new WeakHashMap<>());
+	private static final java.util.Map<Brain<?>, JobType> INSTALLED = new WeakHashMap<>();
 
 	private WorkerBrain() {}
 
 	/** Touch the class during mod init so the activity is registered before any brain is built. */
 	public static void register() {}
 
+	/** True when the villager's brain was built by {@link #install} for the job it has now (a guard brain and a farmer brain differ). */
 	public static boolean isWorkerBrain(Villager v) {
+		JobType built;
 		synchronized (INSTALLED) {
-			return INSTALLED.contains(v.getBrain());
+			built = INSTALLED.get(v.getBrain());
 		}
+		return built != null && built == WorkerAttachments.get(v).map(WorkerData::job).orElse(null);
+	}
+
+	/** The activity this worker should be in now: a guard follows its shift (M18), every other job the day shape. */
+	public static Activity activityFor(Villager v, ServerLevel level) {
+		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
+		return activityFor(level.getDayTime());
 	}
 
 	/** The activity a worker should be in at this day time. */
@@ -99,11 +110,11 @@ public final class WorkerBrain {
 		return state.is(BlockTags.BEDS) && !state.getValue(BedBlock.OCCUPIED);
 	}
 
-	private static Pair<Integer, BehaviorControl<? super Villager>> p(int priority, BehaviorControl<? super Villager> b) {
+	public static Pair<Integer, BehaviorControl<? super Villager>> p(int priority, BehaviorControl<? super Villager> b) {
 		return Pair.of(priority, b);
 	}
 
-	private static Pair<Integer, BehaviorControl<? super Villager>> look() {
+	public static Pair<Integer, BehaviorControl<? super Villager>> look() {
 		return p(5, new RunOne<>(ImmutableList.of(
 				Pair.of(SetEntityLookTarget.create(EntityType.VILLAGER, 8.0F), 2),
 				Pair.of(SetEntityLookTarget.create(EntityType.PLAYER, 8.0F), 2),
@@ -111,10 +122,19 @@ public final class WorkerBrain {
 	}
 
 	public static void install(Villager villager, Brain<Villager> brain) {
+		JobType job = WorkerAttachments.get(villager).map(WorkerData::job).orElse(null);
+		if (job == JobType.GUARD) {
+			dev.villageheart.worker.guard.GuardBrain.install(villager, brain);
+			synchronized (INSTALLED) {
+				INSTALLED.put(brain, job);
+			}
+			return;
+		}
 		Holder<VillagerProfession> profession = villager.getVillagerData().profession();
 		brain.addActivity(Activity.CORE, ImmutableList.of(
 				p(0, new Swim<>(0.8F)),
 				p(0, InteractWithDoor.create()),
+				p(0, new dev.villageheart.defence.GateTraffic()),
 				p(0, new LookAtTargetSink(45, 90)),
 				p(0, new VillagerPanicTrigger()),
 				p(0, WakeUp.create()),
@@ -168,7 +188,7 @@ public final class WorkerBrain {
 		brain.setDefaultActivity(Activity.IDLE);
 		brain.setActiveActivityIfPossible(activityFor(villager.level().getDayTime()));
 		synchronized (INSTALLED) {
-			INSTALLED.add(brain);
+			INSTALLED.put(brain, job);
 		}
 	}
 

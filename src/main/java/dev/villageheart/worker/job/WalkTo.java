@@ -180,7 +180,7 @@ public final class WalkTo {
 			return State.ARRIVED;
 		}
 		settled = null;
-		if (d <= reach + 0.1) {
+		if (d <= reach) { // never beyond: callers test "d <= reach" themselves before they work, a tolerance outside it left workers frozen
 			start = now;
 			anchorAt = now;
 			anchor = null;

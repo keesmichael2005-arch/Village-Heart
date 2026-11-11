@@ -1234,6 +1234,47 @@ public class WorkerGameTests {
 		});
 	}
 
+	/**
+	 * The reach dead band: {@code WalkTo} used to report ARRIVED up to 0.1 block beyond the reach it was given, while every job works only
+	 * within the reach itself, so a worker 0.05 beyond it stood frozen for the whole day (the "progress after the evening: 4003.0" flake).
+	 * Every job walks through {@code WalkTo}, so this covers all callers: for the reaches they use (chest 2.0, job block 1.5, walk-in 3.0;
+	 * item pickups ask 0.8 but take by their own COLLECT_TAKE distance and ignore ARRIVED) a villager placed reach + 0.05 from the target is not "arrived" and walks until it is within the reach.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_walkto_band", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void walkToNeverArrivesBeyondItsReach(GameTestHelper h) {
+		begin(h);
+		double[] reaches = {1.5, 2.0, 3.0};
+		Villager v = spawnVillager(h, new BlockPos(10, 0, 10));
+		dev.villageheart.worker.job.WalkTo walk = new dev.villageheart.worker.job.WalkTo();
+		BlockPos target = h.absolutePos(new BlockPos(16, 0, 16));
+		GameTestSequence seq = h.startSequence().thenIdle(2);
+		for (double reach : reaches) {
+			seq = seq.thenExecute(() -> {
+				v.setNoAi(false);
+				v.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+				net.minecraft.world.phys.Vec3 c = net.minecraft.world.phys.Vec3.atBottomCenterOf(target);
+				v.setPos(c.x - (reach + 0.05), c.y, c.z);
+				v.getNavigation().stop();
+				walk.release(v);
+				walk.begin(target, reach, h.getLevel().getGameTime());
+				double d = dev.villageheart.worker.job.WalkTo.distance(v, target);
+				h.assertTrue(d > reach, "placed beyond the reach " + reach + ": " + d);
+				var st = walk.tick(v, h.getLevel().getGameTime());
+				h.assertTrue(st != dev.villageheart.worker.job.WalkTo.State.ARRIVED, "not arrived at " + d + " with reach " + reach + ": " + st);
+			});
+			seq = seq.thenWaitUntil(() -> {
+				var st = walk.tick(v, h.getLevel().getGameTime());
+				double d = dev.villageheart.worker.job.WalkTo.distance(v, target);
+				h.assertTrue(st == dev.villageheart.worker.job.WalkTo.State.ARRIVED && d <= reach, "walking to reach " + reach + ": " + st + " at " + d);
+			});
+		}
+		seq.thenExecute(() -> {
+			v.discard();
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
 	private static boolean poiHasSpaceAbs(GameTestHelper h, BlockPos abs) {
 		return h.getLevel().getPoiManager().getInSquare(t -> true, abs, 0, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.HAS_SPACE)
 				.anyMatch(r -> r.getPos().equals(abs));

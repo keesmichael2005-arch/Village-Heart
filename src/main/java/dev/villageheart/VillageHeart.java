@@ -21,6 +21,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.worker.WorkerAttachments.register();
 		dev.villageheart.food.DietAttachments.register();
 		dev.villageheart.worker.WorkerBrain.register();
+		dev.villageheart.worker.guard.Guards.register();
 		dev.villageheart.worker.WorkerCommands.register();
 		dev.villageheart.market.MarketCommands.register();
 		dev.villageheart.room.RoomCells.register();
@@ -50,6 +51,8 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.tier.Tiers.register();
 		dev.villageheart.growth.Growth.register(); // M23: after the tiers' dawn listener, and after the needs system
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:guards", dev.villageheart.worker.guard.GuardSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:gates", dev.villageheart.defence.GateKeeper.INSTANCE);
 		LOG.info("Village Heart loaded");
 	}
 }

@@ -113,6 +113,20 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_tool.bow_or_sword", "Needs bow or sword");
 		EN.put(PREFIX + "activity.too_hungry", "Too hungry to work");
 		EN.put(PREFIX + "activity.on_strike", "On strike");
+		// M18: guards
+		EN.put(PREFIX + "activity.patrolling", "Patrolling");
+		EN.put(PREFIX + "activity.fighting", "Fighting");
+		EN.put(PREFIX + "activity.equipping", "Fetching gear");
+		EN.put(PREFIX + "activity.training", "Training");
+		EN.put(PREFIX + "activity.wounded", "Wounded, resting");
+		EN.put(PREFIX + "shift.day_auto", "Day shift (auto)");
+		EN.put(PREFIX + "shift.night_auto", "Night shift (auto)");
+		EN.put(PREFIX + "shift.day_pinned", "Day shift");
+		EN.put(PREFIX + "shift.night_pinned", "Night shift");
+		EN.put(PREFIX + "shift.button", "Shift: %s");
+		EN.put(PREFIX + "shift.choice.0", "Auto");
+		EN.put(PREFIX + "shift.choice.1", "Day");
+		EN.put(PREFIX + "shift.choice.2", "Night");
 		// M19a: a worker making its own tool, and why it cannot
 		EN.put(PREFIX + "activity.making_wooden_tool", "Making a wooden tool");
 		EN.put(PREFIX + "activity.making_wooden_tool.axe", "Making a wooden axe");

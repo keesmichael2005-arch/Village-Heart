@@ -11,8 +11,8 @@ import net.minecraft.world.entity.npc.villager.Villager;
  * (not in PANIC, raid or hide, which must not be interrupted). Checks every 20 ticks (spread by entity id). Also corrects the drop to IDLE
  * that vanilla's calm-down / raid-end code causes by asking a schedule-less brain for its schedule activity.
  */
-final class UpdateWorkerActivity extends Behavior<Villager> {
-	UpdateWorkerActivity() {
+public final class UpdateWorkerActivity extends Behavior<Villager> {
+	public UpdateWorkerActivity() {
 		super(ImmutableMap.of(), 1);
 	}
 
@@ -20,14 +20,14 @@ final class UpdateWorkerActivity extends Behavior<Villager> {
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
 		if ((level.getGameTime() + villager.getId()) % 20 != 0) return false;
 		try (var t = VillageTicker.section()) {
-			return !villager.getBrain().isActive(WorkerBrain.activityFor(level.getDayTime()));
+			return !villager.getBrain().isActive(WorkerBrain.activityFor(villager, level));
 		}
 	}
 
 	@Override
 	protected void start(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
-			villager.getBrain().setActiveActivityIfPossible(WorkerBrain.activityFor(level.getDayTime()));
+			villager.getBrain().setActiveActivityIfPossible(WorkerBrain.activityFor(villager, level));
 		}
 	}
 }

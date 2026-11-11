@@ -52,6 +52,10 @@ final class BuildingJobSites implements JobSiteSource {
 			RoomScan scan = b.latestScan().get();
 			String dim = b.level().dimension().identifier().toString();
 			for (String key : keys) for (Pos p : scan.positions(key)) out.add(at(dim, p));
+			// the beds of a Barracks are held too (M18 3.5): vanilla AcquirePoi(HOME) never gives a guard's bed to an ordinary villager
+			if (b.type() == dev.villageheart.core.building.BuildingType.BARRACKS) {
+				for (Pos p : scan.positions(dev.villageheart.core.room.RoomContents.BED)) out.add(at(dim, p));
+			}
 		}
 		return new ArrayList<>(out);
 	}

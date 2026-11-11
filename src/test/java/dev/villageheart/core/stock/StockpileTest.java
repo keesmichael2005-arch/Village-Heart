@@ -224,4 +224,28 @@ class StockpileTest {
 		assertEquals(0, r.reserved("plank"));
 		assertEquals(10, s.available("plank", null));
 	}
+
+	// ---- M18 / M13: nearestHolding(key, holder) and withdrawAt ----
+
+	@Test void nearestHoldingByKeyHonoursOthersReservations() {
+		java.util.UUID guard = new java.util.UUID(0, 1), other = new java.util.UUID(0, 2);
+		Reservations<String> r = new Reservations<>();
+		FakeInventory near = new FakeInventory().set(0, "plank", 1), far = new FakeInventory().set(0, "iron_chest", 1);
+		Stockpile<String> s = new Stockpile<>(List.of(site(1, 1, near), site(2, 9, far)), r);
+		assertEquals(new Pos(9, 0, 0), s.nearestHolding(ORIGIN, "iron_chest", guard).orElseThrow().anchor());
+		assertTrue(s.nearestHolding(ORIGIN, "missing", guard).isEmpty());
+		r.set(other, "iron_chest", 1);
+		assertTrue(s.nearestHolding(ORIGIN, "iron_chest", guard).isEmpty(), "reserved by another holder");
+		r.set(guard, "iron_chest", 1);
+		r.release(other);
+		assertTrue(s.nearestHolding(ORIGIN, "iron_chest", guard).isPresent(), "reserved by me");
+	}
+
+	@Test void withdrawFromTakesFromThatSiteOnly() {
+		FakeInventory a = new FakeInventory().set(0, "x", 5), b = new FakeInventory().set(0, "x", 5);
+		Stockpile<String> s = new Stockpile<>(List.of(site(1, 1, a), site(2, 9, b)));
+		assertEquals(3, s.withdrawFrom(s.sites().get(1), "x", 3, null));
+		assertEquals(5, a.total("x"));
+		assertEquals(2, b.total("x"));
+	}
 }

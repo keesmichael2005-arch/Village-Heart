@@ -366,6 +366,38 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **Text args:** `TextLine` keeps at most 2 args (`HeartLimits.MAX_TEXT_ARGS`); a lang text with three `%s` shows as the raw format string on the client (the L4 picture caught it).
 
 
+## Guard tests (M18+)
+- `GuardGameTests` (helpers `GuardTestSupport`: `scene(h, guards)` = claim + tier Village + a valid Barracks with that many grindstones and beds;
+  `hireGuard(h, spawn, pin)`; recorders for damage and villager deaths; `zombie(h, rel)` = an adult that does not burn) and `GateGameTests`. Each test
+  has its own environment `villageheart-gametest:guards_<name>` / `gates_<name>` (natural spawning off, so no mob joins a test that did not spawn it)
+  and the `yard` structure. Filter ids: `villageheart-gametest:guard_game_tests_<method_snake>`, `villageheart-gametest:gate_game_tests_<method_snake>`.
+- **Qualified or trainee**: `hireGuard` hires through the real path and then clears the training day (so the shift tests are about shifts); `hireTrainee`
+  keeps it (the night-hire rule is switched off for the call by `Workers.nightGuardHireForTests`).
+- **Level 3 guards in fights**: a test fight uses `level3` (40 health, +2 damage) so it is survivable; zombies are helmeted (no sun burn). A level 1 guard
+  has 20 health, a wooden sword and no armour (`guardBeatsOneZombie` is the duel: the guard must WIN, the zombie dead within 400 ticks, with no health bound. Owner decision 2026-11-11: a wooden sword takes 5 hits at vanilla damage 4.0 and the zombie lands 5 or 6 hits of 3.0 meanwhile, so the health left varies from 2 to 20. "At least 50 % with a better sword" stays a BACKLOG idea, not a test).
+- **Rules added by the M18 round-1 and -3 reviews** (each has a GameTest and, where it is pure, an L1 test): `alarmWakesSleepingGuardsAndTheyReturn`,
+  `guardSwitchesToTheMobThatHurtsIt`, `barracksBedEvictsHiredWorker`, `brokenGrindstoneKeepsTheGuardOnDuty`, `guardBrainHasNoPanic` (the control villager is
+  penned so it cannot stroll out of the zombie's range), `newGuardTrainsOneDayThenWorksTheNight`, `traineeSparsAtTheYardAndGainsXp`,
+  `guardEatsItsRationToHeal`, `noFoodNoHealingNotEvenInBed`, `offDutyGuardRefillsFromStorageAndHeals`, `guardDeathWakesTheOffDutyGuards`,
+  `noGuardIsHiredAtNight`, `seniorGuardsTakeTheNights`, `hurtGuardFallsBackEatsAndRejoins`, `alarmResetsAndKeepsItsDimension`,
+  `fireAndRehireIsNoFreeHeal`. L1: `ShiftBalancerTest`, `GuardRationTest` (ration, heal, training, night hire), `GuardScheduleTest`, `GuardPerksTest`.
+- **Gate tests are mutation-checked**: `mobsStillCannotPassTheGate` asks for the cell `(16,0,15)` at accuracy 0, which an unhired villager reaches when
+  `GatePaths.isHired` is mutated to "any adult villager" (the earlier target `(15,0,16)` at accuracy 1 never reached, so that mutation stayed green).
+- **Trace**: `-Dvillageheart.guard.trace=true` logs every target, hit and drop of a guard (`[guard] ...`).
+- **Gate scene** (`GateGameTests.ring`): a 31 x 18 cobblestone ring south of the camp with a three-wide gate of closed oak fence gates; the oak is more
+  than 8 blocks from any spot outside the wall (the lumberjack chops from the nearest reachable spot within 8, so a smaller ring proves nothing).
+  `insideRing` compares in world coordinates (structures may be rotated).
+- **Layer 4**: `GuardClientTests` (`guard_on_duty.png`: a day guard holding an iron sword and a night guard asleep, the client-side main hand and pose
+  are asserted; `heart_villagers_guards.png`: the Villagers tab with a Shift button that is clicked once). `-Dvillageheart.l4.only=guards` runs just these.
+- **Layer 3**: `scripts/simulate.sh defended` (the starter village + a Barracks with two guards + a Training Yard + 27 scripted zombies). New actions
+  `tier`, `training_yard`, `night_spawn`; `prefab` words `grindstone` and `target`; two `hire ... replace` actions keep two guards on the roll.
+  `scripts/simulate.sh defended_walled` is the realistic twin: the same village and assertions, plus `wall_ring` (a two-high cobblestone wall on the
+  edge of the site with ONE oak fence gate that workers and guards open), `lamps` (fence posts with torches every 7 blocks) and the zombies placed
+  `outside` the wall (`night_spawn` field). `defended` stays the harsh case (wooden kit, no walls). Both run unseeded 5 times for a verdict (the result
+  varies run to run). New actions have `ActionSpecs` field checks and `DefendedScenarioTest` entries.
+  The re-hire hook waits for the morning (no guard is hired at night). Per-day numbers worth reading: `deaths.mobs`, `work.guard.kills`, `duty_samples`,
+  `employed`, `ration_items`/`ration_points`/`food_eaten` (food the guards took and ate), `retreats`, `guards_night`/`guards_day` (the shift counts).
+
 ## Tier tests (M14+)
 `TierGameTests` (helpers in `TierTestSupport`): one yard with a Farmhouse (3 composters), a Storage with bread, a Kitchen, a Builder's Hut (a Village building, the "red until the tier-up" control) and six villagers; three of them hired as farmers. Seed the progress (`seedProgress`: a written history, the L1 tests prove the counting) and cross one real dinner (`toDinner`: forward only, waits for M11's record) and one real dawn (`toDawn` = `WageTestSupport.toDawn`). Dinner is switched on with `NeedsOverride.dinnerEnabled = true` (needs stay forced). Note that `nextDinner` jumps over a midnight, so a dawn already runs at the start of `toDinner`. `DawnProbe` is a `test:` dawn listener registered after M14's: it records the tier and `BuildingSystem.priorityQueuedForTests` inside the dawn tick, which proves `Buildings.requestAll` ran (a timing bound cannot: the round-robin might get there by luck). `WageTestSupport.done(h)` drops it.
 
@@ -401,3 +433,25 @@ Villager AI is not seeded, so runs differ (a night-one zombie attack can kill vi
 - **`breedingAbortProbe` / `breedingAbortProbeLicensed`** (`GrowthProbeGameTests`) are the 100-run measurement of vanilla's breeding abort. They pass at once unless `-Dvillageheart.probe=true` (and print `[probe]` lines): `JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Dvillageheart.probe=true -Dvillageheart.breed.trace=true -Dfabric-api.gametest.filter=villageheart-gametest:growth_probe_game_tests_breeding_abort_probe" ./gradlew --no-daemon runGameTest` (and `..._probe_licensed`). Each villager needs a home bed (or all of them take the spare beds) and the spare beds must outnumber the babies. Results in docs/plans/M23.md section 8.
 - **L1:** `core/growth/*Test` (rules, windows, licence state machine), `world/GrowthCodecsTest`.
 
+## Flake root causes (2026-11-09) and the rules they gave
+- **Layer 4: the world-load timeout.** Fabric's `ClientGameTestImpl.waitForWorldLoad` (every `worldBuilder().create()`) polls "a level exists and the loading screen is gone" for
+  1200 client ticks (`TICKS_PER_MINUTE`), then throws `Timeout loading world`. The signal is the right one, the bound is a tick count for wall-clock work (the integrated server
+  prepares its spawn area on worker threads; at load 10+ it sat at "Preparing spawn area: 16%" for 2 min). No API or system property changes it, so the gametest-only client mixin
+  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. A world that never loads still fails. It logs
+  `WORLD_LOAD_TIMEOUT_FIX installed`; `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
+- **Tick budgets and async work.** A GameTest server ticks as fast as it can, so 2200 ticks are a few seconds. Anything that completes on another thread (chunk generation and
+  promotion to entity-ticking, lighting) can take far more ticks than that under load. `forcedChunkGrowsWithoutPlayer` waited 454 ticks for a forced far chunk to start ticking
+  in a full run (7-15 alone) and timed out at 2200 under load. It now generates the chunk and its ring synchronously (`getChunk(..., FULL, true)`) before forcing it: ticking starts in 1 tick.
+- **Own the world's random state.** Random ticks (default 3) grow replanted saplings: `ironAxeOutFellsStoneSideBySide` counted felled logs only inside the original groves, a regrown tree
+  put logs outside them and the axes wore for logs the sampler never saw ("axe wear 115 but 114 logs felled"; reproduced at random_tick_speed 300). Its environment now sets `random_tick_speed` 0
+  and the test asserts it. A test that counts world changes must not leave world generation or growth running.
+- **Own the clock before switching on a clock-driven system.** The day time is whatever earlier tests left and it advances. `villageGoalsTierUpAtDawn` enabled dinner a few dozen ticks before 11000
+  and the village served a natural dinner on top of the forced one ("Expected one dinner to be 1: was 2"; reproduced by starting at 10970). `TierTestSupport.pinClockEarlyInDay` sets
+  1000 and counts today's dinner as served; use it before `NeedsOverride.dinnerEnabled = true`. Not a double count in the game: the second dinner was a real, different one.
+- **A walk that "arrives" must arrive where the work starts.** `WalkTo` returned ARRIVED up to 0.1 block beyond the reach it was given, while every job works only within the reach itself,
+  so a worker 1.5-1.6 blocks from its job block neither walked nor worked, for the rest of the day (a push from the other miner puts it there): `craftPausesOvernightAndSurvivesReload`
+  "progress after the evening: 4003.0". Root fix in `WalkTo`: ARRIVED only when `distance <= reach` (the tolerance is gone; the `-0.2` workaround in `SelfCraftJob` is gone too).
+  Tests: `craftWorksFromJustOutsideTheReach` (1.55 from the job block; progress 4003.0 without the fix) and `WorkerGameTests.walkToNeverArrivesBeyondItsReach` (reach + 0.05 for the reaches 1.5, 2.0, 3.0:
+  not arrived, then walks inside). Every caller (miner, hunter, lumberjack, farmer, builder, cook, deposit trip, self-craft) walks through `WalkTo`, so that test covers them by construction; the full L2 suite is green
+  with the strict rule. Item pickups pass 0.8, which a villager never reaches (it stops at about 0.85): they take by their own `COLLECT_TAKE` distance and ignore ARRIVED, so they are unaffected.
+- A failing `craftPausesOvernight...` prints a 25-tick trace of the worker (position, decision, progress) in its message; a failing side-by-side run lists the ticks where logs and wear disagree.

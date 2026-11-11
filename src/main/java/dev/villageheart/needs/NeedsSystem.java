@@ -89,6 +89,7 @@ public final class NeedsSystem implements VillageSystem {
 			if (v == null || v.isSleeping() || v.level() != level) continue;
 			WorkerData data = v.getAttached(WorkerAttachments.WORKER);
 			if (data == null || Housing.housed(server, v, Optional.of(data.building()))) continue;
+			if (dev.villageheart.core.worker.JobType.GUARD.id().equals(rec.jobId())) continue; // a guard's bed is assigned by GuardBedSystem (M18)
 			if (census == null) census = VillageCensus.of(server, village);
 			Map<Long, Villager> holders = holders(census, level);
 			PoiManager poi = level.getPoiManager();
