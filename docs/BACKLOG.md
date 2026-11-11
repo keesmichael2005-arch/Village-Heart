@@ -355,3 +355,7 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] A zombie outside the wall but inside the claim keeps the alarm up all night (r2 note).
 - [ ] The `SERVER_STOPPING`/`SERVER_STARTING` listeners of `GuardAlarm` have no GameTest (only `reset()` does).
 - [ ] Duel intent: with a better sword than wood (stone or iron) a level-1 guard should beat one zombie with at least 50 % of its max health; add a test when guards get better swords by default.
+## Post-v1 idea (human, 2026-11-10): guard roles for big "castle" villages
+- With 20+ guards per shift, guards need roles, not one shared patrol loop: **gate guards** (stand at a gate post), **wall/tower posts** (stand on a Watchtower or wall walk), **inside rovers**, and **patrol routes the player sets** (e.g. a Patrol Marker item placed in order, or a route on the Heart screen). Possibly squads with a leader.
+- v1 keeps M18 as built: every on-duty guard walks the shared loop (Heart, door points, Lamp Posts, Watchtowers) and the alarm gathers them.
+- Note (human): the start should be hard and the player should help defend; players often sleep through nights, so sieges/raids (M25) matter for the daytime threat.
