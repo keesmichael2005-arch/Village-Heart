@@ -327,6 +327,7 @@ public class SiegeGameTests {
 			h.assertTrue(!doorRunning(vindicator[0]), "not the wooden-door goal");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the vindicator walks through the gate", () -> {
+			if (!h.getBlockState(attackCell()).isAir()) holdAtWall(h, vindicator[0]);
 			int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 			if (d == 4) saw[0] = 4;
 			h.assertTrue(saw[0] == 4, "the gate was hit for 4");
@@ -383,7 +384,7 @@ public class SiegeGameTests {
 	}
 
 	private static void inside(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, int hit) {
-		if (!h.getBlockState(attackCell()).isAir()) holdAtWall(h, mob);
+		if (!holeOpen(h)) holdAtWall(h, mob);
 		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 		if (d == hit) saw[0] = hit;
 		h.assertTrue(saw[0] == hit, "the first hit was " + hit + ", saw " + saw[0] + where(h, mob));
@@ -415,6 +416,13 @@ public class SiegeGameTests {
 	private static final int ATTACK_X = 1, ATTACK_Z = RING_Z0;
 
 	private static BlockPos attackCell() { return rel(ATTACK_X, 0, ATTACK_Z); }
+
+	private static boolean holeOpen(GameTestHelper h) {
+		for (int x = ATTACK_X; x <= ATTACK_X + 1; x++) for (int y = 0; y <= 2; y++) {
+			if (!h.getBlockState(rel(x, y, ATTACK_Z)).isAir()) return false;
+		}
+		return true;
+	}
 
 	private static BlockPos mobSpot() { return rel(ATTACK_X, 0, ATTACK_Z - 1); }
 
