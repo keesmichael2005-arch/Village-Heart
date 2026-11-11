@@ -904,11 +904,12 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - `ThreatState` is saved as `threats` after `guard_shifts`. The raid records are the plan's shape and nothing fills them yet (track A owns the tracker). A bad damage array or a bad raid drops that value, keeps the village, and warns once. 5000 damage entries on disk keep 4096, breaches first.
 - A finished wall or gate is recorded with its length and the cells the build placed. It has no patrol point and no key block, so a missing block does not drop it. The site cap is 128. `DefenceClientTests` now expects 6 sites for the walled section (wall, gate, wall, two lamps, tower). The screenshots are the same pictures; they get a look when the full verify runs.
 - Tests: T-L1-13 `VillageCodecsTest`, T-L1-14 `DefencesRecordedTest`, T-L2-13 `SiegeGameTests.wallIsRecorded`. The two village-state sweeps that reflect over `with*` now include `withThreats`.
-- `scripts/verify.sh --fast` before the sweep fix: L1 red on those two sweeps; the dedicated GameTest run passed 386/386. One GameTest inside `build` (`gate_game_tests_mobs_still_cannot_pass_the_gate`) failed once while unit tests ran beside it, and passed in the dedicated run. Not changed. Fast verify after the fix: see the next line once it is green.
+- `scripts/verify.sh --fast` before the sweep fix: L1 red on those two sweeps; the dedicated GameTest run passed 386/386. One GameTest inside `build` (`gate_game_tests_mobs_still_cannot_pass_the_gate`) failed once while unit tests ran beside it, and passed in the dedicated run. Not changed. Fast verify after the fix, at `4af3ef4`: exit 0 (L1 green, L2 386/386, perf green).
 - Deviations: docs/plans/M25.md section 8. Next: step 10, the pure siege rules.
 
-## 2026-11-11: M25 track B step 10 (siege rules, in progress)
-- Pure rules are in, with the L1 tests named for step 10 (T-L1-15 through T-L1-22, T-L1-25, T-L1-26, T-L1-27) and the text half of T-L1-23. Not run yet: the step-9 fast verify was still in `runGameTest` when these files were written, and two Gradle jobs are not run together.
+## 2026-11-11: M25 track B step 10 (siege rules)
+- Pure rules: hit points and the hit table, creeper splash, breach choice, lure and its 24 slots, threat score, item value, raid scale, young-village raid plan, roll and start rules, siege size, repair order, the threat clock, the slow-scan rule, and the damage sentences.
+- L1 for those rules passed: 29 tests, 0 failures (`DefenceCellsTest`, `WallHpTest`, `SiegeHitsTest`, `DefenceDamageTest`, `BreachChoiceTest`, `LureTest`, `ThreatTest`, `ItemValueTest`, `RaidScaleTest`, `ThreatRollTest`, `ThreatRulesTest`, `SiegeRulesTest`, `RepairPlannerTest`, `ThreatClockTest`, `RewardTest`, `DefenceScanTest`, `RaidPlanTest`, `SiegeAlertsTest`).
 - Decisions, in docs/plans/M25.md section 8: defence cells in the threat score divide as integers; siege spawns use `max(outermost, 32) + 12` (outermost 10 → 44); a Hamlet's random raid is the young-village plan.
 - The alert-code order (RAID, SIEGE, DEFENCE_DAMAGED) is step 15. `SiegeAlerts` has the two sentences and the "(no builder)" variant.
-- Next: run the new L1 tests once the in-flight verify exits, then `scripts/verify.sh --fast`.
+- Next: `scripts/verify.sh --fast` for this step, then step 11 (hit, crack and scan glue).
