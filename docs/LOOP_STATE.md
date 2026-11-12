@@ -3,9 +3,10 @@ budget: "run 2 (user, 2026-11-09 ~07:00 NZ, at 86% weekly): keep going, no stop 
 start_weekly_usage: "17% weekly at 2026-11-07T07:25Z (user-reported)"
 calibration: "run 1: 17% -> 34% weekly for ~$188 => ~$11 per 1% weekly"
 run_cost_usd: "run 1 ~188. Run 2 (to the weekly limit, hit ~23:20Z 8 Nov): session cost_usd 871 - 188 = ~683 for 34%->100% weekly (~$10.3 per 1%). Run 3 starts at the 03:05Z 9 Nov weekly reset, from cost_usd 871"
-current: "RUNNING 2026-11-12 16:50Z. All feature milestones merged into dev (M19, M23, M25, backlog-small, release-prep, art-pass). IN FLIGHT: M26 balance + round M26-R (survivable first raid, no death spiral) by Sonnet session_0184ToXkncBdqju87dmBwVfV on m26. THEN: focused Opus M26 review -> merge -> v1 release gate (HANDOFF_GROK TASK 12) -> jar -> tell owner."
+current: "v1.0.0 DONE 2026-11-12 22:05Z. All milestones merged into dev; M26 review r1 PASS (full verify green; one known siege flake passed alone). Release-gate session stopped early at owner request (low usage): its docs merged; jar built by orchestrator from dev (village-heart-1.0.0.jar, sha256 cba0a4bc...4497, no test classes). Not tagged or published. Next: owner playtest, then v1.1 (tier tuning / City tier, economy margin, flake pass, remaining L3 scenario re-runs)."
 blocked: []
 decisions_by_human:
+  - "2026-11-12 (human): stop the release gate early to save usage; ship the reviewed dev build for the owner playtest."
   - "2026-11-12 (human): progression stays 3 tiers (Hamlet/Village/Town) for v1, unchanged goals. Ship, the owner plays, then tune tier goals or add a tier (e.g. City) in v1.1. The `full` sim reaching Town on day 8 is no-player prefab play, not a real pace."
   - "2026-11-12 (human): raids are balanced WITH the player defending; a no-player sim losing villagers to raids is expected. M26: `full` (threats off) is the gate; `full_raids` is a recorded no-player target, not a gate. Raid sizes stay as M25 built them (the M26-R raid-size scaling is reverted). Kept: merchant never strikes (economy recovery)."
   - "2026-11-12 (human, corrected): lead-up warnings in gold CHAT; RAID start keeps the big on-screen TITLE plus a bold red chat line and the bell; SIEGE start is a bold red chat line plus the bell (no title)"
