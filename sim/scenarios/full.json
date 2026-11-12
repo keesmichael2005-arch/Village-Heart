@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "name": "full",
- "description": "M26: a whole village over 30 days, starting at Hamlet, normal difficulty, random raids and zombie sieges on (the harness flag \"threats\": true; M25 rolls them with its grace days, so the first siege comes after day 5 and the first raid after day 7), weather fixed clear. Setup builds every building type on one 56 x 36 site (Village and Town buildings stay red until the tier) with a stone-age kit: 96 bread, planks, cobblestone, coal, stone tools, a bow, 32 emeralds, 12 adults. The scenario then plays a pretend player: day 1 it hires a farmer x2, a lumberjack and a cook; the standing orders (each runs once, when the tier allows it, and the hire is kept filled afterwards) hire a merchant, miner, hunter, two guards and a builder at Village and a blacksmith at Town. No other input. The roadmap criteria are the assertions: reaches Village, food days left is never 0 two dawns running, the treasury is never negative (VillageState rejects a negative purse, so this one cannot fail at L3: it is proven at L1 by PayRunTest), village logic under 1 ms a tick. Targets (tier_town, strikes, births) are reported in the summary, not asserted. The 12 adults are topped up at day 1 tick 400, after the first ticks, when one of the vanilla villagers is lost to the harness's ground re-grading (in_wall at tick ~190 on seed 1, a harness effect, not game logic). Defences, chosen at the start like a player's plan: a 56 x 36 cobblestone wall ring with two gates (700 cobblestone and 10 fence gates in the Storage kit, built at setup by the harness's instant `build`), one iron golem, and four guards (a Barracks with four beds).",
+ "description": "M26: a whole village over 30 days, starting at Hamlet, normal difficulty, random raids and zombie sieges on (the harness flag \"threats\": true; M25 rolls them with its grace days, so the first siege comes after day 5 and the first raid after day 7), weather fixed clear. Setup builds every building type on one 56 x 36 site (Village and Town buildings stay red until the tier) with a stone-age kit: 96 bread, planks, cobblestone, coal, stone tools, a bow, 32 emeralds, 12 adults. The scenario then plays a pretend player: day 1 it hires a farmer x2, a lumberjack and a cook; the standing orders (each runs once, when the tier allows it, and the hire is kept filled afterwards) hire a merchant, miner, hunter, two guards and a builder at Village and a blacksmith at Town. No other input. The roadmap criteria are the assertions: reaches Village, food days left is never 0 two dawns running, the treasury is never negative (VillageState rejects a negative purse, so this one cannot fail at L3: it is proven at L1 by PayRunTest), village logic under 1 ms a tick. Targets (tier_town, strikes, births) are reported in the summary, not asserted. The 12 adults are topped up at day 1 tick 400, after the first ticks, when one of the vanilla villagers is lost to the harness's ground re-grading (in_wall at tick ~190 on seed 1, a harness effect, not game logic). Defences, chosen at the start like a player's plan: a 56 x 36 cobblestone wall ring with two gates (700 cobblestone and 10 fence gates in the Storage kit, built the moment Village unlocks walls, by the harness's instant `build` as a standing order, one iron golem, and four guards (a Barracks with four beds).",
  "default_days": 30,
  "actions": [
   {
@@ -376,8 +376,8 @@
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     0,
@@ -386,12 +386,13 @@
    "to": [
     31,
     0
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     32,
@@ -400,12 +401,13 @@
    "to": [
     55,
     0
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     0,
@@ -414,12 +416,13 @@
    "to": [
     31,
     35
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     32,
@@ -428,12 +431,13 @@
    "to": [
     55,
     35
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     0,
@@ -442,12 +446,13 @@
    "to": [
     0,
     34
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     55,
@@ -456,12 +461,13 @@
    "to": [
     55,
     8
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "gate",
    "from": [
     55,
@@ -470,12 +476,13 @@
    "to": [
     55,
     15
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     55,
@@ -484,12 +491,13 @@
    "to": [
     55,
     23
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "gate",
    "from": [
     55,
@@ -498,12 +506,13 @@
    "to": [
     55,
     30
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "build",
-   "day": 0,
-   "tick": 200,
+   "day": 1,
+   "tick": 300,
    "blueprint": "wall_segment",
    "from": [
     55,
@@ -512,7 +521,8 @@
    "to": [
     55,
     34
-   ]
+   ],
+   "when": "tier>=village"
   },
   {
    "action": "golems",
