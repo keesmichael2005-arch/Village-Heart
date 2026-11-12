@@ -393,4 +393,18 @@ public final class Balance {
 	public static final int MERCHANT_STALL_PATIENCE = 600;
 
 	public static int merchantDailyCap(int level) { return MERCHANT_DAILY_CAP[Math.max(1, Math.min(level, MERCHANT_DAILY_CAP.length)) - 1]; }
+
+	// ---- M23: population growth ----
+	/** The stockpile must hold at least this many food days (adults 10, babies 5 a day) before a baby is licensed. Tunable. */
+	public static final double GROWTH_MIN_FOOD_DAYS = 3.0;
+	/** Licensed parents closer than this (blocks) and in sight of each other are seeded. Tunable. */
+	public static final double COURTSHIP_SEED_DISTANCE = 4.0;
+	/** Ticks of idle time that must still be left in both parents' IDLE window when a licensed pair is seeded (a make-love run is at most 325). */
+	public static final int COURTSHIP_MARGIN = 400;
+	/** Ticks of window time a licensed pair gets to meet before the licence lapses (CANNOT_MEET). */
+	public static final int COURTSHIP_APPROACH_TICKS = 400;
+	/** A licensed pair is seeded at most this often a day. */
+	public static final int COURTSHIP_MAX_SEEDS = 3;
+	/** A pair that could not meet is skipped for this many days while another pair exists. */
+	public static final int FAILED_PAIR_DAYS = 3;
 }

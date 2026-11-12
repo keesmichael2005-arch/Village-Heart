@@ -76,6 +76,9 @@ public final class VillageTestSupport {
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
 		dev.villageheart.economy.WageStats.setTestListener(null);
+		dev.villageheart.growth.Growth.reset(); // M23: no gate, no courtship left from a test whose claim is cleared below
+		dev.villageheart.growth.GrowthStats.reset();
+		dev.villageheart.growth.BreedTrace.reset();
 		VillageClaims.data(server).setPendingTicketReleases(java.util.Set.of()); // stale entries of failed runs in this reused world
 		VillageClaims.data(server).clear();
 		h.getLevel().getGameRules().set(GameRules.BLOCK_DROPS, true, server);
