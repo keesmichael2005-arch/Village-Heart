@@ -265,3 +265,11 @@ from there instead of hard-coding them.
 - [ ] README updated (recipes, how to start, the building table). DESIGN.md matches what shipped
 
 Art pass (`art-pass`, not a milestone): custom textures and GUI sprites replace the placeholder heart, the "Mod ID" icon, and the vanilla log and iron textures the chopping block and marker edges borrowed. The list is `docs/ART.md`. Review: round 1 FAIL (6 items), round 2 **PASS** (`docs/reviews/art-pass-r2.md`).
+
+## Post-v1
+
+Not part of the v1.0 gate. Plans are proposals the owner can change.
+
+- [ ] **P1 Archers:** bow guards hired at the Barracks, posted on watchtowers and wall walks, arrows from Storage, never shoot creepers (`docs/plans/P1-archers.md`)
+- [ ] **P2 Guard roles:** gate, tower and player posts, inside rovers, marked patrol routes and squads for a large village; a small village keeps today's patrol with no setup (`docs/plans/P2-guard-roles.md`)
+- [ ] **P3 Minecart haul:** the miner's delivery is shown as a minecart along the rails, with the same items and no new logistics (`docs/plans/P3-mine-carts.md`)
