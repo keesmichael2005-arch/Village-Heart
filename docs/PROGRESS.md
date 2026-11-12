@@ -1398,3 +1398,15 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Tests: L1 `ThreatWarningsTest.warningsAreGoldAndStartsAreRedWithTheTitleOnlyForARaid`, `LangCoverageTest.threatWarningLines`; L2 new `ThreatStartMessageGameTests` (three tests, real packets), `ThreatShelterGameTests` (raid: title + red line; siege: red line, zero titles), `ThreatWarningGameTests` (`heard` counts gold only); L4 `raid_title`, `raid_title_gui1`, `siege_start`.
 - Changed existing assertions, not weakened: `ThreatWarningsTest.raidHasThreeLinesAndSiegeTwo` and `LangCoverageTest` pinned "The dead rise!" as the siege title, which the owner removed; they now pin that the siege has no title. The shelter siege test asserted one siege title, now zero titles plus one red line.
 - Mutation checks (each reverted): warningTone to NOTICE (fails the L1 test, `leadUpLinesAreGoldChat`, both warning-lead-up tests); raid title dropped (fails `raidStartSendsTheTitleAndTheRedChatLine`, `raidSendsEveryVillagerIndoors`); raid red line dropped (same two); siege gets the title (fails L1, `siegeStartSendsTheRedChatLineAndNoTitle`, `siegeRingsBellAndSendsVillagersIndoors`); siege red line dropped (same two L2); ALERT without bold (fails both packet tests).
+
+## 2026-11-12: M25 review round 2 (verifier): PASS
+- `m25-full` at `4b95855` (already contains `origin/dev`). All six r1 items fixed, and each fix mutation-checked: lure spawn band, siege
+  shelter held past vanilla's hide, gate HP 12, grace ignored. The owner's announcement decision of 2026-11-12 matches exactly. Seven
+  mutants were killed at L2 and L4 (siege title, plain lead-up, not bold, not gold, raid without the red line, siege without the bell,
+  title too wide). Screenshots `raid_title`, `raid_title_gui1` and `siege_start` were looked at. No raider teleport, pull or kill, and
+  no scenario assertion changed. ROADMAP M25 ticked.
+- Full verify 3 times: exit 1, 0 (519/519), 1. Both red runs failed only non-M25 tests from dev: `smith_..._gate_edge_of_claim` (M19),
+  `guard_..._alarm_wakes_sleeping_guards_and_they_return` and `cook_..._food_reaches_storage_before_dinner`. Every M25 test was green in
+  all three runs. Run alone: `lureBudgetCaps` 5/5, `gateEdgeOfClaim` 5/5, and three M25 tests the builder saw flake 10/10 each.
+- Next: the orchestrator should plan a flake pass on dev's suite before the v1 gate (findings in `docs/reviews/M25-r2.md`). M26 should
+  watch the unhired-shelter stall the builder logged (not reproduced here).
