@@ -1303,3 +1303,8 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
   - `blockerMoves = blocking != null`: the near-marker wall test "went away against a wall".
 - Full `scripts/verify.sh` at ed1db90: exit 0 (L2 414 tests). `two_hunters_one_ground` alone: 5 of 5, 197 ticks each.
 - Next: orchestrator merge. Advisories from r2 remain: `deposited_settled` arg count, "1 workers", `mover()` scope.
+
+## 2026-11-12: M25 review round 1: FAIL (6 items)
+- Merged `origin/dev` into `m25-full` (`5494fa5`; DayMetrics keeps both TierDay and the M25 records). Full verify twice: run 1 exit 0 (472 L2), run 2 exit 1 on `siege_lure_game_tests_lure_budget_caps` (passes alone 2/2; the test depends on world state earlier batches leave behind).
+- Fix items: (1) make `lureBudgetCaps` independent of earlier batches; (2) the siege title "The dead are coming!" is clipped in `0047_siege_title`; (3) the siege half of "every villager indoors" is unproven (the mutation `if (!raid)` in `UnhiredShelter` survives, because vanilla's bell hide passes the single "inside" check); (4, 5, minor) `vindicatorChopsGate` does not count hits, `sealedRaiderGlowsThenFlees` has no lower bound on the grace; (6) the ROADMAP box went back to `[ ]` until a PASS.
+- Confirmed: no raider teleport, pull or kill remains (only the stuck-raider flee removes a raider); `raid.json` assertions are identical to plan 3.7 since `558431a`; codec keys flat, old saves load, enums appended. `simulate.sh siege` PASS. Details and the mutation table: `docs/reviews/M25-r1.md`.
