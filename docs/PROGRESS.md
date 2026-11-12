@@ -1383,5 +1383,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - (5) `sealedRaiderGlowsThenFlees`: mutant "flee at the next check after the glow" fails with "the raider fled inside the grace period".
 - All three mutants applied, run, restored; the tree was clean after each.
 - Flakes seen on the way, none touched beyond the lure clean-up: `raid_sends_every_villager_indoors` once in a full run ("unhired 1 is not in the house" at the door; passes alone), `vindicator_chops_gate` once (266 ticks, bound 200; 18 of 19 alone passed), and in the first fast run `siege_lure_..._trench_in_front_of_wall`, `..._zombie_behind_closed_wall_breaks` and `zombie_siege_..._vanilla_siege_suppressed_in_claim` (vanilla's random siege spawn, 3 nights without one).
-- Verify: `--fast` exit 0 (516 L2 tests) after the clean-up; the first fast run failed on the three tests above. Full verify run 1 and 2: see the final report.
+- Verify: `--fast` exit 0 (516 L2 tests) after the clean-up; the first fast run failed on the three tests above. Five full runs on this code:
+  - run 1 (`2a8a449`): exit 0 (516 L2, 3 lost wakeups rescued in L4).
+  - run 2: exit 1: `siege_lure_..._skeleton_stays_vanilla`, `threat_shelter_..._siege_rings_bell_and_sends_villagers_indoors` (unhired villager stuck short of the House, no walk target), `siege_..._ravager_breaks_wall_in_two_hits`, and the L4 guard test ("night guard is not at its bed on the client"), so the 2-player session never ran.
+  - run 3: exit 1: `stuck_raider_..._walking_raider_is_never_removed` (1.4 blocks of progress at tick 20, wants 2).
+  - run 4 (`7def719`): exit 0 (516 L2, L4, 2-player, perf).
+  - run 5 (`7def719`): exit 1: `smith_..._craft_pauses_overnight_and_survives_restart` (M19).
+  - Every failure is a different test, none touches a line I changed, and each passes alone. The full suite is flaky on this 4-core box (about 1.5 timing-sensitive failures per run). Worth a pass in M26: the unhired-shelter stall (twice in the runs I logged, also once before my changes) is the one that could be a real bug.
 - Next: verifier round 2 and the ROADMAP tick (left `[ ]`). Blockers: none.
