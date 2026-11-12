@@ -67,8 +67,10 @@ class LangCoverageTest {
 		Map<String, Object> lang = lang();
 		for (dev.villageheart.core.siege.ThreatWarnings.Kind kind : dev.villageheart.core.siege.ThreatWarnings.Kind.values()) {
 			for (var line : kind.lines()) assertEquals(line.text(), lang.get(line.key()), line.key());
-			assertEquals(kind.title().text(), lang.get(kind.title().key()), kind.title().key());
+			kind.title().ifPresent(title -> assertEquals(title.text(), lang.get(title.key()), title.key()));
+			assertEquals(kind.start().text(), lang.get(kind.start().key()), kind.start().key());
 		}
+		assertFalse(lang.containsKey("message.villageheart.title.siege"), "a siege has no title (owner, 2026-11-12)");
 		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.key()));
 		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.key()));
 	}

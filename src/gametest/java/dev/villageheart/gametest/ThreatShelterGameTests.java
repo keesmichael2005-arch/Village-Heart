@@ -45,24 +45,37 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Layer 2 for the owner's shelter decision of 2026-11-11: when a raid or a zombie siege starts the village bell is rung, a title is
- * shown, and EVERY villager in the claim goes indoors (hired or not). Guards that are not training and not wounded stay out and fight.
+ * Layer 2 for the owner's shelter decision of 2026-11-11 (and 2026-11-12): when a raid or a zombie siege starts the village bell is rung,
+ * a raid shows a title and a bold red chat line, a siege only the red line, and EVERY villager in the claim goes indoors (hired or not). Guards that are not training and not wounded stay out and fight.
  * Hired workers go back to work when it is over, and unhired villagers go back to their day.
  */
 public class ThreatShelterGameTests {
 	private static final String YARD = BuildingTestSupport.YARD;
 
-	private record Note(ServerPlayer player, String key, boolean title) {}
+	private record Note(ServerPlayer player, String key, boolean title, ThreatWarnings.Tone tone) {}
 
 	/** Installs the recording sink. It must run after {@code BuildingTestSupport.begin}, whose reset puts the real sink back. */
 	private static void listen(List<Note> notes) {
 		ThreatMessages.setSinkForTest(new ThreatMessages.Sink() {
 			@Override
-			public void chat(ServerPlayer player, String key) { notes.add(new Note(player, key, false)); }
+			public void chat(ServerPlayer player, String key) { notes.add(new Note(player, key, false, ThreatWarnings.Tone.NOTICE)); }
 
 			@Override
-			public void title(ServerPlayer player, String key) { notes.add(new Note(player, key, true)); }
+			public void chat(ServerPlayer player, String key, ThreatWarnings.Tone tone) { notes.add(new Note(player, key, false, tone)); }
+
+			@Override
+			public void title(ServerPlayer player, String key) { notes.add(new Note(player, key, true, ThreatWarnings.Tone.NOTICE)); }
 		});
+	}
+
+	/** The owner's bold red start lines with this key. */
+	private static long redLines(List<Note> notes, String key) {
+		return notes.stream().filter(n -> !n.title && n.key.equals(key) && n.tone == ThreatWarnings.Tone.ALERT && n.player == BuildingTestSupport.owner()).count();
+	}
+
+	/** Every title the owner got, whatever its text. */
+	private static long anyTitle(List<Note> notes) {
+		return notes.stream().filter(n -> n.title && n.player == BuildingTestSupport.owner()).count();
 	}
 
 	private static long titles(List<Note> notes, String key) {
@@ -134,6 +147,7 @@ public class ThreatShelterGameTests {
 			h.assertValueEqual(1, VillageBell.rings, "bell rings");
 			h.assertTrue(VillageBell.lastBell != null && VillageBell.lastBell.equals(h.absolutePos(BuildingTestSupport.BELL)), "the village bell was the one rung");
 			h.assertValueEqual(1L, titles(notes, ThreatWarnings.RAID_TITLE.key()), "titles for the owner");
+			h.assertValueEqual(1L, redLines(notes, ThreatWarnings.RAID_START.key()), "the raid start: one bold red chat line, with the title");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "everyone is in the house", () -> {
 			RaidStart.holdWaves(raid[0]);
@@ -218,7 +232,7 @@ public class ThreatShelterGameTests {
 	}
 
 	/**
-	 * A zombie siege starts: the bell rings, "The dead rise!" is the title, and an unhired villager outside goes indoors.
+	 * A zombie siege starts: the bell rings, "The dead are coming!" is a red chat line (no title), and an unhired villager outside goes indoors.
 	 * The siege's one zombie has its AI off and is invulnerable, so it stays where it spawned and the siege keeps running for the test.
 	 */
 	@GameTest(environment = "villageheart-gametest:threat_shelter_siege", structure = YARD, skyAccess = true, maxTicks = 5000)
@@ -261,8 +275,8 @@ public class ThreatShelterGameTests {
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1, VillageBell.rings, "the siege rang the bell once");
 			h.assertTrue(VillageBell.lastBell != null && VillageBell.lastBell.equals(h.absolutePos(BuildingTestSupport.BELL)), "the village bell");
-			h.assertValueEqual(1L, titles(notes, ThreatWarnings.SIEGE_TITLE.key()), "the siege title");
-			h.assertValueEqual(0L, titles(notes, ThreatWarnings.RAID_TITLE.key()), "no raid title");
+			h.assertValueEqual(1L, redLines(notes, ThreatWarnings.SIEGE_START.key()), "the siege start: one bold red chat line");
+			h.assertValueEqual(0L, anyTitle(notes), "the siege shows no title at all (owner, 2026-11-12)");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the unhired villager is in the house", () -> inside(h, plain[0], scan[0], "unhired"));
 		seq.thenExecute(() -> {

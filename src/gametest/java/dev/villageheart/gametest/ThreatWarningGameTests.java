@@ -29,21 +29,25 @@ import net.minecraft.world.level.GameType;
 public class ThreatWarningGameTests {
 	private static final String YARD = BuildingTestSupport.YARD;
 
-	private record Note(ServerPlayer player, String key) {}
+	private record Note(ServerPlayer player, String key, ThreatWarnings.Tone tone) {}
 
 	/** Installs the recording sink. It must run after {@code BuildingTestSupport.begin}, whose reset puts the real sink back. */
 	private static void listen(List<Note> notes) {
 		ThreatMessages.setSinkForTest(new ThreatMessages.Sink() {
 			@Override
-			public void chat(ServerPlayer player, String key) { notes.add(new Note(player, key)); }
+			public void chat(ServerPlayer player, String key) { notes.add(new Note(player, key, ThreatWarnings.Tone.NOTICE)); }
+
+			@Override
+			public void chat(ServerPlayer player, String key, ThreatWarnings.Tone tone) { notes.add(new Note(player, key, tone)); }
 
 			@Override
 			public void title(ServerPlayer player, String key) {}
 		});
 	}
 
+	/** How many times {@code who} got this line AS A GOLD WARNING (owner, 2026-11-12): a line in any other tone does not count. */
 	private static long heard(List<Note> notes, ServerPlayer who, String key) {
-		return notes.stream().filter(n -> n.player == who && n.key.equals(key)).count();
+		return notes.stream().filter(n -> n.player == who && n.key.equals(key) && n.tone == ThreatWarnings.Tone.WARNING).count();
 	}
 
 	private static long heardAny(List<Note> notes, ServerPlayer who) {

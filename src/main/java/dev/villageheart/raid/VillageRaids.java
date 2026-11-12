@@ -94,7 +94,7 @@ public final class VillageRaids implements VillageSystem {
 		});
 		if (step.started()) {
 			RaidNotices.started(server);
-			ThreatMessages.title(server, dev.villageheart.core.siege.ThreatWarnings.RAID_TITLE);
+			ThreatMessages.started(server, dev.villageheart.core.siege.ThreatWarnings.Kind.RAID);
 			VillageBell.ring(level, village);
 		}
 		step.ended().ifPresent(summary -> RaidNotices.ended(server, summary));

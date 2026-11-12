@@ -166,7 +166,7 @@ public final class ZombieSiege {
 		VillageClaims.data(server).update(s -> s.withThreats(s.threats().withPendingSiegeDay(ThreatState.NO_DAY)));
 		SiegeStats.siegeStarted();
 		spawnDue(server, level, village);
-		dev.villageheart.raid.ThreatMessages.title(server, dev.villageheart.core.siege.ThreatWarnings.SIEGE_TITLE);
+		dev.villageheart.raid.ThreatMessages.started(server, dev.villageheart.core.siege.ThreatWarnings.Kind.SIEGE);
 		dev.villageheart.raid.VillageBell.ring(level, village);
 	}
 

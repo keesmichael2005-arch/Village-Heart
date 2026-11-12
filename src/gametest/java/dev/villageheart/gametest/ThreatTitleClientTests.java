@@ -12,10 +12,11 @@ import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
- * Layer 4 for the owner's raid and siege titles (2026-11-11): a real client gets "A raid is starting!" the moment a raid on the claim
- * starts, and "The dead rise!" when a siege does. Screenshots {@code raid_title} and {@code siege_title}. The siege title is
- * sent through the same {@link ThreatMessages} call the siege start makes: a siege needs ground 44 blocks out to spawn on, and what
- * the screenshot proves is how the title looks on a real client.
+ * Layer 4 for the owner's raid and siege start messages (2026-11-11, corrected 2026-11-12): a real client gets the big title "A raid is
+ * starting!" AND a bold red chat line the moment a raid on the claim starts (screenshots {@code raid_title}, and {@code raid_title_gui1} at
+ * GUI scale 1, the smallest), and only the bold red chat line "The dead are coming!" when a siege does, no title (screenshot
+ * {@code siege_start}). The siege lines are sent through the same {@link ThreatMessages#started} call the siege start makes: a siege needs
+ * ground 44 blocks out to spawn on, and what the screenshot proves is how the message looks on a real client.
  */
 final class ThreatTitleClientTests {
 	private ThreatTitleClientTests() {}
@@ -69,23 +70,57 @@ final class ThreatTitleClientTests {
 					return 0;
 				});
 			}
-			assertTitleFits(context, ThreatWarnings.RAID_TITLE.key());
+			assertTitleFitsAtEveryGuiScale(context, ThreatWarnings.RAID_TITLE.key());
 			context.takeScreenshot("raid_title");
+			// The smallest GUI scale: the same title and chat line, smaller on the screen.
+			setGuiScale(context, 1);
+			context.waitTicks(1);
+			assertTitleFits(context, ThreatWarnings.RAID_TITLE.key());
+			context.takeScreenshot("raid_title_gui1");
+			setGuiScale(context, 0);
 			srv.computeOnServer(server -> {
 				Raid raid = server.overworld().getRaidAt(bell);
 				if (raid != null) raid.stop();
 				return 0;
 			});
+			// The raid title and its chat line are gone from the screen before the siege message is sent.
 			context.waitTicks(120);
+			context.runOnClient(mc -> mc.gui.getChat().clearMessages(true));
 			srv.computeOnServer(server -> {
-				ThreatMessages.title(server, ThreatWarnings.SIEGE_TITLE);
+				ThreatMessages.started(server, ThreatWarnings.Kind.SIEGE);
 				return 0;
 			});
 			context.waitTicks(25);
-			assertTitleFits(context, ThreatWarnings.SIEGE_TITLE.key());
-			context.takeScreenshot("siege_title");
+			boolean title = context.computeOnClient(mc -> clientShowsTitle(mc));
+			if (title) throw new AssertionError("a siege start showed a title on the client");
+			context.takeScreenshot("siege_start");
 			context.waitTicks(100);
 		}
+	}
+
+	/** Is a title on the client's screen now? {@code Gui.title} is private; it is null when no title is showing. */
+	private static boolean clientShowsTitle(net.minecraft.client.Minecraft mc) {
+		try {
+			var f = net.minecraft.client.gui.Gui.class.getDeclaredField("title");
+			f.setAccessible(true);
+			return f.get(mc.gui) != null;
+		} catch (ReflectiveOperationException e) {
+			throw new AssertionError("cannot read Gui.title: " + e);
+		}
+	}
+
+	private static void setGuiScale(ClientGameTestContext context, int scale) {
+		context.runOnClient(mc -> mc.options.guiScale().set(scale));
+	}
+
+	/** Scale 1 is the smallest, 0 is automatic, and the largest the window allows is where the title is widest next to the screen. */
+	private static void assertTitleFitsAtEveryGuiScale(ClientGameTestContext context, String key) {
+		int max = context.computeOnClient(mc -> mc.getWindow().calculateScale(0, mc.isEnforceUnicode()));
+		for (int scale : new int[] {1, 0, max}) {
+			setGuiScale(context, scale);
+			assertTitleFits(context, key);
+		}
+		setGuiScale(context, 0);
 	}
 
 	/**

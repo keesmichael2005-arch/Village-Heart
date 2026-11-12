@@ -155,7 +155,7 @@ public final class ThreatScheduler implements VillageSystem {
 		int line = ThreatWarnings.next(kind, roll, start, Balance.WARNING_LEAD_TICKS, time, warnSent);
 		if (line < 0) return;
 		warnSent = line + 1;
-		ThreatMessages.chat(server, kind.lines().get(line));
+		ThreatMessages.warn(server, kind, line);
 	}
 
 	/** A random victory pays the treasury once. {@code record} is the raid that just closed. */
