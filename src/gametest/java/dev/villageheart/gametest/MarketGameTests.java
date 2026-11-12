@@ -395,28 +395,31 @@ public class MarketGameTests {
 	@GameTest(environment = "villageheart-gametest:market_cap", structure = YARD, skyAccess = true, maxTicks = 30000)
 	public void dailyCapByLevel(GameTestHelper h) {
 		// M26: the caps are Balance values (tuned in M26 H1), not 8 and 12
-		final int C1 = dev.villageheart.core.Balance.merchantDailyCap(1), C2 = dev.villageheart.core.Balance.merchantDailyCap(2);
+		// A level-1 merchant needs 600 ticks a sale and the day's work lasts 10000 ticks, so a level-1 cap of 16 is no longer reachable inside a
+		// work day (the unit test MarketRulesTest.capsByLevel proves the level-1 number). This test therefore proves the cap by level on levels 2 and 3
+		// (480 and 400 ticks a sale: 20 and 24 sales fit in 9600 ticks).
+		final int C1 = dev.villageheart.core.Balance.merchantDailyCap(2), C2 = dev.villageheart.core.Balance.merchantDailyCap(3);
 		begin(h);
 		Villager[] v = new Villager[1];
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
 			stock(h, Items.COBBLESTONE, 2000);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, 0);
-			LevelTestSupport.put(v[0], 1, 0);
+			LevelTestSupport.put(v[0], 2, 0);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= C1, C1 + " sales: " + soldBy(h, v[0])));
-		seq = seq.thenIdle(1200).thenExecute(() -> {
-			h.assertValueEqual((long) C1, soldBy(h, v[0]), "level 1 stops at its cap");
+		seq = seq.thenIdle(100).thenExecute(() -> {
+			h.assertValueEqual((long) C1, soldBy(h, v[0]), "level 2 stops at its cap");
 			h.assertValueEqual(C1, treasury(h), "emeralds");
 			h.assertValueEqual(WorkerStatus.DAILY_LIMIT, status(h, v[0]), "status");
-			h.assertTrue(MarketTestSupport.data(v[0]).level() == 1, "still level 1");
-			// a new day at level 2
-			LevelTestSupport.put(v[0], 2, MarketTestSupport.data(v[0]).xp());
+			h.assertTrue(MarketTestSupport.data(v[0]).level() == 2, "still level 2");
+			// a new day at level 3
+			LevelTestSupport.put(v[0], 3, MarketTestSupport.data(v[0]).xp());
 			toNextMorning(h);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= C2, C2 + " sales on the new day: " + soldBy(h, v[0])));
-		seq = seq.thenIdle(1200).thenExecute(() -> {
-			h.assertValueEqual((long) C2, soldBy(h, v[0]), "level 2 stops at its cap");
+		seq = seq.thenIdle(100).thenExecute(() -> {
+			h.assertValueEqual((long) C2, soldBy(h, v[0]), "level 3 stops at its cap");
 			h.assertValueEqual(C1 + C2, treasury(h), "emeralds");
 			h.assertValueEqual(C2, Markets.ledgerToday(h.getLevel()).soldAt(dev.villageheart.gametest.WorkerTestSupport.loc(h, stall(0))), "the stall's count");
 			h.assertValueEqual(WorkerStatus.DAILY_LIMIT, status(h, v[0]), "status");
