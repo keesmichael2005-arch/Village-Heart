@@ -1418,3 +1418,12 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - `full` is not yet passing: the payroll outgrows the income once workers reach level 3. H4 is the current probe.
 - Known flakes under load, each passing when run alone: `siege_lure_game_tests_*` (trench, zombie behind a closed wall), `siege_game_tests_ravager_breaks_wall_in_two_hits`, `stuck_raider_game_tests_walking_raider_is_never_removed`, `gate_game_tests_mobs_still_cannot_pass_the_gate`, `smith_game_tests_two_lumberjacks_two_smiths_share_acamp`.
 - Bug for BACKLOG: a miner on strike re-tries to descend about 450 times a day (`miner.aborted`, `miner.descents`).
+
+
+## M26 (balance pass): final, builder (Sonnet cloud session)
+- Result: **`full` (30 days, threats off) PASSES** at head: Village day 3, Town by day 10, treasury min 16, food days left 2.1-6.3, no strikes, village_ms mean 0.178 ms (worst day 0.402). Full `scripts/verify.sh` exit 0 at `772e50a` (519 GameTests, L4 client tests, perf).
+- Tuned (before -> after, each recorded with its run in docs/M26-results.md): merchant daily caps {8,12,16} -> {16,20,24} (H1, H4); price lots logs 16 -> 8, cobblestone and deepslate 32 -> 16, coal 15 -> 10, raw iron 8 -> 6, raw copper 20 -> 14, leather 6 -> 4 (H2, H3); miner cobble per haul 16/12/12 -> 24/18/18 (H4); builder pace 20 -> 70 ticks a block (owner); merchant never strikes (M26-R, L1 + L2 tests). Baseline `full` collapsed (treasury 0 from day 8, all strike from day 13, no food from day 16); after H4 it is stable.
+- Reverted: guard pace (cooldown 14, chase 0.75: no gain over the spread) and the raid-size change (owner: raids need a player; `RaidPlans`, `RAID_FULL_GUARDS` and their tests are as M25 built them).
+- `full_raids` (same village, threats on, a wall ring, a golem, two guards, no player): recorded balance target, not a gate. Day-12 random raid wipes the village out (population 0 on day 13).
+- Other scenarios (one run each, assertions unchanged): `defended` PASS in the re-measure; `defended_walled`, `siege`, `raid` still fail their balance bars (see the table). Known flakes under load, each passing alone: see BACKLOG "From M26".
+- Next: TASK 12, the v1.0 release gate. Blockers: none. Doubts: single runs only; the guard and raid scenarios swing by several deaths between runs.
