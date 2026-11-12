@@ -63,7 +63,7 @@ public class RandomRaidGameTests {
 			if (!away[0]) return;
 			h.assertTrue(state(h).threats().raid().isEmpty(), "a raid started while the player was away");
 		});
-		GameTestSequence seq = yard(h, 4).thenExecute(() -> {
+		GameTestSequence seq = yard(h, Balance.RAID_FULL_GUARDS).thenExecute(() -> {
 			prepare(h, 500);
 			place(h, 200, 1, 0);
 			ThreatRules.graceAndGapForTest(0, 0);
@@ -140,7 +140,7 @@ public class RandomRaidGameTests {
 	@GameTest(environment = "villageheart-gametest:random_raid_extras", structure = YARD, skyAccess = true, maxTicks = 4000)
 	public void strongVillageGetsExtraRaiders(GameTestHelper h) {
 		Raid[] raid = new Raid[1];
-		GameTestSequence seq = yard(h, 4).thenExecute(() -> {
+		GameTestSequence seq = yard(h, Balance.RAID_FULL_GUARDS).thenExecute(() -> {
 			Threat.forceForTest(8);
 			beginRaid(h);
 		});
@@ -239,7 +239,7 @@ public class RandomRaidGameTests {
 	@GameTest(environment = "villageheart-gametest:random_raid_reload", structure = YARD, skyAccess = true, maxTicks = 4000)
 	public void extrasOnceAcrossReload(GameTestHelper h) {
 		Raid[] raid = new Raid[1];
-		GameTestSequence seq = yard(h, 4).thenExecute(() -> {
+		GameTestSequence seq = yard(h, Balance.RAID_FULL_GUARDS).thenExecute(() -> {
 			Threat.forceForTest(8);
 			beginRaid(h);
 		});
@@ -272,7 +272,7 @@ public class RandomRaidGameTests {
 		seq.thenExecute(() -> VillageTestSupport.done(h));
 	}
 
-	/** T-L2-45. Two guards get two waves and 8 emeralds. A town is not capped. No guards still get one wave. */
+	/** T-L2-45. Two guards get two waves and 8 emeralds. A town with two guards is capped too (M26-R). No guards still get one wave. */
 	@GameTest(environment = "villageheart-gametest:random_raid_early", structure = YARD, skyAccess = true, maxTicks = 8000)
 	public void earlyRandomRaidIsSmall(GameTestHelper h) {
 		Raid[] raid = new Raid[1];
@@ -321,9 +321,10 @@ public class RandomRaidGameTests {
 			BuildingTestSupport.setTier(h, Tier.TOWN);
 			beginRaid(h);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.RAID_LOADED_TICKS + 80, "a town is not capped", () -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, Balance.RAID_LOADED_TICKS + 80, "a town with two guards is still capped (M26-R)", () -> {
 			raid[0] = live(h);
-			h.assertValueEqual(5, ((RaidGroups) raid[0]).villageheart$numGroups(), "town groups");
+			h.assertValueEqual(2, ((RaidGroups) raid[0]).villageheart$numGroups(), "town groups");
+			h.assertTrue(state(h).threats().raid().orElseThrow().plan().early(), "a town with two guards is not early");
 			VillageTestSupport.done(h);
 		});
 	}
@@ -333,12 +334,13 @@ public class RandomRaidGameTests {
 		return BuildingTestSupport.begin(h).thenExecute(() -> {
 			floor(h);
 			BuildingTestSupport.setTier(h, Tier.VILLAGE);
-			marker[0] = BuildingTestSupport.room(h, BARRACKS, 6, 4);
-			for (int i = 0; i < 5; i++) {
+			// M26-R: the full raid needs Balance.RAID_FULL_GUARDS (6) qualified guards, so the yard's Barracks has seven bed and grindstone slots
+			marker[0] = BuildingTestSupport.room(h, BARRACKS, 8, 4);
+			for (int i = 0; i < 7; i++) {
 				h.setBlock(BuildingTestSupport.inside(BARRACKS, i, 0, 0), Blocks.GRINDSTONE.defaultBlockState());
 				WorkerTestSupport.bed(h, BuildingTestSupport.inside(BARRACKS, i, 0, 2));
 			}
-			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 0), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 7, 0, 0), Blocks.CHEST.defaultBlockState());
 			BuildingTestSupport.placeMarker(h, BuildingType.BARRACKS, marker[0], Direction.NORTH);
 		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, marker[0], dev.villageheart.block.MarkerStatus.VALID))
 				.thenExecute(() -> {
