@@ -24,7 +24,7 @@ class MarketPlannerTest {
 	@Test
 	void stopOrder() {
 		var cobble = List.of(item("cobblestone", 200, 0, 0));
-		var capped = new MarketInputs<>(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY, 1, 8, 0, 8);
+		var capped = new MarketInputs<>(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY, 1, Balance.merchantDailyCap(1), 0, Balance.merchantDailyCap(1)); // M26: the level-1 cap is a tuned value
 		assertEquals(new SaleDecision.Stop(StopReason.DAILY_LIMIT), MarketPlanner.decide(capped));
 		assertEquals(new SaleDecision.Stop(StopReason.TREASURY_FULL), MarketPlanner.decide(in(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY)));
 		sell(MarketPlanner.decide(in(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY - 1)));

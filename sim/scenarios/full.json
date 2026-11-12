@@ -480,7 +480,7 @@
   "population >= 12 on day 1",
   "employed == 4 on day 1",
   "max(village.tier) >= 1 from day 1",
-  "zerorun(food.days_left) <= 1 from day 1",
+  "zerorun(1 - food.out) <= 1 from day 1",
   "min(treasury) >= 0 from day 1",
   "village_ms.mean < 1 on every day",
   "mean(village_ms.mean) < 1 from day 1",

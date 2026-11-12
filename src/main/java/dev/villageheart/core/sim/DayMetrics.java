@@ -269,6 +269,9 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		for (Map.Entry<String, Long> e : workerStatus.entrySet()) m.put("workers.status." + e.getKey(), (double) e.getValue());
 		m.put("food.nutrition", (double) foodNutrition);
 		m.put("food.days_left", foodDaysLeft);
+		// M26: 1 when the stock cannot feed the village one more dinner (under one day left; nobody to feed also counts). days_left is a ratio that
+		// decays towards 0 and is never exactly 0, so "food days left is 0" is read as "under 1" (assert with zerorun(1 - food.out)).
+		m.put("food.out", Double.isNaN(foodDaysLeft) || foodDaysLeft < 1.0 ? 1.0 : 0.0);
 		m.put("food.dinners", (double) needs.dinners());
 		m.put("food.diners", (double) needs.diners());
 		m.put("food.fed", (double) needs.fed());

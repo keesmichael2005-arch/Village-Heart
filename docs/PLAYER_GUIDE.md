@@ -353,8 +353,8 @@ Caps, reset when the day index changes:
 
 | | Emeralds per day |
 |---|---|
-| A merchant at level 1 / 2 / 3 | 8 / 12 / 16 |
-| That same stall | the same 8 / 12 / 16, so firing and rehiring does not reset it |
+| A merchant at level 1 / 2 / 3 | 12 / 16 / 20 |
+| That same stall | the same 12 / 16 / 20, so firing and rehiring does not reset it |
 | The whole village | **32** |
 
 Each sale is 2 XP. Unemployed villagers keep their vanilla trades. The Stockpile tab shows how many emeralds were sold today, and item counts that can still be sold are marked.
