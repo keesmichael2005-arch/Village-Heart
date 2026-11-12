@@ -1016,3 +1016,10 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
+
+## 2026-11-12: M19 review round 2 (verifier)
+- Verdict FAIL, 1 blocking item (`docs/reviews/M19-r2.md`), plus 2 non-blocking. Merged `origin/dev`; the PROGRESS conflict was resolved by keeping both sides.
+- All nine r1 items are fixed and mutation-checked red. `golemWithoutIronWaits` passed 5 of 5 alone. DESIGN §5.7 has the stone-before-iron decision.
+- Blocking: `SmithCrafts.refund` loops forever on a committed id that is not a registered item. `retryPending` reaches it on its own for a bad save, which freezes the server; reproduced with a throwaway GameTest and a control. `SelfCrafts.refund` has the same loop.
+- Full verify exit 1, only on `gate_game_tests_mobs_still_cannot_pass_the_gate`. It is not M19's (seen in art-pass r1, 3 of 3 alone). Orchestrator: add it to the known flakes.
+- Next: builder round 3 on fix item 1 (and 2, 3 if cheap). Blockers: none.
