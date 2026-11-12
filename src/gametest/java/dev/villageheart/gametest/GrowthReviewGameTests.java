@@ -7,11 +7,15 @@ import dev.villageheart.core.growth.License;
 import dev.villageheart.growth.BreedingGate;
 import dev.villageheart.growth.Growth;
 import dev.villageheart.growth.GrowthStats;
+import dev.villageheart.core.growth.LicenceState;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.npc.villager.Villager;
 
 /** M23 review round 1 (docs/reviews/M23-r1.md): items 1 to 3. Rules: see {@link GrowthTestSupport}. */
@@ -119,6 +123,41 @@ public class GrowthReviewGameTests {
 			h.assertTrue(Growth.seededLicenceOf(v[0]).isPresent(), "(sanity) a is the seeded initiator: " + describe(h) + " gate " + BreedingGate.licenceOf(v[0]));
 			h.assertFalse(Growth.mustDropBed(level, v[0], outside), "the seeded initiator is served by bedForBirth, not dropped here");
 			h.assertTrue(Growth.mustDropBed(level, v[1], outside), "b still drops an outside bed while a is seeded");
+			end(h);
+		});
+	}
+
+	/**
+	 * Item (r2) 2: a licensed pair standing within the birth distance, whose cached sight snapshot says the partner is unseen for the whole
+	 * run (the inverse of the {@code nearby()} helper: an empty snapshot every tick once the licence is SEEDED), still has its baby, with
+	 * its first seed and no abort. Without the fresh sight test every run stops at once as NOT_VISIBLE, and three seeds lapse the licence.
+	 */
+	@GameTest(environment = "villageheart-gametest:growth_review_sight_gap", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void sightGapWithinBirthDistanceDoesNotCostASeed(GameTestHelper h) {
+		Villager[] v = new Villager[2];
+		h.onEachTick(() -> {
+			if (v[0] == null) return;
+			var l = licence(h);
+			if (l.isPresent() && l.get().state() == LicenceState.SEEDED) {
+				for (Villager x : v) x.getBrain().setMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES, NearestVisibleLivingEntities.empty());
+			}
+		});
+		scene(h, 4, 0, 32).thenExecute(() -> {
+			h.getLevel().setDayTime(WageTestSupport.dayIndex(h) * 24000L + 100);
+			for (int i = 0; i < 2; i++) {
+				v[i] = WorkerTestSupport.spawnVillager(h, new BlockPos(22, 0, 22));
+				v[i].setAge(0);
+				breadInPockets(v[i], 3);
+			}
+			placeAt(h, v[0], 22.2, 0, 22.5);
+			placeAt(h, v[1], 23.4, 0, 22.5);
+			license(h, v[0], v[1]);
+		}).thenWaitUntil(() -> h.assertTrue(!babies(h).isEmpty(), "no baby yet: " + describe(h))).thenExecute(() -> {
+			License l = licence(h).orElseThrow();
+			h.assertTrue(l.state() == LicenceState.BORN, "BORN: " + describe(h));
+			h.assertValueEqual(1, l.seeds(), "the first seed was enough: " + describe(h));
+			h.assertValueEqual(0, GrowthStats.aborts(), "no aborted run: " + describe(h));
+			h.assertTrue(GrowthStats.sightRescues() > 0, "the fresh sight test was what kept the run alive: " + describe(h));
 			end(h);
 		});
 	}

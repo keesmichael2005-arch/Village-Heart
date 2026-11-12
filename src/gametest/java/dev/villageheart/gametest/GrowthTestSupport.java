@@ -178,7 +178,21 @@ public final class GrowthTestSupport {
 		v.snapTo(p.x, p.y, p.z, 0.0F, 0.0F);
 	}
 
-	public static GameTestSequence toDawn(GameTestHelper h, GameTestSequence seq) { return WageTestSupport.toDawn(h, seq, new PayResult[1]); }
+	/**
+	 * Jumps to the next dawn. Before the jump every villager in the test area loses its {@code CANT_REACH_WALK_TARGET_SINCE} stamp.
+	 * The jump moves the day time to the evening (REST starts) without moving the game time. Vanilla's REST behaviour
+	 * {@code SetWalkTargetFromBlockMemory(HOME, ..., 1200)} releases the bed and erases HOME when the stamp is older than 1200 ticks, and a stroll
+	 * of day 1 that failed to reach its target leaves such a stamp: in normal play thousands of ticks of other walks between morning and REST clear it,
+	 * the jump skips them. Without this, about 1 run in 25 lost a second-pair adult's HOME across the jump and the next dawn was
+	 * {@code TOO_FEW_READY} (review M23-r2 item 1; the same fix as in {@code noFreeBedNoBabyInThreeDays}).
+	 */
+	public static GameTestSequence toDawn(GameTestHelper h, GameTestSequence seq) {
+		return WageTestSupport.toDawn(h, seq.thenExecute(() -> {
+			for (Villager v : h.getEntities(EntityType.VILLAGER)) {
+				v.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+			}
+		}), new PayResult[1]);
+	}
 
 	public static void end(GameTestHelper h) {
 		for (Villager b : babies(h)) b.discard();

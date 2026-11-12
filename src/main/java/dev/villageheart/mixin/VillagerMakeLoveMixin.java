@@ -2,15 +2,19 @@ package dev.villageheart.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import dev.villageheart.growth.BreedTrace;
 import dev.villageheart.growth.BreedingGate;
 import dev.villageheart.growth.Growth;
+import dev.villageheart.growth.GrowthStats;
 import dev.villageheart.needs.BedPoi;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -56,6 +60,27 @@ abstract class VillagerMakeLoveMixin {
 		self.getBrain().getMemory(MemoryModuleType.BREED_TARGET).ifPresent(p -> {
 			if (self.distanceToSqr(p) > 5.0) BehaviorUtils.lockGazeAndWalkToEachOther(self, p, 0.5F, 1);
 		});
+	}
+
+	/**
+	 * Review M23-r2 item 2. Vanilla's "is the partner visible" is {@code NEAREST_VISIBLE_LIVING_ENTITIES.contains(partner)}, and that snapshot
+	 * memoises the line-of-sight test per entity until the next sensor scan (up to 20 ticks): one test made while the pair was still walking, or
+	 * in the tick the snapshot was taken, keeps a partner who now stands under 2 blocks away "unseen", the make-love run stops with NOT_VISIBLE and
+	 * the licence loses a seed (three of them lapse it, MAX_SEEDS). For a licensed pair within the birth distance the test is made again, fresh.
+	 */
+	@WrapOperation(method = "isBreedingPossible(Lnet/minecraft/world/entity/npc/villager/Villager;)Z", at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/world/entity/ai/behavior/BehaviorUtils;targetIsValid(Lnet/minecraft/world/entity/ai/Brain;"
+					+ "Lnet/minecraft/world/entity/ai/memory/MemoryModuleType;Lnet/minecraft/world/entity/EntityType;)Z"))
+	private boolean villageheart$freshSight(Brain<?> brain, MemoryModuleType<? extends LivingEntity> memory, EntityType<?> type,
+			Operation<Boolean> original, @Local(argsOnly = true) Villager self) {
+		boolean valid = original.call(brain, memory, type);
+		if (valid || !BreedingGate.holdsLicence(self)) return valid;
+		AgeableMob partner = brain.getMemory(MemoryModuleType.BREED_TARGET).orElse(null);
+		if (partner instanceof Villager p && p.isAlive() && self.distanceToSqr(p) <= 5.0 && self.hasLineOfSight(p)) {
+			GrowthStats.sightRescue();
+			return true;
+		}
+		return false;
 	}
 
 	/** A licensed initiator takes the House bed reserved at dawn instead of the first free HOME POI in range (plan 3.2 #6). */
