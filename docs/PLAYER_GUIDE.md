@@ -332,17 +332,17 @@ One lot is one emerald:
 
 | Goods | Count in one lot |
 |---|---|
-| Any natural log | 16 |
+| Any natural log | 8 |
 | Wheat | 20 |
 | Carrots | 22 |
 | Potatoes | 26 |
 | Beetroot | 15 |
-| Cobblestone or cobbled deepslate | 20 |
-| Coal | 15 |
-| Raw iron | 8 |
-| Raw copper | 20 |
+| Cobblestone or cobbled deepslate | 16 |
+| Coal | 10 |
+| Raw iron | 6 |
+| Raw copper | 14 |
 | Iron ingot | 4 |
-| Leather | 6 |
+| Leather | 4 |
 | Any cooked meat or cooked fish | 10 |
 
 Not bought: bread, raw meat and raw fish, gold, diamonds, redstone, lapis, saplings, seeds, tools, and anything renamed, enchanted, or damaged.

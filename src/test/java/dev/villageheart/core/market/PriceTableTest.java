@@ -13,10 +13,10 @@ class PriceTableTest {
 
 	@Test
 	void designExamples() {
-		for (String wood : List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak")) assertEquals(10, lot(wood + "_log"), wood); // M26 H2: 16 -> 10
+		for (String wood : List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak")) assertEquals(8, lot(wood + "_log"), wood); // M26 H2/H3: 16 -> 10 -> 8
 		assertEquals(20, lot("wheat"));
-		assertEquals(20, lot("cobblestone")); // M26 H2: 32 -> 20
-		assertEquals(20, lot("cobbled_deepslate"));
+		assertEquals(16, lot("cobblestone")); // M26 H2/H3: 32 -> 20 -> 16
+		assertEquals(16, lot("cobbled_deepslate"));
 		assertEquals(4, lot("iron_ingot"));
 		for (String m : List.of("beef", "porkchop", "mutton", "chicken", "rabbit", "cod", "salmon")) assertEquals(10, lot("cooked_" + m), m);
 	}
@@ -26,10 +26,10 @@ class PriceTableTest {
 		assertEquals(22, lot("carrot"));
 		assertEquals(26, lot("potato"));
 		assertEquals(15, lot("beetroot"));
-		assertEquals(15, lot("coal"));
-		assertEquals(8, lot("raw_iron"));
-		assertEquals(20, lot("raw_copper"));
-		assertEquals(6, lot("leather"));
+		assertEquals(10, lot("coal")); // M26 H3: 15 -> 10
+		assertEquals(6, lot("raw_iron")); // M26 H3: 8 -> 6
+		assertEquals(14, lot("raw_copper")); // M26 H3: 20 -> 14
+		assertEquals(4, lot("leather")); // M26 H3: 6 -> 4
 		assertEquals(27, PriceTable.entries().size(), "9 logs, wheat, 3 crops, 2 stones, coal, 2 raw ores, ingot, leather, 7 meats");
 	}
 

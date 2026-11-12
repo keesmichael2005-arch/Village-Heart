@@ -479,7 +479,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 ### 5.9 Merchant (Market, Market Stall)
 It sells stockpile **surplus** for emeralds that go into the treasury. Surplus means stock above a reserve:
 3 days of food, and 64 of everything else *(tunable, adjustable on the Stockpile tab)*. It sells at fixed prices
-(e.g. 10 logs, 20 wheat, 20 cobblestone, 4 iron ingots or 10 cooked meat = 1 emerald). The daily cap is 12 / 16 / 20
+(e.g. 8 logs, 20 wheat, 16 cobblestone, 4 iron ingots or 10 cooked meat = 1 emerald). The daily cap is 12 / 16 / 20
 emeralds by level. Unemployed villagers keep their vanilla trades.
 
 Rules as built (M22, `docs/plans/M22.md`):
@@ -492,8 +492,8 @@ Rules as built (M22, `docs/plans/M22.md`):
   claims of other systems (builds, cooks) and the **item reserve** (64). Food (any item with village nutrition; crops and cooked meat are priced,
   bread and raw meat are not): the whole village keeps **3 days** of nutrition (`days x (adults x 10 + babies x 5)`, the Overview's numbers), and what is
   above that is for sale, whichever food it is; food is not held to the item reserve. With nobody to feed the food reserve is 0.
-- **Prices** (one lot = 1 emerald; `core.market.PriceTable`): 10 of any natural log, 20 wheat, 22 carrots, 26 potatoes, 15 beetroot, 20 cobblestone or
-  cobbled deepslate, 15 coal, 8 raw iron, 20 raw copper, 4 iron ingots, 6 leather, 10 of any cooked meat or fish. Not bought: bread, raw meat and fish,
+- **Prices** (one lot = 1 emerald; `core.market.PriceTable`): 8 of any natural log, 20 wheat, 22 carrots, 26 potatoes, 15 beetroot, 16 cobblestone or
+  cobbled deepslate, 10 coal, 6 raw iron, 14 raw copper, 4 iron ingots, 4 leather, 10 of any cooked meat or fish. Not bought: bread, raw meat and fish,
   gold, diamonds, redstone, lapis, saplings, seeds, tools, anything with components.
 - **What is sold next**: the item with the most whole lots of surplus (ties: price-table order). Stop reasons, in this order: daily limit, treasury full,
   nothing above the reserves; they show as "Sold today's limit", "Treasury full", "Nothing to sell (all stock is within the reserve)".
