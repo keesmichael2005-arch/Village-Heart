@@ -1042,3 +1042,8 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
+
+## 2026-11-12: M23 review round 3 (verifier): PASS
+- Merged `origin/dev` (`f573200`) into `m23`; the only conflict was PROGRESS, and both sides were kept. Both r2 items are fixed and each is red under a mutant (`docs/reviews/M23-r3.md`). The fresh sight test does not touch the `canBreed` gate, so vanilla breeding stays blocked inside the claim.
+- Full `scripts/verify.sh` @ `e7d038b`: exit 0 (L2 409 tests). `one_birth_per_day` alone: 5 of 5.
+- Next: orchestrator merge. Non-blocking notes: no test pins the rescue's distance or line-of-sight guards.
