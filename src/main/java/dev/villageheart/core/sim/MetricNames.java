@@ -16,6 +16,7 @@ public final class MetricNames {
 			"food.dinners", "food.diners", "food.fed", "food.hungry", "food.eaten_nutrition", "food.eaten_items", "food.eaten_per_item", "food.max_hungry_days",
 			"housing.housed", "housing.house_beds",
 			"wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers",
+			"golems.vanilla_blocked", "golems.in_claim",
 			"deaths.total", "deaths.mobs",
 			"village_ms.mean", "village_ms.p95", "village_ms.max", "village_ms.samples",
 			"server.mspt", "server.tps", "server.heap_used_mb",

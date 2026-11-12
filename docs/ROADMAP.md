@@ -191,6 +191,7 @@ from there instead of hard-coding them.
 - **L2**: 36 iron ingots + a carved pumpkin + a blacksmith → a new iron golem within 1 day, and the stockpile minus 36 ingots
 - **L2**: a golem at 40% health → it walks to the Smithy and is above 90% after repair, with ingots consumed
 - **L2**: no vanilla golem spawns in the claim over 2 days with 10 gossiping villagers (vanilla would)
+- Built on branch `m19` (the boxes above are ticked by the orchestrator, not the builder). Rules as built: DESIGN §5.7. Tests: `SmithGameTests`, `SmithClientTests.smithyGolem` (`smithy_golem.png`). Deviations: docs/plans/M19.md section 8. Review round 1 fixes (items 1-9) are listed at the end of section 8. The unloaded-chunk half of T-L2-5k is not covered: a GameTest structure chunk stays loaded, so that test pauses the craft by making the Mine invalid instead.
 
 ## M20: Builder and blueprints (buildings) ✅
 - Note (M24): gate starting a blueprint with the existing `Permission.START_BLUEPRINT` (Steward and up).

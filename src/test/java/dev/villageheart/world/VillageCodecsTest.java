@@ -373,4 +373,54 @@ class VillageCodecsTest {
 		assertEquals(1, v.selfCrafts().size());
 		assertEquals("minecraft:stone_axe", v.selfCrafts().get(0).craft().recipeId());
 	}
+
+	private static String smith(String furnace, String recipe, String need, int progress) {
+		return "{\"furnace\":" + furnace + ",\"recipe\":\"" + recipe + "\",\"building\":" + CRAFT_BUILDING
+				+ ",\"need\":\"" + need + "\",\"slot\":0,\"destination\":" + furnace + ",\"progress\":" + progress
+				+ ",\"committed\":[{\"id\":\"minecraft:iron_ingot\",\"count\":3},{\"id\":\"minecraft:stick\",\"count\":2}]}";
+	}
+
+	@Test void smithCraftsAndGolemsRoundTripBesideSelfCrafts() {
+		HeartLocation furnace = new HeartLocation("minecraft:overworld", 8, 64, 8);
+		HeartLocation dest = new HeartLocation("minecraft:overworld", 4, 64, 4);
+		HeartLocation smithy = new HeartLocation("minecraft:overworld", 9, 64, 9);
+		var saved = new dev.villageheart.core.smith.SmithCraft(new dev.villageheart.core.gear.GearCraft("minecraft:iron_pickaxe",
+				new dev.villageheart.core.gear.OrderKey(new HeartLocation("minecraft:overworld", 1, 2, 3), dev.villageheart.core.gear.GearNeed.PICKAXE, 0),
+				100, List.of(new dev.villageheart.core.gear.ItemCount("minecraft:iron_ingot", 3), new dev.villageheart.core.gear.ItemCount("minecraft:stick", 2))), dest);
+		VillageState v = full().withSelfCraft(loadCraft(craft("minecraft:stone_pickaxe", "pickaxe", 100)))
+				.withSmithCraft(furnace, saved).withGolemBuild(smithy, 4000).withSmokerHeat(furnace, 200);
+		VillageState back = dec(VillageCodecs.VILLAGE_STATE, enc(VillageCodecs.VILLAGE_STATE, v));
+		assertEquals(v, back);
+		JsonObject json = enc(VillageCodecs.VILLAGE_STATE, v).getAsJsonObject();
+		assertTrue(json.has("self_crafts") && json.has("smith_crafts") && json.has("golem_builds") && json.has("smoker_heat"));
+		assertFalse(json.has("furnace_heat"));
+		assertEquals(200, back.furnaceHeat().get(furnace).intValue());
+	}
+
+	@Test void highProgressIsClampedAndABadEntryDoesNotDropTheVillage() {
+		String smithy = "{\"dim\":\"minecraft:overworld\",\"x\":9,\"y\":64,\"z\":9}";
+		String furnace = "{\"dim\":\"minecraft:overworld\",\"x\":8,\"y\":64,\"z\":8}";
+		String other = "{\"dim\":\"minecraft:overworld\",\"x\":7,\"y\":64,\"z\":7}";
+		VillageState high = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"golem_builds\":[{\"smithy\":" + smithy + ",\"progress\":9000}],\"smith_crafts\":["
+				+ smith(furnace, "minecraft:iron_pickaxe", "pickaxe", 99999) + "]}"));
+		assertEquals(8000, high.golemProgress(new HeartLocation("minecraft:overworld", 9, 64, 9)));
+		var clamped = high.smithCraft(new HeartLocation("minecraft:overworld", 8, 64, 8)).orElseThrow();
+		assertEquals(2400, clamped.craft().progress());
+		assertFalse(clamped.refundPending());
+		assertEquals(3, clamped.craft().committed().get(0).count());
+		VillageState bad = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + ",\"golem_builds\":[{\"smithy\":" + smithy + ",\"progress\":-1},{\"smithy\":" + other
+				+ ",\"progress\":10}],\"smith_crafts\":[" + smith(furnace, "minecraft:netherite_axe", "axe", -1) + "]}"));
+		assertEquals(-1, bad.golemProgress(new HeartLocation("minecraft:overworld", 9, 64, 9)));
+		assertEquals(10, bad.golemProgress(new HeartLocation("minecraft:overworld", 7, 64, 7)));
+		var refund = bad.smithCraft(new HeartLocation("minecraft:overworld", 8, 64, 8)).orElseThrow();
+		assertTrue(refund.refundPending());
+		assertEquals(0, refund.craft().progress());
+		assertEquals(3, refund.craft().committed().get(0).count());
+	}
+
+	@Test void oldSavesHaveNoGolemOrSmithCraft() {
+		VillageState v = dec(VillageCodecs.VILLAGE_STATE, json("{" + BASE + "}"));
+		assertTrue(v.golemBuilds().isEmpty());
+		assertTrue(v.smithCrafts().isEmpty());
+	}
 }

@@ -193,6 +193,10 @@ public final class MetricsJson {
 		wg.put("spent", d.wages().spent());
 		wg.put("strikers", d.wages().strikers());
 		m.put("wages", wg);
+		Map<String, Object> gl = new LinkedHashMap<>();
+		gl.put("vanilla_blocked", d.golems().vanillaBlocked());
+		gl.put("in_claim", d.golems().inClaim());
+		m.put("golems", gl);
 		Map<String, Object> de = new LinkedHashMap<>();
 		de.put("total", (long) d.deaths().size());
 		de.put("mobs", (long) d.mobDeaths());
@@ -309,6 +313,7 @@ public final class MetricsJson {
 		Map<String, Object> f = Json.obj(m.get("food"), "food");
 		Map<String, Object> hs = m.get("housing") == null ? Map.of() : Json.obj(m.get("housing"), "housing");
 		Map<String, Object> wg = m.get("wages") == null ? Map.of() : Json.obj(m.get("wages"), "wages");
+		Map<String, Object> gl = m.get("golems") == null ? Map.of() : Json.obj(m.get("golems"), "golems");
 		Map<String, Object> de = Json.obj(m.get("deaths"), "deaths");
 		Map<String, Object> vm = Json.obj(m.get("village_ms"), "village_ms");
 		Map<String, Object> sv = Json.obj(m.get("server"), "server");
@@ -337,6 +342,7 @@ public final class MetricsJson {
 				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
 						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
 				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")),
+				new DayMetrics.GolemDay(optLng(gl, "vanilla_blocked"), optLng(gl, "in_claim")),
 				readTier(m.get("tier")));
 	}
 }

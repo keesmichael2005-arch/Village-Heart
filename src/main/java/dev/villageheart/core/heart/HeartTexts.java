@@ -170,6 +170,11 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.site_unreachable.merchant", "Can't reach its stall");
 		EN.put(PREFIX + "activity.daily_limit", "Sold today's limit");
 		EN.put(PREFIX + "activity.treasury_full", "Treasury full");
+		EN.put(PREFIX + "activity.smithing", "Smithing");
+		EN.put(PREFIX + "activity.building_golem", "Building an iron golem");
+		EN.put(PREFIX + "activity.needs_material", "Needs material");
+		EN.put(PREFIX + "activity.needs_villagers", "Too few villagers for a golem");
+		EN.put(PREFIX + "activity.no_work.blacksmith", "Nothing to smith");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

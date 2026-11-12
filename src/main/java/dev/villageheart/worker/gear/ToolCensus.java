@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.ToIntFunction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
@@ -56,6 +57,12 @@ public final class ToolCensus {
 	 * {@code crafting} are the workers with an open order (left out of the per-worker allocation).
 	 */
 	public static CampDemand of(MinecraftServer server, VillageState village, HeartLocation building, JobType job, Set<UUID> crafting, int leadTicks) {
+		return of(server, village, building, job, crafting, tool -> leadTicks);
+	}
+
+	/** The same census with a lead that depends on the worn tool (the smith's craft time of that tier). */
+	public static CampDemand of(MinecraftServer server, VillageState village, HeartLocation building, JobType job, Set<UUID> crafting,
+			ToIntFunction<CampTool> leadTicks) {
 		List<UUID> hired = hired(village, building, job);
 		if (job.tool().isEmpty() || !valid(server, building)) return CampDemand.unknown(hired);
 		Optional<List<CampTool>> tools = toolsOf(server, building, job);

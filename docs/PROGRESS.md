@@ -918,6 +918,31 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - No balance number or scenario assertion changed. Results after the fix: `defended_walled` 0/5 (deaths.mobs 2/2/1/2/2, kills 1/0/0/0/0), `defended` 1/5 (deaths 6/0/5/7/4, kills 12/21/24/5/21).
 - Next (orchestrator/M25/M26): decide vanilla sieges inside a claim (M25), move `defended_walled`'s threat to the ring, guard re-hire priority in the harness, guard strength vs three fresh zombies (proposals in the findings). Blockers: none.
 
+## 2026-11-11: M19 blacksmith (TASK 2, branch m19)
+- Built the smith: on-demand tools and guard gear, repairs, iron golems (build, cap, repair, vanilla spawn gate), and the hand-off with self-crafting. Rules: DESIGN §5.7. Tests: TESTING.md "Smith GameTests". Deviations: docs/plans/M19.md section 8.
+- L2 added this session and green alone: `twoLumberjacksTwoSmithsShareACamp` (adoption), `fullCampChestBacksOff`, `unloadedCampDoesNotCancel` (invalid Mine, not an unloaded chunk), `smithTakesOverFromSelfCraft` (self-craft clock 4799), `selfCraftFallbackWhileSmithBusy` (fallback at game tick 2981, work ticks 3000).
+- L4 `smithy_golem.png` looked at twice. The isolated run shows the open oak Smithy, a lit blast furnace with flame particles, the blacksmith in a brown apron facing the camera, an anvil and a chest, and the two golems on the grass beside the opening. The full-verify file `0037_smithy_golem.png` has the same two golems standing in the doorway, so the blacksmith and the furnace are mostly behind them: the left golem is pale with a few vines, the right one is dark-cracked with thick vines, and the smithy marker sits on the back wall between their heads. Noon, clear, no GUI. The client checks (lit furnace, blacksmith profession, two golems, one HIGH) run before the wall is opened.
+- `scripts/verify.sh --fast` at eb4b866 was red. Layer 1's GameTest run failed only `market_game_tests_strike_stops_sales_income_settles` ("at its stall" at tick 1827); the following layer 2 run did not fail it. Layer 2 failed `gateEdgeOfClaim` (0 of 5 villagers in the world at tick 8) and `golemWithoutIronWaits` (timed out at tick 6002, health 40, 9 blocks from the spot, 3 ingots still in the chest). Both smith tests then passed alone. The edge test now waits until every spawn cell on both pads is entity-ticking; the gate assertions are the same. A later full-suite layer 1 still saw 4 of 5 villagers when only the pad centres were checked.
+- `scripts/verify.sh --fast` at a7c118f exit 0. Layer 1 and layer 2 each "All 418 required tests passed". Perf worst-batch median 2581 us.
+- `scripts/verify.sh` at 79826b6 exit 0. Layer 1 and layer 2 each "All 418 required tests passed". Layer 4 green (42 screenshots, lost wakeups rescued 2, one leaked in-flight close cleared). Perf worst-batch median 2623 us. origin/dev is still c7f109b, so no second merge. The unloaded-chunk half of T-L2-5k is not done (the Mine is invalidated by pulling a wall). Blockers: none.
+- GitHub refused the PR into `dev` ("must be a collaborator"). Branch `m19` is pushed. Title and description, for whoever can open it:
+
+### PR title
+
+TASK 2: Smith: on-demand tools, guard gear, iron golems
+
+### PR description
+
+Status: TASK 2 Smith, branch `m19`, done. Last verify `scripts/verify.sh` exit 0 at `79826b6` (docs-only follow-up after that).
+
+The smith crafts tools and guard gear only when a slot is missing or worn out, at the best tier the village can afford, and never as a spare. Guards start on a wooden sword. Iron golems are built from 36 ingots and a carved pumpkin, capped at one per five villagers, repaired below half health, and vanilla golem spawning is off inside the claim. Nobody attacks creepers. Rules as built are in DESIGN §5.7. Tests are in TESTING.md under "Smith GameTests". Deviations are in docs/plans/M19.md section 8. ROADMAP boxes are not ticked.
+
+The unloaded-chunk half of T-L2-5k is not covered: the 32×32 yard stays loaded, and a mine far enough to unload is outside the claim. The test pulls a Mine wall instead, which makes the marker invalid and pauses the committed pickaxe.
+
+`scripts/verify.sh` at `79826b6` (2026-11-11T11:19:08Z), exit 0. Layer 1 and layer 2 each "All 418 required tests passed". GameTest-ran gate, L3 script self-test, model-log gate and 2-player log gate passed. Layer 4 green: lost wakeups rescued 2, one leaked in-flight close cleared, world-load timeout fix installed, no villageheart model warnings, 2-player session clean. Screenshots 0000 through 0041, including `0037_smithy_golem.png`. Perf worst-batch median 2623 us; 16x16x8 2292 us; stockpile spill 1415 us; snapshot 278 us; full-storage deposit 243 us; village ticker idle tick mean 9.345E-4 ms.
+
+`0037_smithy_golem.png`: open oak Smithy at noon, two iron golems in the doorway (the new one pale, the one at 20 health dark-cracked and vine-covered), smithy marker on the back wall between their heads. The blacksmith and the lit furnace are behind the golems. The client checks for the lit furnace, the blacksmith profession, two golems and HIGH crackiness ran before the south wall was opened.
+
 ## 2026-11-11: TASK 1 finish M23 (Population growth)
 - Merged origin/dev (`c7f109b`, handoff docs) into m23. Product change is in `Courtship`: a `CANT_REACH_WALK_TARGET_SINCE` stamp counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A stroll left a stamp already older than 200 ticks, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). A real cannot-reach of the partner walk still lapses, and the 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C on their spots until the dawn has read them (A and C share a house and a few stroll ticks were swapping the closest pair), then lets them walk.
 - New L2 `staleCannotReachDoesNotEndCourtship`: pair held 7 blocks apart, stamp 5000 ticks old on a block stroll target, brains frozen with NoAI once idle. Red before the fix (`LAPSED/CANNOT_MEET`, approach 0, tick 45) and red again with the `tracks()` guard removed. Restored, then green. NoAI is the test setup: in the full suite a live brain puts the walk target back on the partner before courtship reads a planted stamp, which is a real cannot-reach of that walk. `one_birth_per_day` still uses live brains and passed both layers. No M23 test calls `relativePos`. `outside_pair_cannot_take_claim_bed` logged `NO_BED` plus the dropped bed in both worlds.
@@ -1027,6 +1052,16 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Full `scripts/verify.sh` exit 0 at bba04a1 (L2 388/388, L4 41 screenshots, perf in caps) on the fourth run. Runs 1–3 each failed on one flaky test this branch does not touch: `heart_action_game_tests_rate_limited` twice (static `HeartActions.warnCount` is shared between concurrently running GameTests), and `GuardClientTests` once ("night guard is not at its bed on the client" after the server-side check had passed; a client-sync race).
 - Next: merge `art-pass`. Orchestrator: consider tickets for the two flakes above. Blockers: none.
 
+## 2026-11-11: M19 review round 1 fixes (builder, branch m19)
+- Fixed all nine items of `docs/reviews/M19-r1.md` (blocking first), merged `origin/dev` (one conflict in `VillageHeartClientTests`: kept the `smith` and `art` L4 filters), and added the §5.7 sentence (hoes and hunter swords in stone before iron, orchestrator decision 2026-11-11).
+- 1 `give()` no longer duplicates (only the `addItem` leftover is dropped). Red: `minerWithoutPickaxeGetsStone` saw 1 stone pickaxe on the ground. Ground-item counts are now asserted there and in `smeltsRawOre`.
+- 2 One craft per furnace: the planner starts no craft over a saved one (UNKNOWN pauses), `withSmithCraft` refuses a different key, `SmithCrafts.commit` is compare-and-insert. 3 One golem build per Smithy: `GolemBuilds.start` is compare-and-insert, no `StartGolem` with a build or a fetch in the Smithy, a fetch counts toward the cap. 6 A `refundPending` craft is never resumed; `SmithySystem` retries its refund. Each guard, removed, turns its test red (`SmithPlannerTest` x3, `VillageSmithCraftsTest`, GameTests `refundPendingCraftIsRefundedNotResumed`, `startsRefuseToOverwrite`, `twoSmithsStartOneGolemBuild`: iron 0 left with the guard out).
+- 4 `golemWithoutIronWaits` root cause: a wide mob's path ends on a node corner and counts as done 1.4-1.7 blocks from the wait spot, outside the 1.5 radius, so the golem sat there until the walk timeout (trace: 1.6 for thousands of ticks). `SmithyRepairGoal` walks the last stretch with the move control; radius and timeouts unchanged. New deterministic `golemStandsOnTheWaitSpot` (smith frozen, golem on the stall corner): 3 of 3 red without the fix. The original test: 1 failure in 8 alone before (trace run), 12 of 12 green after.
+- 5 and 9 Storage gear is now repaired (it was listed and then skipped, which kept the smith in a fetch loop ahead of smelting and golems). No fetch without room, leftovers go to Storage, the smith, then the ground, and the planner starts no repair trip with no free slot. 7 `setChanged()` and the item-id check. Tests: `repairsStorageGear` (red: sword stays damaged), `noGearIsLostWhenTheSmithIsFull` (red: sword dropped at tick 240), `repairStopsWhenTheItemIsSwapped` (red: iron spent on the swapped chestplate), `aSmithWithNoFreeSlotStartsNoRepairTrip`. `inPlaceRepairMarksTheChunkForSaving` covers the chest `setChanged()` (red without it).
+- 8 Creepers: `IgnoreCreeperGoal` (priority 4) could never preempt `HurtByTargetGoal`; replaced by `MobCreeperTargetMixin` (refuses a creeper in `Mob.setTarget` for an iron golem). `golemIgnoresCreeper` forces both routes with a zombie control and is red without the mixin.
+- Verify: `scripts/verify.sh` exit 0 at `f542bf6` (2026-11-11T22:53Z): Layer 1, Layer 2 all 428 required GameTests, gates, Layer 4 client tests on xvfb (0 lost wakeups, 0 leaks, no model warnings), perf. `0037_smithy_golem.png` looked at: unchanged (Smithy, lit furnace, chest, two golems, the right one cracked).
+- Not changed, owner call: the stone-before-iron rule itself (`TierChoice.order`), only documented.
+- Next: verifier round 2. Blockers: none.
 **backlog-small round 1 fixes**
 
 - Hunter: only an away or walking neighbour counts as "arrived" near the marker. A bystander earns one give-up (`YIELD`); a repeat within `HUNTER_RETRY_TICKS` is `UNREACHABLE`. Tests: `HuntApproachTest`, `wallWithABystanderIsStillUnreachable` (NoAI neighbour, walled ground, reported at tick 430), `jamInTheGapIsResolvedWhenTheNeighbourMovesOn` (out at +350). The old `jamIsNotAnUnreachableGround` locked in the hidden unreachable ground and was replaced. The gap test probably also passes on the old code: it is a regression guard. `twoHuntersOneGround` bound stays 450.
@@ -1070,6 +1105,12 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
 
+## 2026-11-12: M19 review round 2 (verifier)
+- Verdict FAIL, 1 blocking item (`docs/reviews/M19-r2.md`), plus 2 non-blocking. Merged `origin/dev`; the PROGRESS conflict was resolved by keeping both sides.
+- All nine r1 items are fixed and mutation-checked red. `golemWithoutIronWaits` passed 5 of 5 alone. DESIGN §5.7 has the stone-before-iron decision.
+- Blocking: `SmithCrafts.refund` loops forever on a committed id that is not a registered item. `retryPending` reaches it on its own for a bad save, which freezes the server; reproduced with a throwaway GameTest and a control. `SelfCrafts.refund` has the same loop.
+- Full verify exit 1, only on `gate_game_tests_mobs_still_cannot_pass_the_gate`. It is not M19's (seen in art-pass r1, 3 of 3 alone). Orchestrator: add it to the known flakes.
+- Next: builder round 3 on fix item 1 (and 2, 3 if cheap). Blockers: none.
 ## 2026-11-12: backlog-small round 2 fixes (builder)
 - Merged `origin/dev` (only `docs/PROGRESS.md` conflicted: kept both sides).
 - **Fix 1, jam against an away hunter:** `HuntApproach.yieldNow` takes a new `awayNeighbour` flag; `HunterJob` passes `AwayTrips.isAway(blocking)`. A walker touching a hidden (NoAI) hunter beyond 6 blocks now steps around it after the 30-tick push instead of waiting out the 200-tick stall. The `twoHuntersOneGround` bound (450) is unchanged (197 ticks, 5 of 5 runs alone).
@@ -1083,6 +1124,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Full `scripts/verify.sh` @ `e7d038b`: exit 0 (L2 409 tests). `one_birth_per_day` alone: 5 of 5.
 - Next: orchestrator merge. Non-blocking notes: no test pins the rescue's distance or line-of-sight guards.
 
+## 2026-11-12: M19 review round 2 fix (builder)
+- Bug (`docs/reviews/M19-r2.md`, blocking): `SmithCrafts.refund` looped for ever on a committed id that is not a registered item. An unknown id resolves to AIR, an AIR stack reports a count of 0, so `remaining` never fell. The save codec accepts any id and the orphan sweep (`SmithySystem`, every 100 ticks) calls refund via `retryPending`, so a save with a removed or modded item hung the server soon after load.
+- Fix: new `SelfCrafts.knownItem(id, what)` returns null (with one WARN naming the id) for a malformed, unregistered or AIR id. The smith refund skips it, refunds every other item and removes the record. The same loop existed in `SelfCrafts.refund` and in the `SelfCraftJob` leftovers deposit; both use the helper now. `GolemBuilds` uses fixed items, so it has no such loop.
+- Tests: `SmithGameTests.refundSkipsUnknownItemId` (committed `no_such_item` x3 + `stick` x2, refund-pending craft at the real furnace; asserts the record is gone and the sticks are in Storage) and `SelfCraftLifecycleGameTests.refundSkipsUnknownItemId`. Red before: with `src/main` stashed, the smith test starts and the server never finishes (killed at 300 s, no result). Green after: `All 1 required tests passed`, WARN line logged. No L1 test: the logic needs the item registry, so it lives in the glue layer.
+- Merged `origin/dev` into `m19` first (conflicts: `Balance`, mixins json, gametest `fabric.mod.json`, `VillageClaims.releaseAt`, docs; kept both sides). Red re-checked on the real `origin/m19` base: the test hangs (killed at 240 s), green after the fix.
 ## 2026-11-12: backlog-small review round 3 (verifier): PASS
 - Verdict PASS, 0 fix items (`docs/reviews/backlog-small-r3.md`). Merged `origin/dev` (ed1db90); only PROGRESS conflicted, and I kept both sides.
 - Both r2 items are fixed and red under their mutants:
@@ -1090,3 +1136,20 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
   - `blockerMoves = blocking != null`: the near-marker wall test "went away against a wall".
 - Full `scripts/verify.sh` at ed1db90: exit 0 (L2 414 tests). `two_hunters_one_ground` alone: 5 of 5, 197 ticks each.
 - Next: orchestrator merge. Advisories from r2 remain: `deposited_settled` arg count, "1 workers", `mover()` scope.
+
+## 2026-11-12: M19 review round 3 (verifier)
+- Verdict FAIL, 1 blocking item (`docs/reviews/M19-r3.md`). Merged `origin/dev` (`497a357`; the sim metrics carry both dev's `tier` and M19's `golems`).
+- The r2 blocking fix holds. Both refund mutants (smith and self-craft) hang the server (killed at 240 s), and the real code passes. A malformed id is also dropped with a WARN. No other saved-id-to-stack loop exists.
+- r2 items 2 and 3 are not fixed. Both are acceptable and were moved to BACKLOG (From M19-r3), together with an M19a `addItem` leftover gap in `SelfCraftJob`.
+- Full verify exit 1. L1 passed, and L2 passed all 457 tests. L4 failed on `SmithClientTests.smithyGolem` ("blast furnace is not lit on the client"), and the 2-player session never ran after the abort.
+  - Root cause: `SmithySystem.sweep` (every 100 ticks) puts out the test's state-only lit furnace.
+  - Alone it failed 2 of 3 after the merge and 3 of 3 before it, and passed 2 of 2 with the sweep disabled.
+- `golemWithoutIronWaits` alone: 3 of 3.
+- Next: builder round 4. Give the scene furnace real burn time, run the smith L4 test 5 of 5 alone, then a full verify. Blockers: none.
+
+## 2026-11-12: M19 round 4 (builder)
+- Fixed the one blocking r3 item: `SmithClientTests.smithyGolem` lit the blast furnace with the LIT state only, so `SmithySystem.sweep` put it out within the test's wait window.
+- The scene now gives the block entity real burn time (`litTimeRemaining` / `litTotalTime` = 20000) through a gametest-only mixin, `FurnaceBurnSetter`. The sweep is unchanged and the furnace is not re-lit in a loop: the sweep sees a fire that burns by itself and leaves it alone.
+- `-Dvillageheart.l4.only=smith` alone: 5 of 5 passed. Full `scripts/verify.sh`: exit 0 (L2 457 tests, 42 L4 screenshots, 2-player session clean, perf within limits).
+- `0038_smithy_golem.png` looked at: the oak Smithy open to the front, the smith by the glowing blast furnace inside, two iron golems in front, the right one visibly cracked.
+- Next: orchestrator review of round 4 and ROADMAP tick. Blockers: none.

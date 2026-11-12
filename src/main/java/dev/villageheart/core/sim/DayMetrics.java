@@ -13,7 +13,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		List<DeathRecord> deaths,
 		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
 		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages,
-		TierDay tier) {
+		GolemDay golems, TierDay tier) {
 
 	/**
 	 * What dinner and housing did that day (M11): the dinner's totals, the hungriest villager at the end of the day, and how many villagers
@@ -30,6 +30,14 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 	 */
 	public record WageDay(long runs, long bill, long paid, long spent, long strikers) {
 		public static final WageDay ZERO = new WageDay(0, 0, 0, 0, 0);
+	}
+
+	/**
+	 * Golems that day (M19): vanilla spawn attempts the gate refused, and iron golems standing in the claim at the sample.
+	 * A report written before M19 reads zeros.
+	 */
+	public record GolemDay(long vanillaBlocked, long inClaim) {
+		public static final GolemDay ZERO = new GolemDay(0, 0);
 	}
 
 	/**
@@ -60,10 +68,32 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
 			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
+			WageDay wages, GolemDay golems) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, wages, golems, TierDay.NONE);
+	}
+
+	/** Without the M19 golem sample. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
+			WageDay wages, TierDay tier) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, wages, GolemDay.ZERO, tier);
+	}
+
+	/** Without the golem sample and the tier record. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
 			WageDay wages) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
 				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
-				stockpileTags, needs, wages, TierDay.NONE);
+				stockpileTags, needs, wages, GolemDay.ZERO, TierDay.NONE);
 	}
 
 	/** Without the M12 wage record. */
@@ -89,6 +119,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 	public DayMetrics {
 		java.util.Objects.requireNonNull(needs, "needs");
 		java.util.Objects.requireNonNull(wages, "wages");
+		java.util.Objects.requireNonNull(golems, "golems");
 		java.util.Objects.requireNonNull(tier, "tier");
 		stockpile = Map.copyOf(stockpile);
 		deaths = List.copyOf(deaths);
@@ -154,6 +185,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("wages.paid", (double) wages.paid());
 		m.put("wages.spent", (double) wages.spent());
 		m.put("wages.strikers", (double) wages.strikers());
+		m.put("golems.vanilla_blocked", (double) golems.vanillaBlocked());
+		m.put("golems.in_claim", (double) golems.inClaim());
 		m.put("deaths.total", (double) deaths.size());
 		m.put("deaths.mobs", (double) mobDeaths());
 		Map<String, Integer> byCause = new LinkedHashMap<>();

@@ -394,6 +394,50 @@ public final class Balance {
 
 	public static int merchantDailyCap(int level) { return MERCHANT_DAILY_CAP[Math.max(1, Math.min(level, MERCHANT_DAILY_CAP.length)) - 1]; }
 
+	// ---- M19: Blacksmith / Smithy (all tunable) ------------------------------------------------------
+
+	/** Blast-furnace ticks per ingot at level 1 (vanilla blasting cooking time). */
+	public static final int SMITH_SMELT_TICKS = 100;
+	/** Smith tool craft ticks at level 1, by tier. Not an array: leather sits between stone and copper in the enum, so never index by ordinal. */
+	public static final int SMITH_TOOL_WOODEN = 600, SMITH_TOOL_STONE = 1200, SMITH_TOOL_COPPER = 1800, SMITH_TOOL_IRON = 2400, SMITH_TOOL_DIAMOND = 4800;
+	/** Smith armour craft ticks at level 1, per piece. */
+	public static final int SMITH_ARMOUR_LEATHER = 600, SMITH_ARMOUR_COPPER = 1800, SMITH_ARMOUR_IRON = 2400, SMITH_ARMOUR_DIAMOND = 4800;
+	public static final int SMITH_STICK_TICKS = 20;
+	public static final int SMITH_REPAIR_TICKS = 100;
+	public static final int SMITH_BATCH = 8;
+	/** A smelt batch or a repair must be able to finish by this day time (same offset as the cook). */
+	public static final int SMITH_DONE_BY = WORK_END - 500;
+	/** Heat the smith leaves in the stockpile while a cook is hired (2 coal). */
+	public static final int SMITH_FUEL_RESERVE = 3200;
+	public static final int SMITH_REPAIR_CARRY = 4;
+	/** Diamonds that must remain after a diamond craft. Set high to forbid diamond gear. */
+	public static final int SMITH_DIAMOND_RESERVE = 5;
+	public static final int SMITH_CANCEL_CHECK_TICKS = 100;
+	public static final int SMITH_ORPHAN_TICKS = 2000;
+	public static final int SMITH_DELIVERY_BACKOFF = 1200;
+	public static final int SMITH_XP_TICKS = 300;
+	public static final int SMITH_CRAFT_SAVE_TICKS = 200;
+	/** Added to the craft time when the smith decides a tool is worn (delivery allowance). */
+	public static final int SMITH_DELIVERY_LEAD = 600;
+	/** Charcoal, then coal; logs follow by id, the same order the cook uses. */
+	public static final java.util.List<String> FUEL_ORDER = COOK_FUEL_ORDER;
+
+	public static final int GOLEM_INGOTS = 36;
+	public static final int GOLEM_BUILD_TICKS = 8000;
+	/** No new golem build starts after this day time. */
+	public static final int GOLEM_LAST_START = WORK_END - 2000;
+	public static final int GOLEM_HAMMER_TICKS = 400;
+	public static final int GOLEM_VILLAGERS_PER = 5;
+	public static final double GOLEM_REPAIR_BELOW = 0.5;
+	public static final int GOLEM_REPAIR_MIN_MISSING = 10;
+	public static final int GOLEM_HEAL_PER_INGOT = 25;
+	public static final int GOLEM_REPAIR_TICKS = 40;
+	public static final double GOLEM_REPAIR_REACH = 3.0;
+	public static final double GOLEM_WAIT_RADIUS = 1.5;
+	public static final int GOLEM_WALK_TIMEOUT = 1200;
+	public static final int GOLEM_WAIT_TIMEOUT = 1800;
+	public static final int GOLEM_REPAIR_COOLDOWN = 1200;
+
 	// ---- M23: population growth ----
 	/** The stockpile must hold at least this many food days (adults 10, babies 5 a day) before a baby is licensed. Tunable. */
 	public static final double GROWTH_MIN_FOOD_DAYS = 3.0;

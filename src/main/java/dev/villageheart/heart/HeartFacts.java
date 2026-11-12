@@ -142,7 +142,10 @@ public final class HeartFacts {
 					case NO_SPACE -> ActivityKind.TOOL_NO_SPACE;
 					case null -> ActivityKind.NEEDS_TOOL;
 				};
-				case NO_WORK -> ActivityKind.NO_WORK;
+				case NO_WORK -> {
+					ActivityKind smith = dev.villageheart.worker.smith.SmithRuntime.activity(server, rec.villager());
+					yield smith != null ? smith : ActivityKind.NO_WORK;
+				}
 				case SITE_UNREACHABLE -> ActivityKind.SITE_UNREACHABLE;
 				case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;
 				case BLOCKED -> ActivityKind.BLOCKED;
@@ -153,7 +156,10 @@ public final class HeartFacts {
 				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
-				default -> activityOf(v);
+				default -> {
+					ActivityKind smith = dev.villageheart.worker.smith.SmithRuntime.activity(server, rec.villager());
+					yield smith != null ? smith : activityOf(v);
+				}
 			};
 			villagers.add(new VillagerFact(v.getUUID(), name(v), index++, rec.jobId(), professionOf(v), level, xp, needs, activity,
 					status == WorkerStatus.WORKPLACE_INVALID, false, false, true,

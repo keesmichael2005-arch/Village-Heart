@@ -70,6 +70,7 @@ public final class SelfCraftSystem implements VillageSystem {
 			case PICKAXE -> JobType.MINER;
 			case SWORD -> JobType.HUNTER;
 			case HOE -> JobType.FARMER;
+			case HEAD, CHEST, LEGS, FEET -> throw new IllegalStateException("a self-craft is never armour: " + sc.craft().key().need());
 		};
 	}
 
@@ -86,7 +87,7 @@ public final class SelfCraftSystem implements VillageSystem {
 			return SlotPresence.UNKNOWN;
 		}
 		st.invalidSince = -1;
-		CampDemand census = ToolCensus.of(server, village, building, job, GearOrders.crafting(), GearLead.forCamp(server, village, building, job));
+		CampDemand census = ToolCensus.of(server, village, building, job, GearOrders.crafting(), GearLead.lead(server, village));
 		if (census.isUnknown()) return SlotPresence.UNKNOWN;
 		GearNeed need = sc.craft().key().need();
 		return ToolDemand.presence(census, GearOrders.openOrders(village, building, need)).getOrDefault(sc.craft().key(), SlotPresence.COVERED);

@@ -273,6 +273,40 @@ public class SelfCraftLifecycleGameTests {
 		});
 	}
 
+	/** M19 round 2: a committed id that is not a registered item used to hang the refund loop (AIR stacks count 0). It is dropped with a warning, the rest is refunded and the record goes. */
+	@GameTest(environment = "villageheart-gametest:selfcraft_unknown_id", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void refundSkipsUnknownItemId(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		Sampler s = new Sampler();
+		GameTestSequence seq = mineScene(h, v, s, items(new ItemStack(Items.DIRT)));
+		seq = seq.thenExecute(() -> {
+			insertRecord(h, withUnknown(committed(h, v[0], 1000)));
+			dev.villageheart.worker.Workers.fire(h.getLevel(), v[0]);
+			dev.villageheart.worker.gear.SelfCraftJob.stop(h.getLevel(), v[0]); // a late stop right after the fire
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 260, "the record is refunded", () -> h.assertTrue(records(h).isEmpty(), "the record is still there"));
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(3L, stored(h, Items.COBBLESTONE), "cobblestone refunded");
+			h.assertValueEqual(2L, stored(h, Items.STICK), "sticks refunded");
+		});
+		seq = seq.thenIdle(400);
+		seq.thenExecute(() -> {
+			h.assertTrue(records(h).isEmpty(), "no record came back");
+			h.assertValueEqual(3L, stored(h, Items.COBBLESTONE), "refunded once only");
+			h.assertValueEqual(2L, stored(h, Items.STICK), "refunded once only");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	private static SelfCraft withUnknown(SelfCraft sc) {
+		List<ItemCount> items = new java.util.ArrayList<>(sc.craft().committed());
+		items.add(0, new ItemCount("minecraft:no_such_item", 3));
+		return new SelfCraft(sc.worker(), new GearCraft(sc.craft().recipeId(), sc.craft().key(), sc.craft().progress(), items), false);
+	}
+
+
 	/** The same when the worker dies. */
 	@GameTest(environment = "villageheart-gametest:selfcraft_dead", structure = YARD, skyAccess = true, maxTicks = 1500)
 	public void deadWorkerRefunds(GameTestHelper h) {

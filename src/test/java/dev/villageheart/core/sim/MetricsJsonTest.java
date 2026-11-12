@@ -61,7 +61,7 @@ class MetricsJsonTest {
 		assertEquals(List.of("structure", "bell", "heart"), List.copyOf(((Map<String, Object>) m.get("village")).keySet()));
 		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
 		assertEquals(List.of("day", "game_time", "claimed", "population", "adults", "babies", "employed", "tier", "buildings",
-				"stockpile", "food", "housing", "treasury", "wages", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
+				"stockpile", "food", "housing", "treasury", "wages", "golems", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
 				"stockpile_tags"), List.copyOf(day.keySet()));
 		assertEquals(List.of("valid", "invalid"), List.copyOf(((Map<String, Object>) day.get("buildings")).keySet()));
 		assertEquals(List.of("total", "distinct", "items"), List.copyOf(((Map<String, Object>) day.get("stockpile")).keySet()));
@@ -177,5 +177,28 @@ class MetricsJsonTest {
 		for (String k : List.of("wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers")) assertTrue(MetricNames.isKnown(k), k);
 		day.remove("wages");
 		assertEquals(DayMetrics.WageDay.ZERO, MetricsJson.read(Json.write(m, true)).days().get(0).wages());
+	}
+
+	/** M19: the golem sample round-trips, and a report from before it reads zeros. */
+	@Test
+	void golemsRoundTripAndOldReportsReadZeros() {
+		DayMetrics d = rich(1);
+		DayMetrics.GolemDay gd = new DayMetrics.GolemDay(4, 2);
+		DayMetrics with = new DayMetrics(d.day(), d.gameTime(), d.claimed(), d.population(), d.adults(), d.babies(), d.employed(),
+				1, 3, d.stockpile(), 12, 3.5, 4, d.deaths(), d.villageMs(), 1.5, 470.25, 51.2, 900, 41_000_000L,
+				Map.of("blacksmith.ingots", 8L), Map.of(), Map.of(), DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO, gd);
+		Report r = new Report("x", SimStatus.PASS, null, true, 1, 0, null, 1, "normal", 1, "1.21.11", VillagePositions.NONE,
+				0, List.of(), null, List.of(with), List.of());
+		String json = MetricsJson.write(r);
+		assertEquals(r, MetricsJson.read(json));
+		assertEquals(4.0, with.flatten().get("golems.vanilla_blocked"));
+		assertEquals(2.0, with.flatten().get("golems.in_claim"));
+		assertEquals(8.0, with.flatten().get("work.blacksmith.ingots"));
+		@SuppressWarnings("unchecked")
+		Map<String, Object> m = (Map<String, Object>) Json.parse(json);
+		@SuppressWarnings("unchecked")
+		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
+		day.remove("golems");
+		assertEquals(DayMetrics.GolemDay.ZERO, MetricsJson.read(Json.write(m, true)).days().get(0).golems());
 	}
 }

@@ -54,6 +54,21 @@ public final class ToolStacks {
 		if (key.is(ItemTags.PLANKS)) return Optional.of(MaterialRole.PLANKS);
 		if (key.is(ItemTags.STONE_TOOL_MATERIALS)) return Optional.of(MaterialRole.STONE);
 		if (key.is(ItemTags.LOGS) && PlankTable.planksOf(key.id()).isPresent()) return Optional.of(MaterialRole.LOGS);
+		if (key.item() == Items.COPPER_INGOT) return Optional.of(MaterialRole.COPPER_INGOT);
+		if (key.item() == Items.IRON_INGOT) return Optional.of(MaterialRole.IRON_INGOT);
+		if (key.item() == Items.DIAMOND) return Optional.of(MaterialRole.DIAMOND);
+		if (key.item() == Items.LEATHER) return Optional.of(MaterialRole.LEATHER);
+		if (key.item() == Items.RAW_COPPER) return Optional.of(MaterialRole.RAW_COPPER);
+		if (key.item() == Items.RAW_IRON) return Optional.of(MaterialRole.RAW_IRON);
 		return Optional.empty();
+	}
+
+	/** A component-free, undamaged tool or armour piece in Storage. The smith may carry it to a camp. */
+	public static boolean storedGear(ItemStack s) {
+		if (s.isEmpty() || s.isDamaged() || !s.getComponentsPatch().isEmpty()) return false;
+		if (s.has(DataComponents.CUSTOM_NAME)) return false;
+		var enchants = s.get(DataComponents.ENCHANTMENTS);
+		if (enchants != null && !enchants.isEmpty()) return false;
+		return dev.villageheart.core.gear.GearInfo.of(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString()).isPresent();
 	}
 }

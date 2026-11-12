@@ -62,6 +62,7 @@ public class SelfCraftJobsGameTests {
 				case PICKAXE -> List.of(x, x, x, E, s, E, E, s, E);
 				case HOE -> List.of(x, x, E, E, s, E, E, s, E);
 				case SWORD -> List.of(x, E, E, x, E, E, s, E, E);
+				case HEAD, CHEST, LEGS, FEET -> throw new IllegalStateException("self-craft recipes are tools: " + r.outputId());
 			};
 			int count = 0;
 			for (ItemStack g : grid) if (!g.isEmpty()) count++;
@@ -88,7 +89,9 @@ public class SelfCraftJobsGameTests {
 		Item[] stones = {Items.COBBLESTONE, Items.BLACKSTONE, Items.COBBLED_DEEPSLATE};
 		for (Item i : stones) h.assertTrue(i.builtInRegistryHolder().is(net.minecraft.tags.ItemTags.STONE_TOOL_MATERIALS), i + " is a stone tool material");
 		h.assertTrue(Items.OAK_PLANKS.builtInRegistryHolder().is(net.minecraft.tags.ItemTags.PLANKS), "planks");
-		h.assertValueEqual(GearNeed.values().length, 4, "four needs");
+		int toolNeeds = 0;
+		for (GearNeed n : GearNeed.values()) if (!n.isArmour()) toolNeeds++;
+		h.assertValueEqual(toolNeeds, 4, "four tool needs");
 		h.succeed();
 	}
 
