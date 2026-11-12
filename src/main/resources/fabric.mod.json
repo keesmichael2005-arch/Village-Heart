@@ -3,8 +3,13 @@
 	"id": "villageheart",
 	"version": "${version}",
 	"name": "Village Heart",
-	"description": "Claim a village with the Village Heart and grow it into a working settlement: hire villagers, build workplaces, share resources, survive.",
+	"description": "Claim one vanilla village with a crafted Village Heart. Hire villagers, mark their buildings, share a stockpile, and grow a Hamlet into a Town.",
 	"authors": ["kees"],
+	"contact": {
+		"homepage": "https://github.com/keesmichael2005-arch/Village-Heart",
+		"sources": "https://github.com/keesmichael2005-arch/Village-Heart",
+		"issues": "https://github.com/keesmichael2005-arch/Village-Heart/issues"
+	},
 	"license": "CC0-1.0",
 	"icon": "assets/villageheart/icon.png",
 	"environment": "*",

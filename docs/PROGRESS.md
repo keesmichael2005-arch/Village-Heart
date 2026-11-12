@@ -1029,3 +1029,16 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Item 2: cause found in vanilla. `NearestVisibleLivingEntities` memoises the line-of-sight test per entity until the next sensor scan (up to 20 ticks), so one false test keeps a partner who stands under 2 blocks away "unseen"; the run stops as NOT_VISIBLE and costs a seed. `VillagerMakeLoveMixin.villageheart$freshSight` wraps `BehaviorUtils.targetIsValid` in `isBreedingPossible`: for a licence holder whose partner is within sqrt(5), it uses a fresh `hasLineOfSight`. New test `sightGapWithinBirthDistanceDoesNotCostASeed`: red without the fix (`licensed NOT_VISIBLE=3`, `LAPSED/MAX_SEEDS`, no baby), green with it (1 seed, 0 aborts, baby, `sightRescues > 0`).
 - Proof: `verify.sh --fast` exit 0 (409 tests) at `eee2c1c`. Stress, 6 launches x 24 copies of `oneBirthPerDay` (144), all passed (review saw item 1 in about 4 of 192; the harness was not committed). Full `verify.sh` at `eee2c1c`: exit 0 (L1, L2 409 tests, L3 self-test, gates, L4, perf). `oneBirthPerDay` alone x5: 5 of 5 passed.
 - Doubt: 144 clean copies is evidence, not proof, at a failure rate near 2 %.
+
+**release-prep round 1 fixes (docs and metadata only)**
+
+- PLAYER_GUIDE: tool text now matches `JobType` (lumberjack, miner, hunter need their tool; farmer hoe is x1.25). Cook table follows `CookRecipes` order and shows the gain. Population growth added to the intro, the "Coming in v1" list (now five), the tier note, CHANGELOG and README as "in v1, being finished" (DESIGN section 7). Ranks tab wording no longer contradicts the Resident row.
+- Version: CHANGELOG heads "Unreleased (1.0.0)"; README jar name is `village-heart-<version>.jar`. `gradle.properties` stays 0.1.0 until the release gate (TASK 12) bumps it, so `fabric.mod.json` (`${version}`) follows it.
+- `./gradlew --no-daemon build -x test` passes. Next: release gate.
+
+## 2026-11-11: release-prep review round 2 (verifier)
+- Verdict FAIL, 1 fix item (`docs/reviews/release-prep-r2.md`). Merged `origin/dev`; the PROGRESS conflict was resolved by keeping both sides.
+- Fixed and checked against code and DESIGN: the tool text matches `JobType`; the cook table follows the `CookRecipes` order and gains; population growth is listed as "in v1, being finished" in the guide, CHANGELOG and README, matching DESIGN §7.
+- Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
+- Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
+- `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
