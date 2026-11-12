@@ -60,6 +60,12 @@ public class MarketGameTests {
 
 	// ---- T-L2-1 (roadmap) -------------------------------------------------------------------------
 
+	// M26 H2: the cobblestone lot is a tuned PriceTable value (32 -> 20). These tests derive their numbers from it: a stock of 200 with the
+	// reserve of 64 sells (200 - 64) / lot lots and leaves 200 - lots * lot.
+	private static final int LOT = PriceTable.lot("minecraft:cobblestone").orElseThrow();
+	private static final int LOTS200 = (200 - 64) / LOT;
+	private static final long LEFT200 = 200L - (long) LOTS200 * LOT;
+
 	/** 200 cobblestone and a merchant: 4 emeralds within the working day, and the stock never goes below the reserve of 64. */
 	@GameTest(environment = "villageheart-gametest:market_roadmap", structure = YARD, skyAccess = true, maxTicks = 12500)
 	public void twoHundredCobblestoneFourEmeralds(GameTestHelper h) {
@@ -71,20 +77,20 @@ public class MarketGameTests {
 		long[] firstSale = {-1};
 		long[] xp0 = new long[1], sales0 = new long[1], em0 = new long[1];
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
-			h.assertValueEqual(32, PriceTable.lot("minecraft:cobblestone").orElse(-1), "the cobblestone lot");
+			h.assertValueEqual(LOT, PriceTable.lot("minecraft:cobblestone").orElse(-1), "the cobblestone lot");
 			stock(h, Items.COBBLESTONE, 200);
 			h.getLevel().setDayTime(1000);
 			sales0[0] = WorkStats.get("merchant", "sales");
 			em0[0] = WorkStats.get("merchant", "emeralds");
 			v[0] = hire(h, 0);
-			s.conserve(200, () -> count(h, Items.COBBLESTONE) + 32L * treasury(h) + itemEntities(h, Items.COBBLESTONE));
+			s.conserve(200, () -> count(h, Items.COBBLESTONE) + (long) LOT * treasury(h) + itemEntities(h, Items.COBBLESTONE));
 			s.start();
 		});
 		seq = seq.thenWaitUntil(() -> {
 			if (treasury(h) >= 1 && firstSale[0] < 0) firstSale[0] = h.getTick();
-			h.assertTrue(treasury(h) >= 4, "treasury " + treasury(h));
+			h.assertTrue(treasury(h) >= LOTS200, "treasury " + treasury(h));
 		}).thenExecute(() -> {
-			h.assertTrue(dayTime(h) < 11000, "the 4 emeralds came within one working day: " + dayTime(h));
+			h.assertTrue(dayTime(h) < 11000, "the emeralds came within one working day: " + dayTime(h));
 			views[0] = Markets.freshViews;
 			views[1] = dayTime(h);
 			log("roadmap: first sale at tick " + firstSale[0] + ", 4th at day time " + dayTime(h));
@@ -98,13 +104,13 @@ public class MarketGameTests {
 		seq = seq.thenWaitUntil(() -> h.assertTrue(dayTime(h) >= 11000, "wait for the end of the working day"));
 		seq = seq.thenExecute(() -> {
 			s.stop();
-			h.assertValueEqual(4, treasury(h), "emeralds");
-			h.assertValueEqual(72L, count(h, Items.COBBLESTONE), "cobblestone left");
+			h.assertValueEqual(LOTS200, treasury(h), "emeralds");
+			h.assertValueEqual(LEFT200, count(h, Items.COBBLESTONE), "cobblestone left");
 			h.assertTrue(s.min.get(Items.COBBLESTONE) >= 64, "never below the reserve: " + s.min);
 			h.assertTrue(s.violations.isEmpty(), "conservation: " + s.violations);
-			h.assertValueEqual(8, MarketTestSupport.data(v[0]).xp(), "2 XP per sale");
-			h.assertValueEqual(4L, WorkStats.get("merchant", "sales") - sales0[0], "work.merchant.sales");
-			h.assertValueEqual(4L, WorkStats.get("merchant", "emeralds") - em0[0], "work.merchant.emeralds");
+			h.assertValueEqual(2 * LOTS200, MarketTestSupport.data(v[0]).xp(), "2 XP per sale");
+			h.assertValueEqual((long) LOTS200, WorkStats.get("merchant", "sales") - sales0[0], "work.merchant.sales");
+			h.assertValueEqual((long) LOTS200, WorkStats.get("merchant", "emeralds") - em0[0], "work.merchant.emeralds");
 			long grown = Markets.freshViews - views[0];
 			long ticks = dayTime(h) - views[1];
 			h.assertTrue(grown <= ticks / 20 + 2, "no per-tick re-planning while stopped: " + grown + " views in " + ticks + " ticks");
@@ -174,13 +180,13 @@ public class MarketGameTests {
 		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 1, "one sale"));
 		seq = seq.thenIdle(1300).thenExecute(() -> {
 			h.assertValueEqual(1, treasury(h), "200 - 100 reserved - 64 = 36: one lot");
-			h.assertValueEqual(168L, count(h, plain), "plain cobblestone");
+			h.assertValueEqual(200L - LOT, count(h, plain), "plain cobblestone");
 			h.assertValueEqual(40L, count(h, namedKey), "the renamed stack is the player's");
 			Stockpiles.reservations(h.getLevel().getServer()).release(fakeBuild);
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 4, "3 more sales after the release: " + treasury(h)));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= LOTS200, "more sales after the release: " + treasury(h)));
 		seq = seq.thenExecute(() -> {
-			h.assertValueEqual(72L, count(h, plain), "plain cobblestone");
+			h.assertValueEqual(LEFT200, count(h, plain), "plain cobblestone");
 			h.assertValueEqual(40L, count(h, namedKey), "the renamed stack");
 			finish(h);
 		});
@@ -283,19 +289,19 @@ public class MarketGameTests {
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, 0);
 			v[1] = hire(h, 2);
-			s.conserve(200, () -> count(h, Items.COBBLESTONE) + 32L * treasury(h));
+			s.conserve(200, () -> count(h, Items.COBBLESTONE) + (long) LOT * treasury(h));
 			s.start();
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 4, "4 emeralds"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= LOTS200, "emeralds"));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(dayTime(h) >= 11000, "end of the working day"));
 		seq.thenExecute(() -> {
 			s.stop();
-			h.assertValueEqual(4, treasury(h), "emeralds in total");
-			h.assertValueEqual(72L, count(h, Items.COBBLESTONE), "cobblestone");
+			h.assertValueEqual(LOTS200, treasury(h), "emeralds in total");
+			h.assertValueEqual(LEFT200, count(h, Items.COBBLESTONE), "cobblestone");
 			h.assertTrue(s.min.get(Items.COBBLESTONE) >= 64, "never below the reserve: " + s.min);
 			h.assertTrue(s.violations.isEmpty(), "conservation: " + s.violations);
 			h.assertTrue(soldBy(h, v[0]) >= 1 && soldBy(h, v[1]) >= 1, "each made a sale: " + soldBy(h, v[0]) + ", " + soldBy(h, v[1]));
-			h.assertValueEqual(4L, soldBy(h, v[0]) + soldBy(h, v[1]), "sum");
+			h.assertValueEqual((long) LOTS200, soldBy(h, v[0]) + soldBy(h, v[1]), "sum");
 			finish(h);
 		});
 	}
@@ -353,10 +359,10 @@ public class MarketGameTests {
 		long[] calls = new long[2];
 		GameTestSequence seq = scene(h, 1).thenExecute(() -> {
 			stock(h, Items.COBBLESTONE, 200);
-			Markets.withdrawLimitForTest = lot -> 20;
+			Markets.withdrawLimitForTest = lot -> lot - 1; // one short of a lot (M26: was a literal 20 under a lot of 32)
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, 0);
-			s.conserve(200, () -> count(h, Items.COBBLESTONE) + invCount(v[0]) + itemEntities(h, Items.COBBLESTONE) + 32L * treasury(h));
+			s.conserve(200, () -> count(h, Items.COBBLESTONE) + invCount(v[0]) + itemEntities(h, Items.COBBLESTONE) + (long) LOT * treasury(h));
 			s.start();
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(Markets.withdrawCalls > 0, "a sale was attempted"));
@@ -368,11 +374,11 @@ public class MarketGameTests {
 			h.assertTrue(s.violations.isEmpty(), "conservation: " + s.violations);
 			Markets.withdrawLimitForTest = null;
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 4, "sales resume"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= LOTS200, "sales resume"));
 		seq.thenExecute(() -> {
 			s.stop();
 			h.assertTrue(s.violations.isEmpty(), "conservation: " + s.violations);
-			h.assertValueEqual(72L, count(h, Items.COBBLESTONE) + invCount(v[0]), "cobblestone ends at 72");
+			h.assertValueEqual(LEFT200, count(h, Items.COBBLESTONE) + invCount(v[0]), "cobblestone ends at the reserve remainder");
 			finish(h);
 		});
 	}
@@ -505,7 +511,7 @@ public class MarketGameTests {
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= 1, "the merchant sells within a sale time"));
 		seq.thenExecute(() -> {
-			h.assertValueEqual(168L, count(h, Items.COBBLESTONE), "one lot sold");
+			h.assertValueEqual(200L - LOT, count(h, Items.COBBLESTONE), "one lot sold");
 			h.assertTrue(WageTestSupport.paid(v[1]), "the sale's emerald paid the farmer");
 			h.assertTrue(WageTestSupport.payroll(h).unpaid().isEmpty(), "nobody is unpaid");
 			h.assertValueEqual(0, treasury(h), "the emerald went to the wage");
@@ -532,7 +538,7 @@ public class MarketGameTests {
 			h.assertValueEqual(WorkerStatus.TREASURY_FULL, status(h, v[0]), "status");
 			setTreasury(h, dev.villageheart.core.Balance.MAX_TREASURY - 1);
 		});
-		seq = seq.thenWaitUntil(() -> h.assertValueEqual(168L, count(h, Items.COBBLESTONE), "one sale"));
+		seq = seq.thenWaitUntil(() -> h.assertValueEqual(200L - LOT, count(h, Items.COBBLESTONE), "one sale"));
 		seq = seq.thenIdle(30).thenExecute(() -> {
 			h.assertValueEqual(dev.villageheart.core.Balance.MAX_TREASURY, treasury(h), "full again");
 			h.assertValueEqual(WorkerStatus.TREASURY_FULL, status(h, v[0]), "status again");
@@ -585,10 +591,10 @@ public class MarketGameTests {
 			h.assertValueEqual(dev.villageheart.core.heart.Rejection.BAD_RESERVE.langKey(), HeartTestSupport.lastResult(sent[0], p[0]).key(), "out of range");
 			h.assertValueEqual(new Reserves(3, 128), Markets.state(h.getLevel().getServer()).reserves(), "unchanged");
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 2, "two sales: " + treasury(h)));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 72 / LOT, "sales: " + treasury(h)));
 		seq = seq.thenIdle(700).thenExecute(() -> {
-			h.assertValueEqual(2, treasury(h), "200 - 128 = 72: two lots");
-			h.assertValueEqual(136L, count(h, Items.COBBLESTONE), "cobblestone");
+			h.assertValueEqual(72 / LOT, treasury(h), "200 - 128 = 72: whole lots");
+			h.assertValueEqual(200L - (long) (72 / LOT) * LOT, count(h, Items.COBBLESTONE), "cobblestone");
 			dev.villageheart.core.market.MarketState read;
 			try {
 				read = VillageTestSupport.reload(h.getLevel().getServer()).market(); // the copy read back from disk

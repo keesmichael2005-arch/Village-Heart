@@ -13,13 +13,13 @@ public final class PriceTable {
 
 	static {
 		List<PriceEntry> e = new ArrayList<>();
-		for (String wood : new String[] {"oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak"}) e.add(new PriceEntry("minecraft:" + wood + "_log", 16));
+		for (String wood : new String[] {"oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak"}) e.add(new PriceEntry("minecraft:" + wood + "_log", 10));
 		e.add(new PriceEntry("minecraft:wheat", 20));
 		e.add(new PriceEntry("minecraft:carrot", 22));
 		e.add(new PriceEntry("minecraft:potato", 26));
 		e.add(new PriceEntry("minecraft:beetroot", 15));
-		e.add(new PriceEntry("minecraft:cobblestone", 32));
-		e.add(new PriceEntry("minecraft:cobbled_deepslate", 32));
+		e.add(new PriceEntry("minecraft:cobblestone", 20));
+		e.add(new PriceEntry("minecraft:cobbled_deepslate", 20));
 		e.add(new PriceEntry("minecraft:coal", 15));
 		e.add(new PriceEntry("minecraft:raw_iron", 8));
 		e.add(new PriceEntry("minecraft:raw_copper", 20));

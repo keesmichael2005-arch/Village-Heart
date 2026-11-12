@@ -13,10 +13,10 @@ class PriceTableTest {
 
 	@Test
 	void designExamples() {
-		for (String wood : List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak")) assertEquals(16, lot(wood + "_log"), wood);
+		for (String wood : List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak")) assertEquals(10, lot(wood + "_log"), wood); // M26 H2: 16 -> 10
 		assertEquals(20, lot("wheat"));
-		assertEquals(32, lot("cobblestone"));
-		assertEquals(32, lot("cobbled_deepslate"));
+		assertEquals(20, lot("cobblestone")); // M26 H2: 32 -> 20
+		assertEquals(20, lot("cobbled_deepslate"));
 		assertEquals(4, lot("iron_ingot"));
 		for (String m : List.of("beef", "porkchop", "mutton", "chicken", "rabbit", "cod", "salmon")) assertEquals(10, lot("cooked_" + m), m);
 	}

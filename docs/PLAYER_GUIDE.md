@@ -337,7 +337,7 @@ One lot is one emerald:
 | Carrots | 22 |
 | Potatoes | 26 |
 | Beetroot | 15 |
-| Cobblestone or cobbled deepslate | 32 |
+| Cobblestone or cobbled deepslate | 20 |
 | Coal | 15 |
 | Raw iron | 8 |
 | Raw copper | 20 |
