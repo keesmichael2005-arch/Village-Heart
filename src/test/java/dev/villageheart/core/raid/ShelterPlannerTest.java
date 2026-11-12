@@ -43,6 +43,19 @@ class ShelterPlannerTest {
 				"the worker's own bed is still a shelter when every bed is taken");
 	}
 
+	/** Owner, 2026-11-11: every villager goes indoors. With no House bed and no room in reach, the villager's own bed is the roof. */
+	@Test void aBedOutsideAnyValidHouseIsTheLastResort() {
+		Pos oldVillageBed = new Pos(-40, 64, 0);
+		var last = ShelterPlanner.choose(Optional.of(oldVillageBed), Set.of(), Set.of(), List.of(), ME);
+		assertEquals(new ShelterPlanner.ShelterTarget(oldVillageBed, Kind.HOME_BED), last.orElseThrow());
+		Pos house = new Pos(30, 64, 0);
+		assertEquals(Kind.HOUSE_BED, ShelterPlanner.choose(Optional.of(oldVillageBed), Set.of(house.pack()), Set.of(), List.of(), ME).orElseThrow().kind(),
+				"a free House bed still comes first");
+		Pos door = new Pos(0, 64, 20);
+		assertEquals(Kind.ROOM, ShelterPlanner.choose(Optional.of(oldVillageBed), Set.of(), Set.of(), List.of(door), ME).orElseThrow().kind(),
+				"a valid room still comes before the old bed");
+	}
+
 	@Test void tiesBreakByXThenZThenY() {
 		Pos lowX = new Pos(0, 64, 2);
 		Pos highX = new Pos(2, 64, 0);

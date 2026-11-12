@@ -270,6 +270,42 @@ public class ThreatShelterGameTests {
 		});
 	}
 
+	/**
+	 * No valid House and no valid room is in reach (the old village outside the ring, say). The unhired villager still goes to its own bed
+	 * rather than stand in the open: the planner's last resort. It stays there while the raid lasts.
+	 */
+	@GameTest(environment = "villageheart-gametest:threat_shelter_own_bed", structure = YARD, skyAccess = true, maxTicks = 3000)
+	public void unhiredVillagerWithNoHouseGoesToItsOwnBed(GameTestHelper h) {
+		begin(h);
+		Villager[] plain = new Villager[1];
+		Raid[] raid = new Raid[1];
+		BlockPos bed = new BlockPos(24, 1, 24);
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			nearHeart(h);
+			setTime(h, 3000);
+			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			WorkerTestSupport.bed(h, bed.below());
+			BlockPos bell = h.absolutePos(BuildingTestSupport.BELL);
+			h.getLevel().getPoiManager().take(type -> type.is(net.minecraft.tags.PoiTypeTags.VILLAGE), (type, pos) -> pos.equals(bell), bell, 1);
+		});
+		seq = village(h, seq).thenExecute(() -> {
+			plain[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(6, 1, 6));
+			plain[0].getBrain().setMemory(MemoryModuleType.HOME, GlobalPos.of(h.getLevel().dimension(), h.absolutePos(bed.below())));
+			raid[0] = start(h);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the villager is at its own bed", () -> {
+			RaidStart.holdWaves(raid[0]);
+			h.assertTrue(plain[0].getBrain().isActive(WorkerBrain.SHELTER), "activity " + plain[0].getBrain().getActiveNonCoreActivity().orElse(null));
+			double d = plain[0].position().distanceTo(net.minecraft.world.phys.Vec3.atCenterOf(h.absolutePos(bed.below())));
+			h.assertTrue(d <= 2.5, "distance to the bed " + d);
+		});
+		seq.thenExecute(() -> {
+			raid[0].stop();
+			finish(h);
+		});
+	}
+
 	private static void inside(GameTestHelper h, Villager v, RoomScan scan, String who) {
 		Pos feet = new Pos(v.getBlockX(), v.getBlockY(), v.getBlockZ());
 		h.assertTrue(scan.contains(feet) || scan.contains(new Pos(feet.x(), feet.y() + 1, feet.z())), who + " is not in the house, at " + VillageTestSupport.rel(h, v.blockPosition()) + " activity "

@@ -1,5 +1,6 @@
 package dev.villageheart.raid;
 
+import dev.villageheart.VillageHeart;
 import dev.villageheart.core.Balance;
 import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.HeartLocation;
@@ -121,6 +122,7 @@ public final class StuckRaiderSystem implements VillageSystem {
 
 	private static void glow(MinecraftServer server, Raider raider) {
 		glowed++;
+		VillageHeart.LOG.info("[stuck] {} at {} has made no progress for {} ticks and nobody is near: it glows", raider.getType().getDescriptionId(), raider.blockPosition().toShortString(), stuckTicks);
 		raider.addEffect(new MobEffectInstance(MobEffects.GLOWING, stuckTicks > graceTicks ? graceTicks + 200 : graceTicks * 2 + 200, 0, false, false));
 		ThreatMessages.chat(server, ThreatWarnings.STUCK_GLOW);
 	}
@@ -128,6 +130,7 @@ public final class StuckRaiderSystem implements VillageSystem {
 	/** Removes the raider. It is not killed, so it is not a kill; the raid drops it on its next update and the wave can advance. */
 	private static void flee(MinecraftServer server, ServerLevel level, Raider raider) {
 		fled++;
+		VillageHeart.LOG.info("[stuck] {} at {} is still stuck {} ticks after it glowed: it flees (lost, not killed)", raider.getType().getDescriptionId(), raider.blockPosition().toShortString(), graceTicks);
 		level.sendParticles(ParticleTypes.POOF, raider.getX(), raider.getY() + 1.0, raider.getZ(), 24, 0.4, 0.6, 0.4, 0.05);
 		level.sendParticles(ParticleTypes.LARGE_SMOKE, raider.getX(), raider.getY() + 1.0, raider.getZ(), 12, 0.4, 0.6, 0.4, 0.02);
 		WATCHES.remove(raider.getUUID());

@@ -7,12 +7,12 @@ import java.util.Set;
 
 /**
  * Where a worker goes when a raid or a siege starts (M25 plan 3.2 #7). Own House bed, else the nearest free House bed,
- * else the nearest valid room's inside door. Ties break by squared distance, then x, then z, then y.
+ * else the nearest valid room's inside door, else the villager's own bed wherever it is. Ties break by squared distance, then x, then z, then y.
  */
 public final class ShelterPlanner {
 	private ShelterPlanner() {}
 
-	public enum Kind { OWN_BED, HOUSE_BED, ROOM }
+	public enum Kind { OWN_BED, HOUSE_BED, ROOM, HOME_BED }
 
 	public record ShelterTarget(Pos pos, Kind kind) {}
 
@@ -29,7 +29,10 @@ public final class ShelterPlanner {
 		for (Pos door : roomDoorsInside) {
 			if (bestDoor == null || better(door, bestDoor, me) < 0) bestDoor = door;
 		}
-		return bestDoor == null ? Optional.empty() : Optional.of(new ShelterTarget(bestDoor, Kind.ROOM));
+		if (bestDoor != null) return Optional.of(new ShelterTarget(bestDoor, Kind.ROOM));
+		// Last resort (owner, 2026-11-11: every villager goes indoors): a villager's own bed that is not in a valid House, such as one in
+		// the old village outside the ring. It is still a roof, and nothing else is in reach.
+		return home.map(h -> new ShelterTarget(h, Kind.HOME_BED));
 	}
 
 	/** Negative when {@code a} is the better shelter. */
