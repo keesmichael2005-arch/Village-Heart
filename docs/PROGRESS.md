@@ -1410,3 +1410,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
   all three runs. Run alone: `lureBudgetCaps` 5/5, `gateEdgeOfClaim` 5/5, and three M25 tests the builder saw flake 10/10 each.
 - Next: the orchestrator should plan a flake pass on dev's suite before the v1 gate (findings in `docs/reviews/M25-r2.md`). M26 should
   watch the unhired-shelter stall the builder logged (not reproduced here).
+
+
+## M26 (balance pass): interim, builder (Sonnet cloud session)
+- Done: `full` scenario (30 days, Hamlet start, standing orders via the new `when` field), `zerorun` assertion function, `mineshaft` and `hunting_ground` actions, content words `stonecutter`, `fletching_table`, `market_stall`, metric `food.out`. Baseline of every scenario recorded (docs/M26-results.md).
+- Tuned so far (see the table in docs/M26-results.md): H1 merchant caps, H2 and H3 price lots, H4 caps and miner cobble per haul. Every pinned test that read an old number now reads the tuned value.
+- `full` is not yet passing: the payroll outgrows the income once workers reach level 3. H4 is the current probe.
+- Known flakes under load, each passing when run alone: `siege_lure_game_tests_*` (trench, zombie behind a closed wall), `siege_game_tests_ravager_breaks_wall_in_two_hits`, `stuck_raider_game_tests_walking_raider_is_never_removed`, `gate_game_tests_mobs_still_cannot_pass_the_gate`, `smith_game_tests_two_lumberjacks_two_smiths_share_acamp`.
+- Bug for BACKLOG: a miner on strike re-tries to descend about 450 times a day (`miner.aborted`, `miner.descents`).
