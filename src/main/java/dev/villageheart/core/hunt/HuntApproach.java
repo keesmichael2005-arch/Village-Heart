@@ -29,9 +29,11 @@ public final class HuntApproach {
 	}
 
 	/**
-	 * @param lowerIdNeighbour the villager in the way has the lower id, so this hunter is the one who gives way
+	 * @param lowerIdNeighbour the villager in the way has the lower id (and can be asked to keep its path), so this hunter is the one who gives way
+	 * @param awayNeighbour    the villager in the way is away (hidden, NoAI): it can never move aside, so the walker always goes around it, whatever the ids.
+	 *                         Without this the walker waits out the whole walk stall (200 ticks) against a hunter that hid just past the arrival distance.
 	 */
-	public static boolean yieldNow(long jammedFor, boolean touchingVillager, boolean lowerIdNeighbour, double distanceToMarker, double closest) {
-		return touchingVillager && lowerIdNeighbour && distanceToMarker > closest && jammedFor >= YIELD_AFTER;
+	public static boolean yieldNow(long jammedFor, boolean touchingVillager, boolean lowerIdNeighbour, boolean awayNeighbour, double distanceToMarker, double closest) {
+		return touchingVillager && (lowerIdNeighbour || awayNeighbour) && distanceToMarker > closest && jammedFor >= YIELD_AFTER;
 	}
 }

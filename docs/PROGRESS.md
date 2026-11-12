@@ -1007,3 +1007,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
+
+## 2026-11-12: backlog-small round 2 fixes (builder)
+- Merged `origin/dev` (only `docs/PROGRESS.md` conflicted: kept both sides).
+- **Fix 1, jam against an away hunter:** `HuntApproach.yieldNow` takes a new `awayNeighbour` flag; `HunterJob` passes `AwayTrips.isAway(blocking)`. A walker touching a hidden (NoAI) hunter beyond 6 blocks now steps around it after the 30-tick push instead of waiting out the 200-tick stall. The `twoHuntersOneGround` bound (450) is unchanged (197 ticks, 5 of 5 runs alone).
+  - Test: `hunterJammedAgainstAwayHunterBeyondSixStepsAroundAtOnce` (GameTest: two-wide corridor, first hunter hidden 7.0 from the marker). Before the fix: out after 274 ticks, FAIL at bound 150. After: out after 104. Unit: `HuntApproachTest.aWalkerAlwaysStepsAroundAnAwayNeighbourAfterTheShortJam`.
+- **Fix 2, walled-off ground with a bystander within 6 of the marker:** `wallWithABystanderNearTheMarkerIsStillUnreachable` (wall at z=14, NoAI villager at (15,0,13), hunter pushed against it 4.3 from the marker). Real code: SITE_UNREACHABLE at tick 458, never away. Mutation `blockerMoves = blocking != null`: the hunter "goes out here" at tick 34, test FAIL ("went away against a wall beside a bystander").
+- Advisory left open: `mover()` counts any walking villager, not only a hunter (rare near a hunting ground); `deposited_settled` arg count in `HeartActions`; "1 workers" strike texts.
+- Note for the next agent: a Gradle `-D...gametest.filter` is not forwarded to the game JVM; use `JAVA_TOOL_OPTIONS="-Dfabric-api.gametest.filter=villageheart-gametest:<exact_id>"` (17 s per test).

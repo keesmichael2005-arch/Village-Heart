@@ -276,7 +276,7 @@ public final class HunterJob {
 			trace("{} @{} blocked near the ground: goes out here", v.getId(), now);
 			st = WalkTo.State.ARRIVED;
 		} else if (st == WalkTo.State.WALKING && HuntApproach.yieldNow(jammedFor(ws, v, blocking, now), blocking != null,
-				blocking != null && !blocking.isNoAi() && blocking.getId() < v.getId(), dist, Balance.HUNT_ENTRY_CLOSEST)) {
+				blocking != null && !blocking.isNoAi() && blocking.getId() < v.getId(), blocking != null && AwayTrips.isAway(blocking), dist, Balance.HUNT_ENTRY_CLOSEST)) {
 			if (stepAside(level, v, blocking, ws, now)) return;
 		}
 		if (st == WalkTo.State.WALKING) return;

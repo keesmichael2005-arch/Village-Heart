@@ -44,10 +44,18 @@ class HuntApproachTest {
 
 	@Test
 	void theHigherIdYieldsAfterAShortJamAndNotWhenItCanAlreadyGoOut() {
-		assertFalse(HuntApproach.yieldNow(29, true, true, 12.0, CLOSEST));
-		assertTrue(HuntApproach.yieldNow(30, true, true, 12.0, CLOSEST));
-		assertFalse(HuntApproach.yieldNow(30, true, false, 12.0, CLOSEST), "the lower id keeps the path");
-		assertFalse(HuntApproach.yieldNow(30, false, true, 12.0, CLOSEST));
-		assertFalse(HuntApproach.yieldNow(30, true, true, 6.0, CLOSEST), "close enough to go out beside them");
+		assertFalse(HuntApproach.yieldNow(29, true, true, false, 12.0, CLOSEST));
+		assertTrue(HuntApproach.yieldNow(30, true, true, false, 12.0, CLOSEST));
+		assertFalse(HuntApproach.yieldNow(30, true, false, false, 12.0, CLOSEST), "the lower id keeps the path");
+		assertFalse(HuntApproach.yieldNow(30, false, true, false, 12.0, CLOSEST));
+		assertFalse(HuntApproach.yieldNow(30, true, true, false, 6.0, CLOSEST), "close enough to go out beside them");
+	}
+
+	@Test
+	void aWalkerAlwaysStepsAroundAnAwayNeighbourAfterTheShortJam() {
+		assertTrue(HuntApproach.yieldNow(30, true, false, true, 6.5, CLOSEST), "an away hunter never gives way, whatever the ids");
+		assertFalse(HuntApproach.yieldNow(29, true, false, true, 6.5, CLOSEST), "after the short push, not before");
+		assertFalse(HuntApproach.yieldNow(30, true, false, true, 6.0, CLOSEST), "within the arrival distance it goes out beside them instead");
+		assertFalse(HuntApproach.yieldNow(30, false, false, true, 6.5, CLOSEST), "nobody touching");
 	}
 }

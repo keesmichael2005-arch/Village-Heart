@@ -447,6 +447,104 @@ public class HunterGameTests {
 	}
 
 	/**
+	 * Round 2, fix 2: the arrival rule must use "a villager that MOVES" ({@code mover}), not "anyone". A cut-off ground (a wall across the yard at
+	 * z=14, marker z=17) with a NoAI bystander on the cell next to the wall where the pathfinder ends (15,0,13): the hunter walks up, is
+	 * pushed against the bystander within 6 blocks of the marker and the walk gives up there twice (200-tick stall each, one step
+	 * around in between). It must be reported {@code SITE_UNREACHABLE} and must never go away. With {@code blockerMoves = blocking != null} the bystander
+	 * counts as an arrival at once and the hunter goes out against the wall.
+	 */
+	@GameTest(environment = "villageheart-gametest:hunt_wall_near", structure = YARD, skyAccess = true, maxTicks = 1500)
+	public void wallWithABystanderNearTheMarkerIsStillUnreachable(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		boolean[] wentAway = new boolean[1];
+		BlockPos blocker = new BlockPos(15, 0, 13), walker = new BlockPos(15, 0, 10);
+		h.onEachTick(() -> {
+			if (v[1] != null && AwayTrips.isAway(v[1])) wentAway[0] = true;
+		});
+		GameTestSequence seq = scene(h, true).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			putInChest(h, 1, sword("stone"));
+			for (int x = 0; x <= 31; x++) for (int y = 0; y <= 2; y++) h.setBlock(new BlockPos(x, y, 14), net.minecraft.world.level.block.Blocks.STONE);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			var b = h.absolutePos(blocker);
+			v[0].teleportTo(b.getX() + 0.5, b.getY(), b.getZ() + 0.5);
+			v[0].setNoAi(true);
+			h.assertFalse(AwayTrips.isAway(v[0]), "the bystander is not away");
+			v[1] = hireAt(h, spawnSpot2());
+			var w = h.absolutePos(walker);
+			v[1].teleportTo(w.getX() + 0.5, w.getY(), w.getZ() + 0.5);
+			var marker = h.absolutePos(GROUND);
+			h.assertTrue(dev.villageheart.worker.job.WalkTo.distance(v[0], marker) <= dev.villageheart.core.Balance.HUNT_ENTRY_CLOSEST, "the bystander is within 6 of the marker");
+		});
+		seq = seq.thenWaitUntil(() -> {
+			h.assertFalse(wentAway[0], "the hunter went away against a wall beside a bystander");
+			h.assertTrue(status(h, v[1]) == WorkerStatus.SITE_UNREACHABLE,
+					"a cut-off ground beside a NoAI villager must be reported SITE_UNREACHABLE: status " + status(h, v[1]) + " decision "
+							+ HunterJob.decisionOf(v[1].getUUID()) + " at " + v[1].position());
+		});
+		seq.thenExecute(() -> {
+			h.assertFalse(wentAway[0], "never went away");
+			double d = dev.villageheart.worker.job.WalkTo.distance(v[1], h.absolutePos(GROUND));
+			h.assertTrue(d <= dev.villageheart.core.Balance.HUNT_ENTRY_CLOSEST, "the hunter was reported beside the bystander, within 6 of the marker: " + d);
+			System.out.println("[m17] wallWithABystanderNearTheMarkerIsStillUnreachable: reported at tick " + h.getTick() + ", " + d + " from the marker");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * Round 2, fix 1: a walker jammed against an AWAY (hidden, NoAI) hunter more than 6 blocks from the marker must step around it
+	 * straight away, not wait out the 200-tick walk stall. A two-wide corridor (x 15..16, z 8..14) with the first hunter hidden in lane
+	 * 15 at z=10 (7 blocks from the marker): the second walks in behind it, steps into lane 16 after the 30-tick push and goes out.
+	 */
+	@GameTest(environment = "villageheart-gametest:hunt_away_edge", structure = YARD, skyAccess = true, maxTicks = 700)
+	public void hunterJammedAgainstAwayHunterBeyondSixStepsAroundAtOnce(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[2];
+		Tracker tr = new Tracker(() -> v[1]);
+		h.onEachTick(() -> tr.sample(h));
+		BlockPos cellA = new BlockPos(15, 0, 10), startB = new BlockPos(15, 0, 7);
+		long[] t0 = new long[1];
+		GameTestSequence seq = scene(h, true).thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			putInChest(h, 1, sword("stone"));
+			for (int z = 8; z <= 14; z++) for (int y = 0; y <= 2; y++) {
+				h.setBlock(new BlockPos(14, y, z), net.minecraft.world.level.block.Blocks.STONE);
+				h.setBlock(new BlockPos(17, y, z), net.minecraft.world.level.block.Blocks.STONE);
+			}
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			var abs = h.absolutePos(cellA);
+			v[0].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+			var loc = BuildingTestSupport.loc(h, GROUND);
+			AwayTrips.set(v[0], AwayTrips.state(v[0]).withProgress(dev.villageheart.core.mine.AwayProgress.ZERO, java.util.Optional.of(loc)));
+			AwayTrips.hide(h.getLevel(), v[0], "hunter", loc, abs);
+			h.assertTrue(AwayTrips.isAway(v[0]), "the first hunter is out");
+			double d = dev.villageheart.worker.job.WalkTo.distance(v[0], h.absolutePos(GROUND));
+			h.assertTrue(d > dev.villageheart.core.Balance.HUNT_ENTRY_CLOSEST, "the hidden hunter is beyond the arrival distance: " + d);
+		});
+		seq = seq.thenExecute(() -> {
+			v[1] = hireAt(h, spawnSpot2());
+			var abs = h.absolutePos(startB);
+			v[1].teleportTo(abs.getX() + 0.5, abs.getY(), abs.getZ() + 0.5);
+			tr.start();
+			t0[0] = h.getTick();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 150, "the second hunter steps around the hidden one and goes out well inside the 200-tick stall", () -> h.assertTrue(tr.away(),
+				"out: at " + v[1].position() + " " + HunterJob.decisionOf(v[1].getUUID()) + " " + status(h, v[1])));
+		seq.thenExecute(() -> {
+			System.out.println("[m17] hunterJammedAgainstAwayHunterBeyondSixStepsAroundAtOnce: out " + (h.getTick() - t0[0]) + " ticks after the start, at " + v[1].blockPosition());
+			h.assertTrue(AwayTrips.isAway(v[0]), "the first hunter is still out");
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
 	 * A reachable ground with a neighbour in the one-block gap of the wall is a jam, not a missing ground: the hunter is never reported
 	 * unreachable and gets out once the neighbour has moved on. The neighbour leaves after the first give-up (tick 300).
 	 */
