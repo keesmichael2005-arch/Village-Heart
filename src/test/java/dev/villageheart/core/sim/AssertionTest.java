@@ -27,6 +27,19 @@ class AssertionTest {
 	}
 
 	@Test
+	void zeroRunIsTheLongestRunOfZeroOrNaN() {
+		MetricsTable t = SimFixtures.table(8, 8, 7, 8, 8);
+		passes("zerorun(population - 8) == 2 on every day", t);          // 8 8 | 7 | 8 8: the longest zero run is 2
+		passes("zerorun(population - 7) == 1 on every day", t);
+		passes("zerorun(population) == 0 on every day", t);
+		passes("zerorun(population - 8) <= 2 from day 1", t);
+		fails("zerorun(population - 8) <= 1 from day 1", t);
+		assertEquals(0, AssertionFunctions.apply("zerorun", new double[] {1, 2, 3}));
+		assertEquals(3, AssertionFunctions.apply("zerorun", new double[] {0, 1, 0, 0, Double.NaN, 5}));
+		assertEquals(1, AssertionFunctions.apply("zerorun", new double[] {Double.NaN}));
+	}
+
+	@Test
 	void parse() {
 		MetricsTable t = SimFixtures.table(8, 8, 7, 8, 8);
 		passes("population + adults * 2 == 24 on day 1", t);   // 8 + 8*2

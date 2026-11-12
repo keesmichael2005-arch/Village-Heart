@@ -362,7 +362,7 @@ public final class SimulationRun implements Host {
 			recordDay(d.getAsInt(), now);
 			wrote = true;
 		}
-		for (ScenarioAction a : schedule.due(clock.elapsed(now))) runAction(a);
+		for (ScenarioAction a : schedule.due(clock.elapsed(now), w -> now % 100 == 0 && conditionHolds(w))) runAction(a);
 		boolean lastDay = clock.finished();
 		boolean stopNow = request.stopAfterDay() != null && clock.completedDays() >= request.stopAfterDay();
 		if (wrote || now - heartbeat >= HEARTBEAT_TICKS) {
@@ -406,11 +406,26 @@ public final class SimulationRun implements Host {
 				String.format("%.4f", ms.meanMs()), String.format("%.0f", m.serverTps()));
 	}
 
+	/** A standing order's condition ({@code tier>=village}, {@code tier>=town}): the village has reached that tier. */
+	private boolean conditionHolds(String when) {
+		var v = VillageClaims.current(server);
+		if (v.isEmpty()) return false;
+		int need = when.endsWith("town") ? dev.villageheart.core.Tier.TOWN.ordinal() : dev.villageheart.core.Tier.VILLAGE.ordinal();
+		return v.get().tier().ordinal() >= need;
+	}
+
 	private void runAction(ScenarioAction a) {
 		VillageHeart.LOG.info("[sim] action {} (day {} tick {})", a.type(), a.day(), a.tick());
 		try {
 			SimActions.ALL.get(a.type()).run(this, a);
 		} catch (RuntimeException e) {
+			if (a.when() != null) {
+				// a standing order that cannot run yet (the building is re-checked a moment after the tier-up, nobody free) is tried again
+				// every 100 ticks, never an ERROR (it was a player's plan, not setup)
+				VillageHeart.LOG.info("[sim] standing order {} ({}) not yet: {}", a.type(), a.when(), e.toString());
+				schedule.retry(a);
+				return;
+			}
 			throw e;
 		} catch (Exception e) {
 			throw new IllegalStateException("action " + a.type() + " failed", e);

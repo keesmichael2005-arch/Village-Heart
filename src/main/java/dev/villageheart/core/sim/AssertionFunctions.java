@@ -7,7 +7,18 @@ import java.util.function.ToDoubleFunction;
 public final class AssertionFunctions {
 	private AssertionFunctions() {}
 
+	/** The longest run of consecutive values that are 0 (|x| below 1e-9) or NaN (NaN = nobody to feed: counted as empty, the cautious reading). */
+	static double zeroRun(double[] v) {
+		int best = 0, run = 0;
+		for (double x : v) {
+			if (Double.isNaN(x) || Math.abs(x) < 1e-9) best = Math.max(best, ++run);
+			else run = 0;
+		}
+		return best;
+	}
+
 	private static final Map<String, ToDoubleFunction<double[]>> FUNCS = Map.of(
+			"zerorun", AssertionFunctions::zeroRun,
 			"sum", v -> { double s = 0; for (double x : v) s += x; return s; },
 			"mean", v -> { double s = 0; for (double x : v) s += x; return s / v.length; },
 			"min", v -> { double m = Double.POSITIVE_INFINITY; for (double x : v) m = Math.min(m, x); return m; },

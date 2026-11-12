@@ -17,6 +17,15 @@ class ActionSpecsTest {
 
 	private static final String PREFAB = "\"action\":\"prefab\",\"building\":\"house\",\"at\":[2,2],\"size\":[5,4],\"door\":\"south\",\"contents\":[\"bed\",\"light\"]";
 
+	@Test void standingOrdersAndOutdoorSitesParse() {
+		ScenarioParser.parse("x", doc("{\"action\":\"hire\",\"day\":1,\"tick\":200,\"when\":\"tier>=village\",\"job\":\"miner\",\"building\":\"mine\"},"
+				+ "{\"action\":\"mineshaft\",\"at\":[3,3],\"depth\":14},{\"action\":\"hunting_ground\",\"at\":[3,9]},"
+				+ "{" + PREFAB.replace("\"house\"", "\"market\"").replace("\"bed\"", "\"market_stall\"") + "}"));
+		bad("{\"action\":\"hire\",\"day\":1,\"when\":\"tier>=castle\",\"job\":\"miner\",\"building\":\"mine\"}", "when must be one of");
+		bad("{\"action\":\"hire\",\"day\":0,\"when\":\"tier>=town\",\"job\":\"miner\",\"building\":\"mine\"}", "needs day >= 1");
+		bad("{\"action\":\"mineshaft\",\"at\":[3,3],\"depth\":5}", "depth must be 12..40");
+	}
+
 	@Test void validActionsParse() {
 		ScenarioParser.parse("x", doc("{\"action\":\"site\",\"size\":[44,32],\"min_distance\":24,\"max_distance\":72},{" + PREFAB + "},"
 				+ "{\"action\":\"field\",\"at\":[10,14],\"size\":9,\"crop\":\"carrots\",\"age\":7},"

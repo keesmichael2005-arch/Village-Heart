@@ -49,7 +49,9 @@ public final class SimActions {
 			Map.entry("siege", SimActions::siege),
 			Map.entry("threats", SimActions::threats),
 			Map.entry("build", BuildActions::build),
-			Map.entry("move_in", GuardActions::moveIn));
+			Map.entry("move_in", GuardActions::moveIn),
+			Map.entry("mineshaft", FullActions::mineshaft),
+			Map.entry("hunting_ground", FullActions::huntingGround));
 
 	static void crashTick(MinecraftServer server) {
 		if (crashRequested) throw new IllegalStateException("scenario crash action: deliberate server crash");
