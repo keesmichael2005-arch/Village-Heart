@@ -12,23 +12,24 @@ import org.junit.jupiter.api.Test;
 
 /** The tables against literal numbers copied from DESIGN section 5.3 (not derived from the code under test). */
 class HaulTableTest {
+	// M26 H4: the stone counts are 1.5x DESIGN 5.3's first numbers (HIGH 16 -> 24, MID 12 -> 18, DEEP 12 -> 18): a 10-worker payroll needs more to sell.
 	private static HaulEntry e(String id, int n, double p) { return new HaulEntry("minecraft:" + id, n, p, Optional.empty()); }
 
 	@Test
 	void highTableMatchesDesign() {
-		assertEquals(List.of(e("cobblestone", 16, 1), e("coal", 2, 1), e("raw_copper", 1, 1), e("raw_iron", 1, 0.30)),
+		assertEquals(List.of(e("cobblestone", 24, 1), e("coal", 2, 1), e("raw_copper", 1, 1), e("raw_iron", 1, 0.30)),
 				HaulTable.entries(DepthBand.HIGH));
 	}
 
 	@Test
 	void midTableMatchesDesign() {
-		assertEquals(List.of(e("cobblestone", 12, 1), e("coal", 2, 1), e("raw_copper", 2, 1), e("raw_iron", 2, 1),
+		assertEquals(List.of(e("cobblestone", 18, 1), e("coal", 2, 1), e("raw_copper", 2, 1), e("raw_iron", 2, 1),
 				e("redstone", 4, 0.20), e("lapis_lazuli", 4, 0.10)), HaulTable.entries(DepthBand.MID));
 	}
 
 	@Test
 	void deepTableMatchesDesign() {
-		assertEquals(List.of(e("cobbled_deepslate", 12, 1), e("coal", 1, 1), e("raw_iron", 3, 1), e("redstone", 4, 0.30),
+		assertEquals(List.of(e("cobbled_deepslate", 18, 1), e("coal", 1, 1), e("raw_iron", 3, 1), e("redstone", 4, 0.30),
 				e("lapis_lazuli", 4, 0.20), e("raw_gold", 1, 0.20),
 				new HaulEntry("minecraft:diamond", 1, 0.02, Optional.of(ToolTier.IRON))), HaulTable.entries(DepthBand.DEEP));
 	}
@@ -51,7 +52,7 @@ class HaulTableTest {
 	@Test
 	void expectedIsFixedPlusChanceTimesCount() {
 		Map<String, Double> high = HaulTable.expected(DepthBand.HIGH, ToolTier.STONE);
-		assertEquals(Map.of("minecraft:cobblestone", 16.0, "minecraft:coal", 2.0, "minecraft:raw_copper", 1.0, "minecraft:raw_iron", 0.3), high);
+		assertEquals(Map.of("minecraft:cobblestone", 24.0, "minecraft:coal", 2.0, "minecraft:raw_copper", 1.0, "minecraft:raw_iron", 0.3), high);
 		Map<String, Double> deepStone = HaulTable.expected(DepthBand.DEEP, ToolTier.STONE);
 		assertEquals(0.0, deepStone.get("minecraft:diamond"));
 		assertEquals(1.2, deepStone.get("minecraft:redstone"), 1e-12);

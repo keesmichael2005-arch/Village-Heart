@@ -279,9 +279,9 @@ the rails (cosmetic, post-M-mining polish). The haul comes from a table chosen b
 
 | Depth band | Per haul at level 1 with a stone pickaxe |
 |---|---|
-| Y ≥ 40 | 16 cobblestone, 2 coal, 1 raw copper, 30% 1 raw iron |
-| 0 ≤ Y < 40 | 12 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
-| Y < 0 | 12 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pick+) |
+| Y ≥ 40 | 24 cobblestone, 2 coal, 1 raw copper, 30% 1 raw iron |
+| 0 ≤ Y < 40 | 18 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
+| Y < 0 | 18 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pick+) |
 
 There is no real tunnelling in v1 (post-v1 idea).
 
@@ -479,7 +479,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 ### 5.9 Merchant (Market, Market Stall)
 It sells stockpile **surplus** for emeralds that go into the treasury. Surplus means stock above a reserve:
 3 days of food, and 64 of everything else *(tunable, adjustable on the Stockpile tab)*. It sells at fixed prices
-(e.g. 8 logs, 20 wheat, 16 cobblestone, 4 iron ingots or 10 cooked meat = 1 emerald). The daily cap is 12 / 16 / 20
+(e.g. 8 logs, 20 wheat, 16 cobblestone, 4 iron ingots or 10 cooked meat = 1 emerald). The daily cap is 16 / 20 / 24
 emeralds by level. Unemployed villagers keep their vanilla trades.
 
 Rules as built (M22, `docs/plans/M22.md`):
@@ -498,7 +498,7 @@ Rules as built (M22, `docs/plans/M22.md`):
 - **What is sold next**: the item with the most whole lots of surplus (ties: price-table order). Stop reasons, in this order: daily limit, treasury full,
   nothing above the reserves; they show as "Sold today's limit", "Treasury full", "Nothing to sell (all stock is within the reserve)".
 - **Caps per day** (day index of the overworld clock, `!=` so `/time set` back also starts a new day; with `advance_time` off the cap never resets):
-  a merchant sells at most 12 / 16 / 20 emeralds at level 1 / 2 / 3 (the current level, so a level-up raises the cap at once), a stall at most the same
+  a merchant sells at most 16 / 20 / 24 emeralds at level 1 / 2 / 3 (the current level, so a level-up raises the cap at once), a stall at most the same
   (so firing and re-hiring, or swapping villagers, does not reset it), and the **whole village at most 32 emeralds** (`Balance.MARKET_VILLAGE_DAILY_CAP`),
   so many stalls and a cobblestone generator are not an unbounded emerald farm. Each sale gives 2 XP (`WorkUnit.TRADE_MADE`) and counts in
   `work.merchant.sales` / `work.merchant.emeralds`.

@@ -465,7 +465,7 @@ public final class Balance {
 	/** Work units a sale costs (600 ticks at speed 1.0, 480 at level 2, 400 at level 3). */
 	public static final double MERCHANT_SALE_UNITS = 600;
 	/** Emeralds a merchant (or its stall) may earn per day by level 1, 2, 3. Read through {@link #merchantDailyCap}. */
-	private static final int[] MERCHANT_DAILY_CAP = {12, 16, 20};
+	private static final int[] MERCHANT_DAILY_CAP = {16, 20, 24};
 	/** Emeralds the whole village's market earns per day, however many stalls (orchestrator decision, tunable in M26). */
 	public static final int MARKET_VILLAGE_DAILY_CAP = 32;
 	public static final int FOOD_RESERVE_DAYS = 3, ITEM_RESERVE = 64;

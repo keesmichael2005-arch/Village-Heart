@@ -216,9 +216,9 @@ The haul depends on the shaft's deepest Y, at level 1 with a stone pickaxe. A wo
 
 | Depth | Each haul |
 |---|---|
-| Y ≥ 40 | 16 cobblestone, 2 coal, 1 raw copper, 30% chance of 1 raw iron |
-| 0 ≤ Y < 40 | 12 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
-| Y < 0 | 12 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pickaxe or better) |
+| Y ≥ 40 | 24 cobblestone, 2 coal, 1 raw copper, 30% chance of 1 raw iron |
+| 0 ≤ Y < 40 | 18 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
+| Y < 0 | 18 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pickaxe or better) |
 
 A redstone or lapis hit is 4 of that item. Gold and diamond hits are 1. What does not fit is delivered later, never dropped on the ground. If the rails are removed, the miner comes up and the Mine goes invalid until a Mineshaft is linked again.
 
@@ -353,8 +353,8 @@ Caps, reset when the day index changes:
 
 | | Emeralds per day |
 |---|---|
-| A merchant at level 1 / 2 / 3 | 12 / 16 / 20 |
-| That same stall | the same 12 / 16 / 20, so firing and rehiring does not reset it |
+| A merchant at level 1 / 2 / 3 | 16 / 20 / 24 |
+| That same stall | the same 16 / 20 / 24, so firing and rehiring does not reset it |
 | The whole village | **32** |
 
 Each sale is 2 XP. Unemployed villagers keep their vanilla trades. The Stockpile tab shows how many emeralds were sold today, and item counts that can still be sold are marked.
