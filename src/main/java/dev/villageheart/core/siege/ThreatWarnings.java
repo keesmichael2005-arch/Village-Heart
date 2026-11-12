@@ -2,9 +2,10 @@ package dev.villageheart.core.siege;
 
 import dev.villageheart.core.Balance;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * The ominous lead-up before a random raid or a zombie siege, Terraria-style (owner, 2026-11-11). Pure schedule: the lines
+ * The ominous lead-up before a random raid or a zombie siege, Terraria-style (owner, 2026-11-11). Pure schedule and wording: the lines
  * are spread evenly over the {@link Balance#WARNING_LEAD_TICKS} before the start, but never earlier than the roll that
  * created the threat. The glue sends them, once each, to the players in or near the claim.
  */
@@ -13,6 +14,11 @@ public final class ThreatWarnings {
 
 	/** A lang key and the English text that key holds. A test checks the two agree. */
 	public record Line(String key, String text) {}
+
+	/**
+	 * How a chat line looks (owner, 2026-11-12). The glue maps WARNING to gold, ALERT to bold red and NOTICE to plain chat colour.
+	 */
+	public enum Tone { WARNING, ALERT, NOTICE }
 
 	public enum Kind {
 		RAID(List.of(
@@ -29,11 +35,22 @@ public final class ThreatWarnings {
 
 		public List<Line> lines() { return lines; }
 
-		public Line title() { return this == RAID ? RAID_TITLE : SIEGE_TITLE; }
+		/** The big on-screen title at the start: a raid has one, a siege has none (owner, 2026-11-12). */
+		public Optional<Line> title() { return this == RAID ? Optional.of(RAID_TITLE) : Optional.empty(); }
+
+		/** The chat line sent when the threat starts, in {@link Tone#ALERT}. Both kinds have one. */
+		public Line start() { return this == RAID ? RAID_START : SIEGE_START; }
+
+		/** The lead-up lines are gold. */
+		public Tone warningTone() { return Tone.WARNING; }
+
+		/** The start line is bold red. */
+		public Tone startTone() { return Tone.ALERT; }
 	}
 
 	public static final Line RAID_TITLE = new Line("message.villageheart.title.raid", "A raid is starting!");
-	public static final Line SIEGE_TITLE = new Line("message.villageheart.title.siege", "The dead rise!");
+	public static final Line RAID_START = new Line("message.villageheart.start.raid", "Raiders are attacking the village!");
+	public static final Line SIEGE_START = new Line("message.villageheart.start.siege", "The dead are coming!");
 	public static final Line STUCK_GLOW = new Line("message.villageheart.raider_hiding", "A raider is hiding nearby...");
 	public static final Line STUCK_FLED = new Line("message.villageheart.raider_fled", "A raider fled the battle.");
 

@@ -15,8 +15,22 @@ class ThreatWarningsTest {
 	void raidHasThreeLinesAndSiegeTwo() {
 		assertEquals(3, Kind.RAID.lines().size());
 		assertEquals(2, Kind.SIEGE.lines().size());
-		assertEquals("A raid is starting!", Kind.RAID.title().text());
-		assertEquals("The dead rise!", Kind.SIEGE.title().text());
+		assertEquals("A raid is starting!", Kind.RAID.title().orElseThrow().text());
+	}
+
+	/** Owner, 2026-11-12: lead-up lines are gold chat, a raid start keeps its title, a siege start has none, both starts are a red chat line. */
+	@Test
+	void warningsAreGoldAndStartsAreRedWithTheTitleOnlyForARaid() {
+		for (Kind kind : Kind.values()) {
+			assertEquals(ThreatWarnings.Tone.WARNING, kind.warningTone(), kind + " lead-up lines are gold");
+			assertEquals(ThreatWarnings.Tone.ALERT, kind.startTone(), kind + " start line is bold red");
+			assertTrue(kind.start().key().startsWith("message.villageheart.start."), kind.start().key());
+			assertTrue(!kind.start().text().isBlank());
+		}
+		assertTrue(Kind.RAID.title().isPresent(), "a raid start keeps the big title");
+		assertTrue(Kind.SIEGE.title().isEmpty(), "a siege start shows no title");
+		assertEquals("The dead are coming!", Kind.SIEGE.start().text());
+		assertTrue(!Kind.RAID.start().equals(Kind.SIEGE.start()));
 	}
 
 	@Test
