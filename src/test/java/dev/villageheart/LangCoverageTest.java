@@ -39,12 +39,40 @@ class LangCoverageTest {
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_building", "1 building needs attention"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.invalid_buildings", "%s buildings need attention"),
 				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid_one", "1 worker has no valid workplace"),
-				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace")};
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.workplace_invalid", "%s workers have no valid workplace"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_coming", "Raid coming! Guards are called to duty"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_pending", "A raid is coming"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.siege", "Zombie siege! %s zombies left"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_wave", "Raid! Wave %s, %s raiders left"),
+				new dev.villageheart.core.heart.TextLine("gui.villageheart.heart.alert.raid_between", "Raid: wave %s beaten, the next one is coming")};
 		for (dev.villageheart.core.heart.TextLine t : alerts) assertEquals(t.fallback(), lang.get(t.key()), t.key());
+		for (String id : dev.villageheart.core.heart.DeathCauseText.NAMED) {
+			assertTrue(lang.containsKey("death.villageheart.cause." + id), id);
+		}
 		// the wage alerts (M12): the very lines WageAlerts builds
 		for (int strikers : new int[] {1, 3}) {
 			for (var a : dev.villageheart.core.economy.WageAlerts.of(0, 5, strikers)) assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());
 		}
+		for (var a : new dev.villageheart.core.heart.AlertLine[] {
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, false, true).orElseThrow(),
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, false, false).orElseThrow(),
+				dev.villageheart.core.siege.SiegeAlerts.alert(3, 7, true, true).orElseThrow() }) {
+			assertEquals(a.text().fallback(), lang.get(a.text().key()), a.text().key());
+		}
+	}
+
+	/** The raid and siege warnings, the two titles and the stuck-raider lines (owner, 2026-11-11): every line is in the lang file with this English. */
+	@Test
+	void threatWarningLines() throws Exception {
+		Map<String, Object> lang = lang();
+		for (dev.villageheart.core.siege.ThreatWarnings.Kind kind : dev.villageheart.core.siege.ThreatWarnings.Kind.values()) {
+			for (var line : kind.lines()) assertEquals(line.text(), lang.get(line.key()), line.key());
+			kind.title().ifPresent(title -> assertEquals(title.text(), lang.get(title.key()), title.key()));
+			assertEquals(kind.start().text(), lang.get(kind.start().key()), kind.start().key());
+		}
+		assertFalse(lang.containsKey("message.villageheart.title.siege"), "a siege has no title (owner, 2026-11-12)");
+		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_GLOW.key()));
+		assertEquals(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.text(), lang.get(dev.villageheart.core.siege.ThreatWarnings.STUCK_FLED.key()));
 	}
 
 	/** Every client text of the Heart screen is in en_us.json with the same English, and every enum the screen shows has one. */

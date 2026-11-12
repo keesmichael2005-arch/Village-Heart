@@ -35,6 +35,18 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			DefenceClientTests.walledSection(context);
 			return;
 		}
+		if ("raid".equals(System.getProperty("villageheart.l4.only"))) {
+			RaidClientTests.raidOverview(context);
+			return;
+		}
+		if ("title".equals(System.getProperty("villageheart.l4.only"))) {
+			ThreatTitleClientTests.titles(context);
+			return;
+		}
+		if ("siege".equals(System.getProperty("villageheart.l4.only"))) {
+			SiegeClientTests.wallCracks(context);
+			return;
+		}
 		if ("guards".equals(System.getProperty("villageheart.l4.only"))) {
 			GuardClientTests.guardOnDuty(context);
 			GuardClientTests.villagersTabGuards(context);
@@ -90,6 +102,9 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		MarketClientTests.stockpileReserves(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);
+		RaidClientTests.raidOverview(context);
+		SiegeClientTests.wallCracks(context);
+		ThreatTitleClientTests.titles(context);
 	}
 
 	/**

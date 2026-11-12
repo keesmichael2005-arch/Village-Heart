@@ -893,6 +893,26 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Not fixed: `hunter_game_tests_two_hunters_one_ground` (970 ticks vs bound 450 at load 8; walk jam retries, product-side). Next: audit other jobs' `walk.begin(..., JOB_BLOCK_REACH)` for the same 0.1 band (BACKLOG).
 - Round 2: the dead band fixed at the root (`WalkTo` ARRIVED only within the reach; `SelfCraftJob` workaround removed), new `WorkerGameTests.walkToNeverArrivesBeyondItsReach`, full L2 343/343 green with the strict rule. `two_hunters_one_ground` investigated, not reproduced (BACKLOG has the mechanism hypothesis).
 
+## 2026-11-11: M25 track A step 1 (death log core)
+- `core.death`: `DeathEntry`, `DeathLog` (32 rows, uncapped `nextSeq` / `inClaimLogged`, one-tick conversion merge), `DeathCauses` (shared with the sim). A witch conversion is `minecraft:lightning_bolt`, not `zombified`.
+- `VillageState.deaths` and codec key `death_log` on `RAW_B` (optional, empty omitted). A bad value drops the log and keeps the village; 40 rows on disk keep the newest 32.
+- Tests: `DeathLogTest`, `DeathCausesTest`, `VillageCodecsTest.deathLogRoundTripCapAndABadValue`. Mutation: disabling the 32-row trim turned `thirtyThreeAppendsKeepThirtyTwo` red (33 rows). Next: step 2, the raid core.
+
+## 2026-11-11: M25 track A step 2 (raid core)
+- `core.raid`: facts, plan, record, summary, tracker, the danger alert line. A raid latches by vanilla id when its centre or a raider is in the claim. Victory beats loss beats a stop; a missing raid is gone. A different id does not replace the latched one.
+- `VillageState.threats` (raid + last raid only) and codec key `threats`. A bad raid or last raid drops that value and keeps the village. Empty threats are omitted.
+- Tests: `RaidTrackerTest` (T-L1-3 and the claim edge), `RaidAlertsTest` (T-L1-4), `VillageCodecsTest.raidRoundTripAndABadRaid`. Mutation: ignoring a raider inside the claim turned `outsideDoesNotStartUnlessARaiderIsInside` and `claimEdgeCountsARaiderAt79AndNotAt81` red. Next: step 3, shelter.
+
+## 2026-11-11: M25 track A step 3 (shelter rules)
+- `ShelterPlanner` picks the worker's own House bed, else the nearest free House bed, else the nearest room door. Ties break by distance, then x, z, y. `RaidActivity.shelter` keeps a worker who is asleep at home in bed. `RaidNotices.audience` is the online owner, stewards and residents.
+- `ActivityKind` appends `SHELTERING` and `NO_SHELTER` (ordinals 32 and 33). The Heart text for both is in now, because every activity needs a lang line.
+- Tests: `ShelterPlannerTest`, `RaidActivityTest`, `RaidFactsTest`, `RaidNoticesTest`. Mutation: sheltering a sleeper who has a home turned `whoShelters` red. Next: step 4, death-log glue.
+
+## 2026-11-11: M25 track A step 4 (death log glue)
+- `DeathLogSystem` logs a hired worker wherever they die, and any other villager only inside the claim. It is registered before `WorkerSystem`. A zombie conversion and the death are one row: vanilla reports the conversion first, so a same-tick death is not appended again.
+- `RaidStart` (start, hold waves, stop raids within a radius) and the gametest accessors. `VillageTestSupport.reset` stops raids within 160 blocks and discards their raiders.
+- L2 `deathLogRecordsCauseAndDay`: a hard conversion is one `zombified` row and the sim collector counts 1; a normal death that does not convert is `minecraft:zombie`; `kill()` is `minecraft:generic_kill`; a cure adds nothing; an unemployed villager outside the claim is skipped; a hired worker outside is logged with `inClaim` false. Mutation: dropping the same-tick check turned `aDeathAfterASameTickConversionIsNotASecondLoss` red (2 rows). Next: step 5, raid watch and call-up.
+
 ## 2026-11-11: backlog-small
 - Market emerald counts use the singular for 1 and the plural otherwise, on the Stockpile line and in `/villageheart market status` (`MarketTexts`). `MarketTextsTest` failed on "Market: sold 1 emeralds today" before the change.
 - Client screenshots clear vanilla toasts first (`ScreenshotToastClear`). Before: `treasury_overview` / `treasury_villagers` hide the Stockpile and Ranks tabs under "New Recipe(s) Unlocked!". After: those tabs are visible. `toastsClearedBeforeScreenshot` failed while the toast survived the shot.
@@ -942,6 +962,160 @@ The unloaded-chunk half of T-L2-5k is not covered: the 32×32 yard stays loaded,
 `scripts/verify.sh` at `79826b6` (2026-11-11T11:19:08Z), exit 0. Layer 1 and layer 2 each "All 418 required tests passed". GameTest-ran gate, L3 script self-test, model-log gate and 2-player log gate passed. Layer 4 green: lost wakeups rescued 2, one leaked in-flight close cleared, world-load timeout fix installed, no villageheart model warnings, 2-player session clean. Screenshots 0000 through 0041, including `0037_smithy_golem.png`. Perf worst-batch median 2623 us; 16x16x8 2292 us; stockpile spill 1415 us; snapshot 278 us; full-storage deposit 243 us; village ticker idle tick mean 9.345E-4 ms.
 
 `0037_smithy_golem.png`: open oak Smithy at noon, two iron golems in the doorway (the new one pale, the one at 20 health dark-cracked and vine-covered), smithy marker on the back wall between their heads. The blacksmith and the lit furnace are behind the golems. The client checks for the lit furnace, the blacksmith profession, two golems and HIGH crackiness ran before the south wall was opened.
+
+## 2026-11-11: M25 track A merges dev's sim death log into the village log
+- `origin/dev` (m26-prep) and this branch both recorded a villager's death. They are one log now: the village log (`core.death`) decides the cause, the job and whether it was a mob, and the sim row copies that row. The sim still adds the position, the wall side and the attacker's origin, and it still counts hires and hostiles. A witch is `minecraft:lightning_bolt` in both. With no claim, the collector writes the row itself through the same cause rule, so the old radius tests stay.
+- `deathLogRecordsCauseAndDay` now also checks that the sim row's cause is the log's cause, including a villager turned into a witch, and that a 40-character name is cut to 32 in the log and copied from there. Keeping the raw custom name turned that assertion red (40 A's against 32). m26-prep's `core.sim.DeathLogTest` is unchanged.
+
+## 2026-11-11: M25 track A steps 5 and 6 (raid watch, call-up, workers shelter)
+- Step 5 was the WIP already on the branch: `VillageRaids` tracks the vanilla raid, `VillageThreats` calls every qualified guard without raising the 600-tick alarm, raider kills and villager deaths update the record, and the owner, stewards and residents hear one start line and one end line. L2 after the death-log merge was 394/394.
+- Step 6: hired non-guards use `villageheart:shelter` while the village is under attack. `SetRaidStatus` is off their brain, so they never enter `PRE_RAID` or `RAID`. Asleep at home they stay in bed. Away workers are left on their trip. The walk uses `WalkTo` (doors open), arrives within 1.5, and looks at the door. No shelter is `NO_SHELTER` on the Heart.
+- L2: `workerSheltersInHouse` (own bed, then back to the field), `workerSheltersPastARaider` (inside within 900 with a raider off the path), `shelterInterruptsJobsCleanly` (a mid-fell and a mid-build stop, then both carry on), `unhiredVillagersKeepVanillaRaid`. Turning shelter off left the farmer in `WORK`. The farmer's scene has a Storage so a picked crop does not pin them at the composter.
+- Next: step 7, the Heart raid line and the recent deaths. Screenshots: none yet.
+- Fast verify of steps 5 and 6 (`scripts/verify.sh --fast`, commit 54d3b64 plus the shelter tree): Layer 1 failed because `./gradlew build` runs the GameTests, and `worker_opens_doors` stayed in `shelter` for the whole test (distance 7.07, door shut). Layer 2 then passed 398/398. A tracked raid reaches every hired worker, and that test does not reset the claim, so a raid on a reused plot (or within 96 blocks) pulled the farmer indoors. Shelter is now only within `Balance.RAID_REACH` (96) of a raid that is still running, and `WorkerTestSupport.begin` stops raids within 160 blocks. Not re-run yet.
+
+## 2026-11-11: M25 track A step 7 (Heart raid line and recent deaths)
+- The Overview carries up to 3 death rows, newest first, and `deathsLogged` (`DeathLog.nextSeq`). A raid alert stays first. The screen draws "Recent deaths" under the alerts, hidden when empty: `%s (%s): %s, day %s` and ` (raid)`. No "(siege)" on this track.
+- Cause text: entity ids use `entity.<ns>.<path>` (a vindicator, and lightning). `zombified` and the common damage ids use `death.villageheart.cause.<id>`. An empty job reads "Villager".
+- L1: `raidIsFirstAndDeathsAreNewest`, `deathRowsRoundTripAndAreBounded`, `DeathCauseTextTest`, and the lang coverage for the raid lines and cause ids passed. Commenting out the move-raid-to-front loop turned the snapshot test red (`expected RAID but was NO_STORAGE`); restored.
+- L2 alone: `worker_opens_doors` passed (the suite failure above), and `workerSheltersInHouse` still passed with the 96-block reach.
+- L4 `RaidClientTests.raidOverview`, run alone (`-Dvillageheart.l4.only=raid`). Screenshot `build/run/clientGameTest/screenshots/0000_heart_overview_raid.png` (the client prefixes the shot; verify copies that name). Looked at it: Overview of Player0's village, tier Village, next tier Town. The checklist on the left is unmet (population 1/12, workers 1/8, guards 1/8, fed days 0/7, treasury at dawn 0/32). The right column says population 1 (beds 0), workers 1/2, food 0.0 days, treasury 64 emeralds, wages tomorrow 1 emerald in grey. Under that, one red line, uncut: "Raid coming! Guards are called to duty". Then a gold "Recent deaths" and a white "Ada (Farmer): Vindicator, day 1 (raid)". Those lines do not overlap each other or the Deposit / Withdraw / Done buttons. Behind the screen the Heart block and a bell sit on grass. Population is 1 because Ada died; the guard is the remaining worker. The treasury was set to 64 so the wage-short alert does not sit under the raid line.
+- Full `scripts/verify.sh` at `8a9638b` (still running L4 when this was written): Layer 1 failed two GameTests. `mobs_still_cannot_pass_the_gate` failed at tick 10 (the unemployed villager could plan the inside cell) and passed on the Layer 2 rerun; that test has failed once in a full suite before and passed on the rerun. `worker_shelters_past_araider` failed both runs: the farmer took 1149 ticks to get inside (bound 900), and on the rerun was inside and then outside again at the 200-tick stay (`inside the house` at tick 453). A raider in sight holds vanilla panic for the whole raid, so shelter never keeps them indoors. `WorkerPanicTrigger` sends them back to `SHELTER` while they should be sheltering. Not re-run yet. `worker_opens_doors` passed in both full suites.
+- Step 8 is not started.
+
+## 2026-11-11: M25 track A step 7 follow-up, then step 8 (raid harness)
+- Full `scripts/verify.sh` at `8a9638b`: Layer 1 failed `mobs_still_cannot_pass_the_gate` (passed on the Layer 2 rerun; it has failed once in a full suite before) and `worker_shelters_past_araider` (1149 ticks to get inside, then outside again during the 200-tick stay). Layers 3 and 4 and perf passed. The L4 shot is the one described above.
+- `WorkerPanicTrigger` puts a sheltering worker back in `SHELTER` while a raider is in sight. A later full `runGameTest` at `0fb0c34` was 398/398. Forcing `shelter()` to return false also passed 398/398, so that suite does not prove the override. The override stays: it is what the two red runs showed, and what the plan describes once panic ends.
+- Step 8: the day record grows a `raid` object (the 3.7 counters only), `deaths.logged`, and `golems.in_claim`. Old reports read zeros, and a missing spawn distance reads -1. The harness actions are `raid`, `golems`, `top_up_villagers` and `worker_level`. The summary gains a Raid section. No 3.17 keys and no `raid.json`. `scaled: true` does not add raiders yet. A ring chunk that is not ticking yet is forced and logged; promotion takes a few ticks, so that wait is not an error.
+- L1 `MetricsJsonTest` and `ActionSpecsTest` passed. Renaming the written key `raid.started` to `begun` turned `pinnedKeys` and the round trip red (the read-back started at 0). Restored.
+- L2 `raidGolemsAndGuardLevel` passed in 1.741 s. The raid is tracked on the village tick after `RaidStart`, so the test waits for that before counting golems, topping adults up to 4 (a second call adds none) and setting the guard to level 2 at 30/30. The first run crashed after a failed assert because the next step read a null guard; the wait is now its own step.
+- Full `scripts/verify.sh` at `af4a1dd` exited 0. Layer 1 and Layer 2 each passed 399 GameTests. Layer 4 passed, including `0041_heart_overview_raid.png` (described under step 7). Lost-wakeup rescues 0, one world close cleared a leaked in-flight count, no model warnings, no 2-player errors. Perf worst-case median 2623 us. `origin/dev` had nothing new to merge. M25 is not ticked: steps 9–19 are other tracks.
+- GitHub refused the pull request (`must be a collaborator`). Title and description, for a PR into `dev`:
+
+```
+TASK 3: M25 track A (steps 1-8)
+
+Track A of M25: the death log, raid tracking, worker shelter, the Heart raid line, and the simulation harness for a raid. Stops after plan step 8. Walls, sieges, and young-village caps are later tracks.
+
+| Task | Branch | State | Last verify |
+| TASK 3 | m25 | done (steps 1-8) | scripts/verify.sh exit 0 at af4a1dd (docs note follows). Layer 1 and Layer 2: 399 GameTests passed. Layer 4 passed. Perf worst-case median 2623 us. |
+
+# Verify run 2026-11-11T09:36:34Z @ af4a1dd
+- Layer 1: build + unit tests passed
+- Layer 2: in-world GameTests passed (399 required tests)
+- GameTest log shows at least one test ran
+- GameTest-ran gate self-test passed
+- Layer 3 script self-test passed
+- Model-log gate self-test passed
+- 2-player session log gate self-test passed
+- Layer 4: client GameTests + screenshots passed
+- Layer 4: NetworkSynchronizer lost-wakeup fix installed (0 rescues)
+- Layer 4: NetworkSynchronizer disconnect-leak fix installed (1 world close cleared)
+- Layer 4: world-load timeout fix installed
+- Client log has no villageheart model warnings
+- 2-player session: no server errors or disconnects
+- Screenshots include 0041_heart_overview_raid.png
+- Perf limits passed (worst-case median 2623 us)
+
+M25 is not ticked on the roadmap. Steps 9-19 belong to later tracks.
+```
+## 2026-11-11: M25 track B step 9 (gamerules, threat state, recording)
+- Branch `m25-walls`. Three gamerules, category MOBS, default on: `villageheart:siege_damage`, `villageheart:random_raids`, `villageheart:sieges`.
+- `ThreatState` is saved as `threats` after `guard_shifts`. The raid records are the plan's shape and nothing fills them yet (track A owns the tracker). A bad damage array or a bad raid drops that value, keeps the village, and warns once. 5000 damage entries on disk keep 4096, breaches first.
+- A finished wall or gate is recorded with its length and the cells the build placed. It has no patrol point and no key block, so a missing block does not drop it. The site cap is 128. `DefenceClientTests` now expects 6 sites for the walled section (wall, gate, wall, two lamps, tower). The screenshots are the same pictures; they get a look when the full verify runs.
+- Tests: T-L1-13 `VillageCodecsTest`, T-L1-14 `DefencesRecordedTest`, T-L2-13 `SiegeGameTests.wallIsRecorded`. The two village-state sweeps that reflect over `with*` now include `withThreats`.
+- `scripts/verify.sh --fast` before the sweep fix: L1 red on those two sweeps; the dedicated GameTest run passed 386/386. One GameTest inside `build` (`gate_game_tests_mobs_still_cannot_pass_the_gate`) failed once while unit tests ran beside it, and passed in the dedicated run. Not changed. Fast verify after the fix, at `4af3ef4`: exit 0 (L1 green, L2 386/386, perf green).
+- Deviations: docs/plans/M25.md section 8. Next: step 10, the pure siege rules.
+
+## 2026-11-11: M25 track B step 10 (siege rules)
+- Pure rules: hit points and the hit table, creeper splash, breach choice, lure and its 24 slots, threat score, item value, raid scale, young-village raid plan, roll and start rules, siege size, repair order, the threat clock, the slow-scan rule, and the damage sentences.
+- L1 for those rules passed: 29 tests, 0 failures (`DefenceCellsTest`, `WallHpTest`, `SiegeHitsTest`, `DefenceDamageTest`, `BreachChoiceTest`, `LureTest`, `ThreatTest`, `ItemValueTest`, `RaidScaleTest`, `ThreatRollTest`, `ThreatRulesTest`, `SiegeRulesTest`, `RepairPlannerTest`, `ThreatClockTest`, `RewardTest`, `DefenceScanTest`, `RaidPlanTest`, `SiegeAlertsTest`).
+- Decisions, in docs/plans/M25.md section 8: defence cells in the threat score divide as integers; siege spawns use `max(outermost, 32) + 12` (outermost 10 → 44); a Hamlet's random raid is the young-village plan.
+- The alert-code order (RAID, SIEGE, DEFENCE_DAMAGED) is step 15. `SiegeAlerts` has the two sentences and the "(no builder)" variant.
+- `scripts/verify.sh --fast` at `d06cb14`: exit 0 (L1 green, L2 386/386, perf green).
+- Next: step 11, siege damage glue.
+
+## 2026-11-11: M25 track B step 11 (siege damage glue, in progress)
+- `SiegeDamage.hit` cracks and breaks a recorded cell, sends the destruction stage, writes a breach through at once, and flushes cracks on demand and every 200 ticks. A player break opens the cell. The slow scan is one tenth of the sites. A missing watchtower key that is in the breached set does not drop the site.
+- L2, each run alone and passed (1 required test): `siegeDamageHitsCracksAndBreaks` (T-L2-14), `nonDefenceBlocksNeverDamaged` (T-L2-15; hit and blast are called directly, the lured zombie and the breacher creeper arrive in steps 13 and 14), `playerOpenedCellIsLeftAlone` (T-L2-16), `siegeDamageGamerule` (T-L2-36 zombie half; the creeper half is step 14), `watchtowerBreachKeepsSite` (T-L2-40 site and patrol point).
+- `scripts/verify.sh --fast` at `4c0f97d`: exit 0 (L1 green, L2 391/391, perf green).
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, in progress)
+- `MobGoalsAccessor`, `SiegeGoals` on entity load (one of each goal), `PathBudget` (2 paths a tick), `BreachGoal` for a ravager and a vindicator in the tracked raid. `TrackedRaids.track` stores the vanilla raid id; track A still owns the tracker.
+- Zombie lure, zombie breach, and creeper breach are installed so a reload cannot double them, and their `canUse` stays false until steps 13 and 14.
+- Tests written, not yet run: T-L2-17 `ravagerBreaksWallInTwoHits`, T-L2-18 `vindicatorChopsGate`, T-L2-19 `goalsInstalledOnce`.
+
+## 2026-11-11: M25 track B step 12 (raider breach goals, tests green alone)
+- Each of T-L2-17, T-L2-18 and T-L2-19 passed alone (1 required test). A tracked raid needs an occupied village bell and a difficulty above Peaceful, or vanilla stops it on the first tick. The ring is wide so the south wall is the closest face to the bell. The ravager stands on the south edge of the block in front of that wall. Both raiders target the villager inside, and they walk through once the opening is clear.
+- Fast verify at `25f01f7` failed L2: `ravager_breaks_wall_in_two_hits` reached 4000 ticks with the attack cell still at 0 (the goal had started). The suite keeps earlier raids and occupied bells, and `createOrExtendRaid` then centres on a neighbour. One block of drift also opens the next column. `track` now isolates the centre, and the test holds the raider on the attack block until that cell is open.
+- Fast verify at `1ae6cfe` is green: L1, L2 394/394, L3 self-test, perf.
+- Step 13 is in progress: `LureSlots`, `VillageLureGoal`, and the zombie `BreachGoal`. Lure GameTests are in `SiegeLureGameTests`.
+- The builder walking over to repair the watchtower (the second half of T-L2-40) stays in step 15, when `RepairPlanner` is inside `BuilderWork`. Step 11 keeps the site and its patrol point.
+
+## 2026-11-11: M25 track B step 13 (zombie lure and breach)
+- `LureSlots` admits up to 24 zombies (siege tag first, then distance). `VillageLureGoal` walks a partial path up to the wall and hands off. `BreachGoal` then hits for a zombie that holds a slot, or whose target stands in the claim.
+- Each lure GameTest passed alone (1 required test): T-L2-20 `zombieBehindClosedWallBreaks`, T-L2-21 `skeletonStaysVanilla`, T-L2-22 `lureOffByDay`, T-L2-23 `noWallsNoLure`, T-L2-24 `lureBudgetCaps`, T-L2-37 `trenchInFrontOfWall` (zombie half), T-L2-38 `openGapIsUsed`, T-L2-39 `partialWallNoLure`.
+- The gate sits on the north wall. A south gate's eye-level air lets the zombie see a villager and take a target before it hits. The beside-the-wall bound is 1200 ticks: the specified wander arrived in 794, and 600 is a straight walk. "Never had a target" is checked until the zombie is beside the wall.
+- `scripts/verify.sh --fast` at `0d2cc08`: exit 0 (L1 green, L2 402/402, L3 self-test, perf).
+- Next: step 14, creeper breach. The builder repair of T-L2-40 stays in step 15.
+
+## 2026-11-11: M25 track B step 14 (creeper breach)
+- `CreeperBreachGoal` walks a creeper that holds a lure slot to the nearest wall or gate and lights it beside the cell. `CreeperExplodeMixin` spends that blast on defence cells. A creeper with a target keeps the vanilla explosion. Creepers share the 24 lure slots with the zombies.
+- Each creeper GameTest passed alone (1 required test): T-L2-25 `creeperBreachesWall`, T-L2-25b `nobodyHuntsTheBreacher`, T-L2-26 `breachSparesHousesBehindWall`, T-L2-27 `vanillaCreeperStillVanilla`, T-L2-36 `siegeDamageGameruleCreeper`, T-L2-37 `trenchInFrontOfWall` (zombie and creeper). The trench was run twice more after the stand fix and passed both times.
+- A stand has to be outside the ring, with its feet on the ground the wall was built on. The trench bottom is lower than that, so a creeper that drops in does not light. T-L2-27 plans the repair with `RepairPlanner.next`; the builder is step 15.
+- `scripts/verify.sh --fast` at `196391d`: exit 0 (L1 green, L2 407/407, L3 self-test, perf).
+- Next: step 15, builder repairs and the DEFENCE_DAMAGED alert. The builder repair of T-L2-40 stays there.
+
+## 2026-11-11: M25 track B step 15 (alerts, repairs not started)
+- `AlertCode` appends `RAID`, `SIEGE`, `DEFENCE_DAMAGED`. The Heart snapshot lists them in that order, ahead of the older alerts. A cracked or breached wall adds the damage line, including the "(no builder)" and the danger wording during a raid or a siege.
+- `SiegeAlertsTest` covers the lines, the args, and that order. `LangCoverageTest` covers the three new strings.
+- The builder still does not walk over to repair. T-L2-28, T-L2-29, T-L2-30, T-L2-44 and the builder half of T-L2-40 are not written.
+
+## 2026-11-11: M25 track B step 15 (builder repairs)
+- `WallRepair` runs from `BuilderWork` before a new build. A hired builder in `WORK` fetches cobblestone or a fence gate from Storage, walks to a stand, and places the blueprint block. A heavy crack spends one cobblestone and leaves the block. A light crack is free. A cell with another entity or a solid block that is not the blueprint block is skipped. Each action is 20 ticks at level 1 and grants block-placed XP. `SiegeDamage.repair` clears the cell and flushes, so the Heart line drops. The sentence is "Repairing" or "Repairs need N more fence gate" / "cobblestone". A missing watchtower ladder is repaired after the wall cells, which is the builder half of T-L2-40.
+- Shelter for this step is the activity `villageheart:shelter` plus `ShelterDuringThreat`, for a hired worker who is not a guard while a raid or a siege is tracked. `TrackedRaids.holdWaves` keeps the vanilla raid from spawning a group, and `TrackedRaids.stop` ends it. Beds, doors, and the death log stay with track A. `GuardSystem.feed` is unchanged. T-L2-44 holds the guard with `setNoAi` so a patrol cannot leave the 10-block bubble.
+- The first breach says "The wall of %s was breached" at most once per 1200 ticks, and the last repair says "The walls of %s are repaired".
+- Tests, each passed alone and in the suite: T-L2-28 `builderRepairsWithStorageCobblestone`, T-L2-29 `breachStaysOpenWithoutMaterial`, T-L2-30 `noRepairDuringThreat`, T-L2-44 `rationDoesNotRefillBesideAnEnemy`, and the builder half of T-L2-40 `watchtowerBreachKeepsSite`.
+- `PathBudget` serves a mob that was refused a search before one that searched last tick. The cap stays at 2. Without that, the same two mobs took both tokens every tick and `zombieBehindClosedWallBreaks` waited until tick 2922 for its first hit. The first-hit bound is 2000.
+- `build` no longer runs the GameTest suite. Fabric had wired it into `check`, and that run discovered the tests in a different order from `gradlew runGameTest`. `scripts/verify.sh` still runs the suite once, as layer 2.
+- `scripts/verify.sh --fast` at `07cdca8`: exit 0 (L1 green, L2 411/411, L3 self-test, perf).
+- Deviations: docs/plans/M25.md section 8. Next for this track: merge `dev`, then the full verify. Steps 16–19 stay with the orchestrator.
+
+## 2026-11-11: M25 track B full verify
+- `origin/dev` was already contained in `m25-walls` (`c7f109b`). The merge was already up to date.
+- `scripts/verify.sh` at `e2dbfb4`: exit 0. L1 green, L2 411/411, L3 self-test, L4 client tests and the three NetworkSynchronizer checks green (1 lost wakeup rescued, 0 disconnect leaks), model log and the 2-player session clean, perf green. Screenshots of the walled section, the closed gate, and the watchtower show the cobblestone wall, the fence gate, and the shaft with its ladder.
+- Steps 9–15 are on `m25-walls`. Steps 16–19 stay with the orchestrator.
+
+## 2026-11-11: TASK 9 merge of track A and track B
+- `m25-full` starts at `origin/m25` (`190fa1d`) and merges `origin/m25-walls` (`8e3b0a2`). `origin/dev` (`c7f109b`) is already an ancestor of both.
+- One `villageheart:shelter` activity, using track A's beds and doors. A running siege shelters the same way as a nearby raid. `ShelterDuringThreat` is gone. `VillageState` keeps the death log and uses the siege `ThreatState`. `AlertCode` stays append-only. The Heart row for a builder whose repair line is "Repairing" is the new `ActivityKind.REPAIRING`. "Repairs need …" stays "Needs materials". The siege sentence on the Heart waits for step 17.
+- Unit tests (`./gradlew --no-daemon test`) passed on the merged tree. GameTests are next (`scripts/verify.sh --fast`).
+- Decisions: docs/plans/M25.md section 8, "Track A + track B".
+
+## 2026-11-11: TASK 9 steps 16–19 (in progress)
+- Steps 16–18 are on `m25-full`. Step 19's scenarios, docs, and the siege spawn retry are committed through `e2c238d`. `scripts/verify.sh --fast` at that commit: exit 0, 434 GameTests, VERIFY:0 (`/tmp/verify-fast3.log`). Full `scripts/verify.sh` has not been run yet.
+- T-L3-1 before the chase, three `simulate.sh raid` runs on `e2c238d`, seed 1, 6 days, site 638,69,848 (44×32), Heart 641,64,821. All FAIL on `sum(raid.victories) == 1` and `sum(losses+stopped+gone) == 0`. Outcome stopped, waves_total 5. `raid.spawn_min_distance` stayed -1; the wave ring was not entity-ticking and the raid action forced those chunks. Wall side in the death log is empty (no `wall_ring`); inside/outside is the site rectangle. No assertion was loosened. `raid.json` was not edited after run 1.
+
+| run | start villagers | call-up | night guards | outcome | end tick | waves | raiders killed | guard kills | golems | deaths | wall |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 12 | 11 | woke (day 4 duty_samples 960, guards_night 3) | stopped | 98020 | 1 | 3 | 0 | 2 from day 3 | 2 pillager arrows, both outside (Butcher 636,64,794; Mason 585,66,824) | no breach |
+| 2 | 12 | 14 | woke (day 4 duty_samples 960) | stopped | 98040 | 1 | 0 | 0 during the raid; 5 on day 5 after the stop | 1 | 3 pillager arrows outside during the raid (Villager 626,64,791; Farmer 579,64,808; Mason 609,66,819); Lumberjack 652,65,821 on day 5, also outside | no breach. Last raiders on the north wall, inside the claim |
+| 3 | 12 | 16 | woke (day 4 duty_samples 960) | stopped | 98040 | 2 | 11 | 6 on day 3 | 1 | none | vindicator broke 2 on day 3; builder repaired 3 on day 5; noon breach 0 on the last day |
+
+- The chase is `2e55e07`. `raid_reload` on the chase before the detour (the report's git commit is still `e2c238d`, because the tree was dirty): victory, 5 waves, 35 kills, end tick 76387, reloads [3], but FAIL. `sum(raid.started)` was 2 because the new process's meter treated the live raid as a new start. `sum(raid.villager_deaths)` was 7 (the day-4 sample included the death from before the reload). `deaths.logged` 7 against `deaths.total` 6 for the same reason. The people who died were 6: Butcher and Mason outside the ring, and all four guards (one at 702,70,823 to a ravager, three near the Heart). Golems stayed 1. Call-up 16. Resume now seeds the meter and the death count (`RaidDayWindow`).
+- `siege` on `e2c238d`: assertions PASS, population 12 every day, 0 deaths. `siege.zombies` was 3, not 8, and `lure.max_lured` was 0. The action was day 2 tick 0, which is day time 40, and the roll switch (off unless `threats` is true) ended the siege on the next tick. The action is now tick 18000, and a scripted siege is not cancelled by that switch (`SiegeEnd`). The night run is the one that counts.
+- `starter` PASS (10 days, population ended 9). `defended` PASS (population 8, then 7 from day 6). `defended_walled` FAIL: the only false assertion is `sum(work.guard.kills) >= 15` (actual 0). `defence.cells` stayed 0, so this is not a fill wall recorded as a defence. `golems.in_claim` was 1 on days 1–8. Two night guards, duty samples about 240. One death: Villager, zombie, scripted, outside the ring at 622,66,802, day 2 tick 85. The scenario was not edited.
+- T-L3-1 on `1f27f3f` after the chase, still guard level 2 and a 16-block margin. Not the counting set: a 32-block path into the wall ends at the wall, and a raider near 98 blocks is past 96. Site and Heart unchanged. Inside means the 44×32 site (x 639–680, z 849–878).
+
+| run | start | call-up | night guards | outcome | end tick | waves | raiders killed | guard kills | golems | deaths | wall |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 11 | 20 | woke (day 3 guards_night 3, duty 379; all four guards dead after) | victory | 62136 | 5 | 39 | 16 on day 3 | 1 | 8, all outside: Farmer vindicator 612,65,803; Mason pillager 628,63,778; Villager vindicator 591,66,826; four guards and the lumberjack east of the wall (Lumberjack vex 662,69,847 is one block north of the north wall) | no breach. Population 12,12,4,4,4,4. FAIL deaths 8 > 2.75 and at_end 4 < 8.25 |
+| 2 | 12 | 13 | woke (day 4 duty 960, guards_night 3) | stopped | 98040 | 4 | 18 | 16 on day 3, 0 on day 4, 1 on day 5 | 1 | 2, both outside: Mason vindicator 626,65,823 day 3; Villager pillager 626,64,793 day 4 | no breach. Population 12,12,11,10,10,10. Survival passed. Last raiders included 618,79,915 (about 98 from the Heart) and 650,69,847 on the north wall |
+| 3 | 12 | 17 | woke (day 4 duty 960, guards_night 3) | stopped | 98040 | 4 | 26 | 16 on day 3, 0 on day 4 | 1 | 5 on day 3: Lumberjack 682,71,866 outside east; Builder 649,70,851 inside; Farmer 573,64,809 outside; two lumberjacks at 664,70,851 and 662,70,851 inside | 4 broken on day 3, repaired 8 on day 5, noon breach 0 on the last day. Population 12,12,7,7,7,7. Last raiders 638,69,847 and 637,70,858, against the wall |
+
+- `raid_reload` on `1f27f3f` (meter seed in place, level 2): reloads [3], `sum(raid.started) == 1` PASS, `deaths.logged == deaths.total` PASS. The raid itself FAIL: stopped, waves 4, end tick 116040, kills 22, deaths 7, call-up 11, at_start 12, at_end 5. Deaths: two guards on day 3 outside (668,64,790 vindicator; 669,66,823 ravager); day 4 three guards at 649,70,865 / 648,70,865 / 648,70,862 (inside, north of the ring), Lumberjack 650,70,851 inside, Builder 655,70,851 inside. Noon breach 2 on the last day, repairs 0. Golems 1. Night guards woke. Last raider 683,63,935.
+- T-L3-3 `siege` on `1f27f3f`, action tick 18000: PASS. 8 zombies, lure max 8, 0 siege villager deaths, noon breach 0, population 12 then 11. One death after the night ended: Villager, zombie, outside at 609,66,820, day 2 tick 23455. `siege.killed` stayed 0. This is the run that counts. Not a roadmap gate.
+- The counting raids are the three after guard level 3, a 32-block chase, and the gate waypoint. Full `scripts/verify.sh` and the PR are still to do.
 
 ## 2026-11-11: TASK 1 finish M23 (Population growth)
 - Merged origin/dev (`c7f109b`, handoff docs) into m23. Product change is in `Courtship`: a `CANT_REACH_WALK_TARGET_SINCE` stamp counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A stroll left a stamp already older than 200 ticks, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). A real cannot-reach of the partner walk still lapses, and the 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C on their spots until the dawn has read them (A and C share a house and a few stroll ticks were swapping the closest pair), then lets them walk.
@@ -1062,6 +1236,46 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Verify: `scripts/verify.sh` exit 0 at `f542bf6` (2026-11-11T22:53Z): Layer 1, Layer 2 all 428 required GameTests, gates, Layer 4 client tests on xvfb (0 lost wakeups, 0 leaks, no model warnings), perf. `0037_smithy_golem.png` looked at: unchanged (Smithy, lit furnace, chest, two golems, the right one cracked).
 - Not changed, owner call: the stone-before-iron rule itself (`TierChoice.order`), only documented.
 - Next: verifier round 2. Blockers: none.
+
+## 2026-11-12: M25 owner decisions on `m25-full` (shelter for everyone, warnings, stuck raiders)
+- Built after the owner rejected the raider recall (`fc7c82d`): nothing teleports, pulls or kills a raider to finish a scenario. Merged `origin/dev` first (`cdc77b7`).
+- **1. Shelter for everyone.** `VillageBell` rings the real bell when a raid starts (`VillageRaids`) and when a siege spawns (`ZombieSiege.begin`). `UnhiredShelter` puts every unhired villager in the claim into `villageheart:shelter` (own House bed, free House bed, nearest valid room, and as a last resort its own bed wherever it is) while a raid is within reach or a siege runs; guards that are not training and not wounded stay out (M18's raid flag). `BrainActivityMixin` keeps vanilla's `PRE_RAID` / `RAID` / `HIDE` from pulling a sheltering brain back out, because vanilla's `ReactToBell` skips a raid and `SetRaidStatus` sends unhired villagers to the meeting point outdoors. Hired workers lost `ReactToBell`: the bell would leave them in `HIDE` after the raid with nothing to end it (`shelterInterruptsJobsCleanly` failed with three logs standing in the first full run, and passes with the fix). Sheltering villagers choose again every 20 ticks (the raid-day village logic mean was 1.5 and 1.6 ms with a choice every tick).
+- **2. Warnings.** `ThreatWarnings` (pure) schedules 3 raid lines and 2 siege lines over `WARNING_LEAD_TICKS` (6000) before the start, never before the roll, to the players within 96 blocks of the Heart; the title ("A raid is starting!" / "The dead are coming!") and the bell at the start. All text is in `en_us.json`. A raid rolled at day tick 1000 for a start at 2000 has only 1000 ticks of lead (`docs/plans/M25.md` Deviations).
+- **3. Stuck raiders.** `StuckRaiders` (pure) and `StuckRaiderSystem`: no progress for 12000 ticks and nobody within 16 blocks makes a raider glow and tells the players; 1200 ticks later it flees (smoke, removed, "A raider fled the battle.", not a kill). A raider that moves closer, fights or has someone near restarts its clock. Defaults pinned by L1; L2 shortens the waits.
+- **Tests.** L1: `ThreatWarningsTest` (10), `StuckRaidersTest` (11), `ShelterPlannerTest` (+1), `LangCoverageTest` (+1). L2: `ThreatShelterGameTests` (4: everyone indoors and back to work, guards stay out, siege bell and title, own-bed fallback), `ThreatWarningGameTests` (2), `StuckRaiderGameTests` (3: sealed raider glows then flees, a walking raider is never removed, a raider with a villager near is never removed). L4: `ThreatTitleClientTests` takes `raid_title` and `siege_title`; both screenshots were looked at (the title is centred in large white letters over the world and the chat lines; "The dead are coming!" fills the screen width). **Changed test:** `RaidGameTests.unhiredVillagersKeepVanillaRaid` asserted that an unemployed villager stays on vanilla's `PRE_RAID` (outdoors), which is the behaviour the owner rejected. It is now `unhiredVillagersShelterToo` and asserts `SHELTER` and never `PRE_RAID` / `RAID`; the hired-worker assertion is unchanged.
+- **Mutation checks** (each fails its test, then reverted): unhired shelter off (`raidSendsEveryVillagerIndoors`), no bell at raid start, no siege title, no warnings, progress ignored (`walkingRaiderIsNeverRemoved`), helper ignored (`raiderWithAVillagerNearIsNotRemoved`), no removal (`sealedRaiderGlowsThenFlees`), own-bed fallback removed (L1 and L2), a shifted warning schedule and a longer grace (L1), `ReactToBell` back in the worker brain (`shelterInterruptsJobsCleanly`, seen failing).
+- **Fast verify:** exit 0 at `5a1e457` (445 GameTests), `5c8acf3` (446), `148c689` (446). Two intermediate fast runs each failed one flake this branch does not cause and passed on the next run: `siege_lure_game_tests_trench_in_front_of_wall` (alone, twice, it passes) and `heart_screen_game_tests_snapshot_of_seeded_village` (population 4 against 3, another test's villager within 80 blocks: tests of different environments run at the same time) together with my `sealedRaiderGlowsThenFlees` ("raiders alive 1": another test's reset stopped the raid, `RaidStart.stopAll` within 160 blocks, so it never dropped the removed raider; the check now accepts a stopped raid).
+- **L3 runs** (seed 1, unseeded villager AI, assertions unchanged; exit 0 PASS, 1 assertion FAIL, none exited 2). Three sets, each on the code named. The final set is C.
+
+| set | scenario | exit | what happened |
+|---|---|---|---|
+| A `5a1e457` (shelter, no own-bed fallback) | `raid` 1 | 1 | stopped, 34 killed, 7 villagers lost, 5 at the end, day-3 village mean 1.47 ms (over the 1 ms bar) |
+| A | `raid` 2 | 1 | stopped, 39 killed, 12 lost, 0 left |
+| A | `raid` 3 | 1 | victory, 37 killed, 4 lost, 8 at the end |
+| A | `siege` / `starter` | 0 / 0 | PASS, PASS |
+| A | `defended` | 1 | employed 2 of 4 on day 1, mob deaths 2, kills 14 of 15, duty samples 48 on day 1 |
+| A | `defended_walled` | 1 | guard kills 0 of 15 |
+| B `5c8acf3` (own-bed fallback, choice every tick) | `raid` 1 | 1 | victory, 36 killed, 6 lost, 6 left |
+| B | `raid` 2 | 1 | victory, 27 killed, 4 lost, 8 left |
+| B | `raid` 3 | 1 | victory, 34 killed, 3 lost, 9 left; failed only the village mean on day 3 (1.63 ms) |
+| B | `siege` | 1 | 3 siege villager deaths against 2 (unhired villagers, zombified); the next set passes, so this is run-to-run spread |
+| B | `starter` / `defended` / `defended_walled` | 0 / 1 / 1 | PASS; mob deaths 2, duty samples 47 on day 5; guard kills 5 of 15 |
+| C `148c689` (final) | `raid` 1 | 1 | stopped after wave 3 of 5, 13 killed, 7 lost, 5 at the end, 4 left on day 6; day-3 mean 0.31 ms |
+| C | `raid` 2 | 1 | victory, 28 killed, 8 lost, 4 left; 0.72 ms |
+| C | `raid` 3 | 1 | victory, 39 killed, 6 lost, 6 left; 0.51 ms |
+| C | `siege` | 0 | PASS, population 12 on every day, 0 deaths |
+| C | `starter` | 0 | PASS, population 8 on every day, 0 deaths |
+| C | `defended` | 1 | mob deaths 6 against 1, guard kills 11 of 15, duty samples 49 on day 2 |
+| C | `defended_walled` | 1 | guard kills 0 of 15 (no deaths, population 8 on every day) |
+
+- **`raid` accepted by owner as a hard Town raid, M26 balance target.** All three final runs fail `raid.villager_deaths <= 0.25 * start` (7, 8 and 6 lost, 3 allowed) and `raid.villagers_at_end >= 0.75 * start`; run 1 also fails the victory and no-stop assertions. No assertion was loosened. The numbers are in ROADMAP M25 and the plan's Deviations. `defended` and `defended_walled` fail the balance bars the owner already made M26 targets.
+- Doubts: the unhired villagers of the old village outside the ring are the first to die in `raid` (the ring's gates are fences to them); with the own-bed fallback they hide in their own houses, which is not a "valid House". A [stuck] log line was added to `StuckRaiderSystem`, but the sim reports have no fled-raider column, and the runs above did not keep a server log, so whether any raider fled in the sims is not recorded.
+
+### M25 owner decisions: final verify (2026-11-12)
+- **Full `scripts/verify.sh` exit 0** on the tree of the commit after `5c5ac60` (the run header says `5c5ac60` because the last test edits were not yet committed): L1, L2 446 of 446 required GameTests, the L4 client GameTests (47 screenshots, no villageheart model warnings, 2-player session clean, 1 lost wakeup rescued), perf within the caps. It took several attempts (eight full or fast runs failed first). Each failed on one to three tests: `shelterInterruptsJobsCleanly` once (a real bug, fixed: `ReactToBell` in the worker brain), then `siege_lure_game_tests_trench_in_front_of_wall` (3 times: twice alone it passes), `..._lure_budget_caps`, `..._zombie_behind_closed_wall_breaks` (twice), `..._open_gap_is_used`, `heart_screen_game_tests_snapshot_of_seeded_village`, `cook_game_tests_food_reaches_storage_before_dinner`, `self_craft_lifecycle_game_tests_craft_pauses_overnight_and_survives_reload`, `guard_game_tests_alarm_wakes_sleeping_guards_and_they_return`, `heart_action_game_tests_rate_limited`, `lumberjack_game_tests_pace_by_tier`. Those tests do not start a raid or use the shelter code as far as I read them, and the lure tests are timing-bound (the plan measured one at 2922 of 3000 ticks); I did not prove that this branch added no load. The suite's flake rate was already high on `dev` (the art pass needed four full runs). Four more failures were mine and are fixed: `warnings_lead_up_to_asiege` twice (the clock was not pinned before the threat existed), `siege_rings_bell_and_sends_villagers_indoors` twice (daylight burned the siege zombie, the siege ended, the villager was released early; the zombie is now invulnerable), and `stuck_raider_game_tests_sealed_raider_glows_then_flees` once.
+- `heart_overview_raid` showed the new title ghosting behind the Overview; `RaidClientTests` now clears the client's titles before it opens the screen. Looked at: clean.
+- Next: the orchestrator reviews `m25-full`. The raid L3 numbers are the M26 balance target. Blockers: none.
+
 **backlog-small round 1 fixes**
 
 - Hunter: only an away or walking neighbour counts as "arrived" near the marker. A bystander earns one give-up (`YIELD`); a repeat within `HUNTER_RETRY_TICKS` is `UNREACHABLE`. Tests: `HuntApproachTest`, `wallWithABystanderIsStillUnreachable` (NoAI neighbour, walled ground, reported at tick 430), `jamInTheGapIsResolvedWhenTheNeighbourMovesOn` (out at +350). The old `jamIsNotAnUnreachableGround` locked in the hidden unreachable ground and was replaced. The gap test probably also passes on the old code: it is a regression guard. `twoHuntersOneGround` bound stays 450.
@@ -1153,3 +1367,46 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - `-Dvillageheart.l4.only=smith` alone: 5 of 5 passed. Full `scripts/verify.sh`: exit 0 (L2 457 tests, 42 L4 screenshots, 2-player session clean, perf within limits).
 - `0038_smithy_golem.png` looked at: the oak Smithy open to the front, the smith by the glowing blast furnace inside, two iron golems in front, the right one visibly cracked.
 - Next: orchestrator review of round 4 and ROADMAP tick. Blockers: none.
+
+## 2026-11-12: M25 review round 1: FAIL (6 items)
+- Merged `origin/dev` into `m25-full` (`5494fa5`; DayMetrics keeps both TierDay and the M25 records). Full verify twice: run 1 exit 0 (472 L2), run 2 exit 1 on `siege_lure_game_tests_lure_budget_caps` (passes alone 2/2; the test depends on world state earlier batches leave behind).
+- Fix items: (1) make `lureBudgetCaps` independent of earlier batches; (2) the siege title "The dead are coming!" is clipped in `0047_siege_title`; (3) the siege half of "every villager indoors" is unproven (the mutation `if (!raid)` in `UnhiredShelter` survives, because vanilla's bell hide passes the single "inside" check); (4, 5, minor) `vindicatorChopsGate` does not count hits, `sealedRaiderGlowsThenFlees` has no lower bound on the grace; (6) the ROADMAP box went back to `[ ]` until a PASS.
+- Confirmed: no raider teleport, pull or kill remains (only the stuck-raider flee removes a raider); `raid.json` assertions are identical to plan 3.7 since `558431a`; codec keys flat, old saves load, enums appended. `simulate.sh siege` PASS. Details and the mutation table: `docs/reviews/M25-r1.md`.
+
+## 2026-11-12: M25 round 2 (builder): review r1 fixed
+- Merged `origin/dev` (M19 smith and golems, M23, backlog-small, art-pass) into `m25-full`. Conflicts kept both sides: `VillageState` has `deaths` and `threats` after dev's `golemBuilds` / `smithCrafts`; `DayMetrics` keeps dev's `GolemDay` (the old `golemsInClaim` int is gone, a compat constructor still takes it); `ActivityKind` has the M25 kinds after dev's smith kinds, so `RaidActivityTest` pins 36 and 37 (it pinned 32 and 33 when `DAILY_LIMIT` was last; same rule, still the last kinds).
+- (1) `lureBudgetCaps` root cause: the six zombies beyond the 24 slots are not lured, so they wander and are shoved apart; they drifted from 96 blocks out at spawn to 101 at tick 200, against `LURE_RADIUS` 112. The lure never admits a zombie past 112, so one that drifted out was never admitted again and the "all free slots reused" check stayed at 19 of 20 until the timeout. Fix: the geometry, not a bound. Spawn band 66 to 81 out in two columns, with a setup assertion that it stays 30 inside the radius. The failure now names each missing zombie's target and distance. Every lure test also clears leftover mobs at start and end (they are persistent and outside the structure, tests are about 100 blocks apart; the global lure and path budget would see them). Alone, 10 of 10 passed (farthest zombie 81 to 89 of 112 at the discard, before: 101); 6 more before the geometry change.
+  - I did not see a leftover mob in any run I logged (`[lure-test] cleared` never printed), so the radius drift is the cause that is measured. The clean-up is cheap insurance for the rest of the family, not a measured cause.
+- (2) Siege title is "The dead rise!". `0048_siege_title.png` looked at: centred, wide margins; the raid title shot still fits. `ThreatTitleClientTests` now fails when a title is wider than the GUI-scaled screen.
+- (3) New L2 `ThreatShelterGameTests.siegeKeepsUnhiredVillagersIndoors`. Mutant `if (!raid)` in `UnhiredShelter.tick` fails it ("not in the house ... activity meet").
+- (4) `vindicatorChopsGate`: mutant `HP_GATE` 12 failed. The first version of the check sat inside a `thenWaitUntil`, where a failed assertion only retries, so the mutant survived it; the violation is now recorded and asserted after the wait (docs/TESTING.md).
+- (5) `sealedRaiderGlowsThenFlees`: mutant "flee at the next check after the glow" fails with "the raider fled inside the grace period".
+- All three mutants applied, run, restored; the tree was clean after each.
+- Flakes seen on the way, none touched beyond the lure clean-up: `raid_sends_every_villager_indoors` once in a full run ("unhired 1 is not in the house" at the door; passes alone), `vindicator_chops_gate` once (266 ticks, bound 200; 18 of 19 alone passed), and in the first fast run `siege_lure_..._trench_in_front_of_wall`, `..._zombie_behind_closed_wall_breaks` and `zombie_siege_..._vanilla_siege_suppressed_in_claim` (vanilla's random siege spawn, 3 nights without one).
+- Verify: `--fast` exit 0 (516 L2 tests) after the clean-up; the first fast run failed on the three tests above. Five full runs on this code:
+  - run 1 (`2a8a449`): exit 0 (516 L2, 3 lost wakeups rescued in L4).
+  - run 2: exit 1: `siege_lure_..._skeleton_stays_vanilla`, `threat_shelter_..._siege_rings_bell_and_sends_villagers_indoors` (unhired villager stuck short of the House, no walk target), `siege_..._ravager_breaks_wall_in_two_hits`, and the L4 guard test ("night guard is not at its bed on the client"), so the 2-player session never ran.
+  - run 3: exit 1: `stuck_raider_..._walking_raider_is_never_removed` (1.4 blocks of progress at tick 20, wants 2).
+  - run 4 (`7def719`): exit 0 (516 L2, L4, 2-player, perf).
+  - run 5 (`7def719`): exit 1: `smith_..._craft_pauses_overnight_and_survives_restart` (M19).
+  - Every failure is a different test, none touches a line I changed, and each passes alone. The full suite is flaky on this 4-core box (about 1.5 timing-sensitive failures per run). Worth a pass in M26: the unhired-shelter stall (twice in the runs I logged, also once before my changes) is the one that could be a real bug.
+- Next: verifier round 2 and the ROADMAP tick (left `[ ]`). Blockers: none.
+
+## 2026-11-12: M25 owner change, threat messages (builder)
+- Owner decision (LOOP_STATE 2026-11-12): lead-up warnings are gold chat; a raid start keeps the big title and adds one bold red chat line and the bell; a siege start is one bold red chat line ("The dead are coming!") and the bell, no title.
+- `ThreatWarnings` (pure) gets `Tone` (WARNING gold, ALERT bold red, NOTICE plain), `Kind.title()` is an `Optional` (empty for a siege), `Kind.start()`, `RAID_START` / `SIEGE_START`; `SIEGE_TITLE` and lang `title.siege` are gone, `start.raid` / `start.siege` are new. `ThreatMessages.warn` and `.started` send them; `VillageRaids`, `ZombieSiege` and `ThreatScheduler` call those. Timing is unchanged and tunable (`WARNING_LEAD_TICKS`, `THREAT_TITLE_*`).
+- Tests: L1 `ThreatWarningsTest.warningsAreGoldAndStartsAreRedWithTheTitleOnlyForARaid`, `LangCoverageTest.threatWarningLines`; L2 new `ThreatStartMessageGameTests` (three tests, real packets), `ThreatShelterGameTests` (raid: title + red line; siege: red line, zero titles), `ThreatWarningGameTests` (`heard` counts gold only); L4 `raid_title`, `raid_title_gui1`, `siege_start`.
+- Changed existing assertions, not weakened: `ThreatWarningsTest.raidHasThreeLinesAndSiegeTwo` and `LangCoverageTest` pinned "The dead rise!" as the siege title, which the owner removed; they now pin that the siege has no title. The shelter siege test asserted one siege title, now zero titles plus one red line.
+- Mutation checks (each reverted): warningTone to NOTICE (fails the L1 test, `leadUpLinesAreGoldChat`, both warning-lead-up tests); raid title dropped (fails `raidStartSendsTheTitleAndTheRedChatLine`, `raidSendsEveryVillagerIndoors`); raid red line dropped (same two); siege gets the title (fails L1, `siegeStartSendsTheRedChatLineAndNoTitle`, `siegeRingsBellAndSendsVillagersIndoors`); siege red line dropped (same two L2); ALERT without bold (fails both packet tests).
+
+## 2026-11-12: M25 review round 2 (verifier): PASS
+- `m25-full` at `4b95855` (already contains `origin/dev`). All six r1 items fixed, and each fix mutation-checked: lure spawn band, siege
+  shelter held past vanilla's hide, gate HP 12, grace ignored. The owner's announcement decision of 2026-11-12 matches exactly. Seven
+  mutants were killed at L2 and L4 (siege title, plain lead-up, not bold, not gold, raid without the red line, siege without the bell,
+  title too wide). Screenshots `raid_title`, `raid_title_gui1` and `siege_start` were looked at. No raider teleport, pull or kill, and
+  no scenario assertion changed. ROADMAP M25 ticked.
+- Full verify 3 times: exit 1, 0 (519/519), 1. Both red runs failed only non-M25 tests from dev: `smith_..._gate_edge_of_claim` (M19),
+  `guard_..._alarm_wakes_sleeping_guards_and_they_return` and `cook_..._food_reaches_storage_before_dinner`. Every M25 test was green in
+  all three runs. Run alone: `lureBudgetCaps` 5/5, `gateEdgeOfClaim` 5/5, and three M25 tests the builder saw flake 10/10 each.
+- Next: the orchestrator should plan a flake pass on dev's suite before the v1 gate (findings in `docs/reviews/M25-r2.md`). M26 should
+  watch the unhired-shelter stall the builder logged (not reproduced here).

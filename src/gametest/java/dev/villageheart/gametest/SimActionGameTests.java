@@ -3,21 +3,26 @@ package dev.villageheart.gametest;
 import static dev.villageheart.gametest.NeedsTestSupport.sweepVillagers;
 
 import dev.villageheart.building.Buildings;
+import dev.villageheart.core.Balance;
+import dev.villageheart.core.ClaimGeometry;
 import dev.villageheart.core.building.BuildingType;
-import dev.villageheart.core.sim.OutsideBand;
 import dev.villageheart.core.sim.ScenarioAction;
 import dev.villageheart.core.sim.ScenarioParser;
 import dev.villageheart.core.sim.SimArea;
+import dev.villageheart.core.sim.OutsideBand;
 import dev.villageheart.core.sim.WallRing;
 import dev.villageheart.sim.GuardActions;
-import dev.villageheart.sim.Host;
 import dev.villageheart.sim.SiegeGate;
 import dev.villageheart.sim.SimMetricsCollector;
+import dev.villageheart.gametest.raid.RaidStart;
+import dev.villageheart.sim.Host;
+import dev.villageheart.sim.RaidSim;
 import dev.villageheart.sim.SimTickets;
 import dev.villageheart.sim.StarterActions;
 import dev.villageheart.stock.Stockpiles;
 import dev.villageheart.stock.StorageContainers;
 import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.world.VillageCensus;
 import dev.villageheart.world.VillageClaims;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,31 +30,36 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.village.VillageSiege;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.BellBlock;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BellAttachType;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.village.VillageSiege;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.decoration.ArmorStand;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.raid.Raider;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.BedBlock;
-import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.properties.BedPart;
-import net.minecraft.world.level.block.state.properties.BellAttachType;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -500,6 +510,78 @@ public class SimActionGameTests {
 			z[1].discard();
 			VillageTestSupport.done(h);
 			WorkerTestSupport.end(h);
+		});
+	}
+
+	// ---- T-L2-11 -------------------------------------------------------------------------------
+
+	@GameTest(environment = "villageheart-gametest:sim_actions", structure = YARD, skyAccess = true, maxTicks = 2000)
+	public void raidGolemsAndGuardLevel(GameTestHelper h) {
+		GameTestSequence seq = GuardTestSupport.scene(h, 1);
+		BlockPos spot = new BlockPos(3, 0, 1);
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "vanilla treats the spot by the Heart as a village",
+				() -> h.assertTrue(h.getLevel().isVillage(h.absolutePos(spot)), "not a village yet"));
+		Villager[] guard = new Villager[1];
+		seq.thenExecute(() -> {
+			WorkerTestSupport.begin(h);
+			ServerLevel level = h.getLevel();
+			BlockPos heart = h.absolutePos(spot);
+			var village = VillageClaims.current(level.getServer()).orElseThrow();
+			var raid = RaidSim.start(level, BuildingTestSupport.owner(), heart, 1, false);
+			h.assertTrue(ClaimGeometry.inClaim(village.heart(), VillageClaims.locate(level, raid.getCenter())),
+					"centre " + raid.getCenter() + " heart " + village.heart());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the raid is tracked", () -> h.assertTrue(
+				VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().raid().isPresent(), "a raid is tracked"));
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			BlockPos heart = h.absolutePos(spot);
+			var village = VillageClaims.current(level.getServer()).orElseThrow();
+			RaidStart.stopAll(level, heart, 160);
+			AABB near = new AABB(heart.getX() - 32, heart.getY() - 32, heart.getZ() - 32, heart.getX() + 32, heart.getY() + 32, heart.getZ() + 32);
+			for (Raider raider : List.copyOf(level.getEntitiesOfClass(Raider.class, near, e -> true))) raider.discard();
+			h.assertValueEqual(0, RaidSim.countGolems(level, village.heart()), "golems before");
+			RaidSim.setGolems(level, 1);
+			h.assertValueEqual(1, RaidSim.countGolems(level, village.heart()), "golems from 0");
+			IronGolem extra = EntityType.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);
+			h.assertTrue(extra != null, "extra golem");
+			extra.setPlayerCreated(false);
+			extra.setPersistenceRequired();
+			extra.snapTo(heart.getX() + 1.5, heart.getY() + 1, heart.getZ() + 0.5, 0, 0);
+			level.addFreshEntity(extra);
+			h.assertValueEqual(2, RaidSim.countGolems(level, village.heart()), "two golems");
+			RaidSim.setGolems(level, 1);
+			h.assertValueEqual(1, RaidSim.countGolems(level, village.heart()), "golems from 2");
+			h.assertValueEqual(0, VillageCensus.headcount(level.getServer(), village).adults(), "adults before top up");
+			RaidSim.topUp(level, 4, 2, 2);
+			var topped = VillageClaims.current(level.getServer()).orElseThrow();
+			h.assertValueEqual(4, VillageCensus.headcount(level.getServer(), topped).adults(), "adults after top up");
+			int villagers = level.getEntities(EntityType.VILLAGER, near, e -> true).size();
+			RaidSim.topUp(level, 4, 2, 2);
+			h.assertValueEqual(villagers, level.getEntities(EntityType.VILLAGER, near, e -> true).size(), "a second top up adds none");
+			h.assertValueEqual(4, VillageCensus.headcount(level.getServer(), VillageClaims.current(level.getServer()).orElseThrow()).adults(), "still 4 adults");
+			guard[0] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot(), Optional.empty());
+			RaidSim.setWorkerLevel(level.getServer(), "guard", 2);
+			guard[0].setInvulnerable(true); // a raid wave must not spend the 30 health this test measures
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the guard stays at level 2 with 30 health", () -> {
+			h.assertTrue(guard[0] != null, "the guard was hired");
+			var data = guard[0].getAttached(WorkerAttachments.WORKER);
+			h.assertTrue(data != null && data.level() == 2, "level " + (data == null ? "none" : data.level()));
+			h.assertTrue(Math.abs(guard[0].getHealth() - 30f) < 0.05f && Math.abs(guard[0].getMaxHealth() - 30f) < 0.05f,
+					"hp " + guard[0].getHealth() + "/" + guard[0].getMaxHealth());
+		});
+		seq.thenExecute(() -> {
+			ServerLevel level = h.getLevel();
+			BlockPos heart = h.absolutePos(spot);
+			RaidStart.stopAll(level, heart, 160);
+			int rad = Balance.CLAIM_RADIUS;
+			AABB box = new AABB(heart.getX() - rad, heart.getY() - rad, heart.getZ() - rad, heart.getX() + rad, heart.getY() + rad, heart.getZ() + rad);
+			for (Villager v : List.copyOf(level.getEntities(EntityType.VILLAGER, box, e -> true))) v.discard();
+			for (IronGolem g : List.copyOf(level.getEntities(EntityType.IRON_GOLEM, box, e -> true))) g.discard();
+			for (Raider raider : List.copyOf(level.getEntitiesOfClass(Raider.class, box, e -> true))) raider.discard();
+			WorkerTestSupport.end(h);
+			VillageTestSupport.done(h);
 		});
 	}
 

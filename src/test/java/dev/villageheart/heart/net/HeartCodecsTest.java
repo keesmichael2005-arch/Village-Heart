@@ -8,6 +8,7 @@ import dev.villageheart.core.heart.ActivityKind;
 import dev.villageheart.core.heart.AlertCode;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildingRow;
+import dev.villageheart.core.heart.DeathRow;
 import dev.villageheart.core.heart.DetailKind;
 import dev.villageheart.core.heart.GoalLine;
 import dev.villageheart.core.heart.HeartLimits;
@@ -27,6 +28,7 @@ import dev.villageheart.heart.HeartOpenData;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
+import io.netty.handler.codec.EncoderException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +59,8 @@ class HeartCodecsTest {
 		Overview o = new Overview("Owner", Tier.VILLAGE, Optional.of(Tier.TOWN),
 				List.of(new GoalLine(new TextLine("g", "Goal"), 3, 5, false)), 9, 7, 2, 4, 2, 3, 33, 12, -1,
 				List.of(new AlertLine(AlertCode.STORAGE_FULL, Severity.WARNING, t),
-						new AlertLine(AlertCode.WORKPLACE_INVALID, Severity.DANGER, new TextLine("k", "f"))), 1);
+						new AlertLine(AlertCode.WORKPLACE_INVALID, Severity.DANGER, new TextLine("k", "f"))), 1,
+				List.of(new DeathRow("Ada", "farmer", "minecraft:vindicator", 1, true)), 4L);
 		List<VillagerRow> v = List.of(
 				new VillagerRow(id(1), "Ada", "farmer", "villageheart:farmer", 2, 150, 300, NeedsFlags.of(true, false, true),
 						ActivityKind.WORKING, true, false, true, true),
@@ -136,11 +139,16 @@ class HeartCodecsTest {
 		assertEquals(HeartLimits.MAX_TEXT, t.fallback().length(), "the test really fills the caps");
 		List<AlertLine> alerts = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_ALERTS; i++) alerts.add(new AlertLine(AlertCode.NO_STORAGE, Severity.DANGER, t));
+		alerts.set(0, new AlertLine(AlertCode.RAID, Severity.DANGER, t));
 		List<GoalLine> goals = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_GOALS; i++) goals.add(new GoalLine(t, Integer.MAX_VALUE, Integer.MAX_VALUE, true));
+		List<DeathRow> deaths = new ArrayList<>();
+		for (int i = 0; i < HeartLimits.MAX_DEATH_ROWS; i++) {
+			deaths.add(new DeathRow(s(HeartLimits.MAX_NAME), s(HeartLimits.MAX_NAME), s(HeartLimits.MAX_ID), Integer.MAX_VALUE, true));
+		}
 		Overview o = new Overview(s(HeartLimits.MAX_NAME), Tier.TOWN, Optional.of(Tier.TOWN), goals, Integer.MIN_VALUE,
 				Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
-				Integer.MIN_VALUE, Integer.MIN_VALUE, alerts, Integer.MIN_VALUE);
+				Integer.MIN_VALUE, Integer.MIN_VALUE, alerts, Integer.MIN_VALUE, deaths, Long.MAX_VALUE);
 		List<VillagerRow> v = new ArrayList<>();
 		for (int i = 0; i < HeartLimits.MAX_VILLAGERS; i++) {
 			v.add(new VillagerRow(UUID.randomUUID(), s(HeartLimits.MAX_NAME), s(HeartLimits.MAX_ID), s(HeartLimits.MAX_ID),
@@ -172,6 +180,23 @@ class HeartCodecsTest {
 					java.util.Collections.nCopies(HeartLimits.MAX_BUILD_MISSING, bt), s(HeartLimits.MAX_NAME)));
 		}
 		return new HeartSnapshot(Rank.OWNER, o, v, Integer.MIN_VALUE, jobs, b, Integer.MIN_VALUE, st, members, Integer.MIN_VALUE, builds);
+	}
+
+	/** T-L1-9. A death row round-trips, a too-long cause is cut, and a fourth row is refused on the wire. */
+	@Test void deathRowsRoundTripAndAreBounded() {
+		DeathRow row = new DeathRow("Ada", "farmer", "minecraft:vindicator", 1, true);
+		DeathRow cut = new DeathRow("N".repeat(40), "J".repeat(40), "C".repeat(80), -2, false);
+		assertEquals(HeartLimits.MAX_NAME, cut.name().length());
+		assertEquals(HeartLimits.MAX_NAME, cut.jobId().length());
+		assertEquals(HeartLimits.MAX_ID, cut.cause().length());
+		assertEquals(0, cut.day());
+		Overview o = new Overview("Owner", Tier.HAMLET, Optional.empty(), List.of(), 1, 1, 0, 0, 1, 1, 0, 0, 0, List.of(), 0,
+				List.of(row, cut), 2L);
+		assertEquals(o, roundTrip(HeartCodecs.OVERVIEW, o));
+		List<DeathRow> four = List.of(row, row, row, row);
+		Overview over = new Overview("Owner", Tier.HAMLET, Optional.empty(), List.of(), 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), 0,
+				four, 4L);
+		assertThrows(EncoderException.class, () -> roundTrip(HeartCodecs.OVERVIEW, over));
 	}
 
 	@Test void worstCaseSize() {

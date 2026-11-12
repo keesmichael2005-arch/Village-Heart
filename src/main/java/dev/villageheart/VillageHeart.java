@@ -36,6 +36,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:buildings", dev.villageheart.building.BuildingSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:job_reservations", dev.villageheart.worker.JobSiteReservations.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:workers", dev.villageheart.worker.WorkerSystem.INSTANCE);
+		dev.villageheart.death.DeathLogSystem.register();
 		dev.villageheart.worker.WorkerSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:lumber", dev.villageheart.worker.lumber.LumberSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:stockpile", dev.villageheart.stock.StockpileSystem.INSTANCE);
@@ -50,11 +51,21 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:kitchen", dev.villageheart.worker.cook.KitchenSystem.INSTANCE);
 		dev.villageheart.tier.Tiers.register();
 		dev.villageheart.growth.Growth.register(); // M23: after the tiers' dawn listener, and after the needs system
+		dev.villageheart.siege.SiegeSystem.register();
+		dev.villageheart.world.VillageSystems.register("villageheart:siege", dev.villageheart.siege.SiegeSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:guards", dev.villageheart.worker.guard.GuardSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:gates", dev.villageheart.defence.GateKeeper.INSTANCE);
 		dev.villageheart.worker.gear.SmithService.CURRENT.set(dev.villageheart.worker.smith.SmithServiceImpl.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:smithy", dev.villageheart.worker.smith.SmithySystem.INSTANCE);
+		dev.villageheart.siege.SiegeGamerules.register();
+		dev.villageheart.siege.SiegeGoals.register();
+		dev.villageheart.world.VillageSystems.register("villageheart:raids", dev.villageheart.raid.VillageRaids.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:threats", dev.villageheart.raid.ThreatScheduler.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:unhired_shelter", dev.villageheart.worker.shelter.UnhiredShelter.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:stuck_raiders", dev.villageheart.raid.StuckRaiderSystem.INSTANCE);
+		dev.villageheart.raid.VillageThreats.install();
+		dev.villageheart.raid.RaiderKills.register();
 		LOG.info("Village Heart loaded");
 	}
 }

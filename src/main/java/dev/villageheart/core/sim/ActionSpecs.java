@@ -14,7 +14,7 @@ public final class ActionSpecs {
 	private ActionSpecs() {}
 
 	public static final Set<String> DOORS = Set.of("north", "south", "east", "west");
-	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target");
+	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target", "blast_furnace", "anvil", "builders_table");
 	public static final Set<String> CROPS = Set.of("carrots", "potatoes", "wheat", "beetroots");
 
 	/** @throws IllegalArgumentException naming the bad field; unknown action types are not this class's business. */
@@ -84,6 +84,31 @@ public final class ActionSpecs {
 				ints(f, "size", 2, 8, 200);
 				integer(f, "spacing", 7, 3, 16);
 			}
+			case "raid" -> {
+				integer(f, "omen", -1, 1, 5);
+				if (f.containsKey("scaled") && !(f.get("scaled") instanceof Boolean)) throw new IllegalArgumentException("scaled must be true or false");
+			}
+			case "golems" -> integer(f, "count", -1, 0, 4);
+			case "top_up_villagers" -> {
+				integer(f, "adults", -1, 1, 50);
+				ints(f, "at", 2, -80, 80);
+			}
+			case "worker_level" -> {
+				String job = str(f, "job");
+				if (JobType.byId(job).isEmpty()) throw new IllegalArgumentException("job: unknown job " + job);
+				integer(f, "level", -1, 1, 3);
+			}
+			case "siege" -> integer(f, "zombies", -1, 1, 20);
+			case "threats" -> {
+				bool(f, "random_raids");
+				bool(f, "sieges");
+			}
+			case "build" -> {
+				String id = str(f, "blueprint");
+				if (dev.villageheart.core.blueprint.Blueprints.byId(id).isEmpty()) throw new IllegalArgumentException("blueprint: unknown " + id);
+				ints(f, "from", 2, 0, 200);
+				ints(f, "to", 2, 0, 200);
+			}
 			case "move_in" -> ints(f, "size", 2, 8, 200);
 			case "night_spawn" -> {
 				String mob = str(f, "mob");
@@ -94,6 +119,10 @@ public final class ActionSpecs {
 			}
 			default -> { }
 		}
+	}
+
+	private static void bool(Map<String, Object> f, String k) {
+		if (!(f.get(k) instanceof Boolean)) throw new IllegalArgumentException(k + " must be true or false");
 	}
 
 	private static String str(Map<String, Object> f, String k) {

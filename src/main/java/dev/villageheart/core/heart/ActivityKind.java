@@ -20,5 +20,9 @@ public enum ActivityKind {
 	/** M22: the merchant sold today's limit / the treasury is full. Appended. */
 	DAILY_LIMIT, TREASURY_FULL,
 	/** M19: the smith at the anvil, building a golem, short of a material, or short of villagers for a golem. Appended. */
-	SMITHING, BUILDING_GOLEM, NEEDS_MATERIAL, NEEDS_VILLAGERS
+	SMITHING, BUILDING_GOLEM, NEEDS_MATERIAL, NEEDS_VILLAGERS,
+	/** M25: a worker heading indoors for a raid, or with nowhere to go. Appended. */
+	SHELTERING, NO_SHELTER,
+	/** M25: a builder repairing a wall or a gate. Appended. */
+	REPAIRING
 }

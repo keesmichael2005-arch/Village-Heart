@@ -38,6 +38,18 @@ public final class VillageTestSupport {
 	/** Clear the claim, leftover players, leftover emeralds, and restore gamerules. */
 	public static void reset(GameTestHelper h) {
 		MinecraftServer server = h.getLevel().getServer();
+		dev.villageheart.gametest.raid.RaidStart.stopAll(h.getLevel(), h.absolutePos(BlockPos.ZERO), 160);
+		dev.villageheart.raid.VillageRaids.clearForTests();
+		dev.villageheart.raid.ThreatScheduler.clearForTests();
+		dev.villageheart.core.siege.Threat.clearForce();
+		dev.villageheart.siege.VanillaSiege.clear();
+		dev.villageheart.raid.RaidNotices.setSinkForTest(null);
+		dev.villageheart.raid.RaiderKills.clearForTests();
+		dev.villageheart.raid.StuckRaiderSystem.clearForTests();
+		dev.villageheart.raid.ThreatMessages.setSinkForTest(null);
+		dev.villageheart.raid.VillageBell.clearForTests();
+		dev.villageheart.worker.shelter.UnhiredShelter.clearForTests();
+		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
 		removePlayers(server);
 		// worker tests (M7): give back every POI ticket the mod holds before the claim (and with it the held set) is forgotten,
 		// restore the real building source, and discard villagers earlier worker tests spawned
@@ -45,6 +57,7 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.Workers.setJobSiteSourceForTest(null);
 		WorkerTestSupport.discardSpawned(h.getLevel());
 		dev.villageheart.worker.lumber.LumberRuntime.resetForTests();
+		dev.villageheart.worker.shelter.ShelterRuntime.resetForTests();
 		dev.villageheart.worker.gear.SelfCraftRuntime.resetForTests();
 		dev.villageheart.worker.gear.SelfCraftSwitch.reset();
 		dev.villageheart.worker.gear.SmithService.CURRENT.set(dev.villageheart.worker.smith.SmithServiceImpl.INSTANCE);
@@ -76,6 +89,12 @@ public final class VillageTestSupport {
 		dev.villageheart.worker.guard.GuardGear.resetForTests();
 		dev.villageheart.worker.guard.PatrolPoints.invalidate();
 		dev.villageheart.defence.GateKeeper.resetForTests(server);
+		dev.villageheart.siege.SiegeDamage.resetForTests();
+		dev.villageheart.siege.BreachNotices.resetForTests();
+		dev.villageheart.worker.build.WallRepair.resetForTests();
+		dev.villageheart.siege.PathBudget.resetForTests();
+		dev.villageheart.siege.LureSlots.resetForTests();
+		dev.villageheart.siege.TrackedRaids.restoreDifficulty(server);
 		dev.villageheart.market.Markets.clearRuntime(); // M22
 		dev.villageheart.market.Markets.withdrawLimitForTest = null;
 		dev.villageheart.economy.VillageDawn.removeTestListeners(); // M12: a failed wage test never closed its dawn listener
@@ -132,10 +151,15 @@ public final class VillageTestSupport {
 
 	/** Like {@link #player(GameTestHelper, String, GameType)} with a custom ServerPlayer subclass. Tracked and removed by reset. */
 	public static ServerPlayer player(GameTestHelper h, String name, GameType mode, PlayerFactory factory) {
+		return player(h, name, mode, factory, null);
+	}
+
+	/** {@code connection} records packets when a test subclasses {@link Connection}. Null builds a plain one. */
+	public static ServerPlayer player(GameTestHelper h, String name, GameType mode, PlayerFactory factory, Connection connection) {
 		MinecraftServer server = h.getLevel().getServer();
 		GameProfile profile = new GameProfile(UUID.randomUUID(), name);
 		ServerPlayer p = factory.create(server, h.getLevel(), profile);
-		Connection conn = new Connection(PacketFlow.SERVERBOUND);
+		Connection conn = connection == null ? new Connection(PacketFlow.SERVERBOUND) : connection;
 		new EmbeddedChannel(conn);
 		server.getPlayerList().placeNewPlayer(conn, p, CommonListenerCookie.createInitial(profile, false));
 		p.setGameMode(mode);

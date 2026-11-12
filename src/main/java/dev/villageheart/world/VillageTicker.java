@@ -10,6 +10,8 @@ import net.minecraft.server.MinecraftServer;
  */
 public final class VillageTicker {
 	public static final TickTimer TIMER = new TickTimer();
+	/** Overworld entity ticking, one sample per server tick (M25 3.17). */
+	public static final TickTimer ENTITIES = new TickTimer();
 
 	private VillageTicker() {}
 
@@ -36,5 +38,6 @@ public final class VillageTicker {
 			VillageSystems.tickAll(server);
 		}
 		TIMER.commitTick();
+		ENTITIES.commitTick();
 	}
 }

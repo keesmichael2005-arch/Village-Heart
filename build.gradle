@@ -70,6 +70,15 @@ test {
 	testLogging { events "failed"; exceptionFormat "full" }
 }
 
+// Fabric adds runGameTest to `check`, so `build` runs the suite. That run discovers tests in a different order from
+// `gradlew runGameTest`, and a lure that starts while the rest of the suite is still pathing misses its tick bound.
+// verify.sh runs the suite on its own. `build` compiles and runs the unit tests.
+def requestedGameTests = gradle.startParameter.taskNames.any { it == "runGameTest" || it.endsWith(":runGameTest") }
+tasks.named("runGameTest").configure {
+	mustRunAfter(tasks.named("test"))
+	onlyIf { requestedGameTests }
+}
+
 // Wall-clock performance limits (tests tagged "perf"). Not part of `test`/`build`: verify.sh runs it alone, after the other
 // Gradle steps, because timings are meaningless while other tasks compete for the CPU.
 tasks.register('perfTest', Test) {

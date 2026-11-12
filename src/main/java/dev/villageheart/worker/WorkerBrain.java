@@ -5,10 +5,15 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import dev.villageheart.VillageHeart;
+import dev.villageheart.core.raid.RaidActivity;
 import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.needs.Housing;
+import dev.villageheart.raid.VillageThreats;
+import dev.villageheart.worker.job.AwayTrips;
+import dev.villageheart.worker.shelter.ShelterBehaviour;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -32,12 +37,10 @@ import net.minecraft.world.entity.ai.behavior.InteractWith;
 import net.minecraft.world.entity.ai.behavior.InteractWithDoor;
 import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
 import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
-import net.minecraft.world.entity.ai.behavior.ReactToBell;
 import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.SetClosestHomeAsWalkTarget;
 import net.minecraft.world.entity.ai.behavior.SetEntityLookTarget;
 import net.minecraft.world.entity.ai.behavior.SetLookAndInteract;
-import net.minecraft.world.entity.ai.behavior.SetRaidStatus;
 import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory;
 import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromLookTarget;
 import net.minecraft.world.entity.ai.behavior.SleepInBed;
@@ -46,7 +49,6 @@ import net.minecraft.world.entity.ai.behavior.ValidateNearbyPoi;
 import net.minecraft.world.entity.ai.behavior.VillageBoundRandomStroll;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
 import net.minecraft.world.entity.ai.behavior.VillagerMakeLove;
-import net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger;
 import net.minecraft.world.entity.ai.behavior.WakeUp;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
@@ -70,6 +72,10 @@ public final class WorkerBrain {
 	public static final Activity GO_HOME = Registry.register(BuiltInRegistries.ACTIVITY,
 			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "go_home"), new Activity("go_home"));
 
+	/** Indoors for a raid or a siege. Not a guard activity: guards are called to duty instead. */
+	public static final Activity SHELTER = Registry.register(BuiltInRegistries.ACTIVITY,
+			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "shelter"), new Activity("shelter"));
+
 	/** Brains installed by {@link #install}, so the worker system can notice a worker running a vanilla brain. */
 	private static final java.util.Map<Brain<?>, JobType> INSTALLED = new WeakHashMap<>();
 
@@ -87,10 +93,21 @@ public final class WorkerBrain {
 		return built != null && built == WorkerAttachments.get(v).map(WorkerData::job).orElse(null);
 	}
 
-	/** The activity this worker should be in now: a guard follows its shift (M18), every other job the day shape. */
+	/** The activity this worker should be in now: a guard follows its shift (M18), every other job shelters or follows the day. */
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
+		if (shouldShelter(v, level)) return SHELTER;
 		return activityFor(level.getDayTime());
+	}
+
+	/**
+	 * Hired non-guards go indoors while a tracked raid is still within reach, or a siege is running.
+	 * A sleeper who already has a home stays in bed, and a worker who is away stays on the trip.
+	 */
+	private static boolean shouldShelter(Villager v, ServerLevel level) {
+		boolean siege = dev.villageheart.world.VillageClaims.current(level.getServer()).map(s -> s.threats().siege().isPresent()).orElse(false);
+		return RaidActivity.shelter(VillageThreats.nearRaid(level, v.blockPosition()) || siege, DaySchedule.phaseAt(level.getDayTime()),
+				AwayTrips.isAway(v), Housing.home(v).isPresent());
 	}
 
 	/** The activity a worker should be in at this day time. */
@@ -136,10 +153,10 @@ public final class WorkerBrain {
 				p(0, InteractWithDoor.create()),
 				p(0, new dev.villageheart.defence.GateTraffic()),
 				p(0, new LookAtTargetSink(45, 90)),
-				p(0, new VillagerPanicTrigger()),
+				p(0, new WorkerPanicTrigger()),
 				p(0, WakeUp.create()),
-				p(0, ReactToBell.create()),
-				p(0, SetRaidStatus.create()),
+				// No ReactToBell: a hired worker follows its day and the SHELTER activity. The bell rung when a raid or siege starts
+				// would otherwise send it into vanilla's HIDE after the raid, and with no bed in reach nothing ends that.
 				p(1, new MoveToTargetSink()),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14), WorkerBrain::bedIsFree)),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));
@@ -184,9 +201,13 @@ public final class WorkerBrain {
 		brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.RAID, VillagerGoalPackages.getRaidPackage(profession, SPEED));
 		brain.addActivity(Activity.HIDE, VillagerGoalPackages.getHidePackage(profession, SPEED));
+		brain.addActivity(SHELTER, ImmutableList.of(
+				p(2, new ShelterBehaviour()),
+				p(99, new UpdateWorkerActivity())));
 		brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
 		brain.setDefaultActivity(Activity.IDLE);
-		brain.setActiveActivityIfPossible(activityFor(villager.level().getDayTime()));
+		Activity start = villager.level() instanceof ServerLevel sl ? activityFor(villager, sl) : activityFor(villager.level().getDayTime());
+		brain.setActiveActivityIfPossible(start);
 		synchronized (INSTALLED) {
 			INSTALLED.put(brain, job);
 		}

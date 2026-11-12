@@ -141,6 +141,17 @@ class VillageGuardShiftsTest {
 				BARRACKS)).withoutSmithCraft(BARRACKS));
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
+		calls.put("withDeaths", s -> s.withDeaths(dev.villageheart.core.death.DeathLog.EMPTY.append(
+				new dev.villageheart.core.death.DeathEntry(0, G1, "Ada", "guard", "minecraft:zombie", true, 10, 1, true, false, false))));
+		var raid = new dev.villageheart.core.raid.RaidRecord(1, dev.villageheart.core.raid.RaidOrigin.TEST,
+				dev.villageheart.core.raid.RaidPlan.VANILLA, 10L, 1, 4, 2, 2, 0, 0, 1, 0, 0, false, 0, 0, 0, 0, -1L);
+		var last = new dev.villageheart.core.raid.RaidSummary(1, 10L, 20L, dev.villageheart.core.raid.RaidOutcome.STOPPED,
+				dev.villageheart.core.raid.RaidOrigin.TEST, 0, 1, 4, 4, 0, 0, 0);
+		calls.put("withThreats", s -> s.withThreats(dev.villageheart.core.siege.ThreatState.EMPTY
+				.withRaid(java.util.Optional.of(raid)).withLastRaid(java.util.Optional.of(last))
+				.withPending(Optional.of(new dev.villageheart.core.siege.PendingRaid(3, 4000)))));
+		calls.put("withRaid", s -> s.withRaid(java.util.Optional.of(raid)));
+		calls.put("withLastRaid", s -> s.withLastRaid(java.util.Optional.of(last)));
 		// the names that rebuild the guard map on purpose are tested above
 		Set<String> special = Set.of("withWorker", "withoutWorker", "withGuardPin", "withGuardSeniority");
 		Set<String> found = new HashSet<>();

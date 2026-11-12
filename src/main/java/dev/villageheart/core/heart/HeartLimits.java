@@ -15,6 +15,8 @@ public final class HeartLimits {
 	public static final int MAX_STOCK_KINDS = 256;
 	public static final int MAX_JOB_CHOICES = 9;
 	public static final int MAX_ALERTS = 5;
+	/** Newest deaths drawn under the alerts on the Overview (M25). */
+	public static final int MAX_DEATH_ROWS = 3;
 	public static final int MAX_GOALS = 8;
 	/** Goal rows the Overview screen draws (a tier has at most this many goals; pinned against {@code TierGoals.maxGoals()}). */
 	public static final int MAX_GOAL_ROWS = 6;

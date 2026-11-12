@@ -385,3 +385,12 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] (M26 harness) Standing re-hires fill slots in scenario order (farmer, lumberjack, guard): after a bad night the first free villager becomes the farmer. A player would re-arm the guard first
 - [ ] (sim) Deaths outside the claim radius are not logged: a census drop with no Deaths row (`defended_walled` round 1 run 3: population -2, one row) is a villager that left the radius or died outside it
 - [ ] (sim) Natural hostile spawns other than sieges were 0 within the claim radius on every night of 20 runs (mob cap filled by cave mobs and persistent scripted zombies?). Unchecked; `defended` measures the scripted threat plus sieges, not ordinary night spawns
+- [ ] **T-L2-46** `golemNotPulledDuringRaid` waits until M19 is merged. There is no `SmithyRepairGoal` on this branch, so the test is not written.
+
+## From M25 (step 19)
+- [x] Guards chase the tracked raid's raiders past the claim edge. Shipped in M25 step 19 after seed-1 raids stopped (`Balance.GUARD_RAID_CHASE`, 32 blocks: 16 left raiders vanilla still counts). A path that stops at the wall walks to the nearest gate first. A chase that is still changing blocks keeps the 200-tick give-up from firing on that walk.
+- [ ] A creeper answer (archers). Guards and golems ignore creepers; the lure budget and the repair loop are what M25 ships (plan risk 4).
+- [ ] Worker celebrations when a raid or a siege ends. Sheltered workers get no celebration in v1.
+- [ ] `defences adopt` for walls a player built before M25. A hand-built wall has no hit points.
+- [ ] A stone-brick wall upgrade. The builder does not change a wall's block.
+- [ ] Guards repairing walls. Repair stays the builder's job, from Storage.

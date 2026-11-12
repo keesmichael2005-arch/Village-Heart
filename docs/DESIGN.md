@@ -474,7 +474,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Wall:** 3 high cobblestone, 3 per block (a 20-long wall is 60). **Gate:** the same wall with a centred 3-wide opening: closed fence gates at the bottom, one block of air above, a cobblestone lintel on top, so a player passes (2 high) when a gate is opened and a closed gate cannot be jumped. A gate costs 3 per block minus 6 cobblestone and 3 fence gates. **Hired workers and guards open and close the village's fence gates as they pass, like doors; mobs still cannot** (M18, human decision 2026-11-09): a closed ring of wall with only gates no longer cuts workers off. A gate opens only inside the claim, never while a hostile mob is within 8 blocks of it (a guard that is fighting may), never when redstone powers it, and is closed again as soon as nobody needs it (see §12).
 - **Lamp Post:** 2 fences and a lantern (it stands on the post). Vanilla refuses a natural monster spawn in a cell with block light above 0 (the overworld's limit), the lantern's 15 falls by one per block along x + z and up: on level ground every cell within 12 steps (a diamond, not a circle) is safe. Not stopped: pillager patrols, slimes, phantoms, drowned, spawners, raids, mobs walking in. Walls and houses shade the light.
 - **Watchtower** (Town): a 3x3 cobblestone shaft 5 high with a ladder inside, an entrance 2 high on the front, a 5x5 plank platform with the ladder's hole and a fence rail round it: 38 cobblestone, 24 planks, 16 fences, 6 ladders. The centre cell above the ladder hole is left as it is (out of the builder's reach from the ring).
-- **Patrol points.** A finished Lamp Post or Watchtower is saved with the village (`VillageState.defences`, at most 64, in finish order). Its patrol point is the first walkable cell next to it (lamp: in front of the post; tower: in front of the entrance), found again at every query. The record goes when its lantern or one of its two ladders is gone (checked every 200 ticks in loaded chunks). `dev.villageheart.defence.Defences.patrolPoints(server)` lists them for the guards (M18).
+- **Patrol points.** A finished defence is saved with the village (`VillageState.defences`, at most 128, in finish order). A Lamp Post or Watchtower has a patrol point: the first walkable cell next to it (lamp: in front of the post; tower: in front of the entrance), found again at every query. A Wall or a Gate is recorded too, with its length and the cells the build placed, but it has no patrol point and no key block, so a missing block does not drop it (M25). A ravager or a vindicator that belongs to the village's tracked raid breaks the defence cells between it and where it is going (stone in two hits of 6, a gate in two hits of 4) and walks through the opening. At night, or during a siege, a zombie with no target is walked toward the nearest villager with no line-of-sight test and breaks the wall in its way (stone 1 a hit, 12 hits; a gate 2 a hit, 4 hits). A creeper with no target walks to the nearest wall or gate and lights beside it. The blast is spent on the defence cells (the target and the one above or below, neighbours cracked) and still hurts entities; houses and other blocks stay. A creeper chasing a player keeps the vanilla crater. Guards and iron golems do not hunt it. At most 24 zombies and creepers are lured, and at most 2 siege paths run in one tick. A hired builder repairs a breached gate, then breached stone, then a crack at half the block's health or more, then a lighter crack, before starting a new build. The material comes from Storage (cobblestone, or any fence gate). A heavy crack costs one cobblestone and the block stays; a light crack is free. A missing watchtower ladder is repaired the same way. Nothing is repaired during a raid or a siege: a hired worker other than a guard stands in the shelter activity until that threat record is cleared. The Heart lists a raid, then a siege, then damaged walls. The first breach says "The wall of %s was breached" at most once a minute, and the last repair says "The walls of %s are repaired" (M25, track B; beds, doors and the death log are track A). A lamp or tower record goes when its lantern or one of its two ladders is gone (checked every 200 ticks in loaded chunks). `dev.villageheart.defence.Defences.patrolPoints(server)` lists the lamp and tower points for the guards (M18).
 
 ### 5.9 Merchant (Market, Market Stall)
 It sells stockpile **surplus** for emeralds that go into the treasury. Surplus means stock above a reserve:
@@ -610,10 +610,43 @@ Rules as built (M23):
 ## 8. Threats and survival
 - **Night mobs** (vanilla): villagers go indoors at night (vanilla behaviour). Guards on night shift patrol.
   Lamp posts and walls reduce spawns and access.
-- **Raids** (vanilla Bad Omen raids, unchanged). The Heart screen shows a raid alert, all guards come on duty,
+- **Raids** (vanilla Bad Omen raids). The Heart screen shows a raid alert, all guards come on duty,
   golems fight, and workers go indoors.
+  As built (M25 track A, step 2): a raid counts when it is still going and its centre or a raider is inside the claim
+  (the 80-block sphere, the edge included). The tracker latches that raid by its vanilla id; a different id does not
+  replace it. Victory beats a loss, and a loss beats a stop or an over raid; a raid that vanishes is gone. The alert
+  line is danger: coming, the wave and how many raiders are left, or between waves. The Overview shows that line,
+  and every loaded qualified guard is called on duty. A random raid rolls once a day at day time 1000 while
+  `villageheart:random_raids` is on (default on). A young village gets a short one. A random victory pays the
+  treasury once. A scripted raid does not add those extra raiders. An on-duty guard follows a raider of the
+  tracked raid up to 32 blocks past the claim, with or without a sight line. A direct path that stops at the wall
+  walks to the nearest gate first. The walk out to a gate still counts as closing, and a kill inside that margin
+  counts as the guard's.
+  As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
+  valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.
+  Owner decisions of 2026-11-11: **everyone shelters.** When a raid or a zombie siege starts the village bell is rung and
+  every villager in the claim, hired or not, goes indoors (own House bed, a free House bed, the nearest valid room, and as a last
+  resort its own bed anywhere). Guards that are not training and not wounded stay out and fight; hired workers go back to work
+  and the rest back to their day when it is over. **A lead-up warns the players.** Before a random raid or a siege, players within
+  96 blocks of the Heart get ominous chat lines in **gold** spread over the hours before it (`Balance.WARNING_LEAD_TICKS`). When a
+  **raid** starts they get the big on-screen title "A raid is starting!" (fade 10/70/20 ticks in `Balance`) and one **bold red** chat
+  line ("Raiders are attacking the village!"); when a **siege** starts they get one bold red chat line ("The dead are coming!") and
+  **no title**. Both starts ring the village bell (owner, 2026-11-12). **Stuck raiders are the one removal.** A raider of the tracked
+  raid with no progress toward the village for 12000 ticks and nobody within 16 blocks glows and the players are told; 1200 ticks
+  later it flees (smoke, removed, counted as lost, not as a kill) so the wave can advance. A raider that moves closer, fights or
+  has someone near is never removed, and nothing ever moves, pulls or kills a raider to finish a raid.
+  The online owner, stewards and residents are the ones who hear a raid.
 - **Hunger and homelessness**: these slow or stop work (§4). Villagers **do not die** of either.
 - Deaths are tracked (cause and day) for the Overview tab and the simulation metrics.
+  As built (M25 steps 1 and 4): the village keeps the last 32 (cause, day, whether it was in the claim, and whether
+  a raid was on). A hired worker is logged wherever they die. Any other villager is logged only inside the claim.
+  A conversion within one tick is the same loss as the death, whichever event arrives first. A witch conversion is
+  lightning. A cure is not a death. The Overview shows the last three of those rows.
+- **Sieges and walls** (M25): inside a claim, vanilla's zombie siege is replaced by the mod's while `villageheart:sieges`
+  is on (default on). A Hamlet does not get one. The first zombies spawn at day time 18000. `villageheart:siege_damage`
+  (default on) lets zombies, raiders and creepers damage a recorded wall or gate. Gates are the weak point. A hired
+  builder repairs those cells from Storage. The Heart lists the siege and the damaged walls. A group whose spawn chunk
+  is not entity-ticking yet is tried again for 20 ticks, then skipped.
 
 ## 9. Progression: village tiers
 
@@ -657,6 +690,11 @@ client-to-server payloads that the server re-checks (rate limit, open screen, cu
 in the Heart's dimension only). The screen is drawn for a 427 x 240 GUI (854 x 480 at GUI scale 2); tabs and lists are our own widgets.
 Population counts loaded villagers plus recorded workers that are not loaded. Food days use 10 nutrition per adult and 5 per baby a day;
 foods in `#villageheart:not_village_food` do not count.
+
+As built (M25): the Overview lists a raid first (danger: coming, the wave, or between waves), then a zombie siege
+("Zombie siege! N zombies left"), then damaged walls ("Walls damaged: N broken, N cracked", warning, or danger during
+a raid or a siege, and "(no builder)" when nobody is hired to repair). The Villagers tab shows "Repairing" while the
+builder's line is that. Recent deaths are at most three rows.
 
 ### In the world
 - Marker colours (grey, red, green). Right-clicking a marker prints its validation report.
@@ -703,3 +741,8 @@ foods in `#villageheart:not_village_food` do not count.
 - Worker data uses Fabric data attachments on the entity. Village data uses world saved data.
 - **Performance budget**: village logic averages under **1 ms per tick** with 20 villagers, measured by layer 3.
 - Every number marked *(tunable)* belongs in one `core` balance class.
+- **Raids and sieges (M25).** The rules live in `core.raid` and `core.siege`. The world glue is `VillageRaids`, `ZombieSiege`,
+  `SiegeDamage` and `WallRepair`. Three gamerules default on: `villageheart:random_raids`, `villageheart:sieges`,
+  `villageheart:siege_damage`. A raid is latched by its vanilla id and is found again after a reload, so a save in the
+  middle of one does not start a second. GameTests share one overworld clock: a test that sets the time of day stays
+  inside the current day. Crossing 24000 looks like missed dawns to a wage test in the same world.

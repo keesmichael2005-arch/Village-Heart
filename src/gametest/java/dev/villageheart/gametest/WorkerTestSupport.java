@@ -43,6 +43,8 @@ public final class WorkerTestSupport {
 		discardSpawned(h.getLevel());
 		FarmTestSupport.clearStrayFarmland(h, 40);
 		ServerLevel level = h.getLevel();
+		// Batches reuse this corner. A raid still running here reaches 96 blocks and would shelter this worker.
+		dev.villageheart.gametest.raid.RaidStart.stopAll(level, h.absolutePos(BlockPos.ZERO), 160);
 		savedDayTime = level.getDayTime();
 		level.getGameRules().set(GameRules.ADVANCE_TIME, true, level.getServer());
 	}

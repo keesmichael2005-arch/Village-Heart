@@ -58,8 +58,10 @@ class DefendedScenarioTest {
 		Map<String, Object> f = new java.util.HashMap<>(Map.of("building", "barracks", "at", List.of(1L, 1L), "size", List.of(5L, 4L), "door", "south",
 				"contents", List.of("bed", "grindstone", "target", "chest")));
 		ActionSpecs.validate("prefab", f);
-		f.put("contents", List.of("bed", "anvil"));
-		bad("prefab", f, "anvil");
+		f.put("contents", List.of("bed", "anvil", "blast_furnace", "builders_table"));
+		ActionSpecs.validate("prefab", f);
+		f.put("contents", List.of("bed", "cauldron"));
+		bad("prefab", f, "cauldron");
 	}
 
 	@Test

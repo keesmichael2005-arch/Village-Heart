@@ -48,6 +48,10 @@ public final class HeartTexts {
 		EN.put(PREFIX + "withdraw.tip", "Only the Owner can take emeralds out");
 		EN.put(PREFIX + "overview.no_alerts", "No alerts");
 		EN.put(PREFIX + "overview.more_alerts", "(+%s more)");
+		EN.put(PREFIX + "overview.recent_deaths", "Recent deaths");
+		EN.put(PREFIX + "overview.death_row", "%s (%s): %s, day %s");
+		EN.put(PREFIX + "overview.death_raid", "%s (raid)");
+		EN.put(PREFIX + "overview.death_no_job", "Villager");
 		EN.put(PREFIX + "villagers.none", "No villagers nearby.");
 		EN.put(PREFIX + "villagers.more", "+%s more villagers");
 		EN.put(PREFIX + "villagers.unemployed", "Unemployed");
@@ -175,6 +179,9 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.needs_material", "Needs material");
 		EN.put(PREFIX + "activity.needs_villagers", "Too few villagers for a golem");
 		EN.put(PREFIX + "activity.no_work.blacksmith", "Nothing to smith");
+		EN.put(PREFIX + "activity.sheltering", "Sheltering");
+		EN.put(PREFIX + "activity.no_shelter", "No shelter");
+		EN.put(PREFIX + "activity.repairing", "Repairing");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class GuardTargetsTest {
 	private static Candidate c(int id, GuardTargets.Kind kind, double dist, boolean inClaim, boolean visible, boolean targetsVillager, boolean hurtMe) {
-		return new Candidate(id, kind, dist * dist, inClaim, visible, targetsVillager, hurtMe);
+		return new Candidate(id, kind, dist * dist, inClaim, visible, targetsVillager, hurtMe, false);
 	}
 
 	private static Candidate zombie(int id, double dist) { return c(id, HOSTILE, dist, true, true, false, false); }
@@ -47,6 +47,15 @@ class GuardTargetsTest {
 	void invisibleIgnoredUnlessItHurtMe() {
 		assertTrue(GuardTargets.choose(List.of(c(1, HOSTILE, 3, true, false, false, false)), Mode.DUTY).isEmpty());
 		assertTrue(GuardTargets.choose(List.of(c(1, HOSTILE, 3, true, false, false, true)), Mode.DUTY).isPresent());
+	}
+
+	@Test
+	void dutyChasesATrackedRaiderPastTheClaim() {
+		Candidate outside = new Candidate(1, RAIDER, 100 * 100, false, false, false, false, true);
+		assertTrue(GuardTargets.choose(List.of(outside), Mode.DUTY).isPresent(), "a tracked raider past the edge is a target without a sight line");
+		assertTrue(GuardTargets.choose(List.of(c(1, RAIDER, 10, false, false, false, false)), Mode.DUTY).isEmpty());
+		assertTrue(GuardTargets.choose(List.of(new Candidate(1, HOSTILE, 9 * 9, false, false, false, false, true)), Mode.DUTY).isEmpty(),
+				"the chase flag does not pull a zombie out of the claim");
 	}
 
 	@Test

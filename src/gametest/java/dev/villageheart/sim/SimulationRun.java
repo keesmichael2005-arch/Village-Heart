@@ -149,7 +149,8 @@ public final class SimulationRun implements Host {
 			r.schedule = new ActionSchedule(r.scenario.actions());
 			if (r.scenario.seed() != null) r.seed = r.scenario.seed();
 			for (ScenarioAction a : r.scenario.actions()) {
-				if (a.day() > r.request.days()) {
+				// A zero-day smoke builds day 0 and leaves later actions unrun. A shorter run that still asks for days refuses them.
+				if (r.request.days() > 0 && a.day() > r.request.days()) {
 					throw new IllegalArgumentException("action \"" + a.type() + "\" is on day " + a.day() + " but only " + r.request.days() + " days run");
 				}
 				if (!SimActions.ALL.containsKey(a.type())) throw new IllegalArgumentException("no implementation for action " + a.type());
@@ -262,6 +263,11 @@ public final class SimulationRun implements Host {
 	}
 
 	private void setup() {
+		// random raids and zombie sieges stay off unless the scenario opts in (M25 3.12, 3.17). siege_damage stays on.
+		RaidSim.rememberGolems(scenario == null ? java.util.List.of() : scenario.actions());
+		boolean threatsOn = scenario != null && scenario.threats();
+		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.RANDOM_RAIDS, threatsOn, server);
+		level.getGameRules().set(dev.villageheart.siege.SiegeGamerules.SIEGES, threatsOn, server);
 		// the simulated owner stands near the bell until the Heart exists, then at the Heart
 		BlockPos stand = SimWorld.heartSpot(level, bell).orElse(bell.below());
 		player = SimPlayer.join(server, level, stand);
@@ -310,8 +316,14 @@ public final class SimulationRun implements Host {
 		}
 		player = SimPlayer.join(server, level, heart.below());
 		collector.setCentre(Vec3.atCenterOf(heart));
+		var raid = claim.get().threats().raid();
+		collector.resumeAfterReload(level.getGameTime(), claim.get().deaths().inClaimLogged(),
+				raid.map(dev.villageheart.core.raid.RaidRecord::startedAt).orElse(null),
+				raid.map(dev.villageheart.core.raid.RaidRecord::villagerDeaths).orElse(0),
+				raid.map(dev.villageheart.core.raid.RaidRecord::raidersKilled).orElse(0));
 		resumeLogAt = level.getGameTime() + 400; // the entities of the force-loaded chunks are there a moment later
 		StarterActions.resetStanding();
+		RaidSim.rememberGolems(scenario.actions());
 		for (ScenarioAction a : scenario.actions()) {
 			if (a.type().equals("hire") && a.fields().get("replace") instanceof Boolean b && b) StarterActions.registerStanding(a);
 		}
@@ -326,6 +338,7 @@ public final class SimulationRun implements Host {
 	/** Day records and wall clock start fresh (the setup/boot ticks must not leak into the next day). */
 	private void resetTimers() {
 		VillageTicker.TIMER.snapshotAndReset();
+		VillageTicker.ENTITIES.snapshotAndReset();
 		dayWallStart = System.nanoTime();
 		dayStartTick = level.getGameTime();
 	}
@@ -333,6 +346,7 @@ public final class SimulationRun implements Host {
 	private void running() {
 		long now = level.getGameTime();
 		if (now % 20 == 0) player.drain();
+		if (collector != null) collector.sample(server);
 		if (now % dev.villageheart.core.sim.SimArea.FOLLOW_INTERVAL_TICKS == 0) StarterActions.followWorkers(this, tickets);
 		if (now % 100 == 0) {
 			StarterActions.maintain(this);
@@ -383,6 +397,7 @@ public final class SimulationRun implements Host {
 		double wall = (System.nanoTime() - dayWallStart) / 1e9;
 		long ticks = now - dayStartTick;
 		TickStats ms = VillageTicker.TIMER.snapshotAndReset();
+		collector.setEntityMs(VillageTicker.ENTITIES.snapshotAndReset());
 		DayMetrics m = collector.collect(server, day, now, ms, wall, ticks);
 		days.add(m);
 		dayWallStart = System.nanoTime();
@@ -504,6 +519,7 @@ public final class SimulationRun implements Host {
 			}
 			sb.append("\n").append(dev.villageheart.core.sim.SimSummary.table(days));
 			sb.append(dev.villageheart.core.sim.DeathLog.markdown(days));
+			if (collector != null) sb.append(collector.raidSection(days));
 			Files.writeString(md, sb.toString(), StandardCharsets.UTF_8);
 		} catch (Throwable t) {
 			VillageHeart.LOG.error("[sim] could not write summary", t);

@@ -15,7 +15,7 @@ public final class ScenarioParser {
 	}
 
 	/** Must match the keys of dev.villageheart.sim.SimActions (gametest source set). */
-	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire", "tier", "training_yard", "night_spawn", "wall_ring", "lamps", "move_in");
+	public static final Set<String> ACTION_TYPES = Set.of("claim", "command", "fail", "crash", "hang", "site", "prefab", "field", "grove", "hire", "tier", "training_yard", "night_spawn", "wall_ring", "lamps", "raid", "golems", "top_up_villagers", "worker_level", "siege", "threats", "build", "move_in");
 
 	public static Scenario parse(String fileName, String json) {
 		Map<String, Object> m;
@@ -50,6 +50,7 @@ public final class ScenarioParser {
 			int day = intField(am, "day", 0, at);
 			int tick = intField(am, "tick", 0, at);
 			if (day < 0) throw new ScenarioParseException(at + "day must be >= 0");
+			if ((type.equals("raid") || type.equals("siege")) && day < 1) throw new ScenarioParseException(at + "day must be >= 1");
 			if (tick < 0 || tick > 23999) throw new ScenarioParseException(at + "tick must be 0..23999");
 			Map<String, Object> fields = new LinkedHashMap<>();
 			for (Map.Entry<?, ?> e : am.entrySet()) {
@@ -85,12 +86,17 @@ public final class ScenarioParser {
 		}
 		boolean usesBase = assertions.stream().anyMatch(a -> a.contains("@base"));
 		if (usesBase && baseline == null) throw new ScenarioParseException(where + "an assertion uses @base but the scenario has no \"baseline\"");
+		boolean threats = false;
+		if (m.containsKey("threats")) {
+			if (!(m.get("threats") instanceof Boolean b)) throw new ScenarioParseException(where + "threats must be true or false");
+			threats = b;
+		}
 		boolean villageSiege = true;
 		if (m.containsKey("village_siege")) {
 			if (!(m.get("village_siege") instanceof Boolean b)) throw new ScenarioParseException(where + "village_siege must be true or false");
 			villageSiege = b;
 		}
-		return new Scenario(name, description, dd.intValue(), seed, actions, assertions, baseline, villageSiege);
+		return new Scenario(name, description, dd.intValue(), seed, actions, assertions, baseline, threats, villageSiege);
 	}
 
 	private static int intField(Map<?, ?> m, String k, int dflt, String at) {

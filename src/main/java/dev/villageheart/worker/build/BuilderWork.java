@@ -37,6 +37,7 @@ public final class BuilderWork extends Behavior<Villager> {
 	@Override
 	protected void tick(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
+			if (WallRepair.tick(level, villager, gameTime)) return;
 			BuilderJob.tick(level, villager, gameTime);
 		}
 	}
@@ -44,6 +45,7 @@ public final class BuilderWork extends Behavior<Villager> {
 	@Override
 	protected void stop(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
+			WallRepair.stop(villager);
 			BuilderJob.stop(level, villager);
 		}
 	}
