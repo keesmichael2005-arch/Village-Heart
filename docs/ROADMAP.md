@@ -220,9 +220,10 @@ from there instead of hard-coding them.
 - Built in M22 (branch m22, deviations in docs/plans/M22.md section 8; the boxes are ticked by the orchestrator, not the builder). Adds the village-wide cap of 32 emeralds a day (orchestrator decision) to the per-merchant 8 / 12 / 16. L1 `core/market/*Test`, `MarketHeartTest`, `MarketCodecsTest`; L2 `MarketGameTests` (15 tests, `twoHundredCobblestoneFourEmeralds` is the roadmap case); L4 `MarketClientTests.stockpileReserves` (`market_stockpile.png`).
 
 ## M23: Population growth
-- [ ] §7: dawn breeding trigger, one birth per day max
+- [x] §7: dawn breeding trigger, one birth per day max
 - **L1**: breeding conditions (free bed, food days ≥3, ≥2 fed and housed adults)
 - **L2**: a free bed and plenty of food → a baby within 2 days. With no free bed → no baby in 3 days
+- Built in M23 (branch m23, deviations in docs/plans/M23.md section 8; the box above is ticked by the orchestrator). **Orchestrator decision: all vanilla villager breeding inside the claim is blocked**, growth happens only through the dawn licence, so feeding villagers bread does nothing there. L1 `core/growth/*Test`, `GrowthCodecsTest`; L2 `GrowthGameTests` (T-L2-1 is the roadmap "baby within 2 days", `GrowthCourtshipGameTests.noFreeBedNoBabyInThreeDays` the "no baby in 3 days"), `workersCanBreed` rewritten; no L3 assertion and no L4 (no visual change). Suite flakes fixed (plan section 8): `outside_pair_cannot_take_claim_bed` stood on world ground, ~2 blocks outside the sphere, and a stroll walked them in; `no_free_bed_no_baby_in_three_days` lost a House bed after a stuck stroll and the dawn was `TOO_FEW_READY`; `one_birth_per_day` lapsed `CANNOT_MEET` on a stroll's cannot-reach stamp (it now counts only while the walk target is the partner); `cannot_meet_lapses_and_is_skipped` held its three villagers until the dawn read them. Full `scripts/verify.sh` exit 0 at `4c21c0d` (402 GameTests in both layers, L4 client tests, perf within caps). No new screenshot.
 
 ## M24: Ranks and multiplayer ✅
 - [x] §2 ranks: Ranks tab, chest protection in claimed buildings for Visitors, ownership transfer

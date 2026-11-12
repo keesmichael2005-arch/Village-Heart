@@ -112,6 +112,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Population growth: today's licence, the last birth, the pairs that could not meet (M23). */
+	public dev.villageheart.core.growth.GrowthState growth() { return claim.growth(); }
+
+	public void setGrowth(dev.villageheart.core.growth.GrowthState g) {
+		claim.setGrowth(g);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {

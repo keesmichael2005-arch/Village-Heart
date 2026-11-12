@@ -23,13 +23,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.npc.villager.Villager;
-import net.minecraft.world.level.block.BedBlock;
-import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The one writer of {@code WorkerData.needs} (M11 plan 3.5): a derived copy of the diet, the housing and the pay. Every
@@ -80,15 +77,6 @@ public final class NeedsSystem implements VillageSystem {
 		return out;
 	}
 
-	private static boolean isFree(ServerLevel level, BlockPos p) {
-		BlockState s = level.getBlockState(p);
-		return s.is(BlockTags.BEDS) && !s.getValue(BedBlock.OCCUPIED);
-	}
-
-	private static boolean hasSpace(PoiManager poi, BlockPos p) {
-		return poi.getInSquare(t -> t.is(PoiTypes.HOME), p, 0, PoiManager.Occupancy.HAS_SPACE).anyMatch(r -> r.getPos().equals(p));
-	}
-
 	/** Moves every loaded, awake worker that sleeps outside a House into the nearest House bed (plan 3.2 #9). */
 	static void rehome(MinecraftServer server, VillageState village) {
 		HouseBeds houseBeds = Housing.beds(server);
@@ -108,10 +96,10 @@ public final class NeedsSystem implements VillageSystem {
 			List<Rehome.BedState> states = new ArrayList<>();
 			for (long bed : houseBeds.houseBeds()) {
 				BlockPos bp = BlockPos.of(bed);
-				if (!level.isLoaded(bp) || !isFree(level, bp) || !poi.exists(bp, t -> t.is(PoiTypes.HOME))) continue;
+				if (!level.isLoaded(bp) || !BedPoi.isFree(level, bp) || !poi.exists(bp, t -> t.is(PoiTypes.HOME))) continue;
 				Villager holder = holders.get(bed);
 				Rehome.Holder kind;
-				if (hasSpace(poi, bp)) kind = Rehome.Holder.NONE;
+				if (BedPoi.hasSpace(poi, bp)) kind = Rehome.Holder.NONE;
 				else if (holder == null || holder == v || WorkerAttachments.isWorker(holder)) kind = Rehome.Holder.WORKER;
 				else kind = holder.isSleeping() ? Rehome.Holder.RESIDENT_ASLEEP : Rehome.Holder.RESIDENT_AWAKE;
 				states.add(new Rehome.BedState(new Pos(bp.getX(), bp.getY(), bp.getZ()), kind));

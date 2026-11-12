@@ -86,6 +86,7 @@ public final class VillageClaims {
 			dev.villageheart.worker.smith.SmithCrafts.refundAll(level.getServer());
 			dev.villageheart.worker.smith.GolemBuilds.refundAll(level.getServer());
 		});
+		if (current(level.getServer()).filter(v -> v.isHeartAt(locate(level, pos))).isPresent()) dev.villageheart.growth.Growth.onRelease(level.getServer()); // M23: give back the baby's bed first
 		Optional<VillageState> released = data(level.getServer()).releaseAt(locate(level, pos));
 		released.ifPresent(v -> {
 			dev.villageheart.worker.JobSiteReservations.releaseAll(level.getServer(), held);

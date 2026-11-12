@@ -437,4 +437,18 @@ public final class Balance {
 	public static final int GOLEM_WALK_TIMEOUT = 1200;
 	public static final int GOLEM_WAIT_TIMEOUT = 1800;
 	public static final int GOLEM_REPAIR_COOLDOWN = 1200;
+
+	// ---- M23: population growth ----
+	/** The stockpile must hold at least this many food days (adults 10, babies 5 a day) before a baby is licensed. Tunable. */
+	public static final double GROWTH_MIN_FOOD_DAYS = 3.0;
+	/** Licensed parents closer than this (blocks) and in sight of each other are seeded. Tunable. */
+	public static final double COURTSHIP_SEED_DISTANCE = 4.0;
+	/** Ticks of idle time that must still be left in both parents' IDLE window when a licensed pair is seeded (a make-love run is at most 325). */
+	public static final int COURTSHIP_MARGIN = 400;
+	/** Ticks of window time a licensed pair gets to meet before the licence lapses (CANNOT_MEET). */
+	public static final int COURTSHIP_APPROACH_TICKS = 400;
+	/** A licensed pair is seeded at most this often a day. */
+	public static final int COURTSHIP_MAX_SEEDS = 3;
+	/** A pair that could not meet is skipped for this many days while another pair exists. */
+	public static final int FAILED_PAIR_DAYS = 3;
 }

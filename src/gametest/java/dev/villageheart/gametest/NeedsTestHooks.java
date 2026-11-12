@@ -12,6 +12,7 @@ public final class NeedsTestHooks {
 	public static void disable() {
 		NeedsOverride.forceDefaultNeeds = true;
 		NeedsOverride.dinnerEnabled = false;
+		NeedsOverride.growthEnabled = false; // M23: no older test ever licenses a baby; only the growth_ tests switch it back on
 		NeedsOverride.wagesEnabled = false; // M12: no older test ever strikes or loses treasury; only the wages_ tests switch it back on
 	}
 

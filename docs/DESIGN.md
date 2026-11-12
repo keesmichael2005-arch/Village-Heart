@@ -581,6 +581,32 @@ At each dawn, if there is **â‰¥1 free bed** in a valid House, **food days left â
 and housed, the mod makes two of them willing to breed (vanilla breeding). The cap is 1 birth per day.
 Babies are normal vanilla villagers and can be hired as adults.
 
+Rules as built (M23):
+- **No vanilla breeding inside the claim.** `Villager.canBreed` (and `getBreedOffspring`, the one place a villager baby is made) is gated by
+  `growth.BreedingGate`: a villager standing in the claim sphere can breed only as a parent of today's licence. Feeding villagers bread does
+  nothing there. Outside the claim vanilla is untouched, except that a villager outside cannot take a bed inside the claim (the make-love
+  hook gives it back). The only birth path left is the licence; `GrowthStats.unlicensedBirths` counts any other and stays 0.
+- **The dawn decision** (`VillageDawn` listener `villageheart:growth`, after the tiers; `core.growth.GrowthRules`): checked in this order,
+  *nobody* (no adult resident), *no free House bed* (a bed head of a valid House, loaded, nobody in it, a HOME POI with a free ticket),
+  *low food* (the Overview's food days, adults 10 and babies 5 a day, must be >= `GROWTH_MIN_FOOD_DAYS` = 3.0), *too few ready* (an adult is
+  ready when it is fed, housed in a valid House or its own building, and its vanilla breeding cooldown is over). Then the two ready adults
+  closest to each other get the licence; a pair that lapsed `CANNOT_MEET` in the last 3 days is skipped while another pair exists. One
+  licence a day, and a parent is on a 6000-tick cooldown after a birth.
+- **The baby's bed** is the free House bed nearest to the pair's midpoint; its POI ticket is taken at dawn (so no homeless villager and no
+  re-homing takes it) and handed to vanilla's make-love behaviour, which makes it the baby's HOME. Vanilla would take the first free bed in
+  range, which may be no House bed.
+- **Courtship** (`growth.Courtship`): once both parents are awake and in their IDLE activity with at least 400 ticks of that window left
+  (`core.growth.CourtshipWindow`: workers 0-1000; unemployed 10-9000 and 11000-12000 with a bell; professionals 10-2000 and the evening),
+  they walk to each other; within 4 blocks and in sight, the initiator (lower UUID) gets `BREED_TARGET` and vanilla's `VillagerMakeLove`
+  runs (hearts, then the baby). Their food level is topped up to the breeding threshold for the run (the dinner the village already paid for)
+  and restored if the licence lapses. A licence lapses at the next dawn, when a parent dies, leaves or is away, when the pair cannot meet
+  in 400 ticks of window time, after 3 seeds, or when the claim is released; each time the reserved bed is given back.
+- **Vanilla's occasional abort** (BACKLOG "T-L2-14 breeding retry windows") has a root cause: the pair "reaches" each other at block
+  offset 2 (Manhattan) and stands up to 3 blocks apart, but the birth tick needs sqrt(5); nothing moves them closer. For licensed pairs the
+  walk uses close-enough 1 and the behaviour walks them together again when the gap is too big. Measured with `breedingAbortProbe`
+  (docs/PROGRESS.md).
+- Saved state is on the world claim (`growth`: licence, last birth day, births total, failed pairs), not in `VillageState`.
+
 ## 8. Threats and survival
 - **Night mobs** (vanilla): villagers go indoors at night (vanilla behaviour). Guards on night shift patrol.
   Lamp posts and walls reduce spawns and access.

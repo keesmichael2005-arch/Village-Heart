@@ -10,7 +10,10 @@
 		"VillagerGolemSpawnMixin",
 		"IronGolemGoalsMixin",
 		"MobCreeperTargetMixin",
-		"WalkNodeEvaluatorMixin"
+		"WalkNodeEvaluatorMixin",
+		"VillagerMakeLoveMixin",
+		"VillagerBreedingGateMixin",
+		"VillagerFoodAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1
