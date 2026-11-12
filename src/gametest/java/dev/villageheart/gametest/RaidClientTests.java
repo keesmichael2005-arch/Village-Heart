@@ -195,7 +195,11 @@ final class RaidClientTests {
 				boolean onHeart = context.computeOnClient(mc -> mc.hitResult instanceof BlockHitResult hit
 						&& hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(heart));
 				if (!onHeart) throw new AssertionError("the crosshair is not on the Heart: " + context.computeOnClient(mc -> String.valueOf(mc.hitResult)));
-				context.runOnClient(mc -> mc.gui.getChat().clearMessages(true));
+				// The raid start shows a title for five seconds; it would ghost behind the Overview in the screenshot.
+				context.runOnClient(mc -> {
+					mc.gui.getChat().clearMessages(true);
+					mc.gui.clearTitles();
+				});
 				context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
 				context.waitForScreen(HeartScreen.class);
 
