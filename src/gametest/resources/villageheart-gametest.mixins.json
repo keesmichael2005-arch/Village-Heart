@@ -3,7 +3,8 @@
 	"package": "dev.villageheart.gametest.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"MobGoalAccessor"
+		"MobGoalAccessor",
+		"FurnaceBurnSetter"
 	],
 	"client": [
 		"NetworkSynchronizerLostWakeupFix",

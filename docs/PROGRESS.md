@@ -1146,3 +1146,10 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
   - Alone it failed 2 of 3 after the merge and 3 of 3 before it, and passed 2 of 2 with the sweep disabled.
 - `golemWithoutIronWaits` alone: 3 of 3.
 - Next: builder round 4. Give the scene furnace real burn time, run the smith L4 test 5 of 5 alone, then a full verify. Blockers: none.
+
+## 2026-11-12: M19 round 4 (builder)
+- Fixed the one blocking r3 item: `SmithClientTests.smithyGolem` lit the blast furnace with the LIT state only, so `SmithySystem.sweep` put it out within the test's wait window.
+- The scene now gives the block entity real burn time (`litTimeRemaining` / `litTotalTime` = 20000) through a gametest-only mixin, `FurnaceBurnSetter`. The sweep is unchanged and the furnace is not re-lit in a loop: the sweep sees a fire that burns by itself and leaves it alone.
+- `-Dvillageheart.l4.only=smith` alone: 5 of 5 passed. Full `scripts/verify.sh`: exit 0 (L2 457 tests, 42 L4 screenshots, 2-player session clean, perf within limits).
+- `0038_smithy_golem.png` looked at: the oak Smithy open to the front, the smith by the glowing blast furnace inside, two iron golems in front, the right one visibly cracked.
+- Next: orchestrator review of round 4 and ROADMAP tick. Blockers: none.

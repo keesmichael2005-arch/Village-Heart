@@ -116,6 +116,11 @@ final class SmithClientTests {
 				smith.setNoAi(true);
 				// The build puts the furnace out when the golem appears. The shot wants the glow the smith was working by.
 				KitchenVisuals.light(server.overworld(), new BlockPos(-2, fy, 7), true);
+				// Real burn time, so the idle-furnace sweep sees a fire that burns by itself and leaves it alone.
+				if (!(server.overworld().getBlockEntity(new BlockPos(-2, fy, 7)) instanceof dev.villageheart.gametest.mixin.FurnaceBurnSetter f))
+					return "the blast furnace has no block entity";
+				f.villageheart$setLitTotalTime(20000);
+				f.villageheart$setLitTimeRemaining(20000);
 				return "ok";
 			});
 			if (!posed.equals("ok")) throw new AssertionError(posed);
