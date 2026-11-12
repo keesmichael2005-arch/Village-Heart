@@ -443,7 +443,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - The builder **reserves materials** in the stockpile, fetches them, clears natural blocks (dirt, stone,
   plants and leaves, with drops returned to the stockpile) and places blocks layer by layer. It will
   **never break player-placed blocks**: a site that overlaps a valid room or claimed building is refused.
-- Pace: 1 block per second at level 1. If materials run out, it pauses and the reason appears on the Buildings tab.
+- Pace: one block per 3.5 seconds at level 1 (70 ticks; faster with level). If materials run out, it pauses and the reason appears on the Buildings tab.
 - **Blueprints in v1** are stored as data (palette + layers) in `core/`, so they can be unit-tested:
 
 | Blueprint | Tier | Notes |
