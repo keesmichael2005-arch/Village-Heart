@@ -42,3 +42,27 @@ Harness fixes found on the way (no game logic): the `site` action buried village
 | deaths | 5 villagers, all `in_wall` (suffocation), none to mobs or hunger: BACKLOG, see below |
 
 Population grew from 12 to 20 (births), 11 workers employed, 11 jobs worked.
+
+## Builder pace (owner decision, binding)
+
+`BUILD_TICKS_PER_BLOCK` 20 -> 70: one block per 3.5 s at level 1 (2.8 s at level 2, 2.3 s at level 3). This is outside the 10..30 range of `docs/M26-bounds.md` on purpose: the owner decision (2026-11-12 handoff: "about 1 block per 3-4 seconds at level 1") overrides that audit's draft range. Tests that carried the old pace: `BuilderPlannerTest` (now 2000 / the Balance value, plus an owner-range check of 60..80) and four `BuildGameTests` time budgets (`farmPlotBuilt` two days instead of one, `playerBlockAppearsMidBuild` and `twoBuildersTwoBuilds` 70 000 ticks, the claim-order check stops at the end of the work day). DESIGN section 5.x and the player guide say 3.5 s now. The sim `build` action advances a job in one go, so no scenario's timing changed.
+
+## Threat scenarios after the economy rounds (M25 merged, code `9c2d444` + builder pace)
+
+| scenario | result | notes |
+|---|---|---|
+| defended 10 | PASS | 1 guard lost (scripted zombie, day 5), 0 other failures |
+| defended_walled 10 | FAIL | deaths 1 (ok), kills 9 (needs 15): the threat spawns outside the ring and the guards stay inside |
+| siege 4 | FAIL | 3 unhired villagers lost (bar 2): the siege is a fixed 8 zombies in the scenario |
+| raid 6 | FAIL | only on `village_ms.mean` day 3 = 1.59 ms (bar 1): victory, 3 deaths of 12, 11 left, 33 raiders killed |
+
+## Guard pace round (G1): GUARD_ATTACK_COOLDOWN 20 -> 14, GUARD_CHASE_SPEED 0.6 -> 0.75
+
+Both are unpinned (no test reads them). One run each, so the spread matters more than any single number.
+
+| scenario | before (re-measure above) | G1 run 1 |
+|---|---|---|
+| defended | PASS (1 death) | FAIL: 3 deaths (2 guards at night 14402 and 14297, one converted), duty_samples day 6 = 47 |
+| defended_walled | FAIL kills 9, 1 death | FAIL kills 4, 0 deaths |
+| siege | FAIL 3 deaths | PASS 0 deaths |
+| raid | FAIL timing only, 3 deaths | FAIL: lost the raid, 8 villager deaths, 5 left, day-3 village_ms 1.21 |
