@@ -1082,3 +1082,11 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Merged `origin/dev` (`f573200`) into `m23`; the only conflict was PROGRESS, and both sides were kept. Both r2 items are fixed and each is red under a mutant (`docs/reviews/M23-r3.md`). The fresh sight test does not touch the `canBreed` gate, so vanilla breeding stays blocked inside the claim.
 - Full `scripts/verify.sh` @ `e7d038b`: exit 0 (L2 409 tests). `one_birth_per_day` alone: 5 of 5.
 - Next: orchestrator merge. Non-blocking notes: no test pins the rescue's distance or line-of-sight guards.
+
+## 2026-11-12: backlog-small review round 3 (verifier): PASS
+- Verdict PASS, 0 fix items (`docs/reviews/backlog-small-r3.md`). Merged `origin/dev` (ed1db90); only PROGRESS conflicted, and I kept both sides.
+- Both r2 items are fixed and red under their mutants:
+  - Turning the away flag off: the jam test took 273 ticks, bound 150.
+  - `blockerMoves = blocking != null`: the near-marker wall test "went away against a wall".
+- Full `scripts/verify.sh` at ed1db90: exit 0 (L2 414 tests). `two_hunters_one_ground` alone: 5 of 5, 197 ticks each.
+- Next: orchestrator merge. Advisories from r2 remain: `deposited_settled` arg count, "1 workers", `mover()` scope.
