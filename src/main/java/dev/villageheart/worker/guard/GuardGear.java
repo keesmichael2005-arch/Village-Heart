@@ -40,6 +40,11 @@ public final class GuardGear {
 
 	public static void resetForTests() { CLAIMS.clear(); }
 
+	/** True when a guard has already claimed this Barracks slot for the trip it is on. */
+	public static boolean isClaimed(net.minecraft.core.BlockPos chest, int slot) {
+		return CLAIMS.containsKey(chest.asLong() + "#" + slot);
+	}
+
 	/** One thing a guard could take: the planner's numbers and where it really is. */
 	record Candidate(GearItem item, StackKey key, BlockPos chest, int chestSlot, Container container) {}
 

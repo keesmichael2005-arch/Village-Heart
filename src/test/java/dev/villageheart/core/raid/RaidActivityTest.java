@@ -24,7 +24,7 @@ class RaidActivityTest {
 
 	@Test void shelterKindsStayAtTheEnd() {
 		ActivityKind[] v = ActivityKind.values();
-		assertEquals(ActivityKind.SHELTERING, v[32]);
-		assertEquals(ActivityKind.NO_SHELTER, v[33]);
+		assertEquals(ActivityKind.SHELTERING, v[36]);
+		assertEquals(ActivityKind.NO_SHELTER, v[37]);
 	}
 }

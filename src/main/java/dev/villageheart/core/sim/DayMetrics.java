@@ -13,7 +13,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		List<DeathRecord> deaths,
 		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
 		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages,
-		RaidDay raid, long deathsLogged, int golemsInClaim, SiegeDay siege, TierDay tier) {
+		RaidDay raid, long deathsLogged, GolemDay golems, SiegeDay siege, TierDay tier) {
 
 	/**
 	 * What dinner and housing did that day (M11): the dinner's totals, the hungriest villager at the end of the day, and how many villagers
@@ -30,6 +30,14 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 	 */
 	public record WageDay(long runs, long bill, long paid, long spent, long strikers) {
 		public static final WageDay ZERO = new WageDay(0, 0, 0, 0, 0);
+	}
+
+	/**
+	 * Golems that day (M19): vanilla spawn attempts the gate refused, and iron golems standing in the claim at the sample.
+	 * A report written before M19 reads zeros.
+	 */
+	public record GolemDay(long vanillaBlocked, long inClaim) {
+		public static final GolemDay ZERO = new GolemDay(0, 0);
 	}
 
 	/**
@@ -134,24 +142,24 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
 			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
-			WageDay wages, RaidDay raid, long deathsLogged, int golemsInClaim, SiegeDay siege) {
+			WageDay wages, RaidDay raid, long deathsLogged, GolemDay golems, SiegeDay siege) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
 				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
-				stockpileTags, needs, wages, raid, deathsLogged, golemsInClaim, siege, TierDay.NONE);
+				stockpileTags, needs, wages, raid, deathsLogged, golems, siege, TierDay.NONE);
 	}
 
-	/** Without the M25 raid and siege records, with the tier. */
+	/** Without the M25 raid and siege records, with the golem sample (M19). */
 	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
 			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
-			WageDay wages, TierDay tier) {
+			WageDay wages, GolemDay golems) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
 				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
-				stockpileTags, needs, wages, RaidDay.ZERO, 0L, 0, SiegeDay.ZERO, tier);
+				stockpileTags, needs, wages, RaidDay.ZERO, 0L, golems, SiegeDay.ZERO, TierDay.NONE);
 	}
 
-	/** Without the M25 defence and siege record (and the tier). */
+	/** Without the M25 raid record, with the golem count (a bare number of golems in the claim). */
 	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
@@ -159,10 +167,21 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 			WageDay wages, RaidDay raid, long deathsLogged, int golemsInClaim) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
 				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
-				stockpileTags, needs, wages, raid, deathsLogged, golemsInClaim, SiegeDay.ZERO, TierDay.NONE);
+				stockpileTags, needs, wages, raid, deathsLogged, new GolemDay(0, golemsInClaim), SiegeDay.ZERO, TierDay.NONE);
 	}
 
-	/** Without the M25 raid record. {@code deaths.logged} and {@code golems.in_claim} read 0. */
+	/** Without the golem sample and the M25 records, with the tier. */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
+			WageDay wages, TierDay tier) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, wages, RaidDay.ZERO, 0L, GolemDay.ZERO, SiegeDay.ZERO, tier);
+	}
+
+	/** Without the golem sample, the M25 records and the tier. */
 	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
 			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
 			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
@@ -170,7 +189,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 			WageDay wages) {
 		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
 				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
-				stockpileTags, needs, wages, RaidDay.ZERO, 0L, 0);
+				stockpileTags, needs, wages, RaidDay.ZERO, 0L, GolemDay.ZERO, SiegeDay.ZERO, TierDay.NONE);
 	}
 
 	/** Without the M12 wage record. */
@@ -200,7 +219,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		java.util.Objects.requireNonNull(siege, "siege");
 		java.util.Objects.requireNonNull(siege.entityMs(), "entityMs");
 		if (deathsLogged < 0) throw new IllegalArgumentException("deathsLogged must be >= 0: " + deathsLogged);
-		if (golemsInClaim < 0) throw new IllegalArgumentException("golemsInClaim must be >= 0: " + golemsInClaim);
+		java.util.Objects.requireNonNull(golems, "golems");
 		java.util.Objects.requireNonNull(tier, "tier");
 		stockpile = Map.copyOf(stockpile);
 		deaths = List.copyOf(deaths);
@@ -266,6 +285,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("wages.paid", (double) wages.paid());
 		m.put("wages.spent", (double) wages.spent());
 		m.put("wages.strikers", (double) wages.strikers());
+		m.put("golems.vanilla_blocked", (double) golems.vanillaBlocked());
+		m.put("golems.in_claim", (double) golems.inClaim());
 		m.put("deaths.total", (double) deaths.size());
 		m.put("deaths.mobs", (double) mobDeaths());
 		Map<String, Integer> byCause = new LinkedHashMap<>();
@@ -282,7 +303,6 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("wall_seconds", wallSeconds);
 		raid.flatten(m);
 		m.put("deaths.logged", (double) deathsLogged);
-		m.put("golems.in_claim", (double) golemsInClaim);
 		siege.flatten(m);
 		m.put("village.tier", (double) tier.ordinal());
 		m.put("tier.fed_streak", (double) tier.fedStreak());

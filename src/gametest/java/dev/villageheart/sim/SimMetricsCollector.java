@@ -60,6 +60,8 @@ public final class SimMetricsCollector {
 	private final RaidMeter raids = new RaidMeter();
 	private long lastInClaimLogged;
 	private TickStats entityMs = TickStats.EMPTY;
+	/** {@link dev.villageheart.golem.GolemGate#blocked()} is cumulative; each day records the increase. */
+	private long lastVanillaBlocked;
 
 	public SimMetricsCollector(ServerLevel level, Vec3 centre, int radius) {
 		this.level = level;
@@ -325,13 +327,10 @@ public final class SimMetricsCollector {
 		Runtime rt = Runtime.getRuntime();
 		long heapMb = (rt.totalMemory() - rt.freeMemory()) >> 20;
 		long logged = 0;
-		int golems = 0;
 		if (village.isPresent()) {
 			long nowLogged = village.get().deaths().inClaimLogged();
 			logged = Math.max(0, nowLogged - lastInClaimLogged);
 			lastInClaimLogged = nowLogged;
-			ServerLevel home = dev.villageheart.worker.Workers.levelOf(server, village.get().heart());
-			if (home != null) golems = RaidSim.countGolems(home, village.get().heart());
 		}
 		return new DayMetrics(day, gameTime, village.isPresent(), c.population(), c.adults(), c.babies(),
 				village.map(v -> v.workers().size()).orElse(0),
@@ -341,8 +340,8 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay(), raids.take(server, gameTime), logged, golems, siegeDay(server, village, entityMs),
-				tierDay(village));
+				needsDay(server, village), wageDay(), raids.take(server, gameTime), logged, golemDay(village),
+				siegeDay(server, village, entityMs), tierDay(village));
 	}
 
 	/** Cells, cracks and the day's siege counters (M25 3.17). The counters reset here. */
@@ -365,6 +364,21 @@ public final class SimMetricsCollector {
 				c.brokenRavager(), c.brokenVindicator(), c.brokenCreeper(), c.brokenOther(), c.repairs(), c.repairItems(),
 				c.started(), c.zombies(), c.killed(), c.villagerDeaths(), c.paths(), c.maxLured(),
 				dev.villageheart.raid.ThreatScheduler.scoreHundred(server), entities);
+	}
+
+	/** Vanilla spawns the gate refused since the last sample, and iron golems standing in the claim now. */
+	private DayMetrics.GolemDay golemDay(Optional<VillageState> village) {
+		long blocked = dev.villageheart.golem.GolemGate.blocked();
+		long delta = Math.max(0, blocked - lastVanillaBlocked);
+		lastVanillaBlocked = blocked;
+		if (village.isEmpty()) return new DayMetrics.GolemDay(delta, 0);
+		var v = village.get();
+		int r = Balance.CLAIM_RADIUS;
+		AABB box = new AABB(v.heart().x() - r, v.heart().y() - r, v.heart().z() - r, v.heart().x() + r + 1, v.heart().y() + r + 1,
+				v.heart().z() + r + 1);
+		long inClaim = level.getEntities(EntityType.IRON_GOLEM, box, e -> e.isAlive()
+				&& dev.villageheart.core.ClaimGeometry.inClaim(v.heart(), VillageClaims.locate(level, e.blockPosition()))).size();
+		return new DayMetrics.GolemDay(delta, inClaim);
 	}
 
 	/** The tier and the fed-days streak at the end of the day. No village reads as hamlet / 0. */

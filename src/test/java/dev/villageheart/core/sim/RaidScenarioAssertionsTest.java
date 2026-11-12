@@ -153,11 +153,11 @@ class RaidScenarioAssertionsTest {
 			days.add(new DayMetrics(i + 1, 41L + 24000L * (i + 1), true, pop, pop, 0, employed, 12, 0, java.util.Map.of(),
 					100, 2.0, 64, deaths, new TickStats(24000, 0.001, 0.002, 0.01), 1.5, 20, 0, 0, 0,
 					java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO,
-					raid[i], logged, golems, siege[i]));
+					raid[i], logged, new DayMetrics.GolemDay(0, golems), siege[i]));
 		}
 		DayMetrics baseline = new DayMetrics(0, 41L, true, 1, 1, 0, 0, 0, 0, java.util.Map.of(), 0, 0, 64, List.of(),
 				TickStats.EMPTY, 0, 20, 0, 0, 0, java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
-				DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO, DayMetrics.RaidDay.ZERO, 0, golems, DayMetrics.SiegeDay.ZERO);
+				DayMetrics.NeedsDay.ZERO, DayMetrics.WageDay.ZERO, DayMetrics.RaidDay.ZERO, 0, new DayMetrics.GolemDay(0, golems), DayMetrics.SiegeDay.ZERO);
 		return new MetricsTable(baseline, days);
 	}
 }

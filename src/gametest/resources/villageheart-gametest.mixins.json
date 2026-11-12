@@ -3,6 +3,8 @@
 	"package": "dev.villageheart.gametest.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"MobGoalAccessor",
+		"FurnaceBurnSetter",
 		"RaidTestAccess"
 	],
 	"client": [

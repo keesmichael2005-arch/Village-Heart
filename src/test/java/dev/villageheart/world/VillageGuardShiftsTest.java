@@ -129,6 +129,16 @@ class VillageGuardShiftsTest {
 		calls.put("withSelfCraft", s -> s.withoutSelfCraft(G1)); // a craft record is heavy to build; both rebuild through withSelfCrafts
 		calls.put("withSmokerHeat", s -> s.withSmokerHeat(BARRACKS, 3));
 		calls.put("withoutSmokerHeat", s -> s.withSmokerHeat(BARRACKS, 3).withoutSmokerHeat(BARRACKS::equals));
+		calls.put("withGolemBuild", s -> s.withGolemBuild(BARRACKS, 10));
+		calls.put("withoutGolemBuild", s -> s.withGolemBuild(BARRACKS, 10).withoutGolemBuild(BARRACKS));
+		calls.put("withSmithCraft", s -> s.withSmithCraft(BARRACKS, new dev.villageheart.core.smith.SmithCraft(
+				new dev.villageheart.core.gear.GearCraft("minecraft:iron_axe",
+						new dev.villageheart.core.gear.OrderKey(BARRACKS, dev.villageheart.core.gear.GearNeed.AXE, 0), 0, java.util.List.of()),
+				BARRACKS)));
+		calls.put("withoutSmithCraft", s -> s.withSmithCraft(BARRACKS, new dev.villageheart.core.smith.SmithCraft(
+				new dev.villageheart.core.gear.GearCraft("minecraft:iron_axe",
+						new dev.villageheart.core.gear.OrderKey(BARRACKS, dev.villageheart.core.gear.GearNeed.AXE, 0), 0, java.util.List.of()),
+				BARRACKS)).withoutSmithCraft(BARRACKS));
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
 		calls.put("withDeaths", s -> s.withDeaths(dev.villageheart.core.death.DeathLog.EMPTY.append(

@@ -204,7 +204,7 @@ public final class SelfCraftJob {
 		if (saved.isPresent() && GearOrders.of(saved.get().craft().key()).isEmpty()) {
 			GearOrders.claim(saved.get().craft().key(), me, now, true); // self-heal after a restart
 		}
-		CampDemand census = ToolCensus.of(server, village, building, job, GearOrders.crafting(), GearLead.forCamp(server, village, building, job));
+		CampDemand census = ToolCensus.of(server, village, building, job, GearOrders.crafting(), GearLead.lead(server, village));
 		WorkerToolState own = census.stateOf(me);
 		Optional<OrderKey> myKey = saved.map(s -> s.craft().key()).or(() -> fetching.map(PendingFetch::key));
 		SlotPresence presence = myKey.map(k -> presenceOf(server, village, me, building, job, census, k)).orElse(SlotPresence.HELD);
@@ -353,7 +353,7 @@ public final class SelfCraftJob {
 			st.decision = SelfCraftDecision.NONE;
 			return;
 		}
-		CampDemand census = ToolCensus.of(server, village.get(), data.building(), job, GearOrders.crafting(), GearLead.forCamp(server, village.get(), data.building(), job));
+		CampDemand census = ToolCensus.of(server, village.get(), data.building(), job, GearOrders.crafting(), GearLead.lead(server, village.get()));
 		SlotPresence presence = presenceOf(server, village.get(), me, data.building(), job, census, pf.key());
 		BlockPos at = v.blockPosition();
 		if (presence != SlotPresence.HELD) {
@@ -518,7 +518,8 @@ public final class SelfCraftJob {
 			st.block = dev.villageheart.core.gear.BlockReason.NO_SPACE;
 		}
 		for (ItemCount ic : leftoversOf(sc, recipe)) {
-			Item it = item(ic.id());
+			Item it = SelfCrafts.knownItem(ic.id(), "Self-craft leftovers");
+			if (it == null) continue;
 			int left = ic.count();
 			while (left > 0) {
 				ItemStack s = new ItemStack(it, Math.min(left, it.getDefaultMaxStackSize()));

@@ -144,7 +144,10 @@ public final class HeartFacts {
 					case NO_SPACE -> ActivityKind.TOOL_NO_SPACE;
 					case null -> ActivityKind.NEEDS_TOOL;
 				};
-				case NO_WORK -> ActivityKind.NO_WORK;
+				case NO_WORK -> {
+					ActivityKind smith = dev.villageheart.worker.smith.SmithRuntime.activity(server, rec.villager());
+					yield smith != null ? smith : ActivityKind.NO_WORK;
+				}
 				case SITE_UNREACHABLE -> ActivityKind.SITE_UNREACHABLE;
 				case NEEDS_MATERIALS -> ActivityKind.NEEDS_MATERIALS;
 				case BLOCKED -> ActivityKind.BLOCKED;
@@ -156,6 +159,8 @@ public final class HeartFacts {
 				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
 				default -> {
+					ActivityKind smith = dev.villageheart.worker.smith.SmithRuntime.activity(server, rec.villager());
+					if (smith != null) yield smith;
 					var repair = dev.villageheart.core.heart.RepairActivity.of(dev.villageheart.worker.build.WallRepair.line(v.getUUID()));
 					yield repair.isPresent() ? repair.get() : activityOf(v);
 				}

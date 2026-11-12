@@ -57,6 +57,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			LevelClientTests.villagersTabLevels(context);
 			return;
 		}
+		if ("smith".equals(System.getProperty("villageheart.l4.only"))) {
+			SmithClientTests.smithyGolem(context);
+			return;
+		}
 		if ("toasts".equals(System.getProperty("villageheart.l4.only"))) {
 			toastsClearedBeforeScreenshot(context);
 			return;
@@ -94,6 +98,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		HunterClientTests.villagersTabAwayHunting(context);
 		GuardClientTests.guardOnDuty(context);
 		GuardClientTests.villagersTabGuards(context);
+		SmithClientTests.smithyGolem(context);
 		MarketClientTests.stockpileReserves(context);
 		RanksClientTests.ranksTab(context);
 		MultiplayerClientTests.ownerAndResident(context);

@@ -259,6 +259,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] L3 by hand when M11's `starter` scenario exists: `starter` + Mine with a miner and no tools, 10 oak logs in Storage, 5 days; report `work.<job>.tools_made.<tier>` per day (expected wooden day 1, stone from day 2)
 - [ ] M19 r3 note: the census uses lead 0 whatever `SmithService` says (the plan's 3.8 #4 gives the smith's lead when one serves); M19 passes its lead when it registers the service
 - [ ] `ToolAllocation` still ranks by tier enum order (gold below iron); unchanged here, see the tool-speed item above
+## From M19-r3
+- [ ] `GolemBuilds.refund` removes the build record before the 36 ingots and the pumpkin are placed; with no Storage and the Smithy chunk unloaded they are logged as "left behind" (M19-r2 item 2). Note: on a claim release every refund-pending record goes with the claim anyway
+- [ ] `SmithJob.withdraw`: the leftover of `Stockpiles.deposit(level, at, rest)` is not checked; `keepOrDrop` it (M19-r2 item 3; practically unreachable)
+- [ ] `SelfCraftJob` (M19a) ignores the `addItem` leftover when the finished tool, the craft leftovers or a short fetch go to the worker after a full Storage (about lines 386, 419, 516, 528): keep the leftover or drop it at the worker
 ## From M11-r5
 - [x] (done on branch `sim-area`: Heart-centred square + follow tickets around hired workers, `work.workers.max_heart_distance < 150` asserted; 8/8 `starter 10` green, and green at a ±3 square too) (high, before `starter` is reused) `starter` still flakes ~1 in 4: the sim forces +-6 chunks around the village START chunk, and a farmer fleeing a zombie at night ended 111 blocks from the Heart at x 752 (just past the east edge) and froze (`not_ticking` 530). Centre the forced area on the Heart with ~8 chunks, or let the fixture pull back a worker whose chunk stops ticking (logged), or treat `not_ticking > 0` as an invalid run
 - [ ] `FarmJob`: the "Ticks of ripe crops ..." Javadoc sits above `allCellsTaken` instead of `STALL_TICKS_DEFAULT`

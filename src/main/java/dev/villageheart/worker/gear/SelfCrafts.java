@@ -63,6 +63,21 @@ public final class SelfCrafts {
 	private static Item item(String id) { return BuiltInRegistries.ITEM.getValue(Identifier.parse(id)); }
 
 	/**
+	 * The registered item for a saved id, or null when the id is malformed, unregistered or AIR. An unknown id resolves to AIR, whose
+	 * stack always reports a count of 0, so any "split into stacks until none remain" loop over it never ends. Callers skip null.
+	 * Logs one WARN naming the id.
+	 */
+	public static Item knownItem(String id, String what) {
+		Identifier parsed = Identifier.tryParse(id);
+		Item it = parsed == null ? null : BuiltInRegistries.ITEM.getOptional(parsed).orElse(null);
+		if (it == null || it == net.minecraft.world.item.Items.AIR) {
+			VillageHeart.LOG.warn("{}: dropping saved item id '{}' (not a registered item)", what, id);
+			return null;
+		}
+		return it;
+	}
+
+	/**
 	 * Gives the committed items back: to Storage, else the worker's inventory (loaded), else dropped at the building marker (chunk loaded).
 	 * What cannot be delivered now stays in the record with {@code refundPending}. True when the record is gone.
 	 */
@@ -76,7 +91,8 @@ public final class SelfCrafts {
 		List<ItemCount> left = new ArrayList<>();
 		Villager v = Workers.findLoaded(server, worker).orElse(null);
 		for (ItemCount ic : sc.craft().committed()) {
-			Item it = item(ic.id());
+			Item it = knownItem(ic.id(), "Self-craft refund");
+			if (it == null) continue;
 			int remaining = ic.count();
 			while (remaining > 0) {
 				ItemStack stack = new ItemStack(it, Math.min(remaining, it.getDefaultMaxStackSize()));
