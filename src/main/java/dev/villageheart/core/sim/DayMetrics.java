@@ -12,7 +12,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		int foodNutrition, double foodDaysLeft, int treasury,
 		List<DeathRecord> deaths,
 		TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb, long worldSaveBytes,
-		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages) {
+		Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs, WageDay wages,
+		TierDay tier) {
 
 	/**
 	 * What dinner and housing did that day (M11): the dinner's totals, the hungriest villager at the end of the day, and how many villagers
@@ -29,6 +30,40 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 	 */
 	public record WageDay(long runs, long bill, long paid, long spent, long strikers) {
 		public static final WageDay ZERO = new WageDay(0, 0, 0, 0, 0);
+	}
+
+	/**
+	 * The village tier and the fed-days streak at the end of the day. {@code name} is the tier id ({@code hamlet}, {@code village},
+	 * {@code town}). A report written before this field reads as hamlet with a streak of 0.
+	 */
+	public record TierDay(String name, long fedStreak) {
+		public static final TierDay NONE = new TierDay("hamlet", 0);
+
+		public TierDay {
+			if (name == null || name.isBlank()) name = "hamlet";
+			name = name.toLowerCase(java.util.Locale.ROOT);
+			if (fedStreak < 0) throw new IllegalArgumentException("fedStreak must be >= 0: " + fedStreak);
+		}
+
+		/** 0 hamlet, 1 village, 2 town. Anything else reads as hamlet so the metric stays a number. */
+		public int ordinal() {
+			return switch (name) {
+				case "village" -> 1;
+				case "town" -> 2;
+				default -> 0;
+			};
+		}
+	}
+
+	/** Without the tier record (reports and callers from before it). */
+	public DayMetrics(int day, long gameTime, boolean claimed, int population, int adults, int babies, int employed,
+			int buildingsValid, int buildingsInvalid, Map<String, Long> stockpile, int foodNutrition, double foodDaysLeft, int treasury,
+			List<DeathRecord> deaths, TickStats villageMs, double serverMspt, double serverTps, double wallSeconds, long heapUsedMb,
+			long worldSaveBytes, Map<String, Long> work, Map<String, Long> workerStatus, Map<String, Long> stockpileTags, NeedsDay needs,
+			WageDay wages) {
+		this(day, gameTime, claimed, population, adults, babies, employed, buildingsValid, buildingsInvalid, stockpile, foodNutrition,
+				foodDaysLeft, treasury, deaths, villageMs, serverMspt, serverTps, wallSeconds, heapUsedMb, worldSaveBytes, work, workerStatus,
+				stockpileTags, needs, wages, TierDay.NONE);
 	}
 
 	/** Without the M12 wage record. */
@@ -54,6 +89,7 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 	public DayMetrics {
 		java.util.Objects.requireNonNull(needs, "needs");
 		java.util.Objects.requireNonNull(wages, "wages");
+		java.util.Objects.requireNonNull(tier, "tier");
 		stockpile = Map.copyOf(stockpile);
 		deaths = List.copyOf(deaths);
 		work = Map.copyOf(work);
@@ -132,6 +168,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("server.heap_used_mb", (double) heapUsedMb);
 		m.put("world.save_bytes", (double) worldSaveBytes);
 		m.put("wall_seconds", wallSeconds);
+		m.put("village.tier", (double) tier.ordinal());
+		m.put("tier.fed_streak", (double) tier.fedStreak());
 		return m;
 	}
 }

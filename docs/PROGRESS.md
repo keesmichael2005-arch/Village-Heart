@@ -893,6 +893,18 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - Not fixed: `hunter_game_tests_two_hunters_one_ground` (970 ticks vs bound 450 at load 8; walk jam retries, product-side). Next: audit other jobs' `walk.begin(..., JOB_BLOCK_REACH)` for the same 0.1 band (BACKLOG).
 - Round 2: the dead band fixed at the root (`WalkTo` ARRIVED only within the reach; `SelfCraftJob` workaround removed), new `WorkerGameTests.walkToNeverArrivesBeyondItsReach`, full L2 343/343 green with the strict rule. `two_hunters_one_ground` investigated, not reproduced (BACKLOG has the mechanism hypothesis).
 
+## 2026-11-11: backlog-small
+- Market emerald counts use the singular for 1 and the plural otherwise, on the Stockpile line and in `/villageheart market status` (`MarketTexts`). `MarketTextsTest` failed on "Market: sold 1 emeralds today" before the change.
+- Client screenshots clear vanilla toasts first (`ScreenshotToastClear`). Before: `treasury_overview` / `treasury_villagers` hide the Stockpile and Ranks tabs under "New Recipe(s) Unlocked!". After: those tabs are visible. `toastsClearedBeforeScreenshot` failed while the toast survived the shot.
+- Each simulated day records the village tier and the fed-days streak (`village.tier`, `tier.fed_streak`, and the summary table). `ScenarioFilesTest.reportCarriesVillageTierAndFedStreak` failed while the report still wrote hamlet / 0 for a Village day with streak 4.
+- Two hunters no longer treat a walk jam as an unreachable ground with a 600-tick retry. `jamIsNotAnUnreachableGround` failed with SITE_UNREACHABLE before the change and passed after. `twoHuntersOneGround` passed 8 of 8 under the unchanged 450-tick bound; the hidden-hunter corridor test still goes out in 31 ticks.
+- Merged `origin/dev` (m26-prep death log kept; the summary table is `SimSummary` plus `DeathLog.markdown`).
+- `scripts/verify.sh --fast` exit 0 at `4968cf0` (386 GameTests). Full `scripts/verify.sh` exit 0 at the same commit: L1 green, L2 386/386, L3 self-test green, L4 green (toast-clear mixin installed, 2 lost-wakeup rescues, 1 disconnect-leak clear), model log and 2-player session clean, perf within caps.
+- Screenshots looked at from that run. `toast_cleared`: the title screen, top-right corner empty (before the fix the same shot showed a cut-off "New Recipe(s) Unlocked!" toast). `treasury_overview` and `treasury_villagers`: Stockpile and Ranks tabs are fully visible; before, the recipe toast covered both. `heart_overview`, `heart_villagers`, `heart_stockpile`, `heart_buildings`, `heart_buildings_build`, `heart_ranks`, `heart_ranks_confirm`, `mp_ranks`: full tab bar, no toast. `market_stockpile`: the line reads "Market: sold 1 emerald today" in green, tabs clear.
+- Doubts: the jam GameTest blocks the ground with a wall and a neighbour, so it proves the 600-tick retry is not armed while someone is touching; it does not itself restage two hunters squeezing a door. The 8 repeats of `twoHuntersOneGround` were not run under an artificial CPU load. A NoAI villager does not get the 30-tick step-aside (only a walking neighbour does); touching one still skips the long retry.
+- Unfinished: none of the four task items. `/villageheart tier set` and a Town-tier L2 through real guards stay on the backlog, outside this task.
+- Next: none. Blockers: none.
+
 ## 2026-11-11: GameTest position helpers (audit-relpos)
 - `GameTestHelper.relativePos` rotates by the test rotation plus 180°, so on an unrotated test it negates the offset. Documented in TESTING.md under "GameTest position helpers". `VillageTestSupport.rel` subtracts the origin and asserts the round trip; `BuildTestSupport.rel` delegates to it.
 - `chopperIsNotAskedToStepAside` spawned the walker with `relativePos` of an absolute cell (the mirrored cell) and a 200-tick pin sat on the walk-stall limit, so a full-suite run left the oak standing. The walker now spawns on test-relative cells in the doorway geometry, the path must cross the hired lumberjack for a jam period (80 ticks, under the 200-tick stall), he is not asked, then he fells the oak. Mutation (drop the `isWorker` skip in `WalkTo.idleBlocker`): red at tick 85, "the hired lumberjack was asked to step aside". Restored: green, path crossed for 80 ticks, asked false, oak felled.
@@ -1015,6 +1027,21 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Full `scripts/verify.sh` exit 0 at bba04a1 (L2 388/388, L4 41 screenshots, perf in caps) on the fourth run. Runs 1–3 each failed on one flaky test this branch does not touch: `heart_action_game_tests_rate_limited` twice (static `HeartActions.warnCount` is shared between concurrently running GameTests), and `GuardClientTests` once ("night guard is not at its bed on the client" after the server-side check had passed; a client-sync race).
 - Next: merge `art-pass`. Orchestrator: consider tickets for the two flakes above. Blockers: none.
 
+**backlog-small round 1 fixes**
+
+- Hunter: only an away or walking neighbour counts as "arrived" near the marker. A bystander earns one give-up (`YIELD`); a repeat within `HUNTER_RETRY_TICKS` is `UNREACHABLE`. Tests: `HuntApproachTest`, `wallWithABystanderIsStillUnreachable` (NoAI neighbour, walled ground, reported at tick 430), `jamInTheGapIsResolvedWhenTheNeighbourMovesOn` (out at +350). The old `jamIsNotAnUnreachableGround` locked in the hidden unreachable ground and was replaced. The gap test probably also passes on the old code: it is a regression guard. `twoHuntersOneGround` bound stays 450.
+- Plurals: `core/Plural` used by every emerald count and "merchant"; `_one` lang keys removed. `PluralTest`, `WageAlertsTest`, `MarketTextsTest`, `LangCoverageTest` updated.
+- Sim tier source: GameTest `simCollectorReadsTheVillageTier` reads the real `SimMetricsCollector.collect`.
+- `verify.sh --fast` exit 0 (391 GameTests). Next: full verify, then `release-prep`. Open: "Paid %s striking workers" still has no singular.
+
+## 2026-11-11: backlog-small review round 2 (verifier)
+- Verdict FAIL, 2 fix items (`docs/reviews/backlog-small-r2.md`). Merged `origin/dev`; the client-test and PROGRESS conflicts were resolved by keeping both sides.
+- All three round-1 items are fixed, and each fix's test goes red on its mutation: the repeated hunter give-up, `Plural`, and the real sim tier source.
+- Full `scripts/verify.sh` exit 1 at 36cbdf5. Layer 1's GameTest run failed `twoHuntersOneGround` at 590 ticks (bound 450). Layer 2 (391/391), Layer 4 and perf are green.
+- Fix 1: a hunter jammed behind a hidden (NoAI) hunter just past 6 blocks neither arrives nor steps aside, so it waits out the 200-tick stall.
+- Fix 2: no GameTest pins `HunterJob`'s mover-only arrival; the `blockerMoves = blocking != null` mutant stays green.
+- Next: builder fixes the two items. Blockers: none.
+
 ## 2026-11-11: M23 review round 1 fixes (builder)
 - Resolved leftover conflict markers in this file (WIP merge) by keeping both sides. `origin/dev` was already merged.
 - Item 1: `Growth.onBirth` ignores an unlicensed birth when neither the child nor the bed is inside the claim (no counter, no ERROR). Test `vanillaBirthOutsideClaimIsNotUnlicensed`: red before (unlicensed 1, expected 0); mutant "never count" is red.
@@ -1043,7 +1070,23 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
 
+## 2026-11-12: backlog-small round 2 fixes (builder)
+- Merged `origin/dev` (only `docs/PROGRESS.md` conflicted: kept both sides).
+- **Fix 1, jam against an away hunter:** `HuntApproach.yieldNow` takes a new `awayNeighbour` flag; `HunterJob` passes `AwayTrips.isAway(blocking)`. A walker touching a hidden (NoAI) hunter beyond 6 blocks now steps around it after the 30-tick push instead of waiting out the 200-tick stall. The `twoHuntersOneGround` bound (450) is unchanged (197 ticks, 5 of 5 runs alone).
+  - Test: `hunterJammedAgainstAwayHunterBeyondSixStepsAroundAtOnce` (GameTest: two-wide corridor, first hunter hidden 7.0 from the marker). Before the fix: out after 274 ticks, FAIL at bound 150. After: out after 104. Unit: `HuntApproachTest.aWalkerAlwaysStepsAroundAnAwayNeighbourAfterTheShortJam`.
+- **Fix 2, walled-off ground with a bystander within 6 of the marker:** `wallWithABystanderNearTheMarkerIsStillUnreachable` (wall at z=14, NoAI villager at (15,0,13), hunter pushed against it 4.3 from the marker). Real code: SITE_UNREACHABLE at tick 458, never away. Mutation `blockerMoves = blocking != null`: the hunter "goes out here" at tick 34, test FAIL ("went away against a wall beside a bystander").
+- Advisory left open: `mover()` counts any walking villager, not only a hunter (rare near a hunting ground); `deposited_settled` arg count in `HeartActions`; "1 workers" strike texts.
+- Note for the next agent: a Gradle `-D...gametest.filter` is not forwarded to the game JVM; use `JAVA_TOOL_OPTIONS="-Dfabric-api.gametest.filter=villageheart-gametest:<exact_id>"` (17 s per test).
+
 ## 2026-11-12: M23 review round 3 (verifier): PASS
 - Merged `origin/dev` (`f573200`) into `m23`; the only conflict was PROGRESS, and both sides were kept. Both r2 items are fixed and each is red under a mutant (`docs/reviews/M23-r3.md`). The fresh sight test does not touch the `canBreed` gate, so vanilla breeding stays blocked inside the claim.
 - Full `scripts/verify.sh` @ `e7d038b`: exit 0 (L2 409 tests). `one_birth_per_day` alone: 5 of 5.
 - Next: orchestrator merge. Non-blocking notes: no test pins the rescue's distance or line-of-sight guards.
+
+## 2026-11-12: backlog-small review round 3 (verifier): PASS
+- Verdict PASS, 0 fix items (`docs/reviews/backlog-small-r3.md`). Merged `origin/dev` (ed1db90); only PROGRESS conflicted, and I kept both sides.
+- Both r2 items are fixed and red under their mutants:
+  - Turning the away flag off: the jam test took 273 ticks, bound 150.
+  - `blockerMoves = blocking != null`: the near-marker wall test "went away against a wall".
+- Full `scripts/verify.sh` at ed1db90: exit 0 (L2 414 tests). `two_hunters_one_ground` alone: 5 of 5, 197 ticks each.
+- Next: orchestrator merge. Advisories from r2 remain: `deposited_settled` arg count, "1 workers", `mover()` scope.

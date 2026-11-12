@@ -3,6 +3,7 @@ package dev.villageheart.heart;
 import dev.villageheart.VillageHeart;
 import dev.villageheart.building.Buildings;
 import dev.villageheart.core.HeartLocation;
+import dev.villageheart.core.Plural;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.heart.ActionGate;
 import dev.villageheart.core.heart.HeartAction;
@@ -169,11 +170,11 @@ public final class HeartActions {
 			return false;
 		}
 		if (r.settledWorkers() > 0) {
-			reply(player, containerId, true, "message.villageheart.treasury.deposited_settled", "Deposited %s emeralds. Paid %s striking workers. Treasury: %s",
-					List.of(Integer.toString(r.accepted()), Integer.toString(r.settledWorkers())));
+			reply(player, containerId, true, "message.villageheart.treasury.deposited_settled", "Deposited %s. Paid %s striking workers. Treasury: %s",
+					List.of(Plural.emeralds(r.accepted()), Integer.toString(r.settledWorkers())));
 		} else {
-			reply(player, containerId, true, "message.villageheart.treasury.deposited", "Deposited %s emeralds. Treasury: %s",
-					List.of(Integer.toString(r.accepted()), Integer.toString(r.treasuryAfter())));
+			reply(player, containerId, true, "message.villageheart.treasury.deposited", "Deposited %s. Treasury: %s",
+					List.of(Plural.emeralds(r.accepted()), Integer.toString(r.treasuryAfter())));
 		}
 		return true;
 	}
@@ -206,8 +207,8 @@ public final class HeartActions {
 			return false;
 		}
 		int after = VillageClaims.current(player.level().getServer()).map(VillageState::treasury).orElse(0);
-		reply(player, containerId, true, "message.villageheart.treasury.withdrawn", "Withdrew %s emeralds. Treasury: %s",
-				List.of(Integer.toString(taken), Integer.toString(after)));
+		reply(player, containerId, true, "message.villageheart.treasury.withdrawn", "Withdrew %s. Treasury: %s",
+				List.of(Plural.emeralds(taken), Integer.toString(after)));
 		return true;
 	}
 

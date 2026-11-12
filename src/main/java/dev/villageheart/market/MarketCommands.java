@@ -55,8 +55,8 @@ public final class MarketCommands {
 		var state = Markets.state(source.getServer());
 		long merchants = village.get().workers().stream().filter(w -> w.jobId().equals("merchant")).count();
 		int sold = state.ledger().forDay(Markets.today(source.getServer().overworld())).soldToday();
-		source.sendSuccess(() -> Component.translatable("message.villageheart.market.status", sold, merchants, state.reserves().foodDays(),
-				state.reserves().itemReserve()), false);
+		var line = dev.villageheart.core.market.MarketTexts.status(sold, merchants, state.reserves().foodDays(), state.reserves().itemReserve());
+		source.sendSuccess(() -> Component.translatable(line.key(), line.args().toArray(String[]::new)), false);
 		return sold;
 	}
 }

@@ -244,7 +244,14 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay());
+				needsDay(server, village), wageDay(), tierDay(village));
+	}
+
+	/** The tier and the fed-days streak at the end of the day. No village reads as hamlet / 0. */
+	private static DayMetrics.TierDay tierDay(Optional<VillageState> village) {
+		if (village.isEmpty()) return DayMetrics.TierDay.NONE;
+		VillageState v = village.get();
+		return new DayMetrics.TierDay(v.tier().name().toLowerCase(java.util.Locale.ROOT), v.tierProgress().fedStreak());
 	}
 
 	/** The wage runs of the day (reset here, M12). */
