@@ -13,7 +13,9 @@ repo. No orchestrator is involved. This file is the process; `CLAUDE.md` is the 
 | `feat/<short-name>` | One feature (e.g. `feat/archers`, plan `docs/plans/P1-archers.md`) | The agent doing that feature |
 | `blueprints-2` | Post-v1 feature work started during the build (unreviewed, 29 commits). Rebase on `dev` before continuing. | — |
 
-Old plan-only branches that never merged are kept as tags `archive/<name>`.
+Delete a `fix/*` or `feat/*` branch once it is merged. Build-phase branches (`m*`, `*-plan`, `art-pass` and others) are all merged into `dev`, or hold old plan drafts whose final versions are in `docs/plans/`, so they can be deleted.
+
+**Default branch:** set the GitHub default branch to `dev` (Settings → General → Default branch). A new agent session then starts on `dev`, which has this workflow. `main` stays the release branch.
 
 ## Making a fix (the normal case)
 
