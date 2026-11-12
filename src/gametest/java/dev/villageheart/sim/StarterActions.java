@@ -126,12 +126,13 @@ public final class StarterActions {
 		BlockPos origin = new BlockPos(found.x(), found.floorY(), found.z());
 		VillageHeart.LOG.info("[sim] site {}x{} at {} (flatten cost {}, {} ms search)", w, d, origin.toShortString(), found.cost(), (System.nanoTime() - t0) / 1_000_000);
 
-		AABB box = new AABB(origin.getX() - 2, origin.getY() - 4, origin.getZ() - 2, origin.getX() + w + 2, origin.getY() + 14, origin.getZ() + d + 2);
+		// M26: the box covers the ramp ring too (RAMP blocks around the patch are re-graded): a villager standing there was buried (full on seed 1)
+		AABB box = new AABB(origin.getX() - RAMP - 2, origin.getY() - 6, origin.getZ() - RAMP - 2, origin.getX() + w + RAMP + 2, origin.getY() + 14, origin.getZ() + d + RAMP + 2);
 		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, x -> !(x instanceof Player))) {
 			if (e instanceof Enemy) {
 				e.discard();
 			} else {
-				int ox = origin.getX() - 4, oz = origin.getZ() + d / 2;
+				int ox = origin.getX() - RAMP - 4, oz = origin.getZ() + d / 2;
 				int oy = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, ox, oz);
 				e.teleportTo(ox + 0.5, oy, oz + 0.5);
 			}
@@ -309,6 +310,9 @@ public final class StarterActions {
 				case "blast_furnace" -> Blocks.BLAST_FURNACE.defaultBlockState();
 				case "anvil" -> Blocks.ANVIL.defaultBlockState();
 				case "builders_table" -> JobBlocks.BLOCKS.get(JobBlockType.BUILDERS_TABLE).defaultBlockState();
+				case "stonecutter" -> Blocks.STONECUTTER.defaultBlockState();
+				case "fletching_table" -> Blocks.FLETCHING_TABLE.defaultBlockState();
+				case "market_stall" -> JobBlocks.BLOCKS.get(JobBlockType.MARKET_STALL).defaultBlockState();
 				default -> JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK).defaultBlockState();
 			};
 			set(level, p, state);

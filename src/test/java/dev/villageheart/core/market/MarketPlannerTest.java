@@ -24,26 +24,26 @@ class MarketPlannerTest {
 	@Test
 	void stopOrder() {
 		var cobble = List.of(item("cobblestone", 200, 0, 0));
-		var capped = new MarketInputs<>(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY, 1, 8, 0, 8);
+		var capped = new MarketInputs<>(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY, 1, Balance.merchantDailyCap(1), 0, Balance.merchantDailyCap(1)); // M26: the level-1 cap is a tuned value
 		assertEquals(new SaleDecision.Stop(StopReason.DAILY_LIMIT), MarketPlanner.decide(capped));
 		assertEquals(new SaleDecision.Stop(StopReason.TREASURY_FULL), MarketPlanner.decide(in(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY)));
 		sell(MarketPlanner.decide(in(cobble, Reserves.DEFAULT, 0, Balance.MAX_TREASURY - 1)));
 		assertEquals(new SaleDecision.Stop(StopReason.NOTHING_TO_SELL), MarketPlanner.decide(in(List.of(item("cobblestone", 64, 0, 0)), Reserves.DEFAULT, 0, 0)));
-		assertEquals(new SaleDecision.Stop(StopReason.NOTHING_TO_SELL), MarketPlanner.decide(in(List.of(item("cobblestone", 95, 0, 0)), Reserves.DEFAULT, 0, 0)), "31 < lot");
+		assertEquals(new SaleDecision.Stop(StopReason.NOTHING_TO_SELL), MarketPlanner.decide(in(List.of(item("cobblestone", 79, 0, 0)), Reserves.DEFAULT, 0, 0)), "15 < lot");
 		assertEquals(new SaleDecision.Stop(StopReason.NOTHING_TO_SELL), MarketPlanner.decide(in(List.of(), Reserves.DEFAULT, 0, 0)));
 	}
 
 	@Test
 	void choosesMostLotsThenTableOrder() {
-		// 136 cobble = 4 lots; wheat 164 - 64 = 100 = 5 lots
-		var s = List.of(item("cobblestone", 200, 0, 0), item("wheat", 164, 0, 0));
+		// M26 H3 (cobble and logs cheaper, lots 16 and 8): 140 cobble - 64 = 76 = 4 lots; wheat 164 - 64 = 100 = 5 lots
+		var s = List.of(item("cobblestone", 140, 0, 0), item("wheat", 164, 0, 0));
 		var d = sell(MarketPlanner.decide(in(s, Reserves.DEFAULT, 0, 0)));
 		assertEquals("minecraft:wheat", d.id());
 		assertEquals(20, d.lot());
-		// 4 lots each: wheat 144 -> 80 = 4, cobble 200 -> 136 = 4, oak log 128 -> 64 = 4; table order: logs, wheat, cobble
-		var t = List.of(item("cobblestone", 200, 0, 0), item("wheat", 144, 0, 0), item("oak_log", 128, 0, 0));
+		// 4 lots each: wheat 144 -> 80 = 4, cobble 128 -> 64 = 4, oak log 96 -> 32 = 4; table order: logs, wheat, cobble
+		var t = List.of(item("cobblestone", 128, 0, 0), item("wheat", 144, 0, 0), item("oak_log", 96, 0, 0));
 		assertEquals("minecraft:oak_log", sell(MarketPlanner.decide(in(t, Reserves.DEFAULT, 0, 0))).id());
-		var u = List.of(item("cobblestone", 200, 0, 0), item("wheat", 144, 0, 0));
+		var u = List.of(item("cobblestone", 128, 0, 0), item("wheat", 144, 0, 0));
 		assertEquals("minecraft:wheat", sell(MarketPlanner.decide(in(u, Reserves.DEFAULT, 0, 0))).id());
 	}
 
@@ -58,7 +58,7 @@ class MarketPlannerTest {
 			sales++;
 			assertTrue(cobble >= 64);
 		}
-		assertEquals(4, sales);
+		assertEquals(8, sales); // lot 16 since M26 H3 (it was 4 sales of 32)
 		assertEquals(72, cobble);
 	}
 

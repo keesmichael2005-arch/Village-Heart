@@ -56,4 +56,21 @@ class ActionScheduleTest {
 		s.markSetupDone();
 		assertEquals(1, s.actionsDone());
 	}
+
+	@Test
+	void standingOrderWaitsForItsConditionThenRunsOnce() {
+		ScenarioAction order = new ScenarioAction("command", 1, 200, Map.of("command", "order", "when", "tier>=village"));
+		ActionSchedule s = new ActionSchedule(List.of(a(1, 0), order));
+		assertEquals(1, s.pendingConditional());
+		assertEquals(List.of("d1t0"), ids(s.due(0, w -> false)));
+		assertEquals(List.of(), ids(s.due(100, w -> true)), "not due yet");
+		assertEquals(List.of(), ids(s.due(24000 * 3, w -> false)), "due but the condition fails");
+		assertEquals(1, s.pendingConditional());
+		assertEquals(List.of("d1t200"), ids(s.due(24000 * 4, w -> w.equals("tier>=village"))));
+		assertEquals(0, s.pendingConditional());
+		assertEquals(List.of(), ids(s.due(24000 * 5, w -> true)), "once");
+		assertEquals(1, s.actionsDone(), "standing orders are not in the sequence count");
+		s.retry(order);
+		assertEquals(List.of("d1t200"), ids(s.due(24000 * 5, w -> true)), "a retried order comes back");
+	}
 }

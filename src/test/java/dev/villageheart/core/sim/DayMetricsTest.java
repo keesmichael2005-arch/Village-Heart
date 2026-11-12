@@ -84,4 +84,14 @@ class DayMetricsTest {
 		assertEquals(0.0, t.value("stockpile.tag.minecraft:logs", 1).getAsDouble());
 		assertTrue(t.value("nonsense", 1).isEmpty());
 	}
+
+	@Test
+	void foodOutIsOneWhenUnderADayIsLeft() {
+		assertEquals(1.0, SimFixtures.day(1, 8).flatten().get("food.out"), "days_left 0.0 is out of food");
+	}
+
+	@Test
+	void wagesStrikingIsZeroWithoutStrikers() {
+		assertEquals(0.0, SimFixtures.day(1, 8).flatten().get("wages.striking"));
+	}
 }

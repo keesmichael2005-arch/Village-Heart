@@ -216,9 +216,9 @@ The haul depends on the shaft's deepest Y, at level 1 with a stone pickaxe. A wo
 
 | Depth | Each haul |
 |---|---|
-| Y ≥ 40 | 16 cobblestone, 2 coal, 1 raw copper, 30% chance of 1 raw iron |
-| 0 ≤ Y < 40 | 12 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
-| Y < 0 | 12 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pickaxe or better) |
+| Y ≥ 40 | 24 cobblestone, 2 coal, 1 raw copper, 30% chance of 1 raw iron |
+| 0 ≤ Y < 40 | 18 cobblestone, 2 coal, 2 raw copper, 2 raw iron, 20% redstone, 10% lapis |
+| Y < 0 | 18 cobbled deepslate, 1 coal, 3 raw iron, 30% redstone, 20% lapis, 20% raw gold, 2% diamond (iron pickaxe or better) |
 
 A redstone or lapis hit is 4 of that item. Gold and diamond hits are 1. What does not fit is delivered later, never dropped on the ground. If the rails are removed, the miner comes up and the Mine goes invalid until a Mineshaft is linked again.
 
@@ -332,17 +332,17 @@ One lot is one emerald:
 
 | Goods | Count in one lot |
 |---|---|
-| Any natural log | 16 |
+| Any natural log | 8 |
 | Wheat | 20 |
 | Carrots | 22 |
 | Potatoes | 26 |
 | Beetroot | 15 |
-| Cobblestone or cobbled deepslate | 32 |
-| Coal | 15 |
-| Raw iron | 8 |
-| Raw copper | 20 |
+| Cobblestone or cobbled deepslate | 16 |
+| Coal | 10 |
+| Raw iron | 6 |
+| Raw copper | 14 |
 | Iron ingot | 4 |
-| Leather | 6 |
+| Leather | 4 |
 | Any cooked meat or cooked fish | 10 |
 
 Not bought: bread, raw meat and raw fish, gold, diamonds, redstone, lapis, saplings, seeds, tools, and anything renamed, enchanted, or damaged.
@@ -353,8 +353,8 @@ Caps, reset when the day index changes:
 
 | | Emeralds per day |
 |---|---|
-| A merchant at level 1 / 2 / 3 | 8 / 12 / 16 |
-| That same stall | the same 8 / 12 / 16, so firing and rehiring does not reset it |
+| A merchant at level 1 / 2 / 3 | 16 / 20 / 24 |
+| That same stall | the same 16 / 20 / 24, so firing and rehiring does not reset it |
 | The whole village | **32** |
 
 Each sale is 2 XP. Unemployed villagers keep their vanilla trades. The Stockpile tab shows how many emeralds were sold today, and item counts that can still be sold are marked.
@@ -384,7 +384,7 @@ Natural ground, which the builder may clear, is dirt, stone, sand, snow, plants,
 
 Dirt, stone, or sand you placed in the open, outside any marked room, can be cleared, because it looks like terrain. The same is true of a pumpkin or melon patch. Mark a room you want kept, or do not confirm a site on top of it. Drops from what is cleared go to Storage.
 
-The builder reserves every material for the build in Storage, fetches about a stack at a time, clears the top layer first, and places from the bottom, working from the ring around the site rather than from inside it. Pace is **1 block per second** at level 1, faster with level and with needs met. Torches, then water, then the marker go in last, so a finished house is complete the first time it is checked. If something is short, the build pauses and the Buildings tab names it, for example "Needs 12 more planks". It resumes on its own after the planks arrive. Cancelling keeps the blocks already placed and consumes the blueprint. Firing the builder sends what they are carrying back to Storage.
+The builder reserves every material for the build in Storage, fetches about a stack at a time, clears the top layer first, and places from the bottom, working from the ring around the site rather than from inside it. Pace is **one block per 3.5 seconds** at level 1, faster with level and with needs met. Torches, then water, then the marker go in last, so a finished house is complete the first time it is checked. If something is short, the build pauses and the Buildings tab names it, for example "Needs 12 more planks". It resumes on its own after the planks arrive. Cancelling keeps the blocks already placed and consumes the blueprint. Firing the builder sends what they are carrying back to Storage.
 
 | Blueprint | Tier | What you get |
 |---|---|---|

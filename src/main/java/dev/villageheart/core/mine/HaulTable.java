@@ -21,13 +21,13 @@ public final class HaulTable {
 			LAPIS = "minecraft:lapis_lazuli", RAW_GOLD = "minecraft:raw_gold", DIAMOND = "minecraft:diamond";
 
 	private static final List<HaulEntry> HIGH = List.of(
-			fixed(COBBLE, 16), fixed(COAL, 2), fixed(RAW_COPPER, 1),
+			fixed(COBBLE, 24), fixed(COAL, 2), fixed(RAW_COPPER, 1),
 			chance(RAW_IRON, 1, 0.30));
 	private static final List<HaulEntry> MID = List.of(
-			fixed(COBBLE, 12), fixed(COAL, 2), fixed(RAW_COPPER, 2), fixed(RAW_IRON, 2),
+			fixed(COBBLE, 18), fixed(COAL, 2), fixed(RAW_COPPER, 2), fixed(RAW_IRON, 2),
 			chance(REDSTONE, 4, 0.20), chance(LAPIS, 4, 0.10));
 	private static final List<HaulEntry> DEEP = List.of(
-			fixed(DEEPSLATE, 12), fixed(COAL, 1), fixed(RAW_IRON, 3),
+			fixed(DEEPSLATE, 18), fixed(COAL, 1), fixed(RAW_IRON, 3),
 			chance(REDSTONE, 4, 0.30), chance(LAPIS, 4, 0.20), chance(RAW_GOLD, 1, 0.20),
 			new HaulEntry(DIAMOND, 1, 0.02, Optional.of(ToolTier.IRON)));
 

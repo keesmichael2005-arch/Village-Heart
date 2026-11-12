@@ -127,7 +127,14 @@ public final class RaidSim {
 			v.setBaby(false);
 			v.setPersistenceRequired();
 			HeartLocation heart = village.heart();
-			v.snapTo(heart.x() + dx + 0.5, heart.y() + 1, heart.z() + dz + guard - 1 + 0.5, 0, 0);
+			int sx = heart.x() + dx, sz = heart.z() + dz + guard - 1;
+			int sy = heart.y() + 1;
+			// M26: the spot may lie inside ground a site action raised (the full scenario's site): a villager spawned in a block suffocates
+			if (!level.getBlockState(new BlockPos(sx, sy, sz)).getCollisionShape(level, new BlockPos(sx, sy, sz)).isEmpty()
+					|| !level.getBlockState(new BlockPos(sx, sy + 1, sz)).getCollisionShape(level, new BlockPos(sx, sy + 1, sz)).isEmpty()) {
+				sy = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, sx, sz);
+			}
+			v.snapTo(sx + 0.5, sy, sz + 0.5, 0, 0);
 			level.addFreshEntity(v);
 		}
 	}

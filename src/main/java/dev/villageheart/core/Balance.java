@@ -203,8 +203,11 @@ public final class Balance {
 	public static final int GATE_KEEPER_TICKS = 5;
 
 	// ---- builder and blueprints (M20) ----
-	/** Work-clock units per action (clearing a cell, placing a block): 20 at speed 1.0 = one block per second. */
-	public static final double BUILD_TICKS_PER_BLOCK = 20;
+	/**
+	 * Work-clock units per action (clearing a cell, placing a block): 70 at speed 1.0 = one block per 3.5 seconds at level 1, 2.8 s at level 2,
+	 * 2.3 s at level 3. Owner decision 2026-11-12 (M26): slower than the first 20 (one block a second); outside docs/M26-bounds.md's 10..30 on purpose.
+	 */
+	public static final double BUILD_TICKS_PER_BLOCK = 70;
 	/** The builder acts on a cell within this distance (3D, feet to cell centre, no line of sight). */
 	public static final double BUILD_REACH = 7.0;
 	/** A fetch trip takes one stack's worth of materials ... */
@@ -465,7 +468,7 @@ public final class Balance {
 	/** Work units a sale costs (600 ticks at speed 1.0, 480 at level 2, 400 at level 3). */
 	public static final double MERCHANT_SALE_UNITS = 600;
 	/** Emeralds a merchant (or its stall) may earn per day by level 1, 2, 3. Read through {@link #merchantDailyCap}. */
-	private static final int[] MERCHANT_DAILY_CAP = {8, 12, 16};
+	private static final int[] MERCHANT_DAILY_CAP = {16, 20, 24};
 	/** Emeralds the whole village's market earns per day, however many stalls (orchestrator decision, tunable in M26). */
 	public static final int MARKET_VILLAGE_DAILY_CAP = 32;
 	public static final int FOOD_RESERVE_DAYS = 3, ITEM_RESERVE = 64;

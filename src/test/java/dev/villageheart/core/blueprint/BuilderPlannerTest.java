@@ -116,13 +116,14 @@ class BuilderPlannerTest {
 	}
 
 	@Test
-	void paceIsOneBlockPerSecondAtLevelOne() {
+	void paceIsOneBlockPerBuildTicksAtLevelOne() { // M26: 70 ticks (3.5 s) a block, was 20 (one a second)
 		double speed = WorkSpeed.untooled(1, Needs.DEFAULT);
 		assertEquals(1.0, speed);
 		WorkClock clock = new WorkClock(Balance.BUILD_TICKS_PER_BLOCK);
 		int units = 0;
 		for (int t = 0; t < 2000; t++) units += clock.tick(speed);
-		assertEquals(100, units);
+		assertEquals((int) (2000 / Balance.BUILD_TICKS_PER_BLOCK), units);
+		assertTrue(Balance.BUILD_TICKS_PER_BLOCK >= 60 && Balance.BUILD_TICKS_PER_BLOCK <= 80, "owner: about one block per 3-4 seconds at level 1");
 		assertEquals(1.25, WorkSpeed.untooled(2, Needs.DEFAULT));
 	}
 }

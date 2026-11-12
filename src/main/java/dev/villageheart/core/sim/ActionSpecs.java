@@ -14,11 +14,16 @@ public final class ActionSpecs {
 	private ActionSpecs() {}
 
 	public static final Set<String> DOORS = Set.of("north", "south", "east", "west");
-	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target", "blast_furnace", "anvil", "builders_table");
+	public static final Set<String> CONTENTS = Set.of("bed", "light", "chest", "composter", "chopping_block", "smoker", "crafting_table", "grindstone", "target", "blast_furnace", "anvil", "builders_table", "stonecutter", "fletching_table", "market_stall");
+	/** The standing-order conditions: the village has reached at least this tier. */
+	public static final Set<String> WHEN = Set.of("tier>=village", "tier>=town");
 	public static final Set<String> CROPS = Set.of("carrots", "potatoes", "wheat", "beetroots");
 
 	/** @throws IllegalArgumentException naming the bad field; unknown action types are not this class's business. */
 	public static void validate(String type, Map<String, Object> f) {
+		if (f.containsKey("when")) {
+			if (!(f.get("when") instanceof String w) || !WHEN.contains(w)) throw new IllegalArgumentException("when must be one of " + new java.util.TreeSet<>(WHEN) + ": " + f.get("when"));
+		}
 		switch (type) {
 			case "site" -> {
 				int[] size = ints(f, "size", 2, 1, 96);
@@ -75,7 +80,11 @@ public final class ActionSpecs {
 				String t = str(f, "tier");
 				if (!java.util.List.of("hamlet", "village", "town").contains(t)) throw new IllegalArgumentException("tier must be hamlet, village or town: " + t);
 			}
-			case "training_yard" -> ints(f, "at", 2, 0, 200);
+			case "training_yard", "hunting_ground" -> ints(f, "at", 2, 0, 200);
+			case "mineshaft" -> {
+				ints(f, "at", 2, 0, 200);
+				integer(f, "depth", 14, 12, 40);
+			}
 			case "wall_ring" -> {
 				ints(f, "size", 2, 8, 200);
 				integer(f, "gate", 0, 1, 198);

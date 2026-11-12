@@ -9,6 +9,8 @@ public final class PaidSource {
 	private PaidSource() {}
 
 	public static boolean paid(MinecraftServer server, WorkerRecord rec) {
-		return !dev.villageheart.economy.Wages.onStrike(server, rec.villager());
+		// M26-R: a merchant never strikes (core.economy.StrikeRules), so it counts as paid and keeps working while its wage is owed
+		boolean mayStrike = dev.villageheart.core.worker.JobType.byId(rec.jobId()).map(dev.villageheart.core.economy.StrikeRules::mayStrike).orElse(true);
+		return !mayStrike || !dev.villageheart.economy.Wages.onStrike(server, rec.villager());
 	}
 }

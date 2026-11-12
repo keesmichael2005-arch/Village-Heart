@@ -269,6 +269,9 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		for (Map.Entry<String, Long> e : workerStatus.entrySet()) m.put("workers.status." + e.getKey(), (double) e.getValue());
 		m.put("food.nutrition", (double) foodNutrition);
 		m.put("food.days_left", foodDaysLeft);
+		// M26: 1 when the stock cannot feed the village one more dinner (under one day left; nobody to feed also counts). days_left is a ratio that
+		// decays towards 0 and is never exactly 0, so "food days left is 0" is read as "under 1" (assert with zerorun(1 - food.out)).
+		m.put("food.out", Double.isNaN(foodDaysLeft) || foodDaysLeft < 1.0 ? 1.0 : 0.0);
 		m.put("food.dinners", (double) needs.dinners());
 		m.put("food.diners", (double) needs.diners());
 		m.put("food.fed", (double) needs.fed());
@@ -285,6 +288,8 @@ public record DayMetrics(int day, long gameTime, boolean claimed,
 		m.put("wages.paid", (double) wages.paid());
 		m.put("wages.spent", (double) wages.spent());
 		m.put("wages.strikers", (double) wages.strikers());
+		// M26-R: 1 on a day that ends with anybody on strike (assert a strike never lasts long with zerorun(1 - wages.striking))
+		m.put("wages.striking", wages.strikers() > 0 ? 1.0 : 0.0);
 		m.put("golems.vanilla_blocked", (double) golems.vanillaBlocked());
 		m.put("golems.in_claim", (double) golems.inClaim());
 		m.put("deaths.total", (double) deaths.size());

@@ -817,7 +817,7 @@ public class BuildGameTests {
 
 	// ---- T-L2-11 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:build_player_block", structure = YARD, skyAccess = true, maxTicks = 20000)
+	@GameTest(environment = "villageheart-gametest:build_player_block", structure = YARD, skyAccess = true, maxTicks = 70000)
 	public void playerBlockAppearsMidBuild(GameTestHelper h) {
 		Blueprint bp = Blueprints.SMALL_HOUSE;
 		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
@@ -987,7 +987,7 @@ public class BuildGameTests {
 
 	// ---- T-L2-13 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:build_farm_plot", structure = YARD, skyAccess = true, maxTicks = 40000)
+	@GameTest(environment = "villageheart-gametest:build_farm_plot", structure = YARD, skyAccess = true, maxTicks = 70000)
 	public void farmPlotBuilt(GameTestHelper h) {
 		Blueprint bp = Blueprints.FARM_PLOT;
 		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
@@ -1005,7 +1005,7 @@ public class BuildGameTests {
 				.thenExecute(() -> {
 					long ticks = h.getTick() - t0[0];
 					System.out.println("[m20] farm plot finished after " + ticks + " ticks: " + log[0].places + " places, " + log[0].clears + " clears");
-					h.assertTrue(ticks < Balance.DAY_TICKS, "within one day: " + ticks);
+					h.assertTrue(ticks < 2 * Balance.DAY_TICKS, "within two days (M26: a block takes 70 ticks, so one day is no longer enough): " + ticks);
 					h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
 					checkFarm(h, bp, pl, 0);
 					BlockPos gate = BuildTestSupport.cell(h, bp, pl, 5, 1, 0);
@@ -1267,7 +1267,7 @@ public class BuildGameTests {
 
 	// ---- T-L2-15 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:build_two_builders", structure = YARD, skyAccess = true, maxTicks = 40000)
+	@GameTest(environment = "villageheart-gametest:build_two_builders", structure = YARD, skyAccess = true, maxTicks = 70000)
 	public void twoBuildersTwoBuilds(GameTestHelper h) {
 		Blueprint bp = Blueprints.SMALL_HOUSE;
 		BlockPos groundA = new BlockPos(10, -1, 22), groundB = new BlockPos(22, -1, 22);
@@ -1276,9 +1276,13 @@ public class BuildGameTests {
 		UUID[] ids = new UUID[2];
 		boolean[] distinct = new boolean[1];
 		boolean[] watch = new boolean[1];
+		long[] watchedAt = {Long.MAX_VALUE};
 		WorkerTestSupport.begin(h);
 		h.onEachTick(() -> {
 			if (!watch[0]) return;
+			// M26: at 70 ticks a block the builds outlast the work day; once work ends the builders drop their claims in any order, and the
+			// next morning they pick them up in any order. The oldest-first rule is checked over the first work day (1000 -> 11000).
+			if (h.getTick() - watchedAt[0] > 9000) return;
 			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
 			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
 			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
@@ -1301,6 +1305,7 @@ public class BuildGameTests {
 			BuildTestSupport.hireBuilder(h);
 			h.getLevel().setDayTime(1000);
 			watch[0] = true;
+			watchedAt[0] = h.getTick();
 		}).thenWaitUntil(() -> h.assertTrue(distinct[0], "each builder claims its own build")).thenWaitUntil(() -> {
 			BuildTestSupport.assertHouseGreen(h, bp, plA);
 			BuildTestSupport.assertHouseGreen(h, bp, plB);
