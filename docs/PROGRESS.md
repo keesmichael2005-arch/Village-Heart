@@ -1136,3 +1136,13 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
   - `blockerMoves = blocking != null`: the near-marker wall test "went away against a wall".
 - Full `scripts/verify.sh` at ed1db90: exit 0 (L2 414 tests). `two_hunters_one_ground` alone: 5 of 5, 197 ticks each.
 - Next: orchestrator merge. Advisories from r2 remain: `deposited_settled` arg count, "1 workers", `mover()` scope.
+
+## 2026-11-12: M19 review round 3 (verifier)
+- Verdict FAIL, 1 blocking item (`docs/reviews/M19-r3.md`). Merged `origin/dev` (`497a357`; the sim metrics carry both dev's `tier` and M19's `golems`).
+- The r2 blocking fix holds. Both refund mutants (smith and self-craft) hang the server (killed at 240 s), and the real code passes. A malformed id is also dropped with a WARN. No other saved-id-to-stack loop exists.
+- r2 items 2 and 3 are not fixed. Both are acceptable and were moved to BACKLOG (From M19-r3), together with an M19a `addItem` leftover gap in `SelfCraftJob`.
+- Full verify exit 1. L1 passed, and L2 passed all 457 tests. L4 failed on `SmithClientTests.smithyGolem` ("blast furnace is not lit on the client"), and the 2-player session never ran after the abort.
+  - Root cause: `SmithySystem.sweep` (every 100 ticks) puts out the test's state-only lit furnace.
+  - Alone it failed 2 of 3 after the merge and 3 of 3 before it, and passed 2 of 2 with the sweep disabled.
+- `golemWithoutIronWaits` alone: 3 of 3.
+- Next: builder round 4. Give the scene furnace real burn time, run the smith L4 test 5 of 5 alone, then a full verify. Blockers: none.
