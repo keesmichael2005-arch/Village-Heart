@@ -178,9 +178,9 @@ public class MarketGameTests {
 			hire(h, 0);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(treasury(h) >= 1, "one sale"));
-		seq = seq.thenIdle(1300).thenExecute(() -> {
-			h.assertValueEqual(1, treasury(h), "200 - 100 reserved - 64 = 36: one lot");
-			h.assertValueEqual(200L - LOT, count(h, plain), "plain cobblestone");
+		seq = seq.thenIdle(1300 * (36 / LOT)).thenExecute(() -> {
+			h.assertValueEqual(36 / LOT, treasury(h), "200 - 100 reserved - 64 = 36: whole lots");
+			h.assertValueEqual(200L - (long) (36 / LOT) * LOT, count(h, plain), "plain cobblestone");
 			h.assertValueEqual(40L, count(h, namedKey), "the renamed stack is the player's");
 			Stockpiles.reservations(h.getLevel().getServer()).release(fakeBuild);
 		});
