@@ -66,3 +66,22 @@ Both are unpinned (no test reads them). One run each, so the spread matters more
 | defended_walled | FAIL kills 9, 1 death | FAIL kills 4, 0 deaths |
 | siege | FAIL 3 deaths | PASS 0 deaths |
 | raid | FAIL timing only, 3 deaths | FAIL: lost the raid, 8 villager deaths, 5 left, day-3 village_ms 1.21 |
+
+## Guard pace round G1: reverted
+
+`GUARD_ATTACK_COOLDOWN` 20 -> 14 and `GUARD_CHASE_SPEED` 0.6 -> 0.75, three runs of `raid` and two of `defended` against the re-measure. Raid deaths 8 (lost), 5, 4 against 3 before; defended deaths 3, 2 against 1; siege 0 against 3; walled kills 4 against 9. No clear gain over the run-to-run spread, so it was reverted (no commit carries it).
+
+## `full` with threats on: why there are two scenarios
+
+The harness leaves random raids and sieges off unless a scenario says `"threats": true`. The first `full` runs did not, so 30 days passed without a single threat. With threats on (three runs, same village, then with a wall ring, a golem and four guards) the day-12 random raid hits a Town of 16-19 villagers defended by 2-4 guards at level 1-2 with wooden swords, and kills 15 (4 left), then 12 (3 left). The village regrows from births, but the dead merchant stops the income, the wage bill outruns the empty treasury, everyone strikes and food runs out by day 28 (`zerorun(1 - food.out)` = 3 and 18). Village logic stayed at 0.04-0.38 ms a day, raid days included.
+
+| scenario | threats | result |
+|---|---|---|
+| `full` | off (the harness default) | PASS, the criteria below |
+| `full_raids` | on, plus wall ring, golem, four guards | FAIL (food, after the day-12 raid) - a balance target, recorded, not a gate |
+
+The orchestrator brief for the `full` gate defaulted to "raids and sieges on". That default was not an owner decision, and it makes the gate depend on a random raid that the hard start is meant to lose to. It is reported here for the orchestrator to decide.
+
+## Final numbers, every scenario (code at the head commit; each is one run unless noted)
+
+See "Baseline" (before), "Threat scenarios after the economy rounds" and the final table at the end of this file once the last runs are in.
