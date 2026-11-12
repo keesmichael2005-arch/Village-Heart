@@ -14,8 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
@@ -90,7 +88,8 @@ public final class SmithCrafts {
 			}
 		}
 		for (ItemCount ic : sc.craft().committed()) {
-			Item it = BuiltInRegistries.ITEM.getValue(Identifier.parse(ic.id()));
+			Item it = dev.villageheart.worker.gear.SelfCrafts.knownItem(ic.id(), "Smith craft refund at " + furnace);
+			if (it == null) continue;
 			int remaining = ic.count();
 			while (remaining > 0) {
 				ItemStack stack = new ItemStack(it, Math.min(remaining, it.getDefaultMaxStackSize()));

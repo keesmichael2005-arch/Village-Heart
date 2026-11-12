@@ -2155,4 +2155,31 @@ public class SmithGameTests {
 		}
 		h.assertTrue(willing >= 5, "at least five villagers would spawn a golem, got " + willing);
 	}
+
+	// ---- M19 round 2: unknown saved item ids ------------------------------------------------------------
+
+	/**
+	 * A saved craft whose committed list holds an id that is not a registered item (a removed or modded item) used to hang the server:
+	 * the id resolved to AIR, an AIR stack reports a count of 0, and the refund loop never ended. The record is refund-pending, so the 100-tick
+	 * {@code retryPending} sweep refunds it. The unknown id is dropped with a warning and everything else comes back.
+	 */
+	@GameTest(environment = "villageheart-gametest:smith_unknown_id", structure = YARD, skyAccess = true, maxTicks = 600)
+	public void refundSkipsUnknownItemId(GameTestHelper h) {
+		HeartLocation furnace = BuildingTestSupport.loc(h, SmithTestSupport.furnace());
+		long[] sticks = new long[1];
+		scene(h).thenExecute(() -> {
+			sticks[0] = count(h, Items.STICK);
+			dev.villageheart.core.gear.OrderKey key = new dev.villageheart.core.gear.OrderKey(
+					BuildingTestSupport.loc(h, SmithTestSupport.smithyMarker()), GearNeed.PICKAXE, 0);
+			var craft = new dev.villageheart.core.smith.SmithCraft(new dev.villageheart.core.gear.GearCraft("minecraft:stone_pickaxe", key, 100,
+					List.of(new dev.villageheart.core.gear.ItemCount("minecraft:no_such_item", 3), new dev.villageheart.core.gear.ItemCount("minecraft:stick", 2))),
+					furnace, true);
+			VillageClaims.data(h.getLevel().getServer()).update(vs -> vs.withSmithCraft(furnace, craft));
+		}).thenWaitUntil(() -> {
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).map(v -> v.smithCraft(furnace).isEmpty()).orElse(false), "the record is still there");
+		}).thenExecute(() -> {
+			h.assertValueEqual(sticks[0] + 2, count(h, Items.STICK), "the sticks were refunded");
+			VillageTestSupport.done(h);
+		});
+	}
 }

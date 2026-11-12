@@ -518,7 +518,8 @@ public final class SelfCraftJob {
 			st.block = dev.villageheart.core.gear.BlockReason.NO_SPACE;
 		}
 		for (ItemCount ic : leftoversOf(sc, recipe)) {
-			Item it = item(ic.id());
+			Item it = SelfCrafts.knownItem(ic.id(), "Self-craft leftovers");
+			if (it == null) continue;
 			int left = ic.count();
 			while (left > 0) {
 				ItemStack s = new ItemStack(it, Math.min(left, it.getDefaultMaxStackSize()));
