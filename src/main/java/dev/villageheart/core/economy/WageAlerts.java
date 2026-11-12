@@ -22,7 +22,7 @@ public final class WageAlerts {
 		}
 		if (bill > 0 && treasury < bill) {
 			out.add(new AlertLine(AlertCode.TREASURY_SHORT, Severity.WARNING, new TextLine(ALERT + "treasury_short",
-					"Treasury short: %s of %s emeralds for tomorrow's wages", List.of(Integer.toString(treasury), Integer.toString(bill)))));
+					"Treasury short: %s of %s for tomorrow's wages", List.of(Integer.toString(treasury), dev.villageheart.core.Plural.emeralds(bill)))));
 		}
 		return out;
 	}

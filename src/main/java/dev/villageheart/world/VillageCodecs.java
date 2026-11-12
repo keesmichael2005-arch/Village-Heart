@@ -531,8 +531,10 @@ public final class VillageCodecs {
 					? Optional.of(w.lastDinnerDay().getAsLong()) : Optional.empty()),
 			PAYROLL.lenientOptionalFieldOf("payroll").forGetter(WorldClaim::payroll),
 			// written only when it differs from the defaults, so a save of a village with no market activity reads as before M22
-			MARKET.lenientOptionalFieldOf("market").forGetter(w -> w.market().equals(dev.villageheart.core.market.MarketState.initial()) ? Optional.empty() : Optional.of(w.market()))
-	).apply(i, (schema, village, reserved, pending, dinner, payroll, market) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			MARKET.lenientOptionalFieldOf("market").forGetter(w -> w.market().equals(dev.villageheart.core.market.MarketState.initial()) ? Optional.empty() : Optional.of(w.market())),
+			// M23: nested on the world claim (not in RAW); written only when there is something to remember
+			GrowthCodecs.GROWTH.lenientOptionalFieldOf("growth").forGetter(w -> w.growth().equals(dev.villageheart.core.growth.GrowthState.EMPTY) ? Optional.empty() : Optional.of(w.growth()))
+	).apply(i, (schema, village, reserved, pending, dinner, payroll, market, growth) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
 			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty(), payroll,
-			market.orElse(dev.villageheart.core.market.MarketState.initial()))));
+			market.orElse(dev.villageheart.core.market.MarketState.initial()), growth.orElse(dev.villageheart.core.growth.GrowthState.EMPTY))));
 }

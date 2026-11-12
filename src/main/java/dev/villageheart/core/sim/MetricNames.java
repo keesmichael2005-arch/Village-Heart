@@ -9,6 +9,7 @@ public final class MetricNames {
 
 	public static final Set<String> KNOWN = Set.of(
 			"day", "claimed", "population", "adults", "babies", "employed",
+			"village.tier", "tier.fed_streak",
 			"buildings.valid", "buildings.invalid",
 			"stockpile.total", "stockpile.distinct",
 			"food.nutrition", "food.days_left", "treasury",

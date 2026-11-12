@@ -15,7 +15,10 @@
 		"NodeEvaluatorAccess",
 		"VillageSiegeMixin",
 		"VillagerBrainMixin",
-		"WalkNodeEvaluatorMixin"
+		"WalkNodeEvaluatorMixin",
+		"VillagerMakeLoveMixin",
+		"VillagerBreedingGateMixin",
+		"VillagerFoodAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1

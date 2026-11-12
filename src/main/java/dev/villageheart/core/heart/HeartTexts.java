@@ -38,8 +38,8 @@ public final class HeartTexts {
 		EN.put(PREFIX + "overview.workers", "Workers %s / %s slots");
 		EN.put(PREFIX + "overview.food", "Food: %s days");
 		EN.put(PREFIX + "overview.food_none", "Food: -");
-		EN.put(PREFIX + "overview.treasury", "Treasury: %s emeralds");
-		EN.put(PREFIX + "overview.wages", "Wages tomorrow: %s emeralds");
+		EN.put(PREFIX + "overview.treasury", "Treasury: %s");
+		EN.put(PREFIX + "overview.wages", "Wages tomorrow: %s");
 		EN.put(PREFIX + "overview.wages_none", "Wages tomorrow: -");
 		EN.put(PREFIX + "deposit_all", "Deposit all");
 		EN.put(PREFIX + "deposit_all.tip", "Deposit every emerald you carry");
@@ -86,7 +86,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "stock.line2_none", "Food: %s nutrition");
 		EN.put(PREFIX + "stock.more", "+%s more kinds");
 		EN.put(PREFIX + "stock.count", "\u00d7 %s");
-		EN.put(PREFIX + "stock.market_sold", "Market: sold %s emeralds today");
+		EN.put(PREFIX + "stock.market_sold", "Market: sold %s today");
 		EN.put(PREFIX + "stock.market_none", "No merchant: nothing is sold");
 		EN.put(PREFIX + "stock.for_sale", "Up to %s for sale above the reserve");
 		EN.put(PREFIX + "reserve.label_food", "Keep: food");

@@ -27,6 +27,9 @@ public final class WorldClaim {
 	/** The market's reserve settings and today's sales (M22); belongs to the village, so a new claim starts with the defaults. */
 	private dev.villageheart.core.market.MarketState market = dev.villageheart.core.market.MarketState.initial();
 
+	/** Population growth (M23): today's breeding licence, the last birth and the pairs that could not meet; belongs to the village. */
+	private dev.villageheart.core.growth.GrowthState growth = dev.villageheart.core.growth.GrowthState.EMPTY;
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -60,6 +63,17 @@ public final class WorldClaim {
 		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay, payroll);
 		this.market = Objects.requireNonNull(market, "market");
 	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
+			java.util.OptionalLong lastDinnerDay, Optional<dev.villageheart.core.economy.Payroll> payroll, dev.villageheart.core.market.MarketState market,
+			dev.villageheart.core.growth.GrowthState growth) {
+		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay, payroll, market);
+		this.growth = Objects.requireNonNull(growth, "growth");
+	}
+
+	public dev.villageheart.core.growth.GrowthState growth() { return growth; }
+
+	public void setGrowth(dev.villageheart.core.growth.GrowthState g) { growth = Objects.requireNonNull(g, "growth"); }
 
 	public dev.villageheart.core.market.MarketState market() { return market; }
 
@@ -104,6 +118,7 @@ public final class WorldClaim {
 			lastDinnerDay = null;
 			payroll = null;
 			market = dev.villageheart.core.market.MarketState.initial();
+			growth = dev.villageheart.core.growth.GrowthState.EMPTY;
 		}
 		return r;
 	}
@@ -116,6 +131,7 @@ public final class WorldClaim {
 		lastDinnerDay = null;
 		payroll = null;
 		market = dev.villageheart.core.market.MarketState.initial();
+		growth = dev.villageheart.core.growth.GrowthState.EMPTY;
 		return Optional.of(released);
 	}
 
@@ -137,12 +153,13 @@ public final class WorldClaim {
 		lastDinnerDay = null;
 		payroll = null;
 		market = dev.villageheart.core.market.MarketState.initial();
+		growth = dev.villageheart.core.growth.GrowthState.EMPTY;
 	}
 
 	@Override public boolean equals(Object o) {
 		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
 				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay)
-				&& Objects.equals(payroll, w.payroll) && market.equals(w.market);
+				&& Objects.equals(payroll, w.payroll) && market.equals(w.market) && growth.equals(w.growth);
 	}
 
 	@Override public int hashCode() {

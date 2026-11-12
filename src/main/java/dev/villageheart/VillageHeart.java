@@ -50,6 +50,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:wages", dev.villageheart.economy.WageSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:kitchen", dev.villageheart.worker.cook.KitchenSystem.INSTANCE);
 		dev.villageheart.tier.Tiers.register();
+		dev.villageheart.growth.Growth.register(); // M23: after the tiers' dawn listener, and after the needs system
 		dev.villageheart.siege.SiegeSystem.register();
 		dev.villageheart.world.VillageSystems.register("villageheart:siege", dev.villageheart.siege.SiegeSystem.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:defences", dev.villageheart.defence.DefenceSystem.INSTANCE);

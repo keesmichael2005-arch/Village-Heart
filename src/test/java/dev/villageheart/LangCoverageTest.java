@@ -160,14 +160,16 @@ class LangCoverageTest {
 	@Test
 	void treasuryMessages() throws Exception {
 		Map<String, Object> lang = lang();
-		assertEquals("Deposited %s emeralds. Treasury: %s", lang.get("message.villageheart.treasury.deposited"));
-		assertEquals("Deposited %s emeralds. Paid %s striking workers. Treasury: %s", lang.get("message.villageheart.treasury.deposited_settled"));
+		assertEquals("Deposited %s. Treasury: %s", lang.get("message.villageheart.treasury.deposited"));
+		assertEquals("Deposited %s. Paid %s striking workers. Treasury: %s", lang.get("message.villageheart.treasury.deposited_settled"));
 		assertEquals("Only Residents and above can deposit emeralds", lang.get("message.villageheart.treasury.not_allowed"));
-		assertEquals("Withdrew %s emeralds. Treasury: %s", lang.get("message.villageheart.treasury.withdrawn"));
+		assertEquals("Withdrew %s. Treasury: %s", lang.get("message.villageheart.treasury.withdrawn"));
 		for (String k : new String[] {"no_emeralds", "full", "empty", "strike_notice", "strike_notice_one", "get", "set", "add"}) {
 			assertTrue(lang.containsKey("message.villageheart.treasury." + k), k);
 		}
 		assertEquals("On strike", lang.get("gui.villageheart.heart.activity.on_strike"));
+		assertEquals("Treasury: %s", lang.get("gui.villageheart.heart.overview.treasury"));
+		assertEquals("Wages tomorrow: %s", lang.get("gui.villageheart.heart.overview.wages"));
 		for (String k : new String[] {"deposit_all", "withdraw_one", "withdraw_stack"}) assertTrue(lang.containsKey("gui.villageheart.heart." + k), k);
 	}
 }
