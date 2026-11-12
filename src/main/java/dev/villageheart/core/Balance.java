@@ -267,7 +267,7 @@ public final class Balance {
 	public static final int PENDING_START_MIN = 2000;
 	public static final int PENDING_START_MAX = 11000;
 	public static final int EARLY_RAID_WAVES = 2;
-	public static final int RAID_FULL_GUARDS = 6; // M26-R: 4 -> 6 (and a Town no longer skips it, see RaidPlans)
+	public static final int RAID_FULL_GUARDS = 4;
 	public static final int REWARD_CAP = 40;
 	public static final int SIEGE_SPAWN_MIN = 32;
 	public static final int SIEGE_SPAWN_PAD = 12;

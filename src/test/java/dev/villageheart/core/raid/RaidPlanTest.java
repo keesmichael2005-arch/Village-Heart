@@ -2,13 +2,12 @@ package dev.villageheart.core.raid;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.villageheart.core.Balance;
 import dev.villageheart.core.Tier;
 import dev.villageheart.core.siege.ThreatRules;
 import dev.villageheart.core.siege.ThreatState;
 import org.junit.jupiter.api.Test;
 
-/** T-L1-27. A young village, or a town with fewer than Balance.RAID_FULL_GUARDS qualified guards, gets a short raid. Enough guards get the full one (M26-R: a town gets no full raid for free). */
+/** T-L1-27. A young village gets a short raid. Four guards, or a town, get the full one. */
 class RaidPlanTest {
 	@Test
 	void youngVillageIsCappedAndAFullVillageIsNot() {
@@ -17,17 +16,14 @@ class RaidPlanTest {
 		assertEarly(RaidPlans.of(Tier.VILLAGE, 1, 8, RaidOrigin.RANDOM), 1);
 		assertEarly(RaidPlans.of(Tier.VILLAGE, 0, 8, RaidOrigin.RANDOM), 1);
 
-		assertEarly(RaidPlans.of(Tier.VILLAGE, Balance.RAID_FULL_GUARDS - 1, 8, RaidOrigin.RANDOM), 2);
-		RaidPlan full = RaidPlans.of(Tier.VILLAGE, Balance.RAID_FULL_GUARDS, 8, RaidOrigin.RANDOM);
+		RaidPlan full = RaidPlans.of(Tier.VILLAGE, 4, 8, RaidOrigin.RANDOM);
 		assertEquals(0, full.waveCap());
 		assertFalse(full.early());
 		assertEquals(3, full.omen());
 		assertEquals(4, full.extraVindicators());
 		assertEquals(2, full.extraRavagers());
 
-		assertEarly(RaidPlans.of(Tier.TOWN, 2, 8, RaidOrigin.RANDOM), 2);
-		assertEarly(RaidPlans.of(Tier.TOWN, 4, 8, RaidOrigin.RANDOM), 2);
-		RaidPlan town = RaidPlans.of(Tier.TOWN, Balance.RAID_FULL_GUARDS, 8, RaidOrigin.RANDOM);
+		RaidPlan town = RaidPlans.of(Tier.TOWN, 2, 8, RaidOrigin.RANDOM);
 		assertEquals(0, town.waveCap());
 		assertEquals(3, town.omen());
 
