@@ -218,7 +218,7 @@ public class ThreatShelterGameTests {
 	}
 
 	/**
-	 * A zombie siege starts: the bell rings, "The dead are coming!" is the title, and an unhired villager outside goes indoors.
+	 * A zombie siege starts: the bell rings, "The dead rise!" is the title, and an unhired villager outside goes indoors.
 	 * The siege's one zombie has its AI off and is invulnerable, so it stays where it spawned and the siege keeps running for the test.
 	 */
 	@GameTest(environment = "villageheart-gametest:threat_shelter_siege", structure = YARD, skyAccess = true, maxTicks = 5000)
@@ -270,6 +270,106 @@ public class ThreatShelterGameTests {
 					z -> z.getTags().contains(LureSlots.SIEGE_TAG))) z.discard();
 			finish(h);
 		});
+	}
+
+	/**
+	 * Owner rule: every villager in the claim goes indoors for a siege too, and stays there while it lasts. Two unhired villagers stand
+	 * outside, 12 to 25 blocks from a House with two beds. The siege starts: the bell rings once, both are in the House and in the mod's
+	 * shelter activity ({@link WorkerBrain#SHELTER}, held by {@link ShelterHold}), and for 650 ticks after the bell they never leave it or
+	 * drop the hold. Vanilla's own hide after a bell is short, so only {@code UnhiredShelter} keeps them in for a siege that lasts the
+	 * night. The siege ends: nobody is held any more.
+	 */
+	@GameTest(environment = "villageheart-gametest:threat_shelter_siege_hold", structure = YARD, skyAccess = true, maxTicks = 7000)
+	public void siegeKeepsUnhiredVillagersIndoors(GameTestHelper h) {
+		begin(h);
+		BlockPos house = new BlockPos(18, 0, 4);
+		Villager[] plain = new Villager[2];
+		RoomScan[] scan = new RoomScan[1];
+		long[] bell = new long[1];
+		GameTestSequence seq = safeDay(h, BuildingTestSupport.begin(h)).thenExecute(() -> {
+			nearHeart(h);
+			h.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
+			ensureDay(h);
+			LumberTestSupport.grass(h, 0, 0, 31, 31);
+			BuildingTestSupport.room(h, house, 5, 4);
+			WorkerTestSupport.bed(h, BuildingTestSupport.inside(house, 0, 0, 1));
+			WorkerTestSupport.bed(h, BuildingTestSupport.inside(house, 2, 0, 1));
+			h.setBlock(BuildingTestSupport.inside(house, 4, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, BuildingTestSupport.markerPos(house, 5), Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(house, 5), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenExecute(() -> {
+			scan[0] = Buildings.valid(h.getLevel().getServer(), BuildingType.HOUSE).get(0).latestScan().orElseThrow();
+			plain[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(24, 1, 20));
+			plain[1] = WorkerTestSupport.spawnVillager(h, new BlockPos(10, 1, 24));
+			for (Villager v : plain) {
+				h.assertTrue(!scan[0].contains(new Pos(v.getBlockX(), v.getBlockY(), v.getBlockZ())), "an unhired villager starts outside");
+				h.assertTrue(!ShelterHold.holds(v.getBrain()), "nobody is held before the siege");
+			}
+			ZombieSiegeGameTests.pad(h, ZombieSiegeGameTests.heartRel(h), 44);
+		});
+		// A chunk forced this tick is not entity-ticking yet, and a siege that finds no ticking cell on its first try does not try again.
+		seq = seq.thenIdle(100).thenExecute(() -> {
+			ZombieSiege.startNow(h.getLevel().getServer(), 1);
+			bell[0] = h.getLevel().getGameTime();
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the siege has its zombie", () -> {
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().siege().isPresent(), "no siege record yet");
+			List<Zombie> zombies = siegeZombies(h);
+			h.assertTrue(!zombies.isEmpty(), "no siege zombie");
+			// No AI keeps it where it spawned, and invulnerable keeps the daylight from burning it: a dead zombie ends the siege and with it the shelter.
+			for (Zombie z : zombies) {
+				z.setNoAi(true);
+				z.setInvulnerable(true);
+			}
+		});
+		seq = seq.thenExecute(() -> h.assertValueEqual(1, VillageBell.rings, "the siege rang the bell once"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "both unhired villagers are in the house, held in the shelter activity", () -> {
+			for (Zombie z : siegeZombies(h)) {
+				z.setNoAi(true);
+				z.setInvulnerable(true);
+			}
+			for (int i = 0; i < 2; i++) {
+				inside(h, plain[i], scan[0], "unhired " + (i + 1));
+				h.assertTrue(plain[i].getBrain().isActive(WorkerBrain.SHELTER) && ShelterHold.holds(plain[i].getBrain()),
+						"unhired " + (i + 1) + " is in the house but not held in the shelter activity: " + plain[i].getBrain().getActiveActivities());
+			}
+		});
+		// From here to 650 ticks after the bell the check is every tick, not a wait: a villager that walks out (or is let go) fails at once.
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getGameTime() - bell[0] >= 600, "waiting for vanilla's hide to have run out"));
+		seq = seq.thenExecuteFor(50, () -> {
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().siege().isPresent(), "the siege is still running");
+			h.assertTrue(h.getLevel().getGameTime() - bell[0] >= 600, "past vanilla's hide time");
+			for (Zombie z : siegeZombies(h)) {
+				z.setNoAi(true);
+				z.setInvulnerable(true);
+			}
+			for (int i = 0; i < 2; i++) {
+				inside(h, plain[i], scan[0], "unhired " + (i + 1) + " late");
+				h.assertTrue(plain[i].getBrain().isActive(WorkerBrain.SHELTER) && ShelterHold.holds(plain[i].getBrain()),
+						"unhired " + (i + 1) + " dropped out of the shelter " + (h.getLevel().getGameTime() - bell[0]) + " ticks after the bell: "
+								+ plain[i].getBrain().getActiveActivities());
+			}
+			h.assertTrue(ShelterHold.count() >= 2, "held brains " + ShelterHold.count());
+		});
+		// The siege counts a zombie as dead when it is there and not alive (a discarded one reads as unloaded), so kill it.
+		seq = seq.thenExecute(() -> {
+			for (Zombie z : siegeZombies(h)) {
+				z.setInvulnerable(false);
+				z.kill(h.getLevel());
+			}
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the siege ended and nobody is held", () -> {
+			h.assertTrue(VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().siege().isEmpty(), "the siege is still recorded");
+			for (Villager v : plain) h.assertTrue(!v.getBrain().isActive(WorkerBrain.SHELTER), "unhired still sheltering");
+			h.assertValueEqual(0, ShelterHold.count(), "held brains");
+		});
+		seq.thenExecute(() -> finish(h));
+	}
+
+	private static List<Zombie> siegeZombies(GameTestHelper h) {
+		return h.getLevel().getEntitiesOfClass(Zombie.class, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(160),
+				z -> z.getTags().contains(LureSlots.SIEGE_TAG));
 	}
 
 	/**

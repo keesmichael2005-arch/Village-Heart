@@ -13,7 +13,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Layer 4 for the owner's raid and siege titles (2026-11-11): a real client gets "A raid is starting!" the moment a raid on the claim
- * starts, and "The dead are coming!" when a siege does. Screenshots {@code raid_title} and {@code siege_title}. The siege title is
+ * starts, and "The dead rise!" when a siege does. Screenshots {@code raid_title} and {@code siege_title}. The siege title is
  * sent through the same {@link ThreatMessages} call the siege start makes: a siege needs ground 44 blocks out to spawn on, and what
  * the screenshot proves is how the title looks on a real client.
  */
@@ -69,6 +69,7 @@ final class ThreatTitleClientTests {
 					return 0;
 				});
 			}
+			assertTitleFits(context, ThreatWarnings.RAID_TITLE.key());
 			context.takeScreenshot("raid_title");
 			srv.computeOnServer(server -> {
 				Raid raid = server.overworld().getRaidAt(bell);
@@ -81,8 +82,21 @@ final class ThreatTitleClientTests {
 				return 0;
 			});
 			context.waitTicks(25);
+			assertTitleFits(context, ThreatWarnings.SIEGE_TITLE.key());
 			context.takeScreenshot("siege_title");
 			context.waitTicks(100);
+		}
+	}
+
+	/**
+	 * The title is drawn at 4 times the font size. Its rendered width must not exceed the GUI-scaled screen width
+	 * (the first "The dead are coming!" lost its first and last letters at the client-test size, 854 by 480).
+	 */
+	private static void assertTitleFits(ClientGameTestContext context, String key) {
+		int[] widths = context.computeOnClient(mc -> new int[] {
+				mc.font.width(net.minecraft.network.chat.Component.translatable(key)) * 4, mc.getWindow().getGuiScaledWidth()});
+		if (widths[0] > widths[1]) {
+			throw new AssertionError("the title " + key + " is " + widths[0] + " px wide on a " + widths[1] + " px screen: it does not fit");
 		}
 	}
 }

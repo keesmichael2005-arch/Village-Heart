@@ -79,7 +79,7 @@ public class SiegeLureGameTests {
 			h.assertTrue(p.getX() > X0 && p.getX() < X1 && p.getZ() > Z0 && p.getZ() < Z1, "not inside " + p);
 		}).thenExecute(() -> {
 			h.assertTrue(h.getTick() - t0[0] <= 3600, "inside took " + (h.getTick() - t0[0]));
-			VillageTestSupport.done(h);
+			finish(h);
 		});
 	}
 
@@ -114,7 +114,7 @@ public class SiegeLureGameTests {
 		seq.thenWaitUntil(() -> {
 			h.assertTrue(!creeper[0].isIgnited() && creeper[0].getSwellDir() <= 0, "the creeper lit by day");
 			h.assertTrue(h.getTick() - t0[0] >= 1200, "still day");
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-25b. A guard on duty and a player-built iron golem never take the breaching creeper as a target. */
@@ -144,7 +144,7 @@ public class SiegeLureGameTests {
 			h.assertTrue(!creeper[0].isAlive(), "the creeper has not blown");
 			h.assertTrue(creeper[0].getTags().contains(dev.villageheart.siege.CreeperBreachGoal.BREACHER), "it did not light itself");
 			h.assertTrue(westOpen(h), "the west wall is whole");
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-26. The blast hurts a villager and leaves the plank house behind the wall alone. */
@@ -167,7 +167,7 @@ public class SiegeLureGameTests {
 			for (BlockPos p : house) h.assertTrue(h.getBlockState(p).is(Blocks.OAK_PLANKS), "the house changed at " + p);
 			h.assertTrue(anyBreach(h), "the wall is whole");
 			h.assertTrue(!villager[0].isAlive() || villager[0].getHealth() < health[0], "the villager was not hurt");
-			VillageTestSupport.done(h);
+			finish(h);
 		});
 	}
 
@@ -204,7 +204,7 @@ public class SiegeLureGameTests {
 		}).thenExecute(() -> {
 			h.assertTrue(planned(h), "no repair planned");
 			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
-			VillageTestSupport.done(h);
+			finish(h);
 		});
 	}
 
@@ -243,7 +243,7 @@ public class SiegeLureGameTests {
 		}).thenExecute(() -> {
 			h.getLevel().getGameRules().set(SiegeGamerules.SIEGE_DAMAGE, true, h.getLevel().getServer());
 			h.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, true, h.getLevel().getServer());
-			VillageTestSupport.done(h);
+			finish(h);
 		});
 	}
 
@@ -265,7 +265,7 @@ public class SiegeLureGameTests {
 			mob[0].setPersistenceRequired();
 			t0[0] = h.getTick();
 		});
-		seq.thenWaitUntil(() -> vanilla(h, mob[0], t0[0])).thenExecute(() -> VillageTestSupport.done(h));
+		seq.thenWaitUntil(() -> vanilla(h, mob[0], t0[0])).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-22. Daytime does not lure. A running siege does, within 100 ticks. */
@@ -293,7 +293,7 @@ public class SiegeLureGameTests {
 		seq.thenWaitUntil(() -> h.assertTrue(LureSlots.holds(h.getLevel().getServer(), zombie[0]), "the siege has not lured it"))
 				.thenExecute(() -> {
 					h.assertTrue(h.getTick() - t0[0] <= 100, "lure after the siege took " + (h.getTick() - t0[0]));
-					VillageTestSupport.done(h);
+					finish(h);
 				});
 	}
 
@@ -320,7 +320,7 @@ public class SiegeLureGameTests {
 			h.assertTrue(!LureSlots.on(h.getLevel().getServer()), "the lure started without a wall");
 			h.assertTrue(!LureSlots.holds(h.getLevel().getServer(), zombie[0]), "the zombie was lured");
 			h.assertTrue(h.getTick() - t0[0] >= 1200, "still watching");
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-24. At most 24 zombies are lured, and at most 2 siege paths run in one tick. Discarding some frees the slots. */
@@ -331,7 +331,14 @@ public class SiegeLureGameTests {
 		int[] paths = new int[1];
 		var seq = ring(h, Ring.CLOSED).thenExecute(() -> {
 			seeWalls(h);
-			for (int i = 0; i < 30; i++) zombies.add(zombie(h, rel(1, 0, Z0 - 60 - i), false));
+			// The six zombies beyond the 24 slots are not lured and wander (they are also shoved apart by the crowd): measured at tick
+			// 200 they had drifted from 96 to 101 blocks out. The lure never admits a zombie past LURE_RADIUS (112), so one that drifts
+			// out is correctly left out and the "all free slots are used again" check can never pass. Two columns of 15, 66 to 81 blocks
+			// out, keep every zombie at least 30 blocks inside the radius for the length of the test.
+			for (int i = 0; i < 30; i++) zombies.add(zombie(h, rel(i % 2 == 0 ? 1 : 6, 0, Z0 - 60 - i / 2), false));
+			double farthest = 0;
+			for (Zombie z : zombies) farthest = Math.max(farthest, distanceToHeart(h, z));
+			h.assertTrue(farthest <= dev.villageheart.core.Balance.LURE_RADIUS - 30, "the spawn band is " + Math.round(farthest) + " blocks out: too close to the lure radius");
 			t0[0] = h.getTick();
 		});
 		seq = seq.thenWaitUntil(() -> {
@@ -342,6 +349,9 @@ public class SiegeLureGameTests {
 			h.assertTrue(h.getTick() - t0[0] >= 200 && holding(h, zombies) == 24, "waiting for 24");
 		});
 		seq = seq.thenExecute(() -> {
+			System.out.println("[lure-test] lureBudgetCaps before the discards, tick " + (h.getTick() - t0[0]) + " after spawn: holding "
+					+ holding(h, zombies) + " of " + zombies.size() + ", farthest "
+					+ Math.round(zombies.stream().mapToDouble(z -> distanceToHeart(h, z)).max().orElse(0)) + " of " + dev.villageheart.core.Balance.LURE_RADIUS);
 			int dropped = 0;
 			for (Zombie zombie : zombies) {
 				if (dropped >= 10) break;
@@ -356,9 +366,9 @@ public class SiegeLureGameTests {
 		seq.thenWaitUntil(() -> {
 			int live = 0;
 			for (Zombie zombie : zombies) if (zombie.isAlive()) live++;
-			h.assertTrue(holding(h, zombies) == live, "slots free, holding " + holding(h, zombies) + " of " + live);
+			h.assertTrue(holding(h, zombies) == live, "slots free, holding " + holding(h, zombies) + " of " + live + notHeld(h, zombies));
 			h.assertTrue(h.getTick() - t0[0] <= 100, "reuse took " + (h.getTick() - t0[0]));
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-37. A trench stops the zombie on the edge, and the creeper never lights. */
@@ -380,7 +390,7 @@ public class SiegeLureGameTests {
 			BlockPos p = at(h, zombie[0]);
 			h.assertTrue(p.getZ() >= Z0 - 4, "has not reached the edge " + p);
 			h.assertTrue(h.getTick() - t0[0] >= 1800, "still at the trench");
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-38. A three-wide gap is still enough wall to lure, and the zombie walks through it. */
@@ -400,7 +410,7 @@ public class SiegeLureGameTests {
 			BlockPos p = at(h, zombie[0]);
 			h.assertTrue(p.getZ() > Z0 && p.getZ() < Z1, "not through the gap " + p);
 			h.assertTrue(h.getTick() - t0[0] <= 900, "through the gap took " + (h.getTick() - t0[0]));
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	/** T-L2-39. One short wall is not an enclosure. The lure stays off and the breach goal does not run. */
@@ -428,7 +438,7 @@ public class SiegeLureGameTests {
 			h.assertTrue(!LureSlots.on(h.getLevel().getServer()), "a short wall lured");
 			h.assertTrue(!breachRunning(zombie[0]), "the breach goal ran");
 			h.assertTrue(h.getTick() - t0[0] >= 1200, "still watching");
-		}).thenExecute(() -> VillageTestSupport.done(h));
+		}).thenExecute(() -> finish(h));
 	}
 
 	private enum Ring { CLOSED, GAP, TRENCH }
@@ -439,6 +449,7 @@ public class SiegeLureGameTests {
 			h.getLevel().setDayTime(14000);
 			lureLayout(h, ring);
 			parkOwner(h);
+			clearStrays(h);
 		});
 	}
 
@@ -603,6 +614,58 @@ public class SiegeLureGameTests {
 			if (site.blueprintId().equals("wall_segment") || site.blueprintId().equals("gate")) n += site.seen().size();
 		}
 		return n;
+	}
+
+	/**
+	 * Discards what an earlier test left within lure range of the Heart. The lure is global to the one claimed village: any zombie or
+	 * creeper in range takes a lure slot and a path search (two a tick for the whole world), and any villager, golem or turtle within
+	 * 35 blocks of a lured zombie becomes its target, and a zombie with a target is never admitted. The mobs these tests spawn 15 to 95
+	 * blocks out are persistent and outside the structure, so the structure clean-up at the end of a test never reaches them, and tests
+	 * stand only about a hundred blocks apart. Called when a lure test starts ({@code ring}) and, through {@link #finish}, when it ends.
+	 * Logs what it found when it found anything, so a run that needed it shows in the log.
+	 */
+	private static void clearStrays(GameTestHelper h) {
+		var server = h.getLevel().getServer();
+		var village = VillageClaims.current(server).orElse(null);
+		if (village == null) return;
+		var heart = village.heart();
+		int r = dev.villageheart.core.Balance.LURE_RADIUS + 40;
+		var box = new net.minecraft.world.phys.AABB(heart.x() - r, heart.y() - r, heart.z() - r, heart.x() + r + 1, heart.y() + r + 1, heart.z() + r + 1);
+		List<Mob> strays = h.getLevel().getEntitiesOfClass(Mob.class, box, m -> m.isAlive() && (m instanceof Zombie || m instanceof Creeper
+				|| m.getType() == EntityType.VILLAGER || m.getType() == EntityType.IRON_GOLEM || m.getType() == EntityType.TURTLE));
+		Map<String, Integer> byType = new HashMap<>();
+		for (Mob stray : strays) {
+			byType.merge(EntityType.getKey(stray.getType()).getPath(), 1, Integer::sum);
+			stray.discard();
+		}
+		if (!strays.isEmpty()) System.out.println("[lure-test] cleared " + strays.size() + " stray mobs within " + r + " of the Heart: " + byType);
+	}
+
+	/** The end of a lure test: its own mobs, which stand outside the structure, go with it. */
+	private static void finish(GameTestHelper h) {
+		clearStrays(h);
+		VillageTestSupport.done(h);
+	}
+
+	private static double distanceToHeart(GameTestHelper h, Zombie zombie) {
+		var heart = VillageClaims.current(h.getLevel().getServer()).orElseThrow().heart();
+		return Math.sqrt(Math.pow(zombie.getX() - (heart.x() + 0.5), 2) + Math.pow(zombie.getY() - heart.y(), 2)
+				+ Math.pow(zombie.getZ() - (heart.z() + 0.5), 2));
+	}
+
+	/** Failure detail: every live zombie the lure does not hold, with its target, its distance to the Heart and its position. */
+	private static String notHeld(GameTestHelper h, List<Zombie> zombies) {
+		var server = h.getLevel().getServer();
+		var village = VillageClaims.current(server).orElse(null);
+		StringBuilder out = new StringBuilder();
+		for (Zombie zombie : zombies) {
+			if (!zombie.isAlive() || LureSlots.holds(server, zombie)) continue;
+			double dist = village == null ? -1 : distanceToHeart(h, zombie);
+			var target = zombie.getTarget();
+			out.append(" [not held: target ").append(target == null ? "none" : target.getType() + " " + target.blockPosition())
+					.append(", distance ").append(Math.round(dist)).append(", at ").append(zombie.blockPosition()).append("]");
+		}
+		return out.toString();
 	}
 
 	private static int holding(GameTestHelper h, List<Zombie> zombies) {

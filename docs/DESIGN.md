@@ -629,7 +629,7 @@ Rules as built (M23):
   resort its own bed anywhere). Guards that are not training and not wounded stay out and fight; hired workers go back to work
   and the rest back to their day when it is over. **A lead-up warns the players.** Before a random raid or a siege, players within
   96 blocks of the Heart get ominous chat lines spread over the hours before it (`Balance.WARNING_LEAD_TICKS`), and a title
-  ("A raid is starting!" / "The dead are coming!") when it starts. **Stuck raiders are the one removal.** A raider of the tracked
+  ("A raid is starting!" / "The dead rise!") when it starts. **Stuck raiders are the one removal.** A raider of the tracked
   raid with no progress toward the village for 12000 ticks and nobody within 16 blocks glows and the players are told; 1200 ticks
   later it flees (smoke, removed, counted as lost, not as a kill) so the wave can advance. A raider that moves closer, fights or
   has someone near is never removed, and nothing ever moves, pulls or kills a raider to finish a raid.

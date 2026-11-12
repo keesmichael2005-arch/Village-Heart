@@ -33,7 +33,7 @@ public final class ThreatWarnings {
 	}
 
 	public static final Line RAID_TITLE = new Line("message.villageheart.title.raid", "A raid is starting!");
-	public static final Line SIEGE_TITLE = new Line("message.villageheart.title.siege", "The dead are coming!");
+	public static final Line SIEGE_TITLE = new Line("message.villageheart.title.siege", "The dead rise!");
 	public static final Line STUCK_GLOW = new Line("message.villageheart.raider_hiding", "A raider is hiding nearby...");
 	public static final Line STUCK_FLED = new Line("message.villageheart.raider_fled", "A raider fled the battle.");
 

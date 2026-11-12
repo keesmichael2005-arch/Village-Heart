@@ -331,13 +331,14 @@ public class SiegeGameTests {
 		seq.thenExecute(() -> VillageTestSupport.done(h));
 	}
 
-	/** T-L2-18. A vindicator in the raid chops the gate in two hits of 4 and walks through. Stone it hits takes 2 a hit. */
+	/** T-L2-18. A vindicator in the raid chops the gate in two hits of 4 (the second hit breaks it) and walks through. Stone it hits takes 2 a hit. */
 	@GameTest(environment = "villageheart-gametest:siege_vindicator", structure = YARD, skyAccess = true, maxTicks = 2000)
 	public void vindicatorChopsGate(GameTestHelper h) {
 		net.minecraft.world.entity.monster.illager.Vindicator[] vindicator = new net.minecraft.world.entity.monster.illager.Vindicator[1];
 		net.minecraft.world.entity.npc.villager.Villager[] villager = new net.minecraft.world.entity.npc.villager.Villager[1];
 		int[] saw = new int[1];
 		boolean[] running = new boolean[1];
+		String[] violation = new String[1];
 		var seq = BuildTestSupport.layout(h, With.GRID).thenExecute(() -> {
 			closedRing(h, true);
 			villager[0] = h.spawn(EntityType.VILLAGER, rel(4, 0, 4));
@@ -350,11 +351,13 @@ public class SiegeGameTests {
 			h.assertTrue(h.getBlockState(attackCell()).is(net.minecraft.world.level.block.Blocks.OAK_FENCE_GATE), "the attack cell is the gate: " + h.getBlockState(attackCell()));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "BreachGoal runs at the gate", () -> {
+			gateBreaksOnTheSecondHit(h, violation);
 			noteBreach(h, vindicator[0], saw, running, 4);
 			h.assertTrue(breachRunning(vindicator[0]) || h.getBlockState(attackCell()).isAir(), "the breach goal is the one running");
 			h.assertTrue(!doorRunning(vindicator[0]), "not the wooden-door goal");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the vindicator walks through the gate", () -> {
+			gateBreaksOnTheSecondHit(h, violation);
 			if (!h.getBlockState(attackCell()).isAir()) holdAtWall(h, vindicator[0]);
 			int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
 			if (d == 4) saw[0] = 4;
@@ -368,7 +371,10 @@ public class SiegeGameTests {
 				h.assertTrue(n % 2 == 0, "stone takes 2 a hit, got " + n);
 			}
 		});
-		seq.thenExecute(() -> VillageTestSupport.done(h));
+		seq.thenExecute(() -> {
+			h.assertTrue(violation[0] == null, String.valueOf(violation[0]));
+			VillageTestSupport.done(h);
+		});
 	}
 
 	/** T-L2-19. A reload, twice, leaves one of each siege goal. Zombies carry the lure and the breach. The other hostiles carry none. */
@@ -401,6 +407,18 @@ public class SiegeGameTests {
 			}
 			VillageTestSupport.done(h);
 		});
+	}
+
+	/**
+	 * A gate has 8 hit points and a vindicator hits it for 4: after the first hit it stands with 4 damage, and the second hit opens it.
+	 * So a gate that is still in the world never carries more than 4. With three-hit hit points (12) it would stand with 8 damage for
+	 * the whole cooldown between the second and third hit. Called inside a wait, where a failed assertion only means "not yet", so
+	 * the first violation is kept in {@code violation} and asserted after the wait.
+	 */
+	private static void gateBreaksOnTheSecondHit(GameTestHelper h, String[] violation) {
+		if (h.getBlockState(attackCell()).isAir() || violation[0] != null) return;
+		int d = SiegeDamage.damage(h.getLevel().getServer()).damageAt(packed(h, attackCell()));
+		if (d != 0 && d != 4) violation[0] = "the gate is standing with " + d + " damage at tick " + h.getTick() + ": it must break on the second hit of 4 (8 hit points)";
 	}
 
 	private static void noteBreach(GameTestHelper h, net.minecraft.world.entity.Mob mob, int[] saw, boolean[] running, int hit) {

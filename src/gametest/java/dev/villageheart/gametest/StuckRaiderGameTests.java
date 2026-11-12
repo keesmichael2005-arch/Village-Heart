@@ -130,6 +130,15 @@ public class StuckRaiderGameTests {
 			h.assertTrue(!raider[0].isRemoved(), "it only glows first");
 			h.assertValueEqual(0L, heard(notes, ThreatWarnings.STUCK_FLED.key()), "not fled yet");
 		});
+		// The grace is a wait, not a pause: for GRACE - 20 ticks after the glow is seen (the check runs every 20 ticks, so the glow is at
+		// most one tick old here and the flight cannot come before GRACE) the raider is still there, still glowing, and nothing has fled.
+		// A flight that ignores the grace happens at the next check, 20 ticks on, and fails here.
+		seq = seq.thenExecuteFor(GRACE - 20, () -> {
+			h.assertTrue(!raider[0].isRemoved(), "the raider fled inside the grace period");
+			h.assertTrue(raider[0].hasEffect(MobEffects.GLOWING), "the raider stopped glowing inside the grace period");
+			h.assertValueEqual(0L, heard(notes, ThreatWarnings.STUCK_FLED.key()), "fled line inside the grace period");
+			h.assertValueEqual(0, StuckRaiderSystem.fled, "fled count inside the grace period");
+		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, GRACE + 60, "the raider flees", () -> {
 			h.assertTrue(raider[0].isRemoved(), "still there");
 			h.assertValueEqual(1L, heard(notes, ThreatWarnings.STUCK_FLED.key()), "fled line");

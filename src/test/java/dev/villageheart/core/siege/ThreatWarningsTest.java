@@ -16,7 +16,7 @@ class ThreatWarningsTest {
 		assertEquals(3, Kind.RAID.lines().size());
 		assertEquals(2, Kind.SIEGE.lines().size());
 		assertEquals("A raid is starting!", Kind.RAID.title().text());
-		assertEquals("The dead are coming!", Kind.SIEGE.title().text());
+		assertEquals("The dead rise!", Kind.SIEGE.title().text());
 	}
 
 	@Test
