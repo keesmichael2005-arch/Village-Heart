@@ -485,9 +485,12 @@ public class MarketGameTests {
 
 	// ---- T-L2-6 -----------------------------------------------------------------------------------
 
-	/** A striking merchant does not sell; the first emerald pays it, and its first sale's emerald pays the next striker in the same tick. */
+	/**
+	 * M26-R: a merchant never strikes. With an empty treasury at dawn it keeps selling, and its sales pay the wages in hiring order: itself first,
+	 * then the striking farmer. (Before M26-R the merchant struck, sold nothing and needed a player's emerald: the death spiral of `full_raids`.)
+	 */
 	@GameTest(environment = "villageheart-gametest:market_strike", structure = YARD, skyAccess = true, maxTicks = 8000)
-	public void strikeStopsSalesIncomeSettles(GameTestHelper h) {
+	public void merchantNeverStrikesAndItsSalesPayTheWages(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[2];
 		dev.villageheart.core.economy.PayResult[] pay = new dev.villageheart.core.economy.PayResult[1];
@@ -503,21 +506,16 @@ public class MarketGameTests {
 			setTreasury(h, 0);
 		});
 		seq = WageTestSupport.toDawn(h, seq, pay);
-		seq = seq.thenIdle(1800).thenExecute(() -> {
-			h.assertValueEqual(WorkerStatus.ON_STRIKE, status(h, v[0]), "the merchant strikes");
-			h.assertValueEqual(0, treasury(h), "treasury");
-			h.assertValueEqual(200L, count(h, Items.COBBLESTONE), "no sale while on strike");
-			h.assertTrue(WorkerTestSupport.distance(h, v[0], stall(0)) <= 1.6, "at its stall");
-			dev.villageheart.economy.Treasury.deposit(h.getLevel().getServer(), 1, null);
-			h.assertTrue(WageTestSupport.paid(v[0]), "the first emerald pays the merchant (hired first)");
-			h.assertTrue(!WageTestSupport.paid(v[1]), "the farmer still strikes");
+		seq = seq.thenIdle(300).thenExecute(() -> {
+			h.assertTrue(WageTestSupport.payroll(h).unpaid().size() == 2, "treasury 0: both wages are unpaid");
+			h.assertTrue(status(h, v[0]) != WorkerStatus.ON_STRIKE, "the merchant does not strike: " + status(h, v[0]));
+			h.assertValueEqual(WorkerStatus.ON_STRIKE, status(h, v[1]), "the farmer does");
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= 1, "the merchant sells within a sale time"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= 2, "the unpaid merchant sells: " + soldBy(h, v[0])));
 		seq.thenExecute(() -> {
-			h.assertValueEqual(200L - LOT, count(h, Items.COBBLESTONE), "one lot sold");
-			h.assertTrue(WageTestSupport.paid(v[1]), "the sale's emerald paid the farmer");
+			h.assertTrue(WageTestSupport.paid(v[0]), "the first sale's emerald paid the merchant (hired first)");
+			h.assertTrue(WageTestSupport.paid(v[1]), "the second paid the farmer");
 			h.assertTrue(WageTestSupport.payroll(h).unpaid().isEmpty(), "nobody is unpaid");
-			h.assertValueEqual(0, treasury(h), "the emerald went to the wage");
 			WageTestSupport.wagesOff();
 			finish(h);
 		});

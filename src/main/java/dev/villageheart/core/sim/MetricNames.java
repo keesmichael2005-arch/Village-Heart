@@ -15,7 +15,7 @@ public final class MetricNames {
 			"food.nutrition", "food.days_left", "food.out", "treasury",
 			"food.dinners", "food.diners", "food.fed", "food.hungry", "food.eaten_nutrition", "food.eaten_items", "food.eaten_per_item", "food.max_hungry_days",
 			"housing.housed", "housing.house_beds",
-			"wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers",
+			"wages.runs", "wages.bill", "wages.paid", "wages.spent", "wages.strikers", "wages.striking",
 			"golems.vanilla_blocked", "golems.in_claim",
 			"deaths.total", "deaths.mobs", "deaths.logged",
 			"raid.started", "raid.active", "raid.victories", "raid.losses", "raid.stopped", "raid.gone",

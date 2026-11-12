@@ -179,7 +179,8 @@ public final class Workers {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
 		if (slot != WorkerStatus.OK) return slot;
-		if (dev.villageheart.economy.Wages.onStrike(server, record.villager())) return WorkerStatus.ON_STRIKE;
+		if (dev.villageheart.economy.Wages.onStrike(server, record.villager())
+				&& dev.villageheart.core.worker.JobType.byId(record.jobId()).map(dev.villageheart.core.economy.StrikeRules::mayStrike).orElse(true)) return WorkerStatus.ON_STRIKE;
 		if (tooHungry(server, record)) return WorkerStatus.TOO_HUNGRY;
 		if (trip != null) return trip;
 		WorkerStatus job = dev.villageheart.worker.job.WorkerStatuses.get(record.villager());

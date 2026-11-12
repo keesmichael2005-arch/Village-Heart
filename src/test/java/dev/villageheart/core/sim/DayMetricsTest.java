@@ -89,4 +89,9 @@ class DayMetricsTest {
 	void foodOutIsOneWhenUnderADayIsLeft() {
 		assertEquals(1.0, SimFixtures.day(1, 8).flatten().get("food.out"), "days_left 0.0 is out of food");
 	}
+
+	@Test
+	void wagesStrikingIsZeroWithoutStrikers() {
+		assertEquals(0.0, SimFixtures.day(1, 8).flatten().get("wages.striking"));
+	}
 }

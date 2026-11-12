@@ -13,7 +13,9 @@ public final class RaidPlans {
 
 	public static RaidPlan of(Tier tier, int qualifiedGuards, double threat, RaidOrigin origin) {
 		if (origin != RaidOrigin.RANDOM) return new RaidPlan(1, 0, 0, 0, false);
-		if (tier == Tier.TOWN || qualifiedGuards >= Balance.RAID_FULL_GUARDS) {
+		// M26-R: a Town is no longer handed the full raid for being a Town. A 16-villager Town with 2-4 young guards lost 12-15 villagers to it in
+		// two of two `full_raids` runs, so the full raid needs the guards to meet it (Balance.RAID_FULL_GUARDS qualified guards).
+		if (qualifiedGuards >= Balance.RAID_FULL_GUARDS) {
 			RaidScale scale = RaidScale.of(threat);
 			return new RaidPlan(scale.omen(), scale.extraVindicators(), scale.extraRavagers(), 0, false);
 		}
