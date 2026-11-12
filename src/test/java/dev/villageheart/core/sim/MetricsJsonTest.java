@@ -60,7 +60,7 @@ class MetricsJsonTest {
 				"baseline", "days", "assertions"), List.copyOf(m.keySet()));
 		assertEquals(List.of("structure", "bell", "heart"), List.copyOf(((Map<String, Object>) m.get("village")).keySet()));
 		Map<String, Object> day = (Map<String, Object>) ((List<Object>) m.get("days")).get(0);
-		assertEquals(List.of("day", "game_time", "claimed", "population", "adults", "babies", "employed", "buildings",
+		assertEquals(List.of("day", "game_time", "claimed", "population", "adults", "babies", "employed", "tier", "buildings",
 				"stockpile", "food", "housing", "treasury", "wages", "golems", "deaths", "village_ms", "server", "world", "wall_seconds", "work", "worker_status",
 				"stockpile_tags"), List.copyOf(day.keySet()));
 		assertEquals(List.of("valid", "invalid"), List.copyOf(((Map<String, Object>) day.get("buildings")).keySet()));

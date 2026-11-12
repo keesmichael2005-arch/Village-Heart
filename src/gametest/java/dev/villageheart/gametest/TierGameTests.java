@@ -256,4 +256,28 @@ public class TierGameTests {
 			VillageTestSupport.done(h);
 		});
 	}
+
+	// ---- the sim report's tier source -------------------------------------------------------------
+
+	/**
+	 * The L3 report's {@code village.tier} and {@code tier.fed_streak} come from {@code SimMetricsCollector.collect}. A VILLAGE with a streak
+	 * of 4 must read 1 / 4 from the real collector, so a collector that returned {@code TierDay.NONE} (hamlet / 0) fails here.
+	 */
+	@GameTest(environment = "villageheart-gametest:tiers_sim_day", structure = YARD, skyAccess = true, maxTicks = 200)
+	public void simCollectorReadsTheVillageTier(GameTestHelper h) {
+		BuildingTestSupport.begin(h).thenExecute(() -> {
+			var level = h.getLevel();
+			var collector = new dev.villageheart.sim.SimMetricsCollector(level, h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO), 16);
+			var hamlet = collector.collect(level.getServer(), 1, level.getGameTime(), dev.villageheart.core.sim.TickStats.EMPTY, 1.0, 20);
+			h.assertValueEqual("hamlet", hamlet.tier().name(), "a fresh claim is a Hamlet");
+			h.assertValueEqual(0L, hamlet.tier().fedStreak(), "no fed days yet");
+			BuildingTestSupport.setTier(h, Tier.VILLAGE);
+			seedProgress(h, new TierProgress(4, today(h), 7));
+			var day = collector.collect(level.getServer(), 2, level.getGameTime(), dev.villageheart.core.sim.TickStats.EMPTY, 1.0, 20);
+			h.assertValueEqual("village", day.tier().name(), "the report's tier is the village's tier");
+			h.assertValueEqual(1, day.tier().ordinal(), "village.tier metric is 1");
+			h.assertValueEqual(4L, day.tier().fedStreak(), "the report's fed streak is the village's streak");
+			VillageTestSupport.done(h);
+		});
+	}
 }

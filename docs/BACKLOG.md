@@ -284,7 +284,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Under heavy CPU load (load ~14) the first L4 client-test world can stall at "Preparing spawn area" until "Timeout loading world"; passed on rerun. Longer world-load timeout, or one full verify.sh at a time across worktrees
 
 ## From M14
-- [ ] The Town goals have no L2 test that reaches Town through real guards and a 32-emerald dawn (T-L1-3 covers the rule, T-L2-5 the treasury number); a later scenario can add `village.tier` / `tier.fed_streak` L3 metrics and `/villageheart tier set`
+- [ ] The Town goals have no L2 test that reaches Town through real guards and a 32-emerald dawn (T-L1-3 covers the rule, T-L2-5 the treasury number); `/villageheart tier set` is still missing
+- [x] L3 metrics `village.tier` (0 hamlet, 1 village, 2 town) and `tier.fed_streak`, plus `tier.name` / `tier.fed_streak` on each day of the report and the summary table
+  - **Fixed (backlog-small).** `DayMetrics.TierDay` is filled by `SimMetricsCollector` from the live tier and fed-days streak. `ScenarioFilesTest.reportCarriesVillageTierAndFedStreak` round-trips a Village day with streak 4 and evaluates both metrics. Old reports without the object read hamlet / 0.
 - [ ] The L4 test cannot assert the drawn goal rows (the layout recorder is private to `HeartScreen`): it checks the snapshot, `assertClean` and the screenshot
 - [ ] `VillageCodecs.RAW` is at 15 of 16 fields (M13 `smoker_heat` takes the last one); M18's `guard_shifts` must split it with `Codec.mapPair` keeping keys flat
 
@@ -292,8 +294,10 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `TierFacts.inputs` guard count (`jobId == guard`) is not exercised by any test (every L2 test has 0 guards; L1 feeds the number in). M18 (guards) should add an L2 or glue check that 2 hired guards meet the Town guard goal
 - [ ] Make the verifier's Mine probe permanent: a Hamlet Mine + Mineshaft (MineTestSupport) turns VALID after the real dawn tier-up (the roadmap's literal Mine wording; T-L2-1 uses a Builder's Hut). Probe source: Mine/Mineshaft built at Hamlet, `setTier(VILLAGE)` + `Buildings.requestAll`, both VALID within `bound(1, 2)`; it passed
 - [ ] "Needs a Town" lines beyond 3 per tick are dropped with no "and N more" summary (`LevelUpFeedback.claimCapped`); fine at today's village sizes
-- [ ] The L3 report has no tier field: the `starter` run's tier (Hamlet, 2 workers < 3) can only be read from the absence of `[tiers]` log lines
-- [ ] `treasury_overview.png` has a vanilla "New Recipe(s) Unlocked" toast over the Stockpile/Ranks tabs; client tests could clear toasts before screenshots
+- [x] The L3 report has no tier field: the `starter` run's tier (Hamlet, 2 workers < 3) can only be read from the absence of `[tiers]` log lines
+  - **Fixed (backlog-small).** See the `village.tier` / `tier.fed_streak` item above.
+- [x] `treasury_overview.png` has a vanilla "New Recipe(s) Unlocked" toast over the Stockpile/Ranks tabs; client tests could clear toasts before screenshots
+  - **Fixed (backlog-small).** Gametest mixin `ScreenshotToastClear` clears the toast manager on the client thread at the head of every `takeScreenshot`. `toastsClearedBeforeScreenshot` is red while a toast survives the shot. After: Stockpile and Ranks are visible on `treasury_overview` / `treasury_villagers`.
 
 ## From M13-r1
 - [ ] A cook that dies or is fired mid-batch loses what it carries (villagers don't drop inventory)
@@ -325,7 +329,9 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] Merchant strike gate: `WorkGate.mayWork` in `MerchantJob.tick` is untested alone (speed 0 masks it), yet it is the only guard for a pending sale held after a SHORT/STOPPED attempt; add a test where a pending unit is held when a strike starts
 - [ ] The per-stall cap (`SalesLedger.byStall`, the fire/re-hire exploit) is tested at L1 only; add an L2 case: a capped merchant is fired and another villager is hired at the same stall the same day
 - [ ] Stockpile tab draws "for sale" counts in green even with no merchant ("No merchant: nothing is sold" above green counts); grey them when `merchants == 0`
-- [ ] "Market: sold 1 emeralds today": singular/plural
+- [x] "Market: sold 1 emeralds today": singular/plural
+  - **Fixed (backlog-small).** `MarketTexts` picks "1 emerald" and "N emeralds" for the Stockpile line and for `/villageheart market status`. `MarketTextsTest` is red on the old "1 emeralds" string.
+  - **Fixed everywhere (backlog-small r1).** `core/Plural` builds "1 emerald" / "N emeralds" / "1 merchant" and every emerald count (Overview treasury and wages, the treasury-short alert, treasury chat and commands, market) passes it as one `%s`. `PluralTest` is red on any lang text with a fixed noun after `%s`. Not covered: "Paid %s striking workers".
 - [ ] The "Up to N for sale above the reserve" tooltip is never captured in a screenshot
 - [ ] Load flake candidate (not M22): `sim_action_game_tests_forced_chunk_grows_without_player` timed out waiting for the forced chunk to be entity-ticking (tick 2202 of 2200, load ~8 on 4 cores); passed alone and in the next full run
 
@@ -333,7 +339,8 @@ when it's fixed. Source reviews: docs/reviews/.
 - [ ] `VillageSavedData.setMarket`'s `setDirty()` is untested: with it removed, `ledgerSurvivesReload` and `reserveSettingsOnTheScreen` still pass, because each sale's `Treasury.deposit` dirties the same saved data. Add an L2 case that reloads right after a `SetReserves` with no sale after it (e.g. at night)
 - [ ] The market can sell cook inputs above the reserve (coal, wheat, potato, logs) that no cook has reserved yet; only active reservations and the reserves protect them. Consider the cook's planned demand in `Surplus` (M26 tuning)
 - [ ] `CookGameTests.restartMidBatchResumes` drops only the runtime state; `smoker_heat` is never read back from disk at L2 (L1 `VillageStateSmokerHeatTest` only). Add a `VillageTestSupport.reload(server)` assertion on the bank mid-batch
-- [ ] Load flake candidate (not M22): `hunter_game_tests_two_hunters_one_ground` "both hunters are out took 970 ticks, bound 450" once (load 8; the second hunter was SITE_UNREACHABLE at +460 and went out on the 600-tick retry); passed alone twice and in two full runs
+- [x] Load flake candidate (not M22): `hunter_game_tests_two_hunters_one_ground` "both hunters are out took 970 ticks, bound 450" once (load 8; the second hunter was SITE_UNREACHABLE at +460 and went out on the 600-tick retry); passed alone twice and in two full runs
+  - **Fixed (backlog-small).** A walk that gives up while another villager is in the way is a jam, not a missing ground, so it does not wait `HUNTER_RETRY_TICKS` (600). The higher id steps aside after 30 ticks. `jamIsNotAnUnreachableGround` is red on the old SITE_UNREACHABLE report. `twoHuntersOneGround` passed 8 of 8 with the 450 bound unchanged.
 
 ## From M13-r2
 - [ ] `strikingCookMakesNothing` (and any test asserting a sampler list in a `thenExecute` followed by more steps): when the list assertion fails, `GameTestSequence` carries on and a later step's message is logged ("first item after the pay ... 1200"), hiding the real finding. Stop with the list's message (e.g. `h.fail` and return, or guard the follow-up steps)
@@ -350,7 +357,8 @@ when it's fixed. Source reviews: docs/reviews/.
 Fix root causes; never loosen a bound without a written reason.
 - [x] (flake-fix) `sim_action_game_tests_forced_chunk_grows_without_player` timed out at tick 2202 of 2200: async chunk promotion, now pre-generated.
 - [x] (flake-fix 2) `WalkTo` arrival tolerance removed at the root; all callers audited.
-- [ ] `hunter_game_tests_two_hunters_one_ground` took 970 ticks vs bound 450 at load 8 (M22 review); not reproduced in 6 loaded runs and 2 full runs. Likely mechanism: the second hunter stalls behind the first at the ground (`WalkTo` stall rule -> UNREACHABLE -> `unreachableAt` retry delay), costing one retry of about 500 ticks. If it recurs, the test's +460 diagnostics line shows decisions and positions.
+- [x] `hunter_game_tests_two_hunters_one_ground` took 970 ticks vs bound 450 at load 8 (M22 review); not reproduced in 6 loaded runs and 2 full runs. Likely mechanism: the second hunter stalls behind the first at the ground (`WalkTo` stall rule -> UNREACHABLE -> `unreachableAt` retry delay), costing one retry of about 500 ticks. If it recurs, the test's +460 diagnostics line shows decisions and positions.
+  - **Fixed (backlog-small).** Confirmed: `WALK_STALL_TICKS` is 200 and `HUNTER_RETRY_TICKS` is 600, which is the 970-tick total. See the M22-r2 item. The bound was not loosened.
 
 ## From M18 round 3
 - [ ] A retreating guard still counts as engaged for gates (r2 note): it may lead the zombie through a gate. Fix: not engaged while `GuardCombat.retreating`.

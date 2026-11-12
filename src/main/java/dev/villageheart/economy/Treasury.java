@@ -1,6 +1,7 @@
 package dev.villageheart.economy;
 
 import dev.villageheart.VillageHeart;
+import dev.villageheart.core.Plural;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.economy.Payroll;
 import dev.villageheart.core.economy.Settlement;
@@ -192,7 +193,7 @@ public final class Treasury {
 		refreshInventory(player);
 		int after = village.get().treasury() - n;
 		VillageHeart.LOG.info("[treasury] {} withdrew {} emeralds, treasury {} -> {}", player.getGameProfile().name(), n, village.get().treasury(), after);
-		player.displayClientMessage(Component.translatable("message.villageheart.treasury.withdrawn", n, after), true);
+		player.displayClientMessage(Component.translatable("message.villageheart.treasury.withdrawn", Plural.emeralds(n), after), true);
 		return n;
 	}
 
@@ -207,7 +208,7 @@ public final class Treasury {
 
 	private static void depositedMessage(ServerPlayer player, DepositResult r) {
 		player.displayClientMessage(r.settledWorkers() > 0
-				? Component.translatable("message.villageheart.treasury.deposited_settled", r.accepted(), r.settledWorkers(), r.treasuryAfter())
-				: Component.translatable("message.villageheart.treasury.deposited", r.accepted(), r.treasuryAfter()), true);
+				? Component.translatable("message.villageheart.treasury.deposited_settled", Plural.emeralds(r.accepted()), r.settledWorkers(), r.treasuryAfter())
+				: Component.translatable("message.villageheart.treasury.deposited", Plural.emeralds(r.accepted()), r.treasuryAfter()), true);
 	}
 }

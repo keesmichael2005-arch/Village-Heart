@@ -150,6 +150,10 @@ public final class MetricsJson {
 		m.put("adults", (long) d.adults());
 		m.put("babies", (long) d.babies());
 		m.put("employed", (long) d.employed());
+		Map<String, Object> tier = new LinkedHashMap<>();
+		tier.put("name", d.tier().name());
+		tier.put("fed_streak", d.tier().fedStreak());
+		m.put("tier", tier);
 		Map<String, Object> b = new LinkedHashMap<>();
 		b.put("valid", (long) d.buildingsValid());
 		b.put("invalid", (long) d.buildingsInvalid());
@@ -294,6 +298,15 @@ public final class MetricsJson {
 		return o == null ? Double.NaN : ((Number) o).doubleValue();
 	}
 
+	/** Absent on reports written before the tier field: hamlet, streak 0. */
+	private static DayMetrics.TierDay readTier(Object o) {
+		if (!(o instanceof Map<?, ?> raw)) return DayMetrics.TierDay.NONE;
+		@SuppressWarnings("unchecked")
+		Map<String, Object> t = (Map<String, Object>) raw;
+		Object name = t.get("name");
+		return new DayMetrics.TierDay(name instanceof String s ? s : "hamlet", optLng(t, "fed_streak"));
+	}
+
 	private static DayMetrics readDay(Map<String, Object> m) {
 		Map<String, Object> b = Json.obj(m.get("buildings"), "buildings");
 		Map<String, Object> s = Json.obj(m.get("stockpile"), "stockpile");
@@ -329,6 +342,7 @@ public final class MetricsJson {
 				new DayMetrics.NeedsDay(optLng(f, "dinners"), optLng(f, "diners"), optLng(f, "fed"), optLng(f, "hungry"), optLng(f, "eaten_nutrition"),
 						optLng(f, "eaten_items"), optLng(f, "max_hungry_days"), optLng(hs, "housed"), optLng(hs, "house_beds")),
 				new DayMetrics.WageDay(optLng(wg, "runs"), optLng(wg, "bill"), optLng(wg, "paid"), optLng(wg, "spent"), optLng(wg, "strikers")),
-				new DayMetrics.GolemDay(optLng(gl, "vanilla_blocked"), optLng(gl, "in_claim")));
+				new DayMetrics.GolemDay(optLng(gl, "vanilla_blocked"), optLng(gl, "in_claim")),
+				readTier(m.get("tier")));
 	}
 }

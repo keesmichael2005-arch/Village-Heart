@@ -246,7 +246,7 @@ public final class SimMetricsCollector {
 				village.map(VillageState::treasury).orElse(0),
 				drainDeaths(), villageMs, mspt, tps, wallSeconds, heapMb, folderBytes(server.getWorldPath(LevelResource.ROOT)),
 				dev.villageheart.worker.job.WorkStats.snapshotAndReset(), workerStatuses(server, village), stockpileTags(server, village),
-				needsDay(server, village), wageDay(), golemDay(village));
+				needsDay(server, village), wageDay(), golemDay(village), tierDay(village));
 	}
 
 	/** Vanilla spawns the gate refused since the last sample, and iron golems standing in the claim now. */
@@ -262,6 +262,13 @@ public final class SimMetricsCollector {
 		long inClaim = level.getEntities(EntityType.IRON_GOLEM, box, e -> e.isAlive()
 				&& dev.villageheart.core.ClaimGeometry.inClaim(v.heart(), VillageClaims.locate(level, e.blockPosition()))).size();
 		return new DayMetrics.GolemDay(delta, inClaim);
+	}
+
+	/** The tier and the fed-days streak at the end of the day. No village reads as hamlet / 0. */
+	private static DayMetrics.TierDay tierDay(Optional<VillageState> village) {
+		if (village.isEmpty()) return DayMetrics.TierDay.NONE;
+		VillageState v = village.get();
+		return new DayMetrics.TierDay(v.tier().name().toLowerCase(java.util.Locale.ROOT), v.tierProgress().fedStreak());
 	}
 
 	/** The wage runs of the day (reset here, M12). */
