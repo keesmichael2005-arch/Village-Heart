@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
+
 ## 1.0.0
 
 Player-facing notes for Village Heart on Minecraft 1.21.11. Grouped by what you can do in a village. Numbers match the design: claim radius, wages, dinner, building sizes, and the rest.

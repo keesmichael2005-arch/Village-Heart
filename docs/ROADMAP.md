@@ -255,6 +255,9 @@ from there instead of hard-coding them.
       reaches the Village tier, food days left never 0 for more than 1 day in a row, treasury never negative, village logic mean < 1 ms/tick
 
 ## v1.0 release gate
+
+Status (2026-11-12): **1.0.0 built and in owner playtest.** Code reviewed and fully verified (M26-r1). The full release gate was stopped early to save usage. The items below are checked again before 1.0.0 is merged to `main` and released (`docs/WORKFLOW.md`, "Releasing a version").
+
 - [ ] `scripts/verify.sh` (L1, L2, L4) green on CI. Every milestone above checked
 - [ ] All L3 scenarios (`bare`, `starter`, `defended`, `raid`, `full`) pass. The `full` 30-day run is under the 1 ms/tick budget
 - [ ] A 60-day `full` soak: no crash, no error logs from `villageheart`, and the save size grows by less than 1 MB

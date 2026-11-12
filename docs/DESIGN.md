@@ -604,7 +604,7 @@ Rules as built (M23):
 - **Vanilla's occasional abort** (BACKLOG "T-L2-14 breeding retry windows") has a root cause: the pair "reaches" each other at block
   offset 2 (Manhattan) and stands up to 3 blocks apart, but the birth tick needs sqrt(5); nothing moves them closer. For licensed pairs the
   walk uses close-enough 1 and the behaviour walks them together again when the gap is too big. Measured with `breedingAbortProbe`
-  (docs/PROGRESS.md).
+  (docs/archive/build-phase/PROGRESS.md).
 - Saved state is on the world claim (`growth`: licence, last birth day, births total, failed pairs), not in `VillageState`.
 
 ## 8. Threats and survival

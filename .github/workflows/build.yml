@@ -27,6 +27,12 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
+          name: village-heart-jar
+          path: build/libs/village-heart-*[0-9].jar
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
           name: verify-reports
           path: |
             reports/

@@ -2,7 +2,7 @@
 
 Village Heart is a Fabric mod for Minecraft. Craft a Village Heart, place it by a village bell, and that one village becomes yours. Hire villagers, mark their workplaces, share a stockpile, and grow a Hamlet into a Town. Think of a small settlement manager inside a vanilla village.
 
-How to play is in the [player guide](docs/PLAYER_GUIDE.md): claiming, ranks, buildings, jobs, food and wages, tiers, the market, the builder, guards, gates, and lamps. Raids and sieges, wall damage and repair, the blacksmith and iron golems, and population growth are all in 1.0, as is the art pass. The village has three tiers: Hamlet, Village, and Town. Release notes, known limits, and the test results are in [docs/RELEASE_NOTES_v1.0.md](docs/RELEASE_NOTES_v1.0.md).
+How to play is in the [player guide](docs/PLAYER_GUIDE.md): claiming, ranks, buildings, jobs, food and wages, tiers, the market, the builder, guards, gates, and lamps. Raids and sieges, wall damage and repair, the blacksmith and iron golems, and population growth are all in 1.0, as is the art pass. The village has three tiers: Hamlet, Village, and Town. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Requirements
 
@@ -20,7 +20,7 @@ To play:
 3. Put the Village Heart jar in your mods folder (`.minecraft/mods`, or the mods folder of the instance). Use the jar whose name does not end in `-sources`.
 4. Launch the game with the Fabric profile. The Village Heart recipe appears in the crafting book once you have the ingredients. From there, follow the [player guide](docs/PLAYER_GUIDE.md).
 
-If you built the mod yourself, the jar is `build/libs/village-heart-<version>.jar` (the version comes from `gradle.properties`; the release gate sets it to 1.0.0).
+If you built the mod yourself, the jar is `build/libs/village-heart-<version>.jar` (the version comes from `gradle.properties`).
 
 ## Build from source
 
