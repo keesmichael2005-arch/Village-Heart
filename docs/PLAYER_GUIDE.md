@@ -4,7 +4,7 @@ Village Heart is a Fabric mod for Minecraft 1.21.11. You craft a Village Heart, 
 
 A Minecraft day is 24000 ticks (20 real minutes). Day time 0 is dawn, 6000 is noon, 12000 is dusk, and 18000 is midnight. Where this guide gives a tick, that is the number you see as the day time.
 
-Sieges, random raids, wall damage, the smith, and population growth are **in v1, being finished**. They are still being built. Everything else in this guide is in the game today. What those five will add is collected at the end.
+This is the guide for version 1.0. Everything in it is in the game. The village has three tiers (Hamlet, Village, Town); more are planned for later, after the first version has been played.
 
 ## Craft the Heart and claim the village
 
@@ -105,7 +105,7 @@ Each **job block** inside a valid building is one worker slot.
 | Market | Village | 9 | Market Stall, chest | white wool / emerald |
 | Smithy | Town | 12 | blast furnace, anvil, chest | iron ingot / smooth stone |
 
-The Smithy's room rules are in the game. The blacksmith's work is **coming in v1**.
+The Smithy is the blacksmith's workshop. What the blacksmith does is in [Blacksmith](#blacksmith).
 
 A House's beds are homes: one bed, one villager. A Barracks needs a bed for every grindstone, because each grindstone is a guard slot. Where the table says a workstation, more than one means more than one worker.
 
@@ -186,7 +186,7 @@ Work speed is tool × level × the needs multipliers below.
 
 Until the smith arrives, a hired lumberjack, miner, hunter, or farmer makes a missing tool, or replaces one that is about to wear out (under 10% durability, or under two uses left). They do this at every tier.
 
-They make **stone** when Storage can afford cobblestone, blackstone, or cobbled deepslate, plus sticks or planks. Otherwise they make **wood** from planks, sticks, or logs. They never make copper or better. Those tiers are the smith's, and the smith is coming in v1. The counts are the vanilla ones: an axe or a pickaxe is 3 material and 2 sticks, a hoe is 2 and 2, a sword is 2 and 1. Two planks make 4 sticks. One log makes 4 planks. A usable tool already in Storage is fetched instead of crafted.
+They make **stone** when Storage can afford cobblestone, blackstone, or cobbled deepslate, plus sticks or planks. Otherwise they make **wood** from planks, sticks, or logs. They never make copper or better. Those tiers are the smith's (see [Blacksmith](#blacksmith)). The counts are the vanilla ones: an axe or a pickaxe is 3 material and 2 sticks, a hoe is 2 and 2, a sword is 2 and 1. Two planks make 4 sticks. One log makes 4 planks. A usable tool already in Storage is fetched instead of crafted.
 
 It is slow, and it uses that worker's own work time. At level 1, wood takes **2400 ticks** and stone takes **4800 ticks** at the job block. The craft is saved. It pauses overnight and continues. The farmer, whose hoe is only a bonus, makes one only when there is nothing else to do. A working tool is never thrown away because better material showed up. A tool you put in the chest cancels a craft, and the materials go back to Storage.
 
@@ -262,7 +262,12 @@ Needs a Market and a Market Stall. Prices and caps are in [The market](#the-mark
 
 ### Blacksmith
 
-**Coming in v1.** See the end of this guide. A hired blacksmith at a Smithy does not smelt, craft, or build golems yet. Tool workers keep making their own wooden and stone tools.
+Town tier. Needs a valid Smithy (blast furnace, anvil, chest). The blacksmith works only in work hours (day time 1000–11000) and picks up again the next morning.
+
+- **Tools and armour, on demand.** The smith makes a tool or a piece of armour only when a worker is missing one or has a worn-out one. A working tool is never replaced or upgraded, and there are no spares. The tier is the best the stockpile can pay for (wood, stone, copper, iron, diamond). Guards get swords and armour the same way. Diamonds are kept back: five are always left in Storage. Crafting is slow: an iron tool takes 2400 ticks of work at speed 1, a diamond tool 4800. Raw iron, copper, and gold are smelted into ingots first, using fuel from Storage.
+- **Repairs.** Put worn gear in the Smithy chest. One ingot (or one leather) restores a quarter of the item's durability. Wood and stone tools are replaced, not repaired.
+- **Iron golems.** 36 iron ingots and 1 carved pumpkin, one day of work at the anvil. At most one golem per 5 villagers. Vanilla villagers no longer spawn golems inside the claim, so these are the village's golems. A golem below half health walks to the Smithy, and the smith heals it, 25 health per ingot. Golems never go after creepers.
+- With no smith hired, workers keep making their own wooden and stone tools.
 
 ## Food, needs, and dinner
 
@@ -302,6 +307,8 @@ If the treasury is short, workers are paid in hiring order. A worker who cannot 
 
 A villager you hire is charged at once. Hiring when the treasury is empty puts them on strike. Firing at dusk and hiring again at dawn is not a free day. Hiring someone who was already paid today costs nothing more that day.
 
+**The merchant never strikes.** Their sales pay every wage, their own first, so a village with an empty treasury can still earn its way out.
+
 The Overview shows the treasury, "Wages tomorrow", in red when the purse is short, and a line when workers are on strike.
 
 ## Tiers and how to grow
@@ -314,11 +321,13 @@ Population is the villagers loaded inside the claim, babies included, plus hired
 |---|---|---|---|
 | Hamlet | Heart placed | House, Storage, Farmhouse, Lumber Camp, Kitchen | 1 |
 | Village | population at least 6, at least 3 workers, a valid Storage, Farmhouse, and Kitchen, and fed 3 days in a row | Builder's Hut, Mine and Mineshaft, Hunting Lodge and Hunting Ground, Barracks and Training Yard, Market, and every blueprint except the Watchtower | 2 |
-| Town | population at least 12, at least 8 workers, at least 2 guards, fed 7 days in a row, and treasury at least 32 at some dawn | Watchtower. The Smithy building. The blacksmith's work is coming in v1. | 3 |
+| Town | population at least 12, at least 8 workers, at least 2 guards, fed 7 days in a row, and treasury at least 32 at some dawn | Watchtower. The Smithy (blacksmith, gear, golems). | 3 |
 
 On the way up, everyone online at Resident or above gets a chat line and a sound, and every building is re-checked.
 
-Babies count toward population and eat half a meal. You can still breed villagers the usual way, with food. Population growth is in v1, being finished: a free bed plus spare food does not yet start a birth by itself.
+Babies count toward population and eat half a meal.
+
+**Growth.** Inside the claim, feeding villagers does not make babies. At each dawn the village starts at most one birth, and only if there is a free bed in a valid House, at least **3 days of food**, and two adults who are fed and housed. The two adults who are closest to each other get a licence for the day, walk to each other, and the baby is born into the free bed. A parent rests for a while after a birth. Outside the claim, vanilla breeding is unchanged. Babies grow up and can be hired like anyone else.
 
 ## The market
 
@@ -453,7 +462,37 @@ They attack hostile mobs and raiders inside the claim, within 24 blocks. A neutr
 
 The **alarm** is raised when a hostile hurts a villager inside the claim, or when a guard dies. It stays up while a hostile that is hunting a villager is within 24 blocks of a guard, and it ends **600 ticks** (30 seconds) after the last sign of a threat. While it is up, every guard who is not wounded and not still training comes on duty, including guards who were asleep, and they gather at that spot. A wounded guard stays in bed.
 
-A vanilla raid whose centre, or one of whose raiders, is inside the claim does the same call-up. The Heart screen does not yet show a raid alert, and workers do not yet have a special "go inside" order. Sieges, random raids, and wall damage are coming in v1.
+A vanilla raid whose centre, or one of whose raiders, is inside the claim does the same call-up. See [Raids and sieges](#raids-and-sieges) for what happens when a raid or a siege comes.
+
+## Raids and sieges
+
+Raids and sieges are what the guards, gates, walls, and golems are for. They are hard, and they are meant to be fought **with you in the village**, not left alone.
+
+### Warning
+
+Before a random raid or a siege, everyone within 96 blocks of the Heart gets ominous **gold** chat lines spread over the hours before it ("Scouts have been spotted among the hills..."). When a **raid** starts you get the big title "A raid is starting!" and a **bold red** chat line, and the village bell rings. When a **siege** starts you get a **bold red** chat line ("The dead are coming!") and the bell rings. There is no title for a siege. Only the online Owner, Stewards, and Residents hear these.
+
+### Everyone shelters
+
+When a raid or a siege starts, the bell rings and every villager in the claim, hired or not, goes indoors: into their own House bed, a free House bed, or the nearest valid room. Hired workers go back to work when it is over. **Guards stay out and fight**, unless they are still training or wounded.
+
+### Raids
+
+- Vanilla Bad Omen raids still work. A raid counts as a village raid when its centre or one of its raiders is inside the claim. All your qualified guards come on duty, golems fight, and the Overview shows the raid line: coming, which wave, and how many raiders are left.
+- Raids also start **on their own**, rolled once a day at day time 1000 (the game rule `villageheart:random_raids`, on by default). A young village gets a short one; a grown village faces the full raid. Winning a random raid pays the treasury once.
+- Guards chase raiders up to 32 blocks past the claim, using the nearest gate if the wall is in the way.
+- **Stuck raiders.** A raider that makes no progress toward the village for 12000 ticks and has nobody near starts to **glow**, and you are told. A minute later it flees, so the raid can end. A raider that is moving, fighting, or has someone near it is never removed.
+- **Nobody attacks creepers.** Guards and golems ignore them.
+
+### Sieges
+
+A Village or Town can be besieged at night (the game rule `villageheart:sieges`, on by default; a Hamlet is never besieged). Vanilla's zombie siege is replaced: zombies appear at day time 18000 and are drawn toward your villagers, breaking whatever wall stands in the way. Creepers walk to a wall and blow up beside it, and the blast hurts the wall, not the houses behind it.
+
+### Walls take damage
+
+Zombies, raiders, and creepers break defence blocks (game rule `villageheart:siege_damage`, on by default). Gates are the weak point. Stone cracks before it breaks. A hired builder repairs gates first, then broken stone, then cracked stone, from cobblestone in Storage (a fence gate for a gate). Nothing is repaired during a raid or a siege. The Overview lists the raid or siege, then "Walls damaged".
+
+The honest summary: a village with no player in it can lose people to a raid, even behind walls. Stay near, bring a sword, keep the guards fed and equipped, and keep the builder hired.
 
 ## Gates, lamp posts, and walls
 
@@ -463,7 +502,7 @@ These are blueprints, in the builder section, with their costs. How they behave:
 
 **Lamp posts.** A lantern on a fence post. Vanilla refuses a monster spawn in a cell whose block light is above 0. The lantern is light level 15, and that light falls by one per block. On level ground, every cell within **12 steps** (a diamond of blocks, not a circle) is safe from natural monster spawns. Pillager patrols, slimes, phantoms, drowned, spawners, raids, and mobs that walk in from outside are not stopped by the light. Walls and houses shade it. A finished lamp is a guard patrol point. If the lantern is broken, it stops being one.
 
-**Walls.** A finished segment is solid cobblestone, 3 blocks high. A closed ring with gates still lets hired workers and guards through, because they open the gates. Mobs cannot open them. Walls do not take damage from mobs yet. That is coming in v1.
+**Walls.** A finished segment is solid cobblestone, 3 blocks high. A closed ring with gates still lets hired workers and guards through, because they open the gates. Mobs cannot open them. Walls can be broken: see [Raids and sieges](#raids-and-sieges).
 
 **Watchtowers.** Town tier. The ground in front of the entrance is a patrol point. If a ladder is broken, it stops being one. The village remembers up to 64 finished lamps and towers.
 
@@ -471,7 +510,7 @@ These are blueprints, in the builder section, with their costs. How they behave:
 
 Right-click the claimed Heart.
 
-- **Overview.** Name, tier, the goal checklist, population and beds, workers and slots, food days left, the treasury, tomorrow's wage bill, and alerts: starving, storage full, strikes, invalid buildings.
+- **Overview.** Name, tier, the goal checklist, population and beds, workers and slots, food days left, the treasury, tomorrow's wage bill, and alerts: starving, storage full, strikes, invalid buildings, a raid or siege line, and damaged walls.
 - **Villagers.** Name, job, level, XP, the fed / housed / paid icons, and what they are doing. Assign a job, fire, or set a guard's shift.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
@@ -480,17 +519,3 @@ Right-click the claimed Heart.
 A Visitor receives the Overview only.
 
 The stockpile is the chests and barrels inside valid Storage buildings: chest, trapped chest, and copper chest. Ender chests and shulker boxes are not part of it. A chest that also sits in another room, even in a shared wall, is not stockpile. Building chests that hold tools are not stockpile. Workers put goods in the nearest Storage with space. If every Storage is full, they keep the goods and stop gathering, and the Overview says so.
-
-## Coming in v1
-
-These five are still being built. They are not in the game yet.
-
-**Sieges.** A siege that draws zombies toward the claimed village is coming in v1. Today, night mobs are vanilla Minecraft, villagers go indoors at night on their own, and night-shift guards patrol.
-
-**Random raids.** Raids that start on their own, scaling with the village, are coming in v1. Today, a vanilla Bad Omen raid that reaches the claim calls your qualified guards on duty. There is no mod raid alert and no mod reward.
-
-**Wall damage.** Mobs breaking walls and gates, cracks, and builders repairing them from Storage, are coming in v1. Today, defence blocks stay until a player breaks them. Lamps still stop natural spawns in their light, and closed gates still stop mobs.
-
-**Population growth.** In v1, being finished: at each dawn, if there is a free bed in a valid House, at least 3 days of food, and two adults who are fed and housed, the village starts at most one birth a day. Today babies come only from vanilla breeding, which still works.
-
-**The smith.** The blacksmith is coming in v1. The plan for that job, once it ships: a Town Smithy with a blast furnace, an anvil, and a chest. The smith smelts raw iron, copper, and gold, makes iron tools, iron armour, and leather armour, repairs gear with ingots, and builds an iron golem from **36 iron ingots** and **1 carved pumpkin** (one day of work, and at most one golem per 5 villagers). A hurt golem will walk to the Smithy for repairs, 25 health per ingot. Until then, lumberjacks, miners, hunters, and farmers make their own wooden and stone tools, and you can still craft the Smithy marker for later. At Hamlet or Village it stays red with "Requires Town tier".
