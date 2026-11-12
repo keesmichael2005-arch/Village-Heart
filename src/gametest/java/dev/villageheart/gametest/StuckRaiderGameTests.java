@@ -1,6 +1,5 @@
 package dev.villageheart.gametest;
 
-import static dev.villageheart.gametest.GuardTestSupport.setTime;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
@@ -84,8 +83,6 @@ public class StuckRaiderGameTests {
 	private static GameTestSequence scene(GameTestHelper h) {
 		return BuildingTestSupport.begin(h).thenExecute(() -> {
 			nearHeart(h);
-			setTime(h, 3000);
-			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
 			BuildingTestSupport.setTier(h, Tier.VILLAGE);
 			LumberTestSupport.grass(h, 0, 0, 63, 63);
 			// Vanilla starts a raid only where it already sees a village: a valid House with a bed, beside the bell.

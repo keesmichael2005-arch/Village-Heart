@@ -3,7 +3,6 @@ package dev.villageheart.gametest;
 import static dev.villageheart.gametest.GuardTestSupport.BARRACKS;
 import static dev.villageheart.gametest.GuardTestSupport.floor;
 import static dev.villageheart.gametest.GuardTestSupport.hireGuard;
-import static dev.villageheart.gametest.GuardTestSupport.setTime;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
@@ -89,7 +88,7 @@ public class ThreatShelterGameTests {
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			nearHeart(h);
 			listen(notes);
-			setTime(h, 3000);
+			atTime(h, 3000);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
 			LumberTestSupport.grass(h, 0, 0, 31, 31);
 			WorkerTestSupport.farmhouse(h, farm, 1);
@@ -171,7 +170,7 @@ public class ThreatShelterGameTests {
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			nearHeart(h);
 			floor(h);
-			setTime(h, 3000);
+			atTime(h, 3000);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
 			BuildingTestSupport.setTier(h, Tier.VILLAGE);
 			marker[0] = BuildingTestSupport.room(h, BARRACKS, 6, 4);
@@ -220,7 +219,7 @@ public class ThreatShelterGameTests {
 
 	/**
 	 * A zombie siege starts: the bell rings, "The dead are coming!" is the title, and an unhired villager outside goes indoors.
-	 * The siege's one zombie has its AI off so it stays where it spawned and the siege keeps running for the test.
+	 * The siege's one zombie has its AI off and is invulnerable, so it stays where it spawned and the siege keeps running for the test.
 	 */
 	@GameTest(environment = "villageheart-gametest:threat_shelter_siege", structure = YARD, skyAccess = true, maxTicks = 5000)
 	public void siegeRingsBellAndSendsVillagersIndoors(GameTestHelper h) {
@@ -229,12 +228,11 @@ public class ThreatShelterGameTests {
 		Villager[] plain = new Villager[1];
 		RoomScan[] scan = new RoomScan[1];
 		List<Note> notes = new ArrayList<>();
-		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+		GameTestSequence seq = safeDay(h, BuildingTestSupport.begin(h)).thenExecute(() -> {
 			nearHeart(h);
 			listen(notes);
 			h.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-			setTime(h, 3000);
-			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
+			ensureDay(h);
 			LumberTestSupport.grass(h, 0, 0, 31, 31);
 			BuildingTestSupport.room(h, house, 5, 4);
 			WorkerTestSupport.bed(h, BuildingTestSupport.inside(house, 0, 0, 1));
@@ -254,7 +252,11 @@ public class ThreatShelterGameTests {
 			List<Zombie> zombies = h.getLevel().getEntitiesOfClass(Zombie.class, new net.minecraft.world.phys.AABB(h.absolutePos(BlockPos.ZERO)).inflate(160),
 					z -> z.getTags().contains(LureSlots.SIEGE_TAG));
 			h.assertTrue(!zombies.isEmpty(), "no siege zombie");
-			for (Zombie z : zombies) z.setNoAi(true);
+			// No AI keeps it where it spawned, and invulnerable keeps the daylight from burning it: a dead zombie ends the siege and with it the shelter.
+			for (Zombie z : zombies) {
+				z.setNoAi(true);
+				z.setInvulnerable(true);
+			}
 		});
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1, VillageBell.rings, "the siege rang the bell once");
@@ -282,8 +284,7 @@ public class ThreatShelterGameTests {
 		BlockPos bed = new BlockPos(24, 1, 24);
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			nearHeart(h);
-			setTime(h, 3000);
-			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
+			ensureDay(h);
 			LumberTestSupport.grass(h, 0, 0, 31, 31);
 			WorkerTestSupport.bed(h, bed.below());
 			BlockPos bell = h.absolutePos(BuildingTestSupport.BELL);
@@ -329,9 +330,31 @@ public class ThreatShelterGameTests {
 	}
 
 	private static void finish(GameTestHelper h) {
+		h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, true, h.getLevel().getServer());
 		VillageTestSupport.done(h);
 		end(h);
 	}
+	/** These tests need daylight for a few hundred ticks, not a frozen clock: move the clock only when the day is about to end or has not begun. */
+	private static void ensureDay(GameTestHelper h) {
+		long t = Math.floorMod(h.getLevel().getDayTime(), 24000L);
+		if (t < 2000 || t > 8000) atTime(h, 3000);
+	}
+
+	/** A time of day on the current day, so the change never looks like a run of missed dawns to a test running beside this one. */
+	private static void atTime(GameTestHelper h, int tick) {
+		long now = h.getLevel().getDayTime();
+		long base = Math.floorDiv(now, 24000L) * 24000L;
+		h.getLevel().setDayTime(base + Math.floorMod(tick, 24000));
+	}
+
+	/**
+	 * Roll days and the siege's end read the game-time day. A test that crosses a multiple of 24000 game ticks would see its pending
+	 * threat belong to yesterday, so it waits for a game day with at least 3000 ticks left. The wait is at most 3000 ticks.
+	 */
+	private static GameTestSequence safeDay(GameTestHelper h, GameTestSequence seq) {
+		return seq.thenWaitUntil(() -> h.assertTrue(Math.floorMod(h.getLevel().getGameTime(), 24000L) < 21000, "waiting for the next game day to begin"));
+	}
+
 
 	/** Threat lines go to the players near the Heart, and the claiming owner is placed wherever the test world spawns them. */
 	private static void nearHeart(GameTestHelper h) {

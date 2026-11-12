@@ -1,6 +1,5 @@
 package dev.villageheart.gametest;
 
-import static dev.villageheart.gametest.GuardTestSupport.setTime;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
@@ -60,13 +59,20 @@ public class ThreatWarningGameTests {
 		begin(h);
 		ServerPlayer[] far = new ServerPlayer[1];
 		List<Note> notes = new ArrayList<>();
-		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+		// Tests run side by side and some of them move the shared clock: this one pins it every tick, from the first step to the last.
+		long[] pin = {-1};
+		h.onEachTick(() -> {
+			if (pin[0] >= 0) atTime(h, (int) pin[0]);
+		});
+		GameTestSequence seq = safeDay(h, BuildingTestSupport.begin(h)).thenExecute(() -> {
 			nearHeart(h);
 			listen(notes);
 			h.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
 			BuildingTestSupport.setTier(h, Tier.VILLAGE);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
-			setTime(h, 4000);
+			pin[0] = 4000;
+		}).thenIdle(3).thenExecute(() -> {
+			// The clock is pinned and has been for a tick: a threat created now cannot be warned about at the real time of day.
 			int day = ThreatRoll.day(h.getLevel().getGameTime());
 			VillageClaims.data(h.getLevel().getServer()).update(s -> s.withThreats(s.threats().withPending(Optional.of(new PendingRaid(day, 11000)))));
 			far[0] = VillageTestSupport.player(h, "far", GameType.SURVIVAL);
@@ -74,19 +80,19 @@ public class ThreatWarningGameTests {
 			far[0].teleportTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
 		}).thenIdle(30);
 		seq = seq.thenExecute(() -> h.assertValueEqual(0L, heardAny(notes, BuildingTestSupport.owner()), "before the window opens (tick 4000 < 5000)"));
-		seq = seq.thenExecute(() -> setTime(h, 5100)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 5100).thenIdle(10);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1L, heard(notes, BuildingTestSupport.owner(), "message.villageheart.warning.raid.1"), "line 1 at 5000");
 			h.assertValueEqual(1L, heardAny(notes, BuildingTestSupport.owner()), "only line 1 so far");
 		});
-		seq = seq.thenExecute(() -> setTime(h, 6900)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 6900).thenIdle(10);
 		seq = seq.thenExecute(() -> h.assertValueEqual(1L, heardAny(notes, BuildingTestSupport.owner()), "line 2 is not due before 7000, line 1 is not repeated"));
-		seq = seq.thenExecute(() -> setTime(h, 7100)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 7100).thenIdle(10);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1L, heard(notes, BuildingTestSupport.owner(), "message.villageheart.warning.raid.2"), "line 2 at 7000");
 			h.assertValueEqual(2L, heardAny(notes, BuildingTestSupport.owner()), "two lines so far");
 		});
-		seq = seq.thenExecute(() -> setTime(h, 9100)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 9100).thenIdle(10);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1L, heard(notes, BuildingTestSupport.owner(), "message.villageheart.warning.raid.3"), "line 3 at 9000");
 			h.assertValueEqual(3L, heardAny(notes, BuildingTestSupport.owner()), "three lines in all");
@@ -95,6 +101,8 @@ public class ThreatWarningGameTests {
 			h.assertValueEqual(3L, heardAny(notes, BuildingTestSupport.owner()), "no line is sent twice");
 			h.assertValueEqual(0L, heardAny(notes, far[0]), "a player 400 blocks away hears nothing");
 			VillageClaims.data(h.getLevel().getServer()).update(s -> s.withThreats(s.threats().withPending(Optional.empty())));
+			pin[0] = -1;
+			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, true, h.getLevel().getServer());
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -105,23 +113,29 @@ public class ThreatWarningGameTests {
 	public void warningsLeadUpToASiege(GameTestHelper h) {
 		begin(h);
 		List<Note> notes = new ArrayList<>();
-		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+		// Tests run side by side and some of them move the shared clock: this one pins it every tick, from the first step to the last.
+		long[] pin = {-1};
+		h.onEachTick(() -> {
+			if (pin[0] >= 0) atTime(h, (int) pin[0]);
+		});
+		GameTestSequence seq = safeDay(h, BuildingTestSupport.begin(h)).thenExecute(() -> {
 			nearHeart(h);
 			listen(notes);
 			h.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
 			BuildingTestSupport.setTier(h, Tier.VILLAGE);
 			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, false, h.getLevel().getServer());
-			setTime(h, 12900);
+			pin[0] = 12900;
+		}).thenIdle(3).thenExecute(() -> {
 			int day = ThreatRoll.day(h.getLevel().getGameTime());
 			VillageClaims.data(h.getLevel().getServer()).update(s -> s.withThreats(s.threats().withPendingSiegeDay(day)));
 		}).thenIdle(30);
 		seq = seq.thenExecute(() -> h.assertValueEqual(0L, heardAny(notes, BuildingTestSupport.owner()), "before the roll mark"));
-		seq = seq.thenExecute(() -> setTime(h, 13100)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 13100).thenIdle(10);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1L, heard(notes, BuildingTestSupport.owner(), "message.villageheart.warning.siege.1"), "siege line 1");
 			h.assertValueEqual(1L, heardAny(notes, BuildingTestSupport.owner()), "one line");
 		});
-		seq = seq.thenExecute(() -> setTime(h, 15600)).thenIdle(10);
+		seq = seq.thenExecute(() -> pin[0] = 15600).thenIdle(10);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(1L, heard(notes, BuildingTestSupport.owner(), "message.villageheart.warning.siege.2"), "siege line 2");
 			h.assertValueEqual(2L, heardAny(notes, BuildingTestSupport.owner()), "two lines in all");
@@ -130,9 +144,26 @@ public class ThreatWarningGameTests {
 		seq = seq.thenIdle(60).thenExecute(() -> {
 			h.assertValueEqual(2L, heardAny(notes, BuildingTestSupport.owner()), "no repeat");
 			VillageClaims.data(h.getLevel().getServer()).update(s -> s.withThreats(s.threats().withPendingSiegeDay(dev.villageheart.core.siege.ThreatState.NO_DAY)));
+			pin[0] = -1;
+			h.getLevel().getGameRules().set(GameRules.ADVANCE_TIME, true, h.getLevel().getServer());
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	/** A time of day on the current day, so the change never looks like a run of missed dawns to a test running beside this one. */
+	private static void atTime(GameTestHelper h, int tick) {
+		long now = h.getLevel().getDayTime();
+		long base = Math.floorDiv(now, 24000L) * 24000L;
+		h.getLevel().setDayTime(base + Math.floorMod(tick, 24000));
+	}
+
+	/**
+	 * Roll days and the siege's end read the game-time day. A test that crosses a multiple of 24000 game ticks would see its pending
+	 * threat belong to yesterday, so it waits for a game day with at least 3000 ticks left. The wait is at most 3000 ticks.
+	 */
+	private static GameTestSequence safeDay(GameTestHelper h, GameTestSequence seq) {
+		return seq.thenWaitUntil(() -> h.assertTrue(Math.floorMod(h.getLevel().getGameTime(), 24000L) < 21000, "waiting for the next game day to begin"));
 	}
 
 	/** Threat lines go to the players near the Heart, and the claiming owner is placed wherever the test world spawns them. */
