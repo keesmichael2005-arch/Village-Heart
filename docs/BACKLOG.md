@@ -394,3 +394,8 @@ Fix root causes; never loosen a bound without a written reason.
 - [ ] `defences adopt` for walls a player built before M25. A hand-built wall has no hit points.
 - [ ] A stone-brick wall upgrade. The builder does not change a wall's block.
 - [ ] Guards repairing walls. Repair stays the builder's job, from Storage.
+
+## From M26 (builder)
+- `full` 30 days: 5 villagers died of `in_wall` (suffocation, no attacker) on days 6, 17, 19 (two), 23, with the Builder and births active. Not investigated: likely babies born, or villagers pushed, into a wall block; needs a repro. Population still grew 12 to 20.
+- A striking miner re-tries to descend about 450 times a day (`work.miner.descents` and `miner.aborted` in the H1 and baseline `full` runs after day 13). Harmless for the budget (village_ms stayed under 0.2) but wasteful: it should stay at its door while on strike.
+- Under load these M25 and older GameTests fail in a full `verify.sh` and pass when run alone: `siege_lure_game_tests_zombie_behind_closed_wall_breaks` (first damage after 2400-2700 ticks, limit 2000), `siege_lure_game_tests_trench_in_front_of_wall`, `siege_game_tests_ravager_breaks_wall_in_two_hits`, `stuck_raider_game_tests_walking_raider_is_never_removed`, `gate_game_tests_mobs_still_cannot_pass_the_gate`, `smith_game_tests_two_lumberjacks_two_smiths_share_acamp`.
