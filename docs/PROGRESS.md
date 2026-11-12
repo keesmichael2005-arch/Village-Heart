@@ -1003,3 +1003,16 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Verify: `scripts/verify.sh` exit 0 at `f542bf6` (2026-11-11T22:53Z): Layer 1, Layer 2 all 428 required GameTests, gates, Layer 4 client tests on xvfb (0 lost wakeups, 0 leaks, no model warnings), perf. `0037_smithy_golem.png` looked at: unchanged (Smithy, lit furnace, chest, two golems, the right one cracked).
 - Not changed, owner call: the stone-before-iron rule itself (`TierChoice.order`), only documented.
 - Next: verifier round 2. Blockers: none.
+
+**release-prep round 1 fixes (docs and metadata only)**
+
+- PLAYER_GUIDE: tool text now matches `JobType` (lumberjack, miner, hunter need their tool; farmer hoe is x1.25). Cook table follows `CookRecipes` order and shows the gain. Population growth added to the intro, the "Coming in v1" list (now five), the tier note, CHANGELOG and README as "in v1, being finished" (DESIGN section 7). Ranks tab wording no longer contradicts the Resident row.
+- Version: CHANGELOG heads "Unreleased (1.0.0)"; README jar name is `village-heart-<version>.jar`. `gradle.properties` stays 0.1.0 until the release gate (TASK 12) bumps it, so `fabric.mod.json` (`${version}`) follows it.
+- `./gradlew --no-daemon build -x test` passes. Next: release gate.
+
+## 2026-11-11: release-prep review round 2 (verifier)
+- Verdict FAIL, 1 fix item (`docs/reviews/release-prep-r2.md`). Merged `origin/dev`; the PROGRESS conflict was resolved by keeping both sides.
+- Fixed and checked against code and DESIGN: the tool text matches `JobType`; the cook table follows the `CookRecipes` order and gains; population growth is listed as "in v1, being finished" in the guide, CHANGELOG and README, matching DESIGN §7.
+- Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
+- Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
+- `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
