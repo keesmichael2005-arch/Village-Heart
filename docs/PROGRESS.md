@@ -850,6 +850,13 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - No GameTest discards the result of `VillageTestSupport.reload(server)`.
 - Next: merge m22 into dev. Blockers: none.
 
+## 2026-11-09: M23 Population growth (builder)
+- Built on dev `9e23a95`, branch `m23`, deviations in `docs/plans/M23.md` section 8. Orchestrator decision applied: all vanilla villager breeding in the claim is blocked (`BreedingGate`: `canBreed`, `getBreedOffspring`, and the claim-bed drop in the make-love hook); growth only through the dawn licence. `GrowthStats.unlicensedBirths` is 0 in every test.
+- Saved state on `WorldClaim.growth` (optional lenient `growth` object); `VillageState` and `VillageCodecs.RAW` untouched, no ordinal enums added.
+- Probe: vanilla 100 runs 97 births 1 `TOO_FAR`, and 100 runs 100 births; licensed fixes 100 runs 100 births 0 `TOO_FAR`. The old "1 in 16" was an artefact of seeding both villagers.
+- Tests: L1 `core/growth/*Test`, `GrowthCodecsTest`; L2 `GrowthGameTests`, `GrowthCourtshipGameTests` (15), `workersCanBreed` rewritten (one window). Mutation-checked: gate, bed hook, walk fixes. Two vacuous first versions were found and fixed (see plan section 8).
+- verify.sh at `5ab85ae`: L1 unit tests and L2 "All 357 required tests passed" green, perf green. L4 failed twice with the known "Timeout loading world" at load 7-10 (no client change in M23). Next: orchestrator review. Blockers: none.
+
 ## 2026-11-09: M18 r1, `defended` (orchestrator-directed diagnosis and levers)
 - Diagnosis: `guardBeatsOneZombie` (level-1 guard, iron sword, iron helmet, one helmeted zombie, flat ground, daylight) logs 4 hits of 6.0 at 21-27 ticks (cooldown 20), and the zombie lands 3-4 hits of ~2.9: the guard wins in ~96 ticks and loses 8-12 of 20 health. Damage, rate and reach are vanilla's, so it is not a bug: a 20-health guard dies to the third zombie (about 9 health each, no regeneration awake). Scripted threat: 3 zombies per night (27 in all); natural spawns are not counted separately (kills >= 15 counts any hostile).
 - Per-lever `defended` runs (unseeded, 3 each, assertions unchanged): alarm only 0/3 (deaths.mobs 6/6/7, kills 3/3/3); + a (armour kit: 2 iron chestplates, 2 iron helmets) 0/3 (deaths 2/0/4, kills 12/9/17); + b (gather at the alarm spot, fall back toward a healthy guard below half health) 2/3 (the third: deaths 8, kills 4); + c (guard max health 30/40/50) 3/3 (deaths 1/1/0, kills 17/23/15, duty_samples always >= 100).
@@ -899,6 +906,46 @@ Top risk: the L3 comparison depends on three unbuilt jobs in an unseeded run. Bl
 - No balance number or scenario assertion changed. Results after the fix: `defended_walled` 0/5 (deaths.mobs 2/2/1/2/2, kills 1/0/0/0/0), `defended` 1/5 (deaths 6/0/5/7/4, kills 12/21/24/5/21).
 - Next (orchestrator/M25/M26): decide vanilla sieges inside a claim (M25), move `defended_walled`'s threat to the ring, guard re-hire priority in the harness, guard strength vs three fresh zombies (proposals in the findings). Blockers: none.
 
+## 2026-11-11: TASK 1 finish M23 (Population growth)
+- Merged origin/dev (`c7f109b`, handoff docs) into m23. Product change is in `Courtship`: a `CANT_REACH_WALK_TARGET_SINCE` stamp counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A stroll left a stamp already older than 200 ticks, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). A real cannot-reach of the partner walk still lapses, and the 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C on their spots until the dawn has read them (A and C share a house and a few stroll ticks were swapping the closest pair), then lets them walk.
+- New L2 `staleCannotReachDoesNotEndCourtship`: pair held 7 blocks apart, stamp 5000 ticks old on a block stroll target, brains frozen with NoAI once idle. Red before the fix (`LAPSED/CANNOT_MEET`, approach 0, tick 45) and red again with the `tracks()` guard removed. Restored, then green. NoAI is the test setup: in the full suite a live brain puts the walk target back on the partner before courtship reads a planted stamp, which is a real cannot-reach of that walk. `one_birth_per_day` still uses live brains and passed both layers. No M23 test calls `relativePos`. `outside_pair_cannot_take_claim_bed` logged `NO_BED` plus the dropped bed in both worlds.
+- `scripts/verify.sh --fast` at `e3a2c32` exit 0 (402 GameTests in both layers, perf within caps). Full `scripts/verify.sh` at `4c21c0d` exit 0. Summary:
+
+```
+# Verify run 2026-11-11T09:04:54Z @ 4c21c0d
+- Layer 1: build + unit tests — pass
+- Layer 2: in-world GameTests — All 402 required tests passed
+- GameTest-ran gate, script self-test, model-log gate, 2-player session log gate — pass
+- Layer 4: client GameTests + screenshots — pass
+- lost wakeups rescued in layer 4: 1
+- world closes with a leaked in-flight count cleared in layer 4: 0
+- world-load timeout fix installed — pass
+- client log has no villageheart model warnings — pass
+- 2-player session: no server errors or disconnects — pass
+- perf cap worst case 2583 us; 16x16x8 2176 us; spill 938 us; snapshot 269 us; deposit 205 us; idle tick 7.8e-4 ms
+```
+
+- Screenshots: M23 has no visual change. Layer 4 wrote the existing 41 shots, `0000_village_heart_placed.png` through `0040_mp_ranks.png`. No new shot to describe.
+- `scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions, 10/10 days). Growth log: day 1 licensed and a baby, day 2 licensed and a baby, days 3–5 `NO_FREE_BED`, day 6 licensed and a baby, days 7–10 `NO_FREE_BED`. No `TOO_FAR`, no lapse. Population 8 → 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie; the starter assertions do not mention that death.
+- ROADMAP checkbox left unticked for the orchestrator. Doubts: the new test freezes the brains; the live-brain morning is covered by `one_birth_per_day`, which passed the full suite.
+- Trailing `scripts/verify.sh --fast` at `6fed83d` exit 0 (402 GameTests in both layers, perf within caps: worst 2638 us, 16x16x8 1289 us, spill 1466 us, snapshot 300 us, deposit 294 us, idle tick 8.2e-4 ms).
+- Opening the PR into `dev` was refused: GitHub said the account must be a collaborator. Branch `m23` is pushed. Title and description, for the orchestrator to open:
+
+### PR title
+
+TASK 1: finish M23 (Population growth)
+
+### PR description
+
+Status: task TASK 1, branch `m23`, state done. Full `scripts/verify.sh` exit 0 at `4c21c0d` (2026-11-11T09:04:54Z). Trailing `scripts/verify.sh --fast` exit 0 at `6fed83d` (2026-11-11T09:34:55Z).
+
+Courtship treated a cannot-reach stamp left by an earlier stroll as the courtship walk failing. The stamp is already older than 200 ticks when the morning window opens, so day 2 of `one_birth_per_day` lapsed `CANNOT_MEET` on the first walk tick (approach 0, no seed, no second baby). The stamp now counts only while the walk target is the partner, and the first aim at the partner clears the previous stamp. A real cannot-reach of the partner walk still lapses. The 400-tick approach limit is unchanged. `cannot_meet_lapses_and_is_skipped` holds A, B and C until the dawn has read them. New test `staleCannotReachDoesNotEndCourtship` failed `LAPSED/CANNOT_MEET` before the fix and again when the partner-target check was removed. The ROADMAP checkbox is left unticked for the orchestrator.
+
+Full verify at `4c21c0d`: Layer 1 pass; Layer 2 "All 402 required tests passed"; GameTest-ran gate, script self-test, model-log gate, 2-player session log gate pass; Layer 4 client tests pass; lost wakeups rescued 1; leaked in-flight count cleared 0; world-load timeout fix installed; no villageheart model warnings; 2-player session clean; 41 existing screenshots `0000_village_heart_placed.png` through `0040_mp_ranks.png` (no new M23 shot); perf worst 2583 us, 16x16x8 2176 us, spill 938 us, snapshot 269 us, deposit 205 us, idle tick 7.8e-4 ms.
+
+`scripts/simulate.sh starter 10` PASS (seed 1, all 15 assertions). Births on days 1, 2 and 6; `NO_FREE_BED` on the other dawns. No `TOO_FAR`, no lapse. Population 8 to 10. Day 9 an unhired villager (Wilwyn) died to a natural zombie.
+
+Doubt: the new test freezes the brains so the stroll stamp stays on the stroll. The live-brain morning is `one_birth_per_day`, which passed both layers of the full verify and of the trailing fast run.
 ## 2026-11-11: TASK 8 (m26-scenarios) defence scenarios and the M26 bounds audit
 - `defended_walled` now runs `move_in` after the lamps: villagers inside the claim (hired and unhired) are given a bed inside the existing ring, a floor bell is placed inside if the old one is outside, and beds, job sites and bells that are not strictly inside the ring are removed so nobody walks back out to the old village. The wall was not enlarged (a ring around the dark old village would be ~100 blocks and mobs would spawn inside it). Scripted zombies with `outside` stand in a Chebyshev band 3–8 blocks outside the rectangle, including the south gate. `radius` is still in the action and is not used for that placement. Assertions are unchanged.
 - `defended_nosiege` is `defended` with `"village_siege": false`. There is no vanilla gamerule for `VillageSiege` (only `SPAWN_MONSTERS`, `RAIDS` and the like, and turning monsters off would kill natural spawns). The harness replaces the level's immutable spawner list with a wrapper that skips `VillageSiege.tick` while a living player is inside `CLAIM_RADIUS` of the bell, then of the Heart. Natural spawning is unchanged. The main mod is untouched (M25 owns siege and raid code).
@@ -968,6 +1015,21 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Full `scripts/verify.sh` exit 0 at bba04a1 (L2 388/388, L4 41 screenshots, perf in caps) on the fourth run. Runs 1–3 each failed on one flaky test this branch does not touch: `heart_action_game_tests_rate_limited` twice (static `HeartActions.warnCount` is shared between concurrently running GameTests), and `GuardClientTests` once ("night guard is not at its bed on the client" after the server-side check had passed; a client-sync race).
 - Next: merge `art-pass`. Orchestrator: consider tickets for the two flakes above. Blockers: none.
 
+## 2026-11-11: M23 review round 1 fixes (builder)
+- Resolved leftover conflict markers in this file (WIP merge) by keeping both sides. `origin/dev` was already merged.
+- Item 1: `Growth.onBirth` ignores an unlicensed birth when neither the child nor the bed is inside the claim (no counter, no ERROR). Test `vanillaBirthOutsideClaimIsNotUnlicensed`: red before (unlicensed 1, expected 0); mutant "never count" is red.
+- Item 2: test `bornLicenceStopsExemptingParents` (BORN licence: gate blocks, `canBreed` false). Green on the current code; mutant F (`licensed` ignores `l.active()`) is red.
+- Item 3: `Growth.mustDropBed` drops any bed for a licensed villager who is not the SEEDED initiator (new `BreedingGate.holdsLicence`). Test `licensedNonInitiatorDropsOutsideBed`: red before; both mutants red.
+- Tests 2 and 3 force licence state and call the hooks directly; they do not run a full make-love run. New class `GrowthReviewGameTests` is registered in `fabric.mod.json` (the first run silently skipped it).
+- `scripts/verify.sh --fast`: exit 0, 408 GameTests passed. Full `verify.sh`: see next entry.
+- Full `scripts/verify.sh` @ `9e973f7`, two runs. Run 1: exit 1, one L2 failure, `growth_courtship_game_tests_one_birth_per_day` ("day 2: Dawn[reason=TOO_FEW_READY, freeBeds=2, ready=1]"); it passed 3 of 3 alone and passed in `--fast`. Not shown to be unrelated to the `mustDropBed` change, only not reproduced. Run 2: **exit 0**: L1 green, L2 all 408 required tests passed, L3 self-test, log gates, L4 (screenshots written, lost-wakeup/leak/timeout fixes installed), perf limits. No visual change, so no new screenshot. Doubt: if `oneBirthPerDay` fails again in a full run, look at the day-2 ready count first.
+
+## 2026-11-12: M23 review round 2 fixes (builder)
+- Item 1: `GrowthTestSupport.toDawn` erases `CANT_REACH_WALK_TARGET_SINCE` on every villager before the clock jump (vanilla's REST `SetWalkTargetFromBlockMemory(HOME, 1200)` otherwise releases the bed of an adult whose day-1 stroll left an old stamp). Same fix as `noFreeBedNoBabyInThreeDays`. The assertion `day 2: LICENSED` is unchanged.
+- Item 2: cause found in vanilla. `NearestVisibleLivingEntities` memoises the line-of-sight test per entity until the next sensor scan (up to 20 ticks), so one false test keeps a partner who stands under 2 blocks away "unseen"; the run stops as NOT_VISIBLE and costs a seed. `VillagerMakeLoveMixin.villageheart$freshSight` wraps `BehaviorUtils.targetIsValid` in `isBreedingPossible`: for a licence holder whose partner is within sqrt(5), it uses a fresh `hasLineOfSight`. New test `sightGapWithinBirthDistanceDoesNotCostASeed`: red without the fix (`licensed NOT_VISIBLE=3`, `LAPSED/MAX_SEEDS`, no baby), green with it (1 seed, 0 aborts, baby, `sightRescues > 0`).
+- Proof: `verify.sh --fast` exit 0 (409 tests) at `eee2c1c`. Stress, 6 launches x 24 copies of `oneBirthPerDay` (144), all passed (review saw item 1 in about 4 of 192; the harness was not committed). Full `verify.sh` at `eee2c1c`: exit 0 (L1, L2 409 tests, L3 self-test, gates, L4, perf). `oneBirthPerDay` alone x5: 5 of 5 passed.
+- Doubt: 144 clean copies is evidence, not proof, at a failure rate near 2 %.
+
 **release-prep round 1 fixes (docs and metadata only)**
 
 - PLAYER_GUIDE: tool text now matches `JobType` (lumberjack, miner, hunter need their tool; farmer hoe is x1.25). Cook table follows `CookRecipes` order and shows the gain. Population growth added to the intro, the "Coming in v1" list (now five), the tier note, CHANGELOG and README as "in v1, being finished" (DESIGN section 7). Ranks tab wording no longer contradicts the Resident row.
@@ -980,3 +1042,8 @@ Unseeded 10-day runs (seed 1, villager AI unseeded): `defended_walled` 0 of 5 (k
 - Version: 0.1.0 until the release gate is consistent ("Unreleased (1.0.0)", a version-neutral jar name in the README, and the jar says 0.1.0).
 - Fix: the guide now says Residents can view the Ranks tab. The tab is Owner-only (`MANAGE_RANKS`); others see it greyed out. Round 1's advisory caused this.
 - `./gradlew --no-daemon build -x test` BUILD SUCCESSFUL. Next: the one-line guide fix. Orchestrator: add the `gradle.properties` bump to the release-gate list.
+
+## 2026-11-12: M23 review round 3 (verifier): PASS
+- Merged `origin/dev` (`f573200`) into `m23`; the only conflict was PROGRESS, and both sides were kept. Both r2 items are fixed and each is red under a mutant (`docs/reviews/M23-r3.md`). The fresh sight test does not touch the `canBreed` gate, so vanilla breeding stays blocked inside the claim.
+- Full `scripts/verify.sh` @ `e7d038b`: exit 0 (L2 409 tests). `one_birth_per_day` alone: 5 of 5.
+- Next: orchestrator merge. Non-blocking notes: no test pins the rescue's distance or line-of-sight guards.
