@@ -45,23 +45,30 @@ public final class ShelterRuntime {
 	}
 
 	public static void tick(ServerLevel level, Villager v, long now) {
-		Housing.rebuild(level.getServer());
 		Walk w = WALKS.computeIfAbsent(v.getUUID(), id -> new Walk());
-		Optional<ShelterPlanner.ShelterTarget> choice = pick(level, v, w.rejected);
-		if (choice.isEmpty()) {
-			w.goal = null;
-			w.walk.release(v);
-			return;
+		// Choosing scans every building and villager near this one, and every sheltering villager asks each tick: ask again every
+		// SHELTER_PICK_TICKS (at once the first time, and after a target turned out to be unreachable), and keep walking in between.
+		if (now - w.picked >= Balance.SHELTER_PICK_TICKS) {
+			Housing.rebuild(level.getServer());
+			w.picked = now;
+			Optional<ShelterPlanner.ShelterTarget> choice = pick(level, v, w.rejected);
+			if (choice.isEmpty()) {
+				w.goal = null;
+				w.walk.release(v);
+				return;
+			}
+			Pos at = choice.get().pos();
+			BlockPos chosen = new BlockPos(at.x(), at.y(), at.z());
+			if (w.goal == null || !w.goal.equals(chosen)) {
+				w.goal = chosen;
+				w.look = lookAt(level, choice.get());
+				w.begun = now;
+				w.walk.begin(chosen, Balance.SHELTER_ARRIVE, now);
+			}
 		}
-		Pos at = choice.get().pos();
-		BlockPos pos = new BlockPos(at.x(), at.y(), at.z());
-		BlockPos look = lookAt(level, choice.get());
-		if (w.goal == null || !w.goal.equals(pos)) {
-			w.goal = pos;
-			w.look = look;
-			w.begun = now;
-			w.walk.begin(pos, Balance.SHELTER_ARRIVE, now);
-		} else if (now - w.begun >= Balance.SHELTER_REPATH_TICKS && WalkTo.distance(v, pos) > Balance.SHELTER_ARRIVE) {
+		if (w.goal == null) return;
+		BlockPos pos = w.goal;
+		if (w.begun != now && now - w.begun >= Balance.SHELTER_REPATH_TICKS && WalkTo.distance(v, pos) > Balance.SHELTER_ARRIVE) {
 			w.begun = now;
 			w.walk.begin(pos, Balance.SHELTER_ARRIVE, now);
 		}
@@ -69,6 +76,7 @@ public final class ShelterRuntime {
 		if (state == WalkTo.State.UNREACHABLE) {
 			w.rejected.add(pos.asLong());
 			w.goal = null;
+			w.picked = Long.MIN_VALUE / 2;
 			w.walk.release(v);
 			return;
 		}
@@ -124,5 +132,6 @@ public final class ShelterRuntime {
 		BlockPos goal;
 		BlockPos look;
 		long begun;
+		long picked = Long.MIN_VALUE / 2;
 	}
 }

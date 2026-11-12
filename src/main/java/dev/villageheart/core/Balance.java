@@ -117,6 +117,8 @@ public final class Balance {
 	public static final double SHELTER_ARRIVE = 1.5;
 	public static final double SHELTER_DRIFT = 4;
 	public static final int SHELTER_REPATH_TICKS = 100;
+	/** A sheltering villager chooses its shelter again this often. Choosing scans every building and nearby villager. */
+	public static final int SHELTER_PICK_TICKS = 20;
 	/** Total XP at which a worker reaches level 2 and 3 (DESIGN section 4; {@code JobLevels.xpForNext} and {@code TierRules.levelFromXp} read them). */
 	public static final int LEVEL_2_XP = 100;
 	public static final int LEVEL_3_XP = 300;

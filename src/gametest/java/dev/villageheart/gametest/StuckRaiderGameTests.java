@@ -139,7 +139,9 @@ public class StuckRaiderGameTests {
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "the raid no longer counts it, and it was not a kill", () -> {
 			RaidStart.holdWaves(raid[0]);
-			h.assertValueEqual(0, raid[0].getTotalRaidersAlive(), "raiders alive in the raid");
+			// The raid drops a removed raider on its next 20-tick update. Tests run side by side, and another test's reset stops every raid
+			// within 160 blocks (RaidStart.stopAll); a stopped raid never updates again, and then there is nothing left to count.
+			h.assertTrue(raid[0].isStopped() || raid[0].getTotalRaidersAlive() == 0, "raiders alive in the raid: " + raid[0].getTotalRaidersAlive());
 			var rec = VillageClaims.current(h.getLevel().getServer()).orElseThrow().threats().raid().orElseThrow();
 			h.assertValueEqual(0, rec.raidersKilled(), "kills: a fled raider is lost, not killed");
 			h.assertValueEqual(1, StuckRaiderSystem.fled, "fled count");

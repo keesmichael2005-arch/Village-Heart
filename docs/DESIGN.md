@@ -588,6 +588,15 @@ Babies are normal vanilla villagers and can be hired as adults.
   counts as the guard's.
   As built (step 3): a worker shelters in its own House bed, else the nearest free House bed, else the nearest
   valid room's inside door. A worker who is already asleep at home stays there. Someone away does not turn back.
+  Owner decisions of 2026-11-11: **everyone shelters.** When a raid or a zombie siege starts the village bell is rung and
+  every villager in the claim, hired or not, goes indoors (own House bed, a free House bed, the nearest valid room, and as a last
+  resort its own bed anywhere). Guards that are not training and not wounded stay out and fight; hired workers go back to work
+  and the rest back to their day when it is over. **A lead-up warns the players.** Before a random raid or a siege, players within
+  96 blocks of the Heart get ominous chat lines spread over the hours before it (`Balance.WARNING_LEAD_TICKS`), and a title
+  ("A raid is starting!" / "The dead are coming!") when it starts. **Stuck raiders are the one removal.** A raider of the tracked
+  raid with no progress toward the village for 12000 ticks and nobody within 16 blocks glows and the players are told; 1200 ticks
+  later it flees (smoke, removed, counted as lost, not as a kill) so the wave can advance. A raider that moves closer, fights or
+  has someone near is never removed, and nothing ever moves, pulls or kills a raider to finish a raid.
   The online owner, stewards and residents are the ones who hear a raid.
 - **Hunger and homelessness**: these slow or stop work (§4). Villagers **do not die** of either.
 - Deaths are tracked (cause and day) for the Overview tab and the simulation metrics.
