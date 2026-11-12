@@ -1276,11 +1276,13 @@ public class BuildGameTests {
 		UUID[] ids = new UUID[2];
 		boolean[] distinct = new boolean[1];
 		boolean[] watch = new boolean[1];
+		long[] watchedAt = {Long.MAX_VALUE};
 		WorkerTestSupport.begin(h);
 		h.onEachTick(() -> {
 			if (!watch[0]) return;
-			// M26: at 70 ticks a block the builds outlast the work day; after work ends the builders drop their claims in any order
-			if (h.getLevel().getDayTime() % Balance.DAY_TICKS >= Balance.WORK_END - 200) return;
+			// M26: at 70 ticks a block the builds outlast the work day; once work ends the builders drop their claims in any order, and the
+			// next morning they pick them up in any order. The oldest-first rule is checked over the first work day (1000 -> 11000).
+			if (h.getTick() - watchedAt[0] > 9000) return;
 			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
 			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
 			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
@@ -1303,6 +1305,7 @@ public class BuildGameTests {
 			BuildTestSupport.hireBuilder(h);
 			h.getLevel().setDayTime(1000);
 			watch[0] = true;
+			watchedAt[0] = h.getTick();
 		}).thenWaitUntil(() -> h.assertTrue(distinct[0], "each builder claims its own build")).thenWaitUntil(() -> {
 			BuildTestSupport.assertHouseGreen(h, bp, plA);
 			BuildTestSupport.assertHouseGreen(h, bp, plB);
