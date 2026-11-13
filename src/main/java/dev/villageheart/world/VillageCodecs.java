@@ -597,6 +597,10 @@ public final class VillageCodecs {
 		return l;
 	}
 
+	/** Done guide tasks. An unknown id is dropped, so a renamed task cannot reject the claim. */
+	public static final Codec<dev.villageheart.core.guide.GuideProgress> GUIDE = Codec.STRING.listOf().xmap(
+			dev.villageheart.core.guide.GuideProgress::parse, dev.villageheart.core.guide.GuideProgress::ids);
+
 	public static final Codec<WorldClaim> WORLD_CLAIM = RecordCodecBuilder.create(i -> i.group(
 			Codec.INT.fieldOf("schema").forGetter(w -> SCHEMA),
 			VILLAGE_STATE.optionalFieldOf("village").forGetter(WorldClaim::village),
@@ -608,8 +612,10 @@ public final class VillageCodecs {
 			// written only when it differs from the defaults, so a save of a village with no market activity reads as before M22
 			MARKET.lenientOptionalFieldOf("market").forGetter(w -> w.market().equals(dev.villageheart.core.market.MarketState.initial()) ? Optional.empty() : Optional.of(w.market())),
 			// M23: nested on the world claim (not in RAW); written only when there is something to remember
-			GrowthCodecs.GROWTH.lenientOptionalFieldOf("growth").forGetter(w -> w.growth().equals(dev.villageheart.core.growth.GrowthState.EMPTY) ? Optional.empty() : Optional.of(w.growth()))
-	).apply(i, (schema, village, reserved, pending, dinner, payroll, market, growth) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
+			GrowthCodecs.GROWTH.lenientOptionalFieldOf("growth").forGetter(w -> w.growth().equals(dev.villageheart.core.growth.GrowthState.EMPTY) ? Optional.empty() : Optional.of(w.growth())),
+			GUIDE.lenientOptionalFieldOf("guide").forGetter(w -> w.guide().isEmpty() ? Optional.empty() : Optional.of(w.guide()))
+	).apply(i, (schema, village, reserved, pending, dinner, payroll, market, growth, guide) -> new WorldClaim(village, new java.util.LinkedHashSet<>(reserved),
 			new java.util.LinkedHashSet<>(pending), dinner.isPresent() ? java.util.OptionalLong.of(dinner.get()) : java.util.OptionalLong.empty(), payroll,
-			market.orElse(dev.villageheart.core.market.MarketState.initial()), growth.orElse(dev.villageheart.core.growth.GrowthState.EMPTY))));
+			market.orElse(dev.villageheart.core.market.MarketState.initial()), growth.orElse(dev.villageheart.core.growth.GrowthState.EMPTY),
+			guide.orElse(dev.villageheart.core.guide.GuideProgress.EMPTY))));
 }

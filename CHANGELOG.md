@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The Heart has a Guide tab. It lists what to do next, from the first marker through a Town, and plays a sound when that step changes. A few lines say what the village is waiting on you to bring.
+- The Builder's Table has a starter plan for each workplace, built as a plains village cottage with that job's blocks already inside. The Barracks cottage includes the Training Yard. The Hunting Grove is the stand of logs and leaves for a hunting ground. The Mineshaft is still dug by hand.
+
 Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
 
 ## 1.0.0

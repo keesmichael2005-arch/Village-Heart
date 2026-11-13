@@ -100,7 +100,10 @@ public class HeartMenu extends AbstractContainerMenu {
 		Optional<VillageFacts> facts = HeartFacts.cached(server);
 		if (facts.isEmpty()) return Optional.empty();
 		Rank rank = VillageClaims.current(server).map(v -> v.rankOf(player.getUUID())).orElse(Rank.VISITOR);
-		return Optional.of(HeartSnapshotBuilder.build(facts.get(), rank));
+		var guide = VillageClaims.data(server).guide();
+		var signals = dev.villageheart.guide.GuideSystem.latest();
+		return Optional.of(HeartSnapshotBuilder.build(facts.get(), rank, dev.villageheart.core.guide.GuideBook.doneInOrder(guide),
+				dev.villageheart.core.guide.GuideBook.needs(signals)));
 	}
 
 	@Override
