@@ -1,7 +1,9 @@
 # Workflow: fixes, features and releases
 
-The initial build (milestones M1–M26) is finished. From v1.0 on, changes are made by one agent (or person) per change, straight in the
-repo. No orchestrator is involved. This file is the process; `CLAUDE.md` is the short version an agent reads first.
+The initial build (milestones M1–M26) is finished. From v1.0 on, a fix is one agent straight through, as below. A feature is **Making a feature**
+in `CLAUDE.md`: the session Kees opened interviews and plans, one implementer writes the code from a prompt, and that same session opens the PR
+and stays until verify is green. `CLAUDE.md` is the agent guide. `AGENTS.md` points at it. An implementer does not get a second copy. Its brief
+is the prompt.
 
 ## Branches
 
@@ -63,7 +65,7 @@ A hot fix for a released version follows the same path. Fix on `dev`, then relea
 | L4 | Real client with screenshots (needs xvfb) | `*ClientTests.java`, screenshots in `reports/screenshots/` | part of the full verify |
 
 - Use the lowest layer that proves the change.
-- A visual change needs an L4 screenshot that you have actually opened and looked at.
+- A visual change needs an L4 screenshot. On a feature, the parent opens the png from the `verify-reports` artifact and puts it in the chat with Kees (`CLAUDE.md`, Screenshots in the chat).
 - L3 is for balance work. It is not part of `verify.sh`, so run the scenario you touched.
 - `docs/TESTING.md` has the details and the known flake rules. A test that fails once under load and passes alone is a known flake: note its name in the PR. Never "fix" a flaky test by loosening it.
 
@@ -78,9 +80,9 @@ A hot fix for a released version follows the same path. Fix on `dev`, then relea
 
 ## Bigger work
 
-For a feature, write a short plan first in `docs/plans/<name>.md`: goal, steps, tests per layer and risks. Use the post-v1 plans P1–P3 as the format. Then build on a `feat/*` branch and get a review before merging.
+A feature follows **Making a feature** in `CLAUDE.md`. After Kees approves the plan, it is saved as `docs/plans/<name>.md`. One implementer builds it from a prompt on `feat/<name>`. The session he opened reviews the diff, opens the PR into `dev`, and stays until the verify check is green. It puts the new client screenshots in the chat, from the `verify-reports` artifact. It does not merge.
 
-For a review, a second agent reads the PR diff with the "Rules that do not change" above. It should break the key rule once to see the test go red ("mutation check"), and confirm the full verify.
+A review of a fix is a second pass over the PR diff with the "Rules that do not change" above. Break the key rule once and see the test go red (the mutation check), and confirm the full verify on the PR.
 
 ## History
 
