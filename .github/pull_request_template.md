@@ -5,7 +5,7 @@
 ## How it was tested
 
 - [ ] A test shows the bug or the new behaviour (layer: L1 unit / L2 GameTest / L4 client):
-- [ ] `scripts/verify.sh` exit 0 (CI green)
+- [ ] `scripts/verify.sh --fast` exit 0 locally (CI is not waited for; the `dev` run checks the batch)
 - [ ] Visual change: screenshot looked at (name it), or no visual change
 
 ## Checklist
@@ -15,4 +15,4 @@
 - [ ] `docs/DESIGN.md` / `docs/PLAYER_GUIDE.md` updated if behaviour or a number the player sees changed
 - [ ] No test weakened, skipped or deleted
 - [ ] Old saves still load (new save keys in RAW_B, optional)
-- [ ] Label set: `awaiting-approval` once verify is green, `approved` when Kees says he is done (the release thread merges `approved` PRs)
+- [ ] Label set: `awaiting-approval` as soon as the PR is pushed, `approved` when Kees says he is done (the release thread merges `approved` PRs)

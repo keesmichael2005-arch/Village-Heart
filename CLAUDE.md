@@ -20,7 +20,7 @@ Every PR into `dev` carries one of two labels. They are how Kees batches work in
 
 | Label | Meaning | Who sets it |
 |---|---|---|
-| `awaiting-approval` | Verify is green and Kees has seen the proof (screenshots or test results), or work is still going on. Not part of the next playtest. | The parent thread, when it opens the PR (or when more work is sent into an approved PR). |
+| `awaiting-approval` | The work is pushed and the PR is open. Kees may still be reviewing, or more work may come. Not part of the next playtest. | The parent thread, as soon as the PR is open and pushed (or when more work is sent into an approved PR). |
 | `approved` | Kees said he is done with this thread. No more changes are coming. The next release thread merges it. | The same parent thread, when Kees says he is happy or done. |
 
 ```bash
@@ -30,8 +30,8 @@ gh pr edit <n> --repo keesmichael2005-arch/Village-Heart --remove-label awaiting
 
 - Kees says it in the thread that opened the PR. Nobody else sets `approved`, and nobody sets it for him.
 - If Kees sends more work to a thread whose PR is `approved`, put it back to `awaiting-approval` first, and set `approved` again only when he says he is done again.
-- A PR with a red `verify` is not `approved`, whatever Kees said. Fix it first.
-- Opening a PR, getting it green, and labeling it `awaiting-approval` ends the thread's normal job. The PR stays open. Parents do not merge, and do not hand Kees a jar.
+- **CI is limited. Do not wait for `verify` and do not re-run it.** Run `scripts/verify.sh --fast` locally, push, open the PR, label it, and stop. A red or still-running `verify` does not stop the label. Mention it in one line if it already failed. The check that counts is the one on `dev` after the release thread merges the batch.
+- Opening and pushing a PR and labeling it `awaiting-approval` ends the thread's normal job. The PR stays open. Parents do not merge, and do not hand Kees a jar.
 
 ## Skills
 
@@ -85,7 +85,7 @@ Push to `main`. Merge a PR (only the release thread merges, and only `approved` 
 4. Run `scripts/verify.sh --fast` while you work. Run the full `scripts/verify.sh` before you push. Both must exit 0.
 5. Add a line under `## Unreleased` in `CHANGELOG.md`. Update `docs/DESIGN.md` and `docs/PLAYER_GUIDE.md` if behaviour changed.
 6. Push the branch and open a PR into `dev`. Never push to `main`. `main` only gets released versions (see WORKFLOW.md "Releasing").
-7. Watch verify until it is green, then label the PR `awaiting-approval` and stop. Do not merge it. When Kees says he is done with it, switch the label to `approved` (see **Labels and approval**). A release thread merges it later.
+7. Label the PR `awaiting-approval` and stop. Do not wait for `verify` and do not merge. When Kees says he is done with it, switch the label to `approved` (see **Labels and approval**). A release thread merges it later.
 
 ## Making a feature
 
@@ -149,17 +149,17 @@ Before any push, read the diff against the approved plan and against **Do not br
 
 A small miss (a changelog line, a wrong comment) you fix yourself. A behaviour change goes back to a new implementer with a new prompt that names the gap. Then push `feat/<name>` and open a PR into `dev`, using `.github/pull_request_template.md`.
 
-### 5. Stay until verify is green
+### 5. Push and label, do not wait
 
-The PR runs `.github/workflows/build.yml` (`verify`): layers 1, 2, and 4, including the real client. That run is the full check. Watch it.
+The PR runs `.github/workflows/build.yml` (`verify`): layers 1, 2, and 4, including the real client. CI minutes are limited, so do not wait for that run and do not re-run it. Label the PR `awaiting-approval` and leave it open. Do not merge.
 
-On a failure, read the log, fix the cause, push, and watch the new run. Leave the PR open. Do not merge.
+If a run has already finished and shows a failure that your change caused, fix it with one push. Do not chase a flaky test with reruns: name it in the PR and move on.
 
 ### 6. Screenshots in the chat
 
 The client is a real Minecraft 1.21.11, on a virtual 1280×720 display, doing only what the client test scripts. It is a scripted scene. The workflow installs that display on the GitHub runner. Debbie does not run the client.
 
-When the verify run has finished, download its screenshots and put the new ones in the chat. `reports/` is gitignored.
+If a verify run on the PR has already finished, download its screenshots and put the new ones in the chat. If none has finished, say so and give Kees the PR link. Do not wait. `reports/` is gitignored.
 
 ```bash
 gh run list --repo keesmichael2005-arch/Village-Heart --workflow build.yml --branch feat/<name> --json databaseId,conclusion,headSha,url
@@ -176,7 +176,7 @@ For each new stem, open the png, then put it in the chat as a markdown image wit
 
 That message is how Kees sees the picture. A green check on the PR is the test result. It is not the picture.
 
-If the frame is wrong, fix, push, and show the new run's png. When verify is green and the frames are in the chat, label the PR `awaiting-approval`, send him the PR link, and stop.
+If a frame is wrong, fix it with one push and show the png from the next finished run. Then label the PR `awaiting-approval`, send him the PR link, and stop.
 
 ### 7. Approval
 
@@ -186,9 +186,9 @@ Kees reads the proof and either sends changes or says he is done. If he sends ch
 
 Kees collects approved PRs and plays them together. One release thread does the merge and the hand-off. It does not write mod code.
 
-1. **List the batch.** `gh pr list --repo keesmichael2005-arch/Village-Heart --base dev --label approved --state open --json number,title,headRefName,statusCheckRollup`. Show Kees the list. Leave out `awaiting-approval` PRs, and any `approved` PR whose last `verify` is red (name it and why).
+1. **List the batch.** `gh pr list --repo keesmichael2005-arch/Village-Heart --base dev --label approved --state open --json number,title,headRefName,statusCheckRollup`. Show Kees the list. Leave out `awaiting-approval` PRs. An `approved` PR is merged even if its own `verify` was red or never finished: the `dev` run in step 3 is the check.
 2. **Merge them into `dev`**, one at a time, lowest PR number first: `gh pr merge <n> --squash --delete-branch`. Before the next one, `git fetch`. A conflict in `CHANGELOG.md` (two lines under `## Unreleased`) you resolve yourself by keeping both lines. Any other conflict: stop, tell Kees which two PRs clash, and ask the owner thread (`awaiting-approval` again) to rebase on `dev`. Do not hand-merge code.
-3. **Wait for `dev` to go green.** Each merge to `dev` starts a `verify` run. A newer push cancels the older run, so the run on the last merge is the one that counts. It covers layers 1, 2 and 4 on the combined code. If it is red, find which PR caused it. Revert that merge, set the PR back to `awaiting-approval`, tell Kees, and re-run.
+3. **Wait for `dev` to go green.** Each merge to `dev` starts a `verify` run. A newer push cancels the older run, so the run on the last merge is the one that counts. It covers layers 1, 2 and 4 on the combined code. If it is red, read the log. A test that fails on one run and passes alone is a known flake (`docs/TESTING.md`): re-run only that failed job, once. Otherwise find which PR caused it, revert that merge, set the PR back to `awaiting-approval`, and tell Kees.
 4. **Hand over the jar.** Download the `village-heart-jar` artifact from that `dev` run: `gh run download <run-id> --repo keesmichael2005-arch/Village-Heart --name village-heart-jar --dir reports/jar-from-ci`. Give Kees the absolute path and the PR list, with each CHANGELOG line. He puts the jar in `.minecraft/mods` with Fabric API and plays.
 5. **Stay open while he plays.** When he asks what he is testing, answer from the PRs merged since the last tag: `gh pr list --repo keesmichael2005-arch/Village-Heart --base dev --state merged --label approved --search "merged:>=<date of the last vX.Y.Z tag>"`, plus the `## Unreleased` lines in `CHANGELOG.md`. A bug he finds is a new fix thread. It opens a PR, waits for approval, and rides the next playtest. It is not merged into this one.
 6. **Release only when he says the playtest is good.** Then follow `docs/WORKFLOW.md` "Releasing a version": version bump PR into `dev`, `CHANGELOG.md` heading, PR from `dev` to `main` once it is green, tag `vX.Y.Z`, GitHub release with the jar from the `main` run. Say what you did, and stop.

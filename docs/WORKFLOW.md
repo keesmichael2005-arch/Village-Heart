@@ -2,7 +2,7 @@
 
 The initial build (milestones M1–M26) is finished. From v1.0 on, a fix is one agent straight through, as below. A feature is **Making a feature**
 in `CLAUDE.md`: the session Kees opened interviews and plans, one implementer writes the code from a prompt, and that same session opens the PR
-and stays until verify is green. Fixes and features end the same way: an open PR labeled `awaiting-approval`, then `approved` when Kees
+and pushes it. Fixes and features end the same way: an open PR labeled `awaiting-approval`, then `approved` when Kees
 says he is done. A separate release thread merges the approved PRs and builds the playtest jar (see "The batch flow"). `CLAUDE.md` is the agent guide. `AGENTS.md` points at it. An implementer does not get a second copy. Its brief
 is the prompt.
 
@@ -31,7 +31,7 @@ A `fix/*` or `feat/*` branch is deleted when the release thread merges it (`gh p
    player sees, update `docs/DESIGN.md` and `docs/PLAYER_GUIDE.md` too.
 7. **Push and open a PR into `dev`:** `git push -u origin fix/<short-name>`. Fill in the PR template. CI (`.github/workflows/build.yml`)
    runs the full verify on every push.
-8. **Label and stop.** When CI is green, label the PR `awaiting-approval`. Do not merge. When Kees says he is done with the fix, change the label to `approved`. A release thread merges it (below).
+8. **Label and stop.** Label the PR `awaiting-approval` as soon as it is pushed. Do not wait for CI (minutes are limited) and do not merge. When Kees says he is done with the fix, change the label to `approved`. A release thread merges it (below).
 
 A balance tweak is the same as a fix: change the number in `core/Balance.java` (or the table it lives in), and point any test that pins
 it at the `Balance` value rather than loosening its rule.
@@ -40,9 +40,9 @@ it at the `Balance` value rather than loosening its rule.
 
 Kees plays several changes together, not one jar per PR.
 
-1. Each fix or feature thread opens a PR into `dev` and gets it green. CI checks the PR but does **not** upload a jar for it. The thread labels it **`awaiting-approval`**.
+1. Each fix or feature thread pushes its branch, opens a PR into `dev`, and labels it **`awaiting-approval`**. It does not wait for CI or re-run it. CI runs on the PR but does **not** upload a jar for it.
 2. Kees looks at the proof in the thread (screenshots, tests). If he wants changes, that thread keeps going. When he says he is done, the thread changes the label to **`approved`**. The PR stays open.
-3. When Kees wants to play, he opens a **release thread**. It lists the open `approved` PRs, merges them into `dev` one at a time (squash), and waits for the `dev` run to go green. Only the run on the last merge matters: a newer push cancels the older one.
+3. When Kees wants to play, he opens a **release thread**. It lists the open `approved` PRs, merges them into `dev` one at a time (squash), and waits for the `dev` run to go green: that run is the real check of the batch. Only the run on the last merge matters: a newer push cancels the older one.
 4. That `dev` run uploads the **village-heart-jar** artifact. The release thread downloads it and hands Kees the path, with the list of PRs and their CHANGELOG lines. He puts the jar in `.minecraft/mods` with Fabric API and plays.
 5. Bugs he finds become new fix threads and ride the next playtest. When he says the playtest is good, the release thread does "Releasing a version" below.
 
@@ -92,7 +92,7 @@ A hot fix for a released version follows the same path. Fix on `dev`, then relea
 
 ## Bigger work
 
-A feature follows **Making a feature** in `CLAUDE.md`. After Kees approves the plan, it is saved as `docs/plans/<name>.md`. One implementer builds it from a prompt on `feat/<name>`. The session he opened reviews the diff, opens the PR into `dev`, and stays until the verify check is green. It puts the new client screenshots in the chat, from the `verify-reports` artifact, labels the PR `awaiting-approval`, and sets `approved` when Kees says he is done. It does not merge. The release thread does (see "The batch flow").
+A feature follows **Making a feature** in `CLAUDE.md`. After Kees approves the plan, it is saved as `docs/plans/<name>.md`. One implementer builds it from a prompt on `feat/<name>`. The session he opened reviews the diff, opens the PR into `dev`, and pushes it. If a verify run has already finished it puts the new client screenshots in the chat, from the `verify-reports` artifact. It labels the PR `awaiting-approval`, and sets `approved` when Kees says he is done. It does not merge. The release thread does (see "The batch flow").
 
 A review of a fix is a second pass over the PR diff with the "Rules that do not change" above. Break the key rule once and see the test go red (the mutation check), and confirm the full verify on the PR.
 

@@ -1,10 +1,13 @@
-# Runs on every push/PR: build, unit tests, in-world GameTests, and client GameTests
+# Runs on every PR push, and on pushes to dev and main (one run per push, not two): build, unit tests, in-world GameTests, and client GameTests
 # (real game on a virtual display). Screenshots are uploaded as an artifact.
 # The mod jar is uploaded only for pushes to dev and main: PRs are checked, not packaged.
 # A newer push cancels the older run on the same ref (except main), so a batch merge into dev
 # leaves one run, on the final commit, as the one to play.
 name: verify
-on: [pull_request, push]
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
 
 concurrency:
   group: verify-${{ github.ref }}
