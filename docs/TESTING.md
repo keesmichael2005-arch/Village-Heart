@@ -510,3 +510,6 @@ with a wrapper that does not tick while a living player is inside `CLAIM_RADIUS`
   not arrived, then walks inside). Every caller (miner, hunter, lumberjack, farmer, builder, cook, deposit trip, self-craft) walks through `WalkTo`, so that test covers them by construction; the full L2 suite is green
   with the strict rule. Item pickups pass 0.8, which a villager never reaches (it stops at about 0.85): they take by their own `COLLECT_TAKE` distance and ignore ARRIVED, so they are unaffected.
 - A failing `craftPausesOvernight...` prints a 25-tick trace of the worker (position, decision, progress) in its message; a failing side-by-side run lists the ticks where logs and wear disagree.
+
+## Guide
+`GuideBookTest` checks the step order (Farmhouse before the field, a marker before its building), that an item in the inventory checks a craft step, and that a recipe grid is the shaped recipe. Layer 4 `GuideClientTests.tasksAndRecipe` (`guide_tasks.png`, `guide_detail.png`; `-Dvillageheart.l4.only=guide`) shows the next three tasks on the left and the Blank Marker recipe after a click, then checks the step off when the item is given.

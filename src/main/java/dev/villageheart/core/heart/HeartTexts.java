@@ -220,9 +220,13 @@ public final class HeartTexts {
 		EN.put(PREFIX + "guide.need.emeralds", "The village needs emeralds in the Heart before dawn.");
 		EN.put(PREFIX + "guide.need.field", "The village needs a planted field by the Farmhouse.");
 		EN.put(PREFIX + "guide.need.yard", "The village needs a Training Yard, or the guards gain no experience.");
+		EN.put(PREFIX + "guide.tasks", "Tasks");
+		EN.put(PREFIX + "guide.checked", "Done");
+		EN.put(PREFIX + "guide.pick", "Click a task to see the steps.");
 		for (dev.villageheart.core.guide.GuideTask task : dev.villageheart.core.guide.GuideTask.values()) {
 			EN.put(PREFIX + "guide.task." + task.id(), task.title());
 			EN.put(PREFIX + "guide.hint." + task.id(), task.hint());
+			EN.put(PREFIX + "guide.detail." + task.id(), task.detail());
 		}
 	}
 

@@ -9,21 +9,26 @@ import java.util.Set;
  */
 public record GuideSignals(boolean heartOpen, boolean markerPlaced, Set<String> valid, Set<String> jobs, boolean emeralds,
 		boolean field, boolean fedDinner, boolean wagesPaid, boolean houseStocked, boolean buildStarted, boolean buildFinished,
-		boolean golem, Set<String> defences, Tier tier, int wageShort, boolean blueprintBook) {
+		boolean golem, Set<String> defences, Tier tier, int wageShort, boolean blueprintBook, Set<String> placed,
+		Set<String> carrying) {
 	public GuideSignals {
 		valid = Set.copyOf(valid);
 		jobs = Set.copyOf(jobs);
 		defences = Set.copyOf(defences);
+		placed = Set.copyOf(placed);
+		carrying = Set.copyOf(carrying);
 		if (tier == null) throw new IllegalArgumentException("tier");
 		if (wageShort < 0) throw new IllegalArgumentException("wageShort must be >= 0: " + wageShort);
 	}
 
 	public static GuideSignals none() {
 		return new GuideSignals(false, false, Set.of(), Set.of(), false, false, false, false, false, false, false, false, Set.of(),
-				Tier.HAMLET, 0, false);
+				Tier.HAMLET, 0, false, Set.of(), Set.of());
 	}
 
 	public boolean valid(String typeId) { return valid.contains(typeId); }
+	public boolean placed(String typeId) { return placed.contains(typeId); }
+	public boolean carrying(String itemId) { return carrying.contains(itemId); }
 	public boolean job(String jobId) { return jobs.contains(jobId); }
 	public boolean defence(String blueprintId) { return defences.contains(blueprintId); }
 	public boolean tierAtLeast(Tier t) { return tier.ordinal() >= t.ordinal(); }

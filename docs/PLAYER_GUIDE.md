@@ -522,7 +522,7 @@ Right-click the claimed Heart.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
 - **Ranks.** Owner only. Others see the tab greyed out ("Only the Owner can manage ranks").
-- **Guide.** The list of main things to do, from the first marker to a Town. The current one has one sentence under "Next". Doing a thing checks it off, in any order, and it stays checked. When the next one changes, you get the advancement sound. After a builder is hired, the next row is the Blueprint Book. Above the list, the village can ask for emeralds before dawn, a planted field, or a Training Yard. Guards gain no training experience without a yard. The Barracks plan builds that yard on the side of the barracks: two targets inside a fence.
+- **Guide.** The list of steps from the first marker to a Town. Each building is craft the marker, then make the building count. The field comes after the Farmhouse. Crafting checks off when the item is in your inventory. The next three steps sit as plain text on the left (H hides them). Finishing a step plays the advancement sound. Click a step for the short list of what to do, and the recipe when it is a craft. After a builder is hired, the next craft is the Blueprint Book. Above the list, the village can ask for emeralds before dawn, a planted field, or a Training Yard. Guards gain no training experience without a yard. The Barracks plan builds that yard on the side of the barracks: two targets inside a fence.
 
 A Visitor receives the Overview and the Guide.
 

@@ -19,6 +19,7 @@ import dev.villageheart.core.guide.GuideProgress;
 import dev.villageheart.core.guide.GuideSignals;
 import dev.villageheart.core.guide.GuideTask;
 import dev.villageheart.heart.HeartMenu;
+import dev.villageheart.heart.net.GuideTasksPayload;
 import dev.villageheart.heart.net.GuideToastPayload;
 import dev.villageheart.heart.net.HeartNetwork;
 import dev.villageheart.stock.Stockpiles;
@@ -40,16 +41,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.phys.AABB;
 
-/** Latches guide tasks from the live village, about once a second, and tells online players when the next task changes. */
+/** Latches guide tasks from the live village. Craft steps are checked every tick; the rest about once a second. */
 public final class GuideSystem implements VillageSystem {
 	public static final GuideSystem INSTANCE = new GuideSystem();
 
 	private HeartLocation heart;
 	private long claimedAt = Long.MIN_VALUE;
 	private final Set<UUID> seenBuilds = new HashSet<>();
+	private final Set<UUID> told = new HashSet<>();
 	private GuideSignals latest = GuideSignals.none();
 
 	private GuideSystem() {}
@@ -58,19 +61,40 @@ public final class GuideSystem implements VillageSystem {
 
 	@Override
 	public void tick(MinecraftServer server, VillageState village) {
-		if ((server.getTickCount() % 20) != 0) return;
 		var data = VillageClaims.data(server);
 		GuideProgress before = data.guide();
+		boolean full = server.getTickCount() % 20 == 0;
+		if (!full && !craftInHand(server, before)) return;
 		GuideSignals signals = read(server, village, before);
 		latest = signals;
 		GuideProgress after = GuideBook.advance(before, signals);
-		if (after.equals(before)) return;
-		data.setGuide(after);
-		HeartMenu.markAllDirty(server);
-		String next = GuideBook.current(after);
-		if (!next.equals(GuideBook.current(before))) {
-			for (ServerPlayer player : server.getPlayerList().getPlayers()) HeartNetwork.send(player, new GuideToastPayload(next));
+		if (!after.equals(before)) {
+			data.setGuide(after);
+			HeartMenu.markAllDirty(server);
+			List<String> done = GuideBook.newlyDone(before, after);
+			if (!done.isEmpty()) {
+				var toast = new GuideToastPayload(done.get(done.size() - 1));
+				for (ServerPlayer player : server.getPlayerList().getPlayers()) HeartNetwork.send(player, toast);
+			}
 		}
+		List<String> upcoming = GuideBook.upcoming(after, 3);
+		var list = new GuideTasksPayload(upcoming);
+		Set<UUID> online = new HashSet<>();
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			online.add(player.getUUID());
+			if (!after.equals(before) || told.add(player.getUUID())) HeartNetwork.send(player, list);
+		}
+		told.retainAll(online);
+	}
+
+	/** True when an uncrafted guide item is already in someone's inventory, so the step can tick without waiting. */
+	private static boolean craftInHand(MinecraftServer server, GuideProgress progress) {
+		Set<String> have = new HashSet<>();
+		collectItems(server, have);
+		for (GuideTask task : GuideTask.values()) {
+			if (task.itemId() != null && !progress.has(task.id()) && have.contains(task.itemId())) return true;
+		}
+		return false;
 	}
 
 	private GuideSignals read(MinecraftServer server, VillageState village, GuideProgress progress) {
@@ -78,12 +102,15 @@ public final class GuideSystem implements VillageSystem {
 			claimedAt = village.claimedAtGameTime();
 			heart = village.heart();
 			seenBuilds.clear();
+			told.clear();
 			for (BuildJob job : village.builds()) seenBuilds.add(job.id());
 		}
 		Set<String> valid = new HashSet<>();
+		Set<String> placed = new HashSet<>();
 		boolean marker = false;
 		for (BuildingRecord building : village.buildings()) {
 			marker = true;
+			placed.add(building.typeId());
 			if (building.status() == BuildingStatus.VALID) valid.add(building.typeId());
 		}
 		Set<String> jobs = new HashSet<>();
@@ -119,22 +146,29 @@ public final class GuideSystem implements VillageSystem {
 				|| (village.tier().ordinal() >= Tier.VILLAGE.ordinal() && stockCovers(server));
 		boolean field = progress.has(GuideTask.FIELD.id()) || fieldPlanted(server, village);
 		boolean golem = progress.has(GuideTask.GOLEM.id()) || !village.golemBuilds().isEmpty() || golemNearby(server, village);
+		Set<String> carrying = new HashSet<>();
+		collectItems(server, carrying);
 		return new GuideSignals(heartOpen || progress.has(GuideTask.OPEN_HEART.id()), marker, valid, jobs,
 				village.treasury() > 0 || progress.has(GuideTask.EMERALDS.id()), field,
 				village.tierProgress().fedStreak() >= 1, wagesPaid, stocked,
 				!village.builds().isEmpty() || !defences.isEmpty() || buildGone || cursorDone,
 				!defences.isEmpty() || buildGone || cursorDone, golem, defences, village.tier(), shortfall,
-				progress.has(GuideTask.BLUEPRINT_BOOK.id()) || holdingBook(server));
+				progress.has(GuideTask.BLUEPRINT_BOOK.id()) || carrying.contains("villageheart:blueprint_book"),
+				placed, carrying);
 	}
 
-	private static boolean holdingBook(MinecraftServer server) {
+	private static void collectItems(MinecraftServer server, Set<String> into) {
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			addItem(into, player.containerMenu.getCarried());
 			var inventory = player.getInventory();
-			for (int i = 0; i < inventory.getContainerSize(); i++) {
-				if (inventory.getItem(i).is(dev.villageheart.item.ModItems.BLUEPRINT_BOOK)) return true;
-			}
+			for (int i = 0; i < inventory.getContainerSize(); i++) addItem(into, inventory.getItem(i));
 		}
-		return false;
+	}
+
+	private static void addItem(Set<String> into, ItemStack stack) {
+		if (stack.isEmpty()) return;
+		String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+		if (GuideTask.isGuideItem(id)) into.add(id);
 	}
 
 	private static long counted(MinecraftServer server, boolean tag, String bare) {

@@ -45,6 +45,7 @@ public final class HeartNetwork {
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> HeartActions.forget(handler.getPlayer().getUUID()));
 		PayloadTypeRegistry.playS2C().register(HeartSnapshotPayload.TYPE, HeartSnapshotPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(GuideToastPayload.TYPE, GuideToastPayload.CODEC);
+		PayloadTypeRegistry.playS2C().register(GuideTasksPayload.TYPE, GuideTasksPayload.CODEC);
 		PayloadTypeRegistry.playS2C().register(HeartActionResultPayload.TYPE, HeartActionResultPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(AssignJobPayload.TYPE, AssignJobPayload.CODEC);
 		PayloadTypeRegistry.playC2S().register(FireWorkerPayload.TYPE, FireWorkerPayload.CODEC);

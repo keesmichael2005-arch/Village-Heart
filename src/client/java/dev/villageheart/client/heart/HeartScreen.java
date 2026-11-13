@@ -4,6 +4,7 @@ import dev.villageheart.client.art.ModTextures;
 import dev.villageheart.core.Rank;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.Balance;
+import dev.villageheart.core.guide.GuideRecipes;
 import dev.villageheart.core.guide.GuideTask;
 import dev.villageheart.core.heart.AlertLine;
 import dev.villageheart.core.heart.BuildRow;
@@ -52,6 +53,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -93,6 +96,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	private static final int AREA_HEADER = 0, AREA_BODY = 1, AREA_FOOTER = 2;
 	private static final String[] TAB_KEYS = {"tab.overview", "tab.villagers", "tab.buildings", "tab.stockpile", "tab.ranks", "tab.guide"};
 	public static final int TAB_GUIDE = 5;
+	static final int GUIDE_PANEL_W = 168;
 
 	private final HeartMenu menu;
 	private int tab;
@@ -111,6 +115,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	private int statusColor;
 	private int statusTicks;
 	private final Map<String, ItemStack> stacks = new HashMap<>();
+	private String selectedGuide;
 
 	// test hooks
 	private record Rect(int area, int group, int x, int y, int w, int h) {}
@@ -313,7 +318,9 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 		if (tab == 3) top = bodyTop() + 4 + 40;
 		if (tab == TAB_RANKS) top = bodyTop() + 4 + RANKS_HEADER_H;
 		if (tab == TAB_GUIDE) top = bodyTop() + 4 + 28 + snap().guideNeeds().size() * 12;
-		return new int[] {MARGIN, top, width - 2 * MARGIN, bottom - top};
+		int w = width - 2 * MARGIN;
+		if (tab == TAB_GUIDE) w -= GUIDE_PANEL_W + 6;
+		return new int[] {MARGIN, top, w, bottom - top};
 	}
 
 	private int maxScroll(int contentH) { return Math.max(0, contentH - listRect()[3]); }
@@ -662,6 +669,14 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 			return false;
 		}
+		if (tab() == TAB_GUIDE) {
+			String hit = guideHit(mx, my);
+			if (hit != null) {
+				selectedGuide = hit.equals(selectedGuide) ? null : hit;
+				return true;
+			}
+			return false;
+		}
 		if (tab() == 1 || tab() == 2) {
 			if (mx >= r[0] && mx < r[0] + r[2] - SCROLLBAR_W - 4 && my >= r[1] && my < r[1] + r[3]) {
 				int idx = (int) ((my - r[1] + scroll[tab]) / ROW_H);
@@ -881,7 +896,7 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 	private void drawGuide(GuiGraphics g) {
 		HeartSnapshot s = snap();
 		int y = bodyTop() + 6;
-		int w = width - 2 * MARGIN;
+		int w = width - 2 * MARGIN - GUIDE_PANEL_W - 6;
 		int grp = groupCounter++;
 		String current = "";
 		java.util.Set<String> done = new java.util.HashSet<>(s.guideDone());
@@ -917,14 +932,111 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 			}
 			if (rowY + 12 > r[1] && rowY < r[1] + r[3]) {
 				boolean checked = done.contains(task.id());
+				boolean selected = task.id().equals(selectedGuide);
 				text(g, Component.literal(checked ? "x" : "o"), r[0], rowY, 12, checked ? GREEN : DARK_GREY, AREA_BODY, grp);
-				text(g, t("guide.task." + task.id()), r[0] + 14, rowY, r[2] - 28, checked ? GREEN : (task.id().equals(current) ? WHITE : GREY), AREA_BODY, grp);
+				text(g, t("guide.task." + task.id()), r[0] + 14, rowY, r[2] - 28,
+						checked ? GREEN : (selected || task.id().equals(current) ? WHITE : GREY), AREA_BODY, grp);
 			}
 			rowY += 12;
 		}
 		g.disableScissor();
 		clip = new int[] {0, bodyTop(), width, bodyBottom()};
 		scrollbar(g, r, guideContentHeight());
+		if (selectedGuide != null) drawGuideDetail(g, GuideTask.byId(selectedGuide).orElse(null));
+		else wrap(g, t("guide.pick").getString(), width - MARGIN - GUIDE_PANEL_W, bodyTop() + 8, GUIDE_PANEL_W, GREY, groupCounter++);
+	}
+
+	/** GUI centre of a guide row, scrolling it into view. Null when the id is unknown. */
+	public int[] guideRowCentre(String id) {
+		int top = guideRowTop(id);
+		if (top < 0) return null;
+		int[] r = listRect();
+		if (top < scroll[TAB_GUIDE]) scroll[TAB_GUIDE] = top;
+		return new int[] {r[0] + 40, r[1] + top - scroll[TAB_GUIDE] + 6};
+	}
+
+	public String selectedGuide() { return selectedGuide == null ? "" : selectedGuide; }
+
+	private String guideHit(double mx, double my) {
+		int[] r = listRect();
+		if (mx < r[0] || mx >= r[0] + r[2] || my < r[1] || my >= r[1] + r[3]) return null;
+		int local = (int) my - r[1] + scroll[TAB_GUIDE];
+		GuideTask.Chapter chapter = null;
+		int y = 0;
+		for (GuideTask task : GuideTask.values()) {
+			if (task.chapter() != chapter) {
+				y += 14;
+				chapter = task.chapter();
+			}
+			if (local >= y && local < y + 12) return task.id();
+			y += 12;
+		}
+		return null;
+	}
+
+	private int guideRowTop(String id) {
+		GuideTask.Chapter chapter = null;
+		int y = 0;
+		for (GuideTask task : GuideTask.values()) {
+			if (task.chapter() != chapter) {
+				y += 14;
+				chapter = task.chapter();
+			}
+			if (task.id().equals(id)) return y;
+			y += 12;
+		}
+		return -1;
+	}
+
+	private void drawGuideDetail(GuiGraphics g, GuideTask task) {
+		if (task == null) return;
+		int x = width - MARGIN - GUIDE_PANEL_W;
+		int y = bodyTop() + 6;
+		int grp = groupCounter++;
+		g.fill(x - 4, bodyTop() + 4, width - MARGIN, bodyBottom() - 4, 0xC0101010);
+		text(g, t("guide.task." + task.id()), x, y, GUIDE_PANEL_W, WHITE, AREA_BODY, grp);
+		y += 14;
+		for (String line : task.detail().split("\n")) {
+			y = wrap(g, line, x, y, GUIDE_PANEL_W, GREY, grp);
+		}
+		List<String> grid = GuideRecipes.grid(task);
+		if (grid.size() != 9) return;
+		y += 4;
+		for (int i = 0; i < 9; i++) {
+			int sx = x + (i % 3) * 18;
+			int sy = y + (i / 3) * 18;
+			g.fill(sx, sy, sx + 16, sy + 16, 0xFF2B2B2B);
+			ItemStack icon = ingredient(grid.get(i));
+			if (!icon.isEmpty()) g.renderItem(icon, sx, sy);
+			note(AREA_BODY, grp, sx, sy, 16, 16);
+		}
+	}
+
+	private int wrap(GuiGraphics g, String line, int x, int y, int maxW, int color, int group) {
+		String cur = "";
+		for (String word : line.split(" ")) {
+			String next = cur.isEmpty() ? word : cur + " " + word;
+			if (!cur.isEmpty() && font.width(next) > maxW) {
+				text(g, Component.literal(cur), x, y, maxW, color, AREA_BODY, group);
+				y += 10;
+				cur = word;
+			} else cur = next;
+		}
+		if (!cur.isEmpty()) {
+			text(g, Component.literal(cur), x, y, maxW, color, AREA_BODY, group);
+			y += 10;
+		}
+		return y;
+	}
+
+	private ItemStack ingredient(String ing) {
+		if (ing == null || ing.isEmpty()) return ItemStack.EMPTY;
+		if (ing.startsWith("#")) {
+			var tag = TagKey.create(Registries.ITEM, Identifier.parse(ing.substring(1)));
+			var it = BuiltInRegistries.ITEM.getTagOrEmpty(tag).iterator();
+			return it.hasNext() ? new ItemStack(it.next().value()) : ItemStack.EMPTY;
+		}
+		return stack(ing);
 	}
 
 	private void drawRanks(GuiGraphics g, int mx, int my) {

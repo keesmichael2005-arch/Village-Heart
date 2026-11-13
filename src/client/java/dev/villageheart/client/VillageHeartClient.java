@@ -1,5 +1,6 @@
 package dev.villageheart.client;
 
+import dev.villageheart.client.guide.GuideHud;
 import dev.villageheart.client.heart.HeartScreen;
 import dev.villageheart.heart.HeartMenu;
 import dev.villageheart.heart.ModMenus;
@@ -19,6 +20,7 @@ public class VillageHeartClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		MenuScreens.register(ModMenus.HEART, HeartScreen::new);
+		GuideHud.register();
 		dev.villageheart.client.build.BlueprintPreview.register();
 		dev.villageheart.client.build.SchematicOverlay.register();
 		dev.villageheart.build.BlueprintBookHooks.openScreen = hand ->
@@ -37,14 +39,16 @@ public class VillageHeartClient implements ClientModInitializer {
 			}
 		});
 		ClientPlayNetworking.registerGlobalReceiver(GuideToastPayload.TYPE, (payload, ctx) -> {
-			boolean finished = payload.taskId().isEmpty();
-			GuideTask task = finished ? null : GuideTask.byId(payload.taskId()).orElse(null);
-			Component title = Component.translatable(HeartTexts.key(finished || task == null ? "guide.done_title" : "guide.task." + task.id()));
-			Component body = Component.translatable(HeartTexts.key(finished || task == null ? "guide.done" : "guide.hint." + task.id()));
+			GuideTask task = GuideTask.byId(payload.taskId()).orElse(null);
+			if (task == null) return;
+			Component title = Component.translatable(HeartTexts.key("guide.task." + task.id()));
+			Component body = Component.translatable(HeartTexts.key("guide.checked"));
 			var toastId = SystemToast.SystemToastId.PERIODIC_NOTIFICATION;
 			ctx.client().getToastManager().addToast(SystemToast.multiline(ctx.client(), toastId, title, body));
 			if (ctx.player() != null) ctx.player().playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F, 1.0F);
 		});
+		ClientPlayNetworking.registerGlobalReceiver(dev.villageheart.heart.net.GuideTasksPayload.TYPE, (payload, ctx) ->
+				GuideHud.setTasks(payload.taskIds()));
 		ClientPlayNetworking.registerGlobalReceiver(HeartActionResultPayload.TYPE, (payload, ctx) -> {
 			if (ctx.player().containerMenu instanceof HeartMenu m && m.containerId == payload.containerId()
 					&& ctx.client().screen instanceof HeartScreen screen) {

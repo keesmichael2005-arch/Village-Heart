@@ -686,11 +686,11 @@ At every tier, tool workers make their own wooden and stone tools (§4.1); the S
   sum); the bar at the bottom reads `Keep: food [-] 3 days [+]   other items [-16] 64 each [+16]` (buttons for a Steward or Owner, the values for
   Residents). The buttons send the absolute new pair, so a double click cannot drift.
 - **Ranks** (Owner only): players and their ranks.
-- **Guide**: the path from a new claim to a Town. One current task, with a single sentence, and the rest of the list readable.
-  A task checks off when the village already has that thing, and it stays checked. Three lines can sit above the list when the village is
-  waiting on the player: emeralds before dawn, a planted field for a hired farmer, and a Training Yard for a hired guard (guards gain no
-  training experience without one). The Barracks plan includes that yard. Completing the current task plays the advancement sound. A Visitor can
-  read this tab.
+- **Guide**: the path from a new claim to a Town, one small step at a time. A building is craft the marker, then make the
+  building count. The field comes after the Farmhouse. Craft steps check off when that item is in an inventory. While playing, the next
+  three tasks sit as plain text on the left. Checking a step off plays the advancement sound. In the Heart, click a task for its steps
+  and, when it is a craft, the recipe. Three lines can sit above the list when the village is waiting on the player: emeralds before
+  dawn, a planted field for a hired farmer, and a Training Yard for a hired guard. A Visitor can read this tab.
 
 As built in M24: the fifth tab lists the Owner and every player the village has seen (online ones with a green dot), with their rank; the Owner picks a row, then
 `[Steward] [Resident] [Visitor]` or `[Transfer ownership]` (a second click on `[Confirm: give the village to X]` sends it; only a Steward or Resident can receive it).
