@@ -14,6 +14,7 @@ final class GuideClientTests {
 	private GuideClientTests() {}
 
 	static void tasksAndRecipe(ClientGameTestContext context) {
+		context.runOnClient(mc -> GuideHud.setTasks(List.of()));
 		try (TestSingleplayerContext sp = context.worldBuilder().create()) {
 			sp.getClientWorld().waitForChunksRender();
 			var srv = sp.getServer();
@@ -31,14 +32,13 @@ final class GuideClientTests {
 						new BlockPos(-2, fy, 0), server.getPlayerList().getPlayers().get(0)).name());
 				if (!claim.equals("CLAIMED")) throw new AssertionError("the claim failed: " + claim);
 
+				List<String> want = List.of("open_heart", "blank_marker", "house_marker");
 				List<String> hud = List.of();
-				for (int i = 0; i < 40 && hud.isEmpty(); i++) {
+				for (int i = 0; i < 80 && !hud.equals(want); i++) {
 					context.waitTicks(1);
 					hud = context.computeOnClient(mc -> GuideHud.tasks());
 				}
-				if (!hud.equals(List.of("open_heart", "blank_marker", "house_marker"))) {
-					throw new AssertionError("the first three tasks: " + hud);
-				}
+				if (!hud.equals(want)) throw new AssertionError("the first three tasks: " + hud);
 				context.takeScreenshot("guide_tasks");
 
 				double eyeY = y + 1.62, targetY = y + 0.5, pz = 3.5;

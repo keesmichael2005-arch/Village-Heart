@@ -6,6 +6,7 @@ import dev.villageheart.core.heart.HeartTexts;
 import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.DeltaTracker;
@@ -33,6 +34,10 @@ public final class GuideHud {
 				Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "tasks"), GuideHud::render);
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (key.consumeClick()) open = !open;
+		});
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			tasks = List.of();
+			open = true;
 		});
 	}
 
