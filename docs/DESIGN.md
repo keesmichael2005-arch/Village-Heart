@@ -125,7 +125,7 @@ Each **job block** inside a building is one worker slot.
   within 12 blocks and it is outside the House and Farmhouse rooms. It links to the nearest Hunting Lodge.
 - **Training Yard** (marker: hay bale / wooden sword). Valid if there are **≥2 armor stands or target
   blocks** within 6 blocks. It links to the nearest Barracks. It is optional, but guards only gain XP
-  by sparring here.
+  by sparring here. The Barracks blueprint places this yard on the barracks wall, with two targets inside a fence.
 
 ### 3.4 Job blocks: vanilla first
 Vanilla workstations are reused where the job fits. Those inside a valid building are **reserved**: vanilla
@@ -451,6 +451,10 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 | Small House | Village | 5×5 room, 1 bed, door, torch, House marker included |
 | Storage Shed | Village | 5×5 room, 2 chests, Storage marker included |
 | Farm Plot | Village | 9×9 farmland around a water block, fenced, with a gate |
+| Farmhouse, Lumber Camp, Kitchen, Builder's Hut, Mine, Hunting Lodge, Market | Village | a plains cottage (log corners, cobblestone, glass, stair roof) with that job's block and a chest |
+| Hunting Grove | Village | oak trunks and a leaf canopy, with the Hunting Ground marker |
+| Barracks | Village | a wider plains cottage, plus a fenced yard with two targets and the Training Yard marker on the east wall |
+| Smithy | Town | a slightly wider plains cottage, with a blast furnace, an anvil, and a chest |
 | Wall Segment | Village | cobblestone, 3 high, any length up to 32 |
 | Gate | Village | wall section with a 3-wide fence-gate opening |
 | Lamp Post | Village | fence post + lantern. Stops mob spawns nearby |
@@ -678,6 +682,11 @@ At every tier, tool workers make their own wooden and stone tools (§4.1); the S
   sum); the bar at the bottom reads `Keep: food [-] 3 days [+]   other items [-16] 64 each [+16]` (buttons for a Steward or Owner, the values for
   Residents). The buttons send the absolute new pair, so a double click cannot drift.
 - **Ranks** (Owner only): players and their ranks.
+- **Guide**: the path from a new claim to a Town. One current task, with a single sentence, and the rest of the list readable.
+  A task checks off when the village already has that thing, and it stays checked. Three lines can sit above the list when the village is
+  waiting on the player: emeralds before dawn, a planted field for a hired farmer, and a Training Yard for a hired guard (guards gain no
+  training experience without one). The Barracks plan includes that yard. Completing the current task plays the advancement sound. A Visitor can
+  read this tab.
 
 As built in M24: the fifth tab lists the Owner and every player the village has seen (online ones with a green dot), with their rank; the Owner picks a row, then
 `[Steward] [Resident] [Visitor]` or `[Transfer ownership]` (a second click on `[Confirm: give the village to X]` sends it; only a Steward or Resident can receive it).

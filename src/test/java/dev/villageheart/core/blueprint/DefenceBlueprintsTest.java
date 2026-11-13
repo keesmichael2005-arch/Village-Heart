@@ -90,7 +90,8 @@ class DefenceBlueprintsTest {
 
 	@Test
 	void menuOrder() {
-		assertEquals(List.of("small_house", "storage_shed", "farm_plot", "wall_segment", "gate", "lamp_post", "watchtower"),
+		assertEquals(List.of("small_house", "storage_shed", "farm_plot", "farmhouse", "lumber_camp", "kitchen", "builders_hut",
+				"mine", "hunting_lodge", "hunting_grove", "barracks", "market", "smithy", "wall_segment", "gate", "lamp_post", "watchtower"),
 				Blueprints.all().stream().map(Blueprint::id).toList());
 	}
 }

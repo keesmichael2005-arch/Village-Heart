@@ -120,6 +120,14 @@ public class VillageSavedData extends SavedData {
 		setDirty();
 	}
 
+	/** Guide tasks the village has already done. */
+	public dev.villageheart.core.guide.GuideProgress guide() { return claim.guide(); }
+
+	public void setGuide(dev.villageheart.core.guide.GuideProgress g) {
+		claim.setGuide(g);
+		setDirty();
+	}
+
 	public int epoch() { return epoch; }
 
 	public void clear() {

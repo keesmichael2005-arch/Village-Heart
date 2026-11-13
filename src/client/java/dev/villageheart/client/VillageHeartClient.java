@@ -3,11 +3,17 @@ package dev.villageheart.client;
 import dev.villageheart.client.heart.HeartScreen;
 import dev.villageheart.heart.HeartMenu;
 import dev.villageheart.heart.ModMenus;
+import dev.villageheart.core.guide.GuideTask;
+import dev.villageheart.core.heart.HeartTexts;
+import dev.villageheart.heart.net.GuideToastPayload;
 import dev.villageheart.heart.net.HeartActionResultPayload;
 import dev.villageheart.heart.net.HeartSnapshotPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 
 public class VillageHeartClient implements ClientModInitializer {
 	@Override
@@ -26,6 +32,15 @@ public class VillageHeartClient implements ClientModInitializer {
 			if (ctx.player().containerMenu instanceof HeartMenu m && m.containerId == payload.containerId()) {
 				m.accept(payload.snapshot());
 			}
+		});
+		ClientPlayNetworking.registerGlobalReceiver(GuideToastPayload.TYPE, (payload, ctx) -> {
+			boolean finished = payload.taskId().isEmpty();
+			GuideTask task = finished ? null : GuideTask.byId(payload.taskId()).orElse(null);
+			Component title = Component.translatable(HeartTexts.key(finished || task == null ? "guide.done_title" : "guide.task." + task.id()));
+			Component body = Component.translatable(HeartTexts.key(finished || task == null ? "guide.done" : "guide.hint." + task.id()));
+			var toastId = SystemToast.SystemToastId.PERIODIC_NOTIFICATION;
+			ctx.client().getToastManager().addToast(SystemToast.multiline(ctx.client(), toastId, title, body));
+			if (ctx.player() != null) ctx.player().playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F, 1.0F);
 		});
 		ClientPlayNetworking.registerGlobalReceiver(HeartActionResultPayload.TYPE, (payload, ctx) -> {
 			if (ctx.player().containerMenu instanceof HeartMenu m && m.containerId == payload.containerId()

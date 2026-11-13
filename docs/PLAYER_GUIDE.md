@@ -134,7 +134,7 @@ These have no room and no floor size. The marker goes on a post or a fence. The 
 |---|---|---|---|
 | Mineshaft | Village | rail / torch | The entrance is a player-dug hole. Connected air drops **at least 12 blocks** below the marker, with **at least 8 rails** and a light. The hole has to be under the post or next to it: near the surface the check only spreads one block around the marker. It links to the nearest Mine within **48 blocks**. |
 | Hunting Ground | Village | stick / feather | **At least 40** grass, leaf, or log blocks within 12 blocks, and the site is outside any House or Farmhouse. It links to a Hunting Lodge within **40 blocks**. |
-| Training Yard | Village | hay bale / wooden sword | **At least 2** armor stands or target blocks within 6 blocks. It links to the nearest Barracks. Optional. Guards gain sparring experience only here. |
+| Training Yard | Village | hay bale / wooden sword | **At least 2** armor stands or target blocks within 6 blocks. It links to the nearest Barracks. Optional. Guards gain sparring experience only here. The Barracks plan builds one: two targets inside a fence, the marker on the barracks wall. |
 
 The Mineshaft's deepest point picks the ore table in the miner section. A light set into the shaft wall counts. The fill stops at 4096 cells and at 16 blocks sideways.
 
@@ -400,6 +400,10 @@ The builder reserves every material for the build in Storage, fetches about a st
 | Small House | Village | A 5×5 floor inside the walls (the shell is 7×7). 49 cobblestone, 119 planks, a door, a bed, a torch, and the House marker. 172 placements. It can turn green as a House when it finishes. |
 | Storage Shed | Village | The same shell, with two chests and the Storage marker. |
 | Farm Plot | Village | 11×11. 80 farmland around one water source, 39 fences, and a fence gate. The water is placed from a bucket, and the bucket comes back. The farmland is already moist. |
+| Farmhouse, Lumber Camp, Kitchen, Builder's Hut, Mine, Hunting Lodge, Market | Village | A plains cottage: log corners, cobblestone, glass panes, and a stair roof, with that job's block and a chest already inside. A finished one can turn green as that building. |
+| Hunting Grove | Village | Oak trunks and a leaf canopy, with the Hunting Ground marker. Place it beside the lodge, not inside a house. |
+| Barracks | Village | A wider plains cottage, plus a fenced yard on the east side: two targets, and the Training Yard marker on the cottage wall. |
+| Smithy | Town | A slightly wider plains cottage, with a blast furnace, an anvil, and a chest. |
 | Wall Segment | Village | Cobblestone, 3 high, any straight length up to 32. 3 cobblestone per block of length. A wall of 20 is 60 cobblestone. |
 | Gate | Village | The same wall with a centred opening 3 wide: fence gates on the bottom, air above them, a cobblestone lintel. 3 cobblestone per block, minus 6, plus 3 fence gates. You can walk through when a gate is open. A closed gate is too tall to jump. |
 | Lamp Post | Village | 2 fences and a lantern on top. Stops monster spawns nearby. Details under gates and lamps. |
@@ -515,7 +519,8 @@ Right-click the claimed Heart.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
 - **Ranks.** Owner only. Others see the tab greyed out ("Only the Owner can manage ranks").
+- **Guide.** The list of main things to do, from the first marker to a Town. The current one has one sentence under "Next". Doing a thing checks it off, in any order, and it stays checked. When the next one changes, you get the advancement sound. Above the list, the village can ask for emeralds before dawn, a planted field, or a Training Yard. Guards gain no training experience without a yard. The Barracks plan builds that yard on the side of the barracks: two targets inside a fence.
 
-A Visitor receives the Overview only.
+A Visitor receives the Overview and the Guide.
 
 The stockpile is the chests and barrels inside valid Storage buildings: chest, trapped chest, and copper chest. Ender chests and shulker boxes are not part of it. A chest that also sits in another room, even in a shared wall, is not stockpile. Building chests that hold tools are not stockpile. Workers put goods in the nearest Storage with space. If every Storage is full, they keep the goods and stop gathering, and the Overview says so.
