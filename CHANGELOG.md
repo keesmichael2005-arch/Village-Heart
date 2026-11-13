@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hired villagers keep a villager's day. They work until late afternoon, meet at the bell, then go home. Someone already in bed stays there, and a guard on duty does not attend. They stand beside a workstation, and they walk up to the Storage chest and put goods away one item every quarter of a second.
+
 Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
 
 ## 1.0.0

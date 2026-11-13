@@ -861,7 +861,7 @@ public class SmithGameTests {
 	 * A saved iron pickaxe pauses at dusk, survives a runtime restart, and finishes the next morning. Breaking the Smithy
 	 * refunds the committed ingots and sticks once.
 	 */
-	@GameTest(environment = "villageheart-gametest:smith_craft_night", structure = YARD, skyAccess = true, maxTicks = 4000)
+	@GameTest(environment = "villageheart-gametest:smith_craft_night", structure = YARD, skyAccess = true, maxTicks = 7000)
 	public void craftPausesOvernightAndSurvivesRestart(GameTestHelper h) {
 		Villager[] smith = new Villager[1];
 		int[] dusk = {-1};
@@ -875,9 +875,9 @@ public class SmithGameTests {
 			SmithTestSupport.hireMiner(h);
 			smith[0] = hire(h);
 			seedPick(h, 1200);
-			setDayTime(h, 10400);
-			log("iron pickaxe seeded at 1200, day 10400");
-		}).thenExecuteFor(1000, () -> {
+			setDayTime(h, 8300);
+			log("iron pickaxe seeded at 1200, day 8300");
+		}).thenExecuteFor(3200, () -> {
 			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
 			int progress = craftProgress(h);
 			if (dusk[0] < 0 && day >= 11100 && day < 12000) {

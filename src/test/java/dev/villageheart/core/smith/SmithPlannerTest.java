@@ -229,7 +229,7 @@ class SmithPlannerTest {
 		assertInstanceOf(SmithDecision.Craft.class, decide(craft));
 		SmithFacts build = SmithFacts.morning();
 		build.buildSaved = true;
-		build.dayTime = 10900;
+		build.dayTime = Balance.WORK_END - 100;
 		assertInstanceOf(SmithDecision.BuildGolem.class, decide(build));
 		build.dayTime = Balance.WORK_END;
 		assertFalse(decide(build) instanceof SmithDecision.BuildGolem);
