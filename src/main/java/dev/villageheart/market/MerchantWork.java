@@ -5,6 +5,7 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.world.VillageTicker;
 import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.worker.Workers;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -24,11 +25,13 @@ public final class MerchantWork extends Behavior<Villager> {
 	}
 
 	@Override
-	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) { return isMerchant(villager); }
+	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		return isMerchant(villager) && !Workers.shouldWander(level, villager);
+	}
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
-		return isMerchant(villager) && villager.getBrain().isActive(Activity.WORK);
+		return isMerchant(villager) && villager.getBrain().isActive(Activity.WORK) && !Workers.shouldWander(level, villager);
 	}
 
 	@Override

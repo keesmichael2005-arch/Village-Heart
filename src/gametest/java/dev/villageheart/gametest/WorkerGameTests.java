@@ -837,28 +837,225 @@ public class WorkerGameTests {
 		});
 	}
 
-	/** T-L2-15: removing the building's marker fires its workers. */
-	@GameTest(environment = "villageheart-gametest:workers_marker_removed", structure = YARD, skyAccess = true, maxTicks = 600)
-	public void markerRemovedFiresWorker(GameTestHelper h) {
+	/**
+	 * Breaking the Farmhouse marker used to fire the farmer. That assertion changed because a missing workplace no longer ends the job:
+	 * they keep the profession, the record and the level, and a new Farmhouse gives them its composter.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_marker_removed", structure = YARD, skyAccess = true, maxTicks = 900)
+	public void markerRemovedKeepsWorker(GameTestHelper h) {
 		begin(h);
 		BlockPos marker = BuildingTestSupport.markerPos(ORIGIN_A, 5);
 		BlockPos comp = BuildingTestSupport.inside(ORIGIN_A, 0, 0, 0);
+		BlockPos markerB = BuildingTestSupport.markerPos(ORIGIN_B, 5);
+		BlockPos compB = BuildingTestSupport.inside(ORIGIN_B, 0, 0, 0);
 		Villager[] a = new Villager[1];
 		GameTestSequence seq = validFarmhouse(h, ORIGIN_A).thenExecute(() -> {
 			a[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_A, 2, 0, 1));
 			h.assertTrue(hire(h, a[0], JobType.FARMER) instanceof HireResult.Hired, "hired");
+			Workers.setLevel(h.getLevel().getServer(), a[0], 2);
 			breakMarker(h, marker);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the worker is fired after the marker is gone", () -> {
-			h.assertTrue(record(h, a[0]).isEmpty(), "record gone");
-			h.assertFalse(WorkerAttachments.isWorker(a[0]), "attachment gone");
-			h.assertTrue(isUnemployed(a[0]), "profession none");
-			h.assertFalse(isHeld(h, comp), "composter not held");
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the farmer stays hired after the marker is gone", () -> {
+			dev.villageheart.core.WorkerRecord rec = record(h, a[0]).orElseThrow();
+			h.assertTrue(WorkerAttachments.isWorker(a[0]), "attachment kept");
+			h.assertTrue(a[0].getVillagerData().profession().equals(ModProfessions.holder(JobType.FARMER)), "still a farmer");
+			h.assertValueEqual(2, rec.level(), "level kept");
+			h.assertValueEqual(loc(h, marker), rec.building(), "the old building stays on the record");
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.WORKPLACE_INVALID, Workers.status(h.getLevel().getServer(), rec), "no workstation");
+			h.assertFalse(isHeld(h, comp), "the old composter is released");
+		});
+		seq = seq.thenExecute(() -> {
+			farmhouse(h, ORIGIN_B, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, markerB, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, markerB, MarkerStatus.VALID));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "the new Farmhouse gives them its composter", () -> {
+			dev.villageheart.core.WorkerRecord rec = record(h, a[0]).orElseThrow();
+			h.assertValueEqual(loc(h, markerB), rec.building(), "rebound onto the new Farmhouse");
+			h.assertValueEqual(loc(h, compB), rec.jobBlock(), "its composter");
+			h.assertValueEqual(2, rec.level(), "level still 2");
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.OK, Workers.status(h.getLevel().getServer(), rec), "back at work");
 		});
 		seq.thenExecute(() -> {
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	/** Two camps. The earlier hire takes the one free block. The later hire waits. A red camp keeps its worker. */
+	@GameTest(environment = "villageheart-gametest:workers_waiting_slot", structure = YARD, skyAccess = true, maxTicks = 1200)
+	public void waitingWorkerTakesTheFreeSlot(GameTestHelper h) {
+		begin(h);
+		BlockPos gone = ORIGIN_A, free = ORIGIN_B, red = new BlockPos(8, 0, 16);
+		BlockPos goneMarker = BuildingTestSupport.markerPos(gone, 5);
+		BlockPos freeMarker = BuildingTestSupport.markerPos(free, 5);
+		BlockPos redMarker = BuildingTestSupport.markerPos(red, 5);
+		BlockPos freeComp = BuildingTestSupport.inside(free, 0, 0, 0);
+		BlockPos redComp = BuildingTestSupport.inside(red, 0, 0, 0);
+		Villager[] v = new Villager[3];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			farmhouse(h, gone, 2);
+			farmhouse(h, free, 1);
+			farmhouse(h, red, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, goneMarker, Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, freeMarker, Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, redMarker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, goneMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, freeMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, redMarker, MarkerStatus.VALID);
+		});
+		seq = seq.thenExecute(() -> {
+			v[0] = spawnVillager(h, BuildingTestSupport.inside(red, 2, 0, 1));
+			v[1] = spawnVillager(h, BuildingTestSupport.inside(gone, 1, 0, 1));
+			v[2] = spawnVillager(h, BuildingTestSupport.inside(gone, 3, 0, 1));
+			h.assertTrue(Workers.hire(h.getLevel(), v[0], JobType.FARMER, java.util.Optional.of(loc(h, redMarker))) instanceof HireResult.Hired, "red camp hired first");
+			h.assertTrue(Workers.hire(h.getLevel(), v[1], JobType.FARMER, java.util.Optional.of(loc(h, goneMarker))) instanceof HireResult.Hired, "earlier hire");
+			h.assertTrue(Workers.hire(h.getLevel(), v[2], JobType.FARMER, java.util.Optional.of(loc(h, goneMarker))) instanceof HireResult.Hired, "later hire");
+			Workers.setLevel(h.getLevel().getServer(), v[1], 2);
+			Workers.setLevel(h.getLevel().getServer(), v[2], 3);
+			h.destroyBlock(red.offset(3, 4, 2));
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, redMarker, MarkerStatus.INVALID));
+		seq = seq.thenExecute(() -> breakMarker(h, goneMarker));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 60, "the earlier hire takes the free block and the red camp keeps its worker", () -> {
+			dev.villageheart.core.WorkerRecord redRec = record(h, v[0]).orElseThrow();
+			dev.villageheart.core.WorkerRecord earlier = record(h, v[1]).orElseThrow();
+			dev.villageheart.core.WorkerRecord later = record(h, v[2]).orElseThrow();
+			h.assertValueEqual(loc(h, redMarker), redRec.building(), "the red camp kept its worker");
+			h.assertValueEqual(loc(h, redComp), redRec.jobBlock(), "still its own block");
+			h.assertValueEqual(loc(h, freeMarker), earlier.building(), "the earlier hire took the free camp");
+			h.assertValueEqual(loc(h, freeComp), earlier.jobBlock(), "its composter");
+			h.assertValueEqual(2, earlier.level(), "level kept");
+			h.assertValueEqual(loc(h, goneMarker), later.building(), "the later hire is still waiting");
+			h.assertValueEqual(3, later.level(), "the waiting hire keeps the level");
+			h.assertTrue(WorkerAttachments.isWorker(v[2]) && v[2].getVillagerData().profession().equals(ModProfessions.holder(JobType.FARMER)), "still hired");
+		});
+		seq.thenExecute(() -> {
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/**
+	 * An unpaid striker and a paid worker with no workplace wander inside the claim during the work day and do not deposit.
+	 * At sleep time the striker is in bed. A striking guard, off duty and awake, moves, and a raid puts that guard on duty.
+	 */
+	@GameTest(environment = "villageheart-gametest:workers_wander", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void strikeWandersInsideTheClaim(GameTestHelper h) {
+		begin(h);
+		BlockPos farm = new BlockPos(8, 0, 16), store = new BlockPos(18, 0, 16), house = new BlockPos(25, 0, 4);
+		BlockPos farmMarker = BuildingTestSupport.markerPos(farm, 5);
+		BlockPos campMarker = BuildingTestSupport.markerPos(ORIGIN_B, 5);
+		BlockPos storeMarker = BuildingTestSupport.markerPos(store, 5);
+		BlockPos houseMarker = BuildingTestSupport.markerPos(house, 5);
+		BlockPos chop = BuildingTestSupport.inside(ORIGIN_B, 0, 0, 0);
+		BlockPos storeChest = BuildingTestSupport.inside(store, 0, 0, 3);
+		BlockPos bedHead = BuildingTestSupport.inside(house, 0, 0, 1).south();
+		Villager[] farmer = new Villager[1], striker = new Villager[1], guard = new Villager[1];
+		Vec3[] start = new Vec3[3];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.VILLAGE);
+			GuardTestSupport.buildBarracks(h, 1);
+			GuardTestSupport.placeBarracks(h);
+			BuildingTestSupport.room(h, ORIGIN_B, 5, 4);
+			h.setBlock(chop, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+			h.setBlock(BuildingTestSupport.inside(ORIGIN_B, 4, 0, 3), Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(ORIGIN_B, 2, 0, 3), Blocks.TORCH);
+			BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, campMarker, Direction.NORTH);
+			farmhouse(h, farm, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker, Direction.NORTH);
+			BuildingTestSupport.room(h, store, 5, 4);
+			h.setBlock(storeChest, Blocks.CHEST);
+			h.setBlock(BuildingTestSupport.inside(store, 4, 0, 3), Blocks.CHEST);
+			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker, Direction.NORTH);
+			house(h, house, 1);
+			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, Direction.NORTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			GuardTestSupport.assertBarracksValid(h);
+			BuildingTestSupport.assertStatus(h, campMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, farmMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, storeMarker, MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, houseMarker, MarkerStatus.VALID);
+		});
+		seq = seq.thenExecute(() -> {
+			h.getLevel().setDayTime(2000);
+			NeedsTestHooks.enableWages();
+			dev.villageheart.world.VillageClaims.depositTreasury(h.getLevel().getServer(), 1);
+			farmer[0] = spawnVillager(h, BuildingTestSupport.inside(farm, 2, 0, 1));
+			striker[0] = spawnVillager(h, BuildingTestSupport.inside(ORIGIN_B, 2, 0, 1));
+			h.assertTrue(hire(h, farmer[0], JobType.FARMER) instanceof HireResult.Hired, "farmer hired and paid");
+			h.assertTrue(hire(h, striker[0], JobType.LUMBERJACK) instanceof HireResult.Hired, "lumberjack hired");
+			guard[0] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot(), java.util.Optional.of(dev.villageheart.core.guard.Shift.DAY));
+			h.assertFalse(dev.villageheart.economy.Wages.onStrike(h.getLevel().getServer(), farmer[0].getUUID()), "the farmer is paid");
+			h.assertTrue(dev.villageheart.economy.Wages.onStrike(h.getLevel().getServer(), striker[0].getUUID()), "the lumberjack is on strike");
+			h.assertTrue(dev.villageheart.economy.Wages.onStrike(h.getLevel().getServer(), guard[0].getUUID()), "the guard is on strike");
+			striker[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_LOG, 64));
+			breakMarker(h, farmMarker);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "the paid farmer has no workstation", () -> {
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.WORKPLACE_INVALID,
+					Workers.status(h.getLevel().getServer(), record(h, farmer[0]).orElseThrow()), "status");
+			h.assertTrue(farmer[0].getBrain().isActive(Activity.WORK), "work hours");
+		});
+		seq = seq.thenExecute(() -> {
+			start[0] = farmer[0].position();
+			start[1] = striker[0].position();
+			start[2] = guard[0].position();
+		});
+		seq = seq.thenIdle(200).thenExecute(() -> {
+			assertWandered(h, farmer[0], start[0], "paid farmer");
+			assertWandered(h, striker[0], start[1], "striker");
+			assertWandered(h, guard[0], start[2], "striking guard");
+			h.assertTrue(guard[0].getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.OFF), "the guard is off duty and awake");
+			h.assertFalse(walksTo(h, striker[0], chop), "the striker does not walk to the chopping block");
+			h.assertValueEqual(64, count(striker[0].getInventory(), net.minecraft.world.item.Items.OAK_LOG), "the logs were not deposited");
+			h.assertValueEqual(0, count(StockpileTestSupport.container(h, storeChest), net.minecraft.world.item.Items.OAK_LOG), "Storage gained nothing");
+			dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest((level, at) -> new dev.villageheart.worker.guard.RaidCheck.View() {
+				@Override public boolean active() { return true; }
+				@Override public BlockPos center() { return h.absolutePos(new BlockPos(3, 1, 1)); }
+				@Override public Iterable<? extends net.minecraft.world.entity.Entity> raiders() { return java.util.List.of(); }
+			});
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 80, "the raid puts the striking guard on duty", () ->
+				h.assertTrue(guard[0].getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY), "on duty"));
+		seq = seq.thenExecute(() -> {
+			dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
+			// the work-day check already showed the logs were not delivered; clear them so going home is not a deposit trip
+			var inv = striker[0].getInventory();
+			for (int i = 0; i < inv.getContainerSize(); i++) inv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+			h.getLevel().setDayTime(11000);
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the striker goes home", () ->
+				h.assertTrue(distance(h, striker[0], bedHead) <= 2.0, "distance " + distance(h, striker[0], bedHead)));
+		seq = seq.thenExecute(() -> h.getLevel().setDayTime(13000));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the striker is in bed", () -> h.assertTrue(striker[0].isSleeping(), "sleeping"));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(java.util.Optional.of(h.absolutePos(bedHead)), striker[0].getSleepingPos(), "in the House bed");
+			NeedsTestHooks.disable();
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	private static void assertWandered(GameTestHelper h, Villager v, Vec3 start, String who) {
+		h.assertTrue(v.position().distanceTo(start) > 1.0, who + " moved, from " + start + " to " + v.position());
+		dev.villageheart.core.HeartLocation heart = VillageClaims.current(h.getLevel().getServer()).orElseThrow().heart();
+		dev.villageheart.core.HeartLocation at = VillageClaims.locate(h.getLevel(), v.blockPosition());
+		h.assertTrue(dev.villageheart.core.ClaimGeometry.inClaim(heart, at), who + " stayed inside the claim at " + at);
+	}
+
+	private static int count(net.minecraft.world.Container c, net.minecraft.world.item.Item item) {
+		int n = 0;
+		for (int i = 0; i < c.getContainerSize(); i++) if (c.getItem(i).is(item)) n += c.getItem(i).getCount();
+		return n;
+	}
+
+	private static boolean walksTo(GameTestHelper h, Villager v, BlockPos rel) {
+		return v.getBrain().getMemory(MemoryModuleType.WALK_TARGET)
+				.filter(t -> t.getTarget().currentBlockPosition().equals(h.absolutePos(rel))).isPresent();
 	}
 
 	/** T-L2-16: an invalid (but still registered) building keeps its workers; the reservation is released until it is valid again. */

@@ -972,7 +972,10 @@ public class HeartScreen extends Screen implements MenuAccess<HeartMenu> {
 				drawNeed(g, ModTextures.NEED_PAY, v.needs().paid(), x + 234, y + 3, grp);
 			}
 		}
-		Component act = v.workplaceInvalid() && v.isWorker() ? Component.translatable(HeartTexts.key("activity.workplace_invalid"))
+		boolean onStrike = v.isWorker() && v.activity() == dev.villageheart.core.heart.ActivityKind.ON_STRIKE;
+		boolean noWorkstation = v.isWorker() && v.workplaceInvalid();
+		Component act = onStrike || noWorkstation
+				? Component.translatable(dev.villageheart.core.heart.WorkstationCopy.rowKey(onStrike, noWorkstation))
 				: v.shift().isGuard() ? Component.translatable(HeartTexts.key("shift." + v.shift().langId())).append(" - ").append(Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId())))
 				: Component.translatable(HeartTexts.activityKey(v.activity(), v.jobId()));
 		boolean warn = v.workplaceInvalid() && v.isWorker() || dev.villageheart.core.heart.ActivityWarnings.isWarning(v.activity());

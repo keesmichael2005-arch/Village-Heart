@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".
+
 Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
 
 ## 1.0.0

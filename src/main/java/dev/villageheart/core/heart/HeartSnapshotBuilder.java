@@ -82,7 +82,7 @@ public final class HeartSnapshotBuilder {
 		for (VillagerFact v : f.villagers()) {
 			if (!v.worker()) continue;
 			workers++;
-			if (v.workplaceInvalid()) invalidWorkplaces++;
+			if (WorkstationCopy.countsOnOverview(v.activity(), v.workplaceInvalid(), v.needs())) invalidWorkplaces++;
 		}
 		int invalidBuildings = 0;
 		for (BuildingFact b : f.buildings()) if (b.status() == RowStatus.INVALID) invalidBuildings++;
@@ -107,10 +107,7 @@ public final class HeartSnapshotBuilder {
 							List.of(Integer.toString(invalidBuildings)))));
 		}
 		if (invalidWorkplaces > 0) {
-			alerts.add(new AlertLine(AlertCode.WORKPLACE_INVALID, Severity.DANGER, invalidWorkplaces == 1
-					? new TextLine(ALERT + "workplace_invalid_one", "1 worker has no valid workplace")
-					: new TextLine(ALERT + "workplace_invalid", "%s workers have no valid workplace",
-							List.of(Integer.toString(invalidWorkplaces)))));
+			alerts.add(new AlertLine(AlertCode.WORKPLACE_INVALID, Severity.DANGER, WorkstationCopy.overview(invalidWorkplaces)));
 		}
 		alerts.addAll(dev.villageheart.core.economy.WageAlerts.of(f.treasury(), f.wageBill(), f.strikers()));
 		alerts.addAll(f.extraAlerts());
