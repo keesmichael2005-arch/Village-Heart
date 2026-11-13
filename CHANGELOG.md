@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Client tests keep draining spawn chunks while a world loads, and they no longer log a line on every tick of that wait. A slow machine was sitting on the loading screen until the test gave up.
 - A Blueprint Book, crafted from a book and two paper, holds every plan. Pick one, place the footprint, and the book stays in your hand. You can place as many as you like. The builder finishes them when the blocks are in Storage. Press V to see the ones that are not built yet. The Guide asks you to craft the book after you hire a builder.
 - The Heart has a Guide tab. The next three steps sit as plain text while you play, and the advancement sound plays when a step is checked off. Click a step for the instructions and the recipe. Crafting counts as soon as the item is in your inventory. Each building is craft the marker, then make it count, and the field comes after the Farmhouse.
 - The Builder's Table has a starter plan for each workplace, built as a plains village cottage with that job's blocks already inside. The Barracks cottage includes the Training Yard. The Hunting Grove is the stand of logs and leaves for a hunting ground. The Mineshaft is still dug by hand.

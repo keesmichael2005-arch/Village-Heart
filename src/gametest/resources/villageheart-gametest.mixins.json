@@ -11,6 +11,7 @@
 		"NetworkSynchronizerLostWakeupFix",
 		"DisconnectInFlightLeakFix",
 		"WorldLoadTimeoutFix",
+		"SpawnChunkDrain",
 		"NetworkSynchronizerAccessor",
 		"ScreenshotToastClear"
 	],

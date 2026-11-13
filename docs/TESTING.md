@@ -492,8 +492,12 @@ with a wrapper that does not tick while a living player is inside `CLAIM_RADIUS`
 - **Layer 4: the world-load timeout.** Fabric's `ClientGameTestImpl.waitForWorldLoad` (every `worldBuilder().create()`) polls "a level exists and the loading screen is gone" for
   1200 client ticks (`TICKS_PER_MINUTE`), then throws `Timeout loading world`. The signal is the right one, the bound is a tick count for wall-clock work (the integrated server
   prepares its spawn area on worker threads; at load 10+ it sat at "Preparing spawn area: 16%" for 2 min). No API or system property changes it, so the gametest-only client mixin
-  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. A world that never loads still fails. It logs
-  `WORLD_LOAD_TIMEOUT_FIX installed`; `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
+  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. The same method also
+  silences Fabric's per-poll "World loading finished" info line: a slow spawn was writing thousands of them, and the render
+  thread held the log lock instead of reading chunk packets. `SpawnChunkDrain` runs queued chunk tasks on the server thread
+  at the end of each `waitUntilNextTick`, so the flat world's spawn does not sit at "Preparing spawn area: 16%" until the
+  bound expires. A world that really never loads still fails. The timeout mixin logs `WORLD_LOAD_TIMEOUT_FIX installed`;
+  `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
 - **Tick budgets and async work.** A GameTest server ticks as fast as it can, so 2200 ticks are a few seconds. Anything that completes on another thread (chunk generation and
   promotion to entity-ticking, lighting) can take far more ticks than that under load. `forcedChunkGrowsWithoutPlayer` waited 454 ticks for a forced far chunk to start ticking
   in a full run (7-15 alone) and timed out at 2200 under load. It now generates the chunk and its ring synchronously (`getChunk(..., FULL, true)`) before forcing it: ticking starts in 1 tick.
