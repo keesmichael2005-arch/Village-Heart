@@ -128,7 +128,7 @@ public final class WorkplaceBlueprints {
 				_ air
 				C minecraft:cobblestone <- minecraft:cobblestone "cobblestone" "cobblestone"
 				P minecraft:oak_planks <- #minecraft:planks "planks" "planks"
-				L minecraft:stripped_oak_log[axis=y] <- minecraft:stripped_oak_log "stripped log" "stripped logs"
+				L minecraft:stripped_oak_log[axis=y] <- minecraft:stripped_oak_log "stripped log" "stripped logs" cell=solid +#natural
 				S minecraft:oak_stairs[facing=south,half=bottom,shape=straight] <- minecraft:oak_stairs "oak stairs" "oak stairs"
 				E minecraft:oak_stairs[facing=east,half=bottom,shape=straight] <- minecraft:oak_stairs "oak stairs" "oak stairs"
 				W minecraft:oak_stairs[facing=west,half=bottom,shape=straight] <- minecraft:oak_stairs "oak stairs" "oak stairs"
