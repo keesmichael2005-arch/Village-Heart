@@ -264,7 +264,7 @@ public final class LumberJob {
 		}
 		ws.idleGoal = goal;
 		BlockPos aim = goal.equals(jb) ? dev.villageheart.worker.job.WorkstationStand.spot(level, jb, v.position()) : goal;
-		double reach = !goal.equals(jb) ? 3.0 : aim.equals(jb) ? Balance.JOB_BLOCK_REACH : 1.0;
+		double reach = !goal.equals(jb) ? 3.0 : aim.equals(jb) ? Balance.JOB_BLOCK_REACH : dev.villageheart.worker.job.WorkstationStand.REACH;
 		if (!ws.walk.active() || !ws.walk.target().equals(aim)) ws.walk.begin(aim, reach, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();

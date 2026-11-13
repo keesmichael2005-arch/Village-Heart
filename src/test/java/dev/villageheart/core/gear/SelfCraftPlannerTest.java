@@ -2,6 +2,7 @@ package dev.villageheart.core.gear;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.job.ToolRequirement.Mode;
 import java.util.List;
@@ -54,13 +55,13 @@ class SelfCraftPlannerTest {
 	void fetchRows() {
 		assertEquals(SelfCraftDecision.KEEP_FETCHING, base().fetching().go());
 		// rows 6-11 never abort a fetch mid-walk: full chest, no plan, late day
-		Builder b = base().fetching().noPlan().day(10_800);
+		Builder b = base().fetching().noPlan().day(Balance.WORK_END - 200);
 		b.space = false;
 		assertEquals(SelfCraftDecision.KEEP_FETCHING, b.go());
 		Builder covered = base().fetching();
 		covered.presence = SlotPresence.COVERED;
 		assertEquals(SelfCraftDecision.ABORT_FETCH, covered.go());
-		assertEquals(SelfCraftDecision.ABORT_FETCH, base().fetching().day(11_000).go());
+		assertEquals(SelfCraftDecision.ABORT_FETCH, base().fetching().day(Balance.WORK_END).go());
 	}
 
 	@Test
@@ -143,7 +144,7 @@ class SelfCraftPlannerTest {
 
 	@Test
 	void lateInTheDay() {
-		assertEquals(SelfCraftDecision.NONE, base().day(10_700).go());
-		assertInstanceOf(SelfCraftDecision.Start.class, base().day(10_699).go());
+		assertEquals(SelfCraftDecision.NONE, base().day(Balance.SELF_CRAFT_LAST_FETCH).go());
+		assertInstanceOf(SelfCraftDecision.Start.class, base().day(Balance.SELF_CRAFT_LAST_FETCH - 1).go());
 	}
 }

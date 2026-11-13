@@ -434,7 +434,7 @@ public final class SmithJob {
 		if (dev.villageheart.worker.job.WorkstationStand.at(v, furnace)) st.walk.release(v);
 		else {
 			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, furnace, v.position());
-			if (!st.walk.active() || !spot.equals(st.walk.target())) st.walk.begin(spot, spot.equals(furnace) ? REACH : 1.0, now);
+			if (!st.walk.active() || !spot.equals(st.walk.target())) st.walk.begin(spot, spot.equals(furnace) ? REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 		}
 		WalkTo.State ws = st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) st.walk.clear();
@@ -1384,7 +1384,7 @@ public final class SmithJob {
 			return true;
 		}
 		BlockPos aim = solid ? dev.villageheart.worker.job.WorkstationStand.spot(level, pos, v.position()) : pos;
-		double reach = aim.equals(pos) ? REACH : 1.0;
+		double reach = aim.equals(pos) ? REACH : dev.villageheart.worker.job.WorkstationStand.REACH;
 		if (!st.walk.active() || st.walk.target() == null || !st.walk.target().equals(aim)) st.walk.begin(aim, reach, aim.equals(pos) ? CLOSEST : reach, now);
 		if (solid && dev.villageheart.worker.job.WorkstationStand.at(v, pos)) return true;
 		WalkTo.State ws = st.walk.tick(v, now);

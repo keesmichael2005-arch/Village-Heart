@@ -82,6 +82,7 @@ class StockpileTest {
 	@Test void oneItemGoesToThePartialStacksContainer() {
 		FakeInventory first = new FakeInventory().set(0, "dirt", 5);
 		FakeInventory second = new FakeInventory().set(3, "cobble", 60);
+		for (int i = 0; i < second.keys.length; i++) if (i != 3) second.set(i, "dirt", 64);
 		Stockpile<String> s = new Stockpile<>(List.of(site(1, 1, first, second)));
 		assertEquals(new Pos(101, 0, 0), s.containerFor(s.sites().get(0), "cobble").orElseThrow());
 		assertEquals(new Pos(100, 0, 0), s.containerFor(s.sites().get(0), "wheat").orElseThrow());

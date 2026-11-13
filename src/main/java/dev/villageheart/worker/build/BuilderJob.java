@@ -176,7 +176,7 @@ public final class BuilderJob {
 			return;
 		}
 		BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, jb, v.position());
-		if (!ws.walk.active() || !ws.walk.target().equals(spot)) ws.walk.begin(spot, spot.equals(jb) ? Balance.JOB_BLOCK_REACH : 1.0, now);
+		if (!ws.walk.active() || !ws.walk.target().equals(spot)) ws.walk.begin(spot, spot.equals(jb) ? Balance.JOB_BLOCK_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();
 			ws.idleBackoffUntil = now + 100;

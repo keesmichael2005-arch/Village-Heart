@@ -168,7 +168,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		arrived = false;
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET); // a trip walks with WalkTo; a left-over vanilla target would pull elsewhere
 		Workers.setTripRunning(villager, true);
-		walk.begin(stand, 1.0, gameTime);
+		walk.begin(stand, dev.villageheart.worker.job.WorkstationStand.REACH, gameTime);
 	}
 
 	@Override
@@ -237,7 +237,7 @@ public final class DepositTrip extends Behavior<Villager> {
 			stand = spot;
 			arrived = false;
 			started = level.getGameTime();
-			walk.begin(stand, 1.0, started);
+			walk.begin(stand, dev.villageheart.worker.job.WorkstationStand.REACH, started);
 			return false;
 		}
 		stack.shrink(1);

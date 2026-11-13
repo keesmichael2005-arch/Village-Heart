@@ -41,7 +41,7 @@ public final class MeetAtBell extends Behavior<Villager> {
 		try (var t = VillageTicker.section()) {
 			bell(level, villager).ifPresent(b -> {
 				BlockPos spot = WorkstationStand.spot(level, b, villager.position());
-				walk.begin(spot, spot.equals(b) ? 1.5 : 1.0, gameTime);
+				walk.begin(spot, spot.equals(b) ? 1.5 : dev.villageheart.worker.job.WorkstationStand.REACH, gameTime);
 			});
 		}
 	}
@@ -63,7 +63,7 @@ public final class MeetAtBell extends Behavior<Villager> {
 			Optional<BlockPos> bell = bell(level, villager);
 			if (bell.isEmpty()) return;
 			BlockPos spot = WorkstationStand.spot(level, bell.get(), villager.position());
-			if (!walk.active() || !walk.target().equals(spot)) walk.begin(spot, spot.equals(bell.get()) ? 1.5 : 1.0, gameTime);
+			if (!walk.active() || !walk.target().equals(spot)) walk.begin(spot, spot.equals(bell.get()) ? 1.5 : dev.villageheart.worker.job.WorkstationStand.REACH, gameTime);
 			walk.tick(villager, gameTime);
 		}
 	}

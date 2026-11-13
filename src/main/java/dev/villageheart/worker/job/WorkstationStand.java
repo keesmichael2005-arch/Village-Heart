@@ -16,6 +16,12 @@ import net.minecraft.world.phys.Vec3;
  * open side instead, same floor, one step away.
  */
 public final class WorkstationStand {
+	/**
+	 * How close the walk must get to the centre of the stand cell. A reach of 1 stops a block short, which is two blocks
+	 * from the workstation, and the job then counts that as arrived and never steps in.
+	 */
+	public static final double REACH = 0.45;
+
 	private WorkstationStand() {}
 
 	/** True when the villager's feet are on a horizontal neighbour of {@code block}, on the same floor. On top of it is not beside it. */
@@ -28,8 +34,8 @@ public final class WorkstationStand {
 	}
 
 	/**
-	 * The closest open neighbour of {@code block}. The block itself when every side is blocked, so the caller can fall
-	 * back to the old reach check.
+	 * The first open side of {@code block}, in north, east, south, west order. The same side every time, so a walk does
+	 * not retarget as the villager moves. The block itself when every side is blocked.
 	 */
 	public static BlockPos spot(ServerLevel level, BlockPos block, Vec3 from) {
 		List<Pos> open = new ArrayList<>(4);
@@ -37,9 +43,7 @@ public final class WorkstationStand {
 			BlockPos n = block.relative(d);
 			if (standable(level, n)) open.add(RoomScans.pos(n));
 		}
-		return StandChoice.nearest(open, RoomScans.pos(BlockPos.containing(from.x, from.y, from.z)))
-				.map(RoomScans::blockPos)
-				.orElse(block);
+		return StandChoice.nearest(open, RoomScans.pos(block)).map(RoomScans::blockPos).orElse(block);
 	}
 
 	private static boolean standable(ServerLevel level, BlockPos c) {

@@ -491,7 +491,7 @@ public final class CookJob {
 		if (dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) st.walk.release(v);
 		else {
 			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, smoker, v.position());
-			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : 1.0, now);
+			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 			if (st.walk.tick(v, now) == WalkTo.State.UNREACHABLE) st.walk.clear();
 		}
 		if ((now + v.getId()) % 20 == 0 && dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) {
@@ -556,7 +556,7 @@ public final class CookJob {
 		if (dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) st.walk.release(v);
 		else {
 			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, smoker, v.position());
-			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : 1.0, now);
+			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 		}
 		WalkTo.State ws = dev.villageheart.worker.job.WorkstationStand.at(v, smoker) ? WalkTo.State.ARRIVED : st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) {

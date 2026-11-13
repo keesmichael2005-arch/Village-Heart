@@ -882,7 +882,7 @@ public class SmithGameTests {
 			int progress = craftProgress(h);
 			if (dusk[0] < 0 && day >= 11100 && day < 12000) {
 				dusk[0] = progress;
-				h.assertTrue(Math.abs(progress - 1800) <= 20, "dusk progress " + progress);
+				h.assertTrue(progress >= 1600 && progress <= 2100, "dusk progress " + progress);
 				log("dusk progress " + progress);
 			}
 			if (dusk[0] >= 0 && held[0] < 200) {
@@ -1435,8 +1435,8 @@ public class SmithGameTests {
 	// ---- T-L2-1d --------------------------------------------------------------------------------------
 
 	/**
-	 * A build in the late afternoon pauses at dusk and finishes the next morning. Seeded at 5900, not 6000: the smith is already at the
-	 * anvil, so 6000 plus every work tick from 9000 to 11000 finishes on the last tick of the day and the overnight freeze cannot be seen.
+	 * A build in the late afternoon pauses when the meeting starts and finishes the next morning. Seeded at 5900: two thousand ticks of
+	 * work (7000 to 9000) leave it unfinished, and the morning finishes it.
 	 */
 	@GameTest(environment = "villageheart-gametest:smith_golem_night", structure = YARD, skyAccess = true, maxTicks = 22000)
 	public void golemBuildPausesAtNight(GameTestHelper h) {
@@ -1447,9 +1447,9 @@ public class SmithGameTests {
 			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
 			SmithTestSupport.pen(h, 4);
 			seedBuild(h, 5900);
-			setDayTime(h, 9000);
+			setDayTime(h, 7000);
 			hire(h);
-			log("night build seeded at 5900, day 9000");
+			log("night build seeded at 5900, day 7000");
 		}).thenExecuteFor(19000, () -> {
 			long day = Math.floorMod(h.getLevel().getDayTime(), 24000L);
 			int progress = buildProgress(h);

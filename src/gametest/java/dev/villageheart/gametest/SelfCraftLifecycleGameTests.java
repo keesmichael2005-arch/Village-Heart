@@ -210,9 +210,9 @@ public class SelfCraftLifecycleGameTests {
 			v[0] = hire(h, 0);
 			v[1] = hireAt(h, BuildingTestSupport.inside(MINE, 2, 0, 1));
 			insertRecord(h, committed(h, v[0], 4000));
-			h.getLevel().setDayTime(10_400);
+			h.getLevel().setDayTime(8_350); // 650 ticks of work left before the meeting at 9000
 		});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() % 24000 >= 11_050, "waiting for the evening"));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() % 24000 >= 9_050, "waiting for the meeting"));
 		seq = seq.thenExecute(() -> {
 			var st = SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[0].getUUID());
 			frozen[0] = st.progress;
