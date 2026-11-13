@@ -71,6 +71,7 @@ class VillageStateTierTest {
 		if (t == java.util.function.Predicate.class) return (java.util.function.Predicate<Object>) o -> false; // withoutSmokerHeat (M13)
 		if (t == BuildingRecord.class) return new BuildingRecord("storage", new HeartLocation(DIM, 5, 64, 5));
 		if (t == WorkerRecord.class) return new WorkerRecord(new UUID(3, 3), "farmer", new HeartLocation(DIM, 5, 64, 5), new HeartLocation(DIM, 6, 64, 5));
+		if (t == List.class) return List.of(new WorkerRecord(new UUID(3, 3), "farmer", new HeartLocation(DIM, 5, 64, 5), new HeartLocation(DIM, 6, 64, 5)));
 		if (t == TreeTask.class) return new TreeTask(CAMP, TreeTask.Stage.FELLING, List.of(new HeartLocation(DIM, 21, 64, 1)), "minecraft:oak_sapling", 1L,
 				new Pos(19, 64, -1), new Pos(23, 72, 3));
 		if (t == BuildJob.class) return new BuildJob(new UUID(5, 1), "wall_segment", BlueprintParams.NONE, new HeartLocation(DIM, 10, 64, 3), Rotation4.CLOCKWISE_90,

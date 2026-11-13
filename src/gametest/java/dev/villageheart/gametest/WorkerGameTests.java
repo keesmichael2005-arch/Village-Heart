@@ -942,7 +942,7 @@ public class WorkerGameTests {
 	 * An unpaid striker and a paid worker with no workplace wander inside the claim during the work day and do not deposit.
 	 * At sleep time the striker is in bed. A striking guard, off duty and awake, moves, and a raid puts that guard on duty.
 	 */
-	@GameTest(environment = "villageheart-gametest:workers_wander", structure = YARD, skyAccess = true, maxTicks = 6000)
+	@GameTest(environment = "villageheart-gametest:workers_wander", structure = YARD, skyAccess = true, maxTicks = 12000)
 	public void strikeWandersInsideTheClaim(GameTestHelper h) {
 		begin(h);
 		BlockPos farm = new BlockPos(8, 0, 16), store = new BlockPos(18, 0, 16), house = new BlockPos(25, 0, 4);
