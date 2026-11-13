@@ -18,7 +18,7 @@ import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
-/** The next three guide tasks, as plain text on the left. H collapses it. */
+/** The next three guide tasks, numbered under an underlined Tasks. The bound key sits beside that word and folds the list. */
 public final class GuideHud {
 	private static final int SHOW = 3;
 	private static List<String> tasks = List.of();
@@ -54,17 +54,23 @@ public final class GuideHud {
 		var font = mc.font;
 		int x = 6;
 		int y = 6;
+		Component heading = Component.translatable(HeartTexts.key("guide.tasks"));
+		String button = key == null ? "H" : key.getTranslatedKeyMessage().getString();
+		int headingW = font.width(heading);
 		int n = open ? Math.min(SHOW, tasks.size()) : 0;
-		int widest = font.width(Component.translatable(HeartTexts.key("guide.tasks")));
+		String[] lines = new String[n];
+		int widest = headingW + 6 + font.width(button);
 		for (int i = 0; i < n; i++) {
 			String title = GuideTask.byId(tasks.get(i)).map(GuideTask::title).orElse(tasks.get(i));
-			widest = Math.max(widest, font.width(title));
+			lines[i] = (i + 1) + "  " + title;
+			widest = Math.max(widest, font.width(lines[i]));
 		}
 		g.fill(2, 2, x + widest + 6, y + 12 + n * 10 + 2, 0x90000000);
-		g.drawString(font, Component.translatable(HeartTexts.key("guide.tasks")), x, y, 0xFFFFFFFF, false);
+		g.drawString(font, heading, x, y, 0xFFFFFFFF, false);
+		g.fill(x, y + 8, x + headingW, y + 9, 0xFFFFFFFF);
+		g.drawString(font, button, x + headingW + 6, y, 0xFFFFFFFF, false);
 		for (int i = 0; i < n; i++) {
-			String title = GuideTask.byId(tasks.get(i)).map(GuideTask::title).orElse(tasks.get(i));
-			g.drawString(font, title, x, y + 12 + i * 10, 0xFFFFFFFF, false);
+			g.drawString(font, lines[i], x, y + 12 + i * 10, 0xFFFFFFFF, false);
 		}
 	}
 }

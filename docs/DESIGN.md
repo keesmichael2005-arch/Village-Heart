@@ -688,7 +688,7 @@ At every tier, tool workers make their own wooden and stone tools (§4.1); the S
 - **Ranks** (Owner only): players and their ranks.
 - **Guide**: the path from a new claim to a Town, one small step at a time. A building is craft the marker, then make the
   building count. The field comes after the Farmhouse. Craft steps check off when that item is in an inventory. While playing, the next
-  three tasks sit as plain text on the left. Checking a step off plays the advancement sound. In the Heart, click a task for its steps
+  three tasks sit on the left under an underlined Tasks, numbered. H, beside that word, folds the list. Checking a step off plays the advancement sound. In the Heart, click a task for its steps
   and, when it is a craft, the recipe. Three lines can sit above the list when the village is waiting on the player: emeralds before
   dawn, a planted field for a hired farmer, and a Training Yard for a hired guard. A Visitor can read this tab.
 

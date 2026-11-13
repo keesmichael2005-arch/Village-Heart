@@ -82,7 +82,7 @@ public final class GuideSystem implements VillageSystem {
 		Set<UUID> online = new HashSet<>();
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			online.add(player.getUUID());
-			if (!after.equals(before) || told.add(player.getUUID())) HeartNetwork.send(player, list);
+			if (full || !after.equals(before) || told.add(player.getUUID())) HeartNetwork.send(player, list);
 		}
 		told.retainAll(online);
 	}
