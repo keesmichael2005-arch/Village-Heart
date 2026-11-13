@@ -147,6 +147,18 @@ public class BlueprintBookScreen extends Screen {
 		return super.keyPressed(ev);
 	}
 
+	private void scrollbar(GuiGraphics g, int count, int cols) {
+		int rows = (count + cols - 1) / cols;
+		int content = rows * (TILE_H + TILE_GAP);
+		int view = gridBottom() - TOP;
+		if (content <= view) return;
+		int x = gridRight() + 2;
+		g.fill(x, TOP, x + 4, gridBottom(), 0xFF101010);
+		int thumbH = Math.max(12, view * view / content);
+		int ty = TOP + (view - thumbH) * scroll / Math.max(1, content - view);
+		g.fill(x, ty, x + 4, ty + thumbH, 0xFFA0A0A0);
+	}
+
 	private int line(GuiGraphics g, String s, int x, int y, int maxW, int color) {
 		if (font.width(s) > maxW) s = font.plainSubstrByWidth(s, Math.max(0, maxW - font.width("…"))) + "…";
 		g.drawString(font, s, x, y, color);
@@ -196,6 +208,7 @@ public class BlueprintBookScreen extends Screen {
 			line(g, name, x + 14, y + 7, tw - 18, WHITE);
 		}
 		g.disableScissor();
+		scrollbar(g, list.size(), cols);
 
 		int rx = width - MARGIN - DETAIL_W;
 		Blueprint shown = hover >= 0 && hover < list.size() ? list.get(hover) : null;

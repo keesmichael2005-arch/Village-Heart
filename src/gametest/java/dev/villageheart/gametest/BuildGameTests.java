@@ -435,7 +435,7 @@ public class BuildGameTests {
 	}
 
 	/** The Blueprint Book stays in hand, and a second site can be placed with the same book. */
-	@GameTest(environment = "villageheart-gametest:build_item_flow", structure = YARD, skyAccess = true, maxTicks = 400)
+	@GameTest(environment = "villageheart-gametest:build_book_places", structure = YARD, skyAccess = true, maxTicks = 400)
 	public void blueprintBookPlacesAgain(GameTestHelper h) {
 		BuildingTestSupport.RecordingPlayer[] steward = new BuildingTestSupport.RecordingPlayer[1];
 		ItemStack[] book = new ItemStack[1];
