@@ -366,6 +366,15 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, next);
 	}
 
+	/** The chest that worker owns. A null chest clears the link. Hiring order is unchanged. */
+	public VillageState withWorkerChest(UUID villager, HeartLocation chest) {
+		Optional<WorkerRecord> rec = worker(villager);
+		if (rec.isEmpty() || rec.get().chest().equals(Optional.ofNullable(chest))) return this;
+		List<WorkerRecord> next = new ArrayList<>(workers);
+		next.replaceAll(w -> w.villager().equals(villager) ? w.withChest(chest) : w);
+		return copy(owner, ownerName, ranks, known, treasury, tier, buildings, next);
+	}
+
 	public VillageState withTier(Tier t) {
 		Objects.requireNonNull(t, "tier");
 		return copy(owner, ownerName, ranks, known, treasury, t, buildings, workers);

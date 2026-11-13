@@ -31,6 +31,7 @@ public final class WorkerStatusText {
 			case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 			case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 			case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
+			case NEEDS_CHEST -> ActivityKind.NEEDS_CHEST;
 		};
 	}
 

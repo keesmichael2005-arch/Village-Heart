@@ -13,6 +13,7 @@ public class VillageHeartClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		MenuScreens.register(ModMenus.HEART, HeartScreen::new);
+		MenuScreens.register(ModMenus.POCKET, dev.villageheart.client.pocket.PocketScreen::new);
 		dev.villageheart.client.build.BlueprintPreview.register();
 		MenuScreens.register(ModMenus.BUILDERS_TABLE, dev.villageheart.client.build.BuildersTableScreen::new);
 		ClientPlayNetworking.registerGlobalReceiver(dev.villageheart.build.net.BuildersTableSnapshotPayload.TYPE, (payload, ctx) -> {

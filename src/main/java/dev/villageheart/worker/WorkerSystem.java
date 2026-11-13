@@ -57,15 +57,22 @@ public final class WorkerSystem implements VillageSystem {
 			}
 		});
 		LevelUpFeedback.register();
+		dev.villageheart.worker.pocket.PocketScreens.register();
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> WorkXp.clear());
+		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
+			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) dev.villageheart.worker.pocket.Pockets.onDeath(level, v);
+			return true;
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Villager v && v.level() instanceof ServerLevel level) {
+				dev.villageheart.worker.pocket.Pockets.onDeath(level, v);
 				dev.villageheart.worker.smith.SmithJob.dropCarried(level, v);
 				Workers.fireById(level.getServer(), v.getUUID());
 			}
 		});
 		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, context) -> {
 			if (previous instanceof Villager v && v.level() instanceof ServerLevel level) {
+				dev.villageheart.worker.pocket.Pockets.onDeath(level, v);
 				dev.villageheart.worker.smith.SmithJob.dropCarried(level, v);
 				Workers.fireById(level.getServer(), v.getUUID());
 			}
@@ -92,6 +99,7 @@ public final class WorkerSystem implements VillageSystem {
 	@Override
 	public void tick(MinecraftServer server, VillageState village) {
 		if (server.getTickCount() % INTERVAL != 0) return;
+		dev.villageheart.worker.pocket.Pockets.migrate(server, village);
 		JobSiteSource source = Workers.jobSites();
 		for (WorkerRecord rec : List.copyOf(village.workers())) {
 			if (!source.isRegistered(server, rec.building())) {
@@ -105,7 +113,7 @@ public final class WorkerSystem implements VillageSystem {
 			if (!WorkerAttachments.isWorker(v)) {
 				// back at the level the registry recorded (M12), not at level 1
 				JobType.byId(rec.jobId()).ifPresent(job -> Workers.install(level, v,
-						WorkerData.hired(job, rec.building(), rec.jobBlock()).withProgress(rec.level(), 0)));
+						WorkerData.hired(job, rec.building(), rec.jobBlock()).withProgress(rec.level(), 0).withChest(rec.chest().orElse(null))));
 			} else {
 				Optional<JobType> job = JobType.byId(rec.jobId());
 				if (job.isPresent() && !v.getVillagerData().profession().equals(ModProfessions.holder(job.get()))) {

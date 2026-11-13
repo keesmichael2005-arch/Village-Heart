@@ -115,8 +115,11 @@ public final class VillageCodecs {
 			HEART_LOCATION.fieldOf("building").forGetter(WorkerRecord::building),
 			HEART_LOCATION.fieldOf("job_block").forGetter(WorkerRecord::jobBlock),
 			// M12: the mirror of the worker's level; an older save has none and reads as level 1, a bad value (< 1) as 1
-			Codec.INT.optionalFieldOf("level", 1).forGetter(WorkerRecord::level)
-	).apply(i, (villager, job, building, jobBlock, level) -> new WorkerRecord(villager, job, building, jobBlock, Math.max(1, level))));
+			Codec.INT.optionalFieldOf("level", 1).forGetter(WorkerRecord::level),
+			// Pockets: absent on an old save. Omitted again when the worker has no chest yet.
+			HEART_LOCATION.optionalFieldOf("chest").forGetter(WorkerRecord::chest)
+	).apply(i, (villager, job, building, jobBlock, level, chest) -> new WorkerRecord(villager, job, building, jobBlock, Math.max(1, level))
+			.withChest(chest.orElse(null))));
 
 	public static final Codec<KnownPlayer> KNOWN_PLAYER = RecordCodecBuilder.create(i -> i.group(
 			UUID_STRING.fieldOf("id").forGetter(KnownPlayer::id),

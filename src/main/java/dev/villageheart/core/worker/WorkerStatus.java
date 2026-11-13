@@ -31,5 +31,7 @@ public enum WorkerStatus {
 	/** The merchant has sold today's limit (M22). */
 	DAILY_LIMIT,
 	/** The treasury is full: the merchant stops selling (M22). */
-	TREASURY_FULL
+	TREASURY_FULL,
+	/** The worker's own chest is missing or was never paired. Appended so older status numbers stay valid. */
+	NEEDS_CHEST
 }

@@ -162,6 +162,7 @@ public final class WorkerBrain {
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));
 
 		brain.addActivity(Activity.IDLE, ImmutableList.of(
+				p(50, new dev.villageheart.worker.pocket.ToolErrand()),
 				p(2, new RunOne<>(ImmutableList.of(
 						Pair.of(InteractWith.of(EntityType.VILLAGER, 8, AgeableMob::canBreed, AgeableMob::canBreed, MemoryModuleType.BREED_TARGET, SPEED, 2), 1),
 						Pair.of(VillageBoundRandomStroll.create(SPEED), 1),
@@ -181,6 +182,7 @@ public final class WorkerBrain {
 				.build());
 
 		brain.addActivity(GO_HOME, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
+				.add(p(0, new dev.villageheart.worker.pocket.ToolErrand()))
 				.addAll(JobBehaviours.goHome(villager))
 				.add(p(2, SetWalkTargetFromBlockMemory.create(MemoryModuleType.HOME, SPEED, 1, 150, 1200)))
 				.add(p(3, ValidateNearbyPoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME)))
