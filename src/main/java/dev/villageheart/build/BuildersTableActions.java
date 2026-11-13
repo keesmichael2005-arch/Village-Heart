@@ -67,10 +67,6 @@ public final class BuildersTableActions {
 			reply(player, containerId, false, "locked", List.of(bp.get().tier().displayName()));
 			return;
 		}
-		if (village.get().builds().size() >= Balance.MAX_ACTIVE_BUILDS) {
-			reply(player, containerId, false, "too_many", List.of());
-			return;
-		}
 		Long last = LAST_TAKE.get(player.getUUID());
 		if (last != null && now - last < Balance.BLUEPRINT_TAKE_COOLDOWN) {
 			reply(player, containerId, false, "too_fast", List.of());

@@ -434,6 +434,33 @@ public class BuildGameTests {
 		});
 	}
 
+	/** The Blueprint Book stays in hand, and a second site can be placed with the same book. */
+	@GameTest(environment = "villageheart-gametest:build_item_flow", structure = YARD, skyAccess = true, maxTicks = 400)
+	public void blueprintBookPlacesAgain(GameTestHelper h) {
+		BuildingTestSupport.RecordingPlayer[] steward = new BuildingTestSupport.RecordingPlayer[1];
+		ItemStack[] book = new ItemStack[1];
+		BuildTestSupport.layout(h, With.STORAGE_NO_HUT).thenExecute(() -> {
+			steward[0] = BuildTestSupport.playerWithRank(h, "steward", Rank.STEWARD);
+			book[0] = new ItemStack(dev.villageheart.item.ModItems.BLUEPRINT_BOOK);
+			book[0].set(ModComponents.BLUEPRINT, Blueprints.SMALL_HOUSE.id());
+			BlockPos ground = BuildTestSupport.GROUND;
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, book[0]);
+			BuildingTestSupport.rightClick(h, steward[0], ground, Direction.UP, book[0]);
+			h.assertTrue(BuildTestSupport.builds(h).size() == 1, "the first site is placed");
+			h.assertTrue(book[0].is(dev.villageheart.item.ModItems.BLUEPRINT_BOOK) && book[0].getCount() == 1, "the book is not used up");
+			h.assertTrue(Blueprints.SMALL_HOUSE.id().equals(book[0].get(ModComponents.BLUEPRINT)), "the plan stays armed");
+			h.assertTrue(book[0].get(ModComponents.BLUEPRINT_SITE) == null, "the confirmed site is cleared");
+			BlockPos second = new BlockPos(15, -1, 40);
+			BuildingTestSupport.rightClick(h, steward[0], second, Direction.UP, book[0]);
+			BlueprintSite site = book[0].get(ModComponents.BLUEPRINT_SITE);
+			h.assertTrue(site != null && site.ok(), "a second site with no extra item: " + (site == null ? "none" : site.reason().english()));
+			BuildingTestSupport.rightClick(h, steward[0], second, Direction.UP, book[0]);
+			h.assertTrue(BuildTestSupport.builds(h).size() == 2, "two plans are placed from one book, blocks or not: " + BuildTestSupport.builds(h).size());
+			h.assertTrue(book[0].getCount() == 1, "the book is still in hand");
+			VillageTestSupport.done(h);
+		});
+	}
+
 	// ---- T-L2-5 ----------------------------------------------------------------------------------
 
 	@GameTest(environment = "villageheart-gametest:build_site_refusals", structure = YARD, skyAccess = true, maxTicks = 600)

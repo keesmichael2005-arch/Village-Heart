@@ -62,6 +62,7 @@ public final class GuideBook {
 			case VILLAGE_TIER -> s.tierAtLeast(Tier.VILLAGE);
 			case BUILDERS_HUT -> s.valid("builders_hut");
 			case BUILDER -> s.job("builder");
+			case BLUEPRINT_BOOK -> s.blueprintBook();
 			case HOUSE_MATERIALS -> s.houseStocked();
 			case START_BUILD -> s.buildStarted();
 			case FINISH_BUILD -> s.buildFinished();

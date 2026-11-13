@@ -21,7 +21,7 @@ class GuideBookTest {
 
 	@Test void doingALaterThingChecksItAndLeavesTheGap() {
 		GuideSignals house = new GuideSignals(true, true, Set.of("house"), Set.of(), false, false, false, false, false, false, false,
-				false, Set.of(), Tier.HAMLET, 0);
+				false, Set.of(), Tier.HAMLET, 0, false);
 		GuideProgress done = GuideBook.advance(GuideProgress.EMPTY, house);
 		assertTrue(done.has(GuideTask.OPEN_HEART.id()));
 		assertTrue(done.has(GuideTask.BLANK_MARKER.id()));
@@ -33,16 +33,16 @@ class GuideBookTest {
 
 	@Test void aMineNeedsBothTheBuildingAndTheShaft() {
 		GuideSignals onlyMine = new GuideSignals(false, false, Set.of("mine"), Set.of(), false, false, false, false, false, false, false,
-				false, Set.of(), Tier.VILLAGE, 0);
+				false, Set.of(), Tier.VILLAGE, 0, false);
 		assertFalse(GuideBook.advance(GuideProgress.EMPTY, onlyMine).has(GuideTask.MINE.id()));
 		GuideSignals both = new GuideSignals(false, false, Set.of("mine", "mineshaft"), Set.of(), false, false, false, false, false, false,
-				false, false, Set.of(), Tier.VILLAGE, 0);
+				false, false, Set.of(), Tier.VILLAGE, 0, false);
 		assertTrue(GuideBook.advance(GuideProgress.EMPTY, both).has(GuideTask.MINE.id()));
 	}
 
 	@Test void needsComeAndGoWithoutCheckingATask() {
 		GuideSignals shortPaid = new GuideSignals(false, false, Set.of("farmhouse"), Set.of("farmer", "guard"), false, false, false, false,
-				false, false, false, false, Set.of(), Tier.VILLAGE, 3);
+				false, false, false, false, Set.of(), Tier.VILLAGE, 3, false);
 		assertEquals(List.of(GuideBook.NEED_EMERALDS, GuideBook.NEED_FIELD, GuideBook.NEED_YARD), GuideBook.needs(shortPaid));
 		GuideProgress hired = GuideBook.advance(GuideProgress.EMPTY, shortPaid);
 		assertTrue(hired.has(GuideTask.FARMER.id()));
@@ -50,8 +50,15 @@ class GuideBookTest {
 		assertFalse(hired.has(GuideTask.FIELD.id()));
 		assertFalse(hired.has(GuideTask.TRAINING_YARD.id()));
 		GuideSignals clear = new GuideSignals(false, false, Set.of("farmhouse", "training_yard"), Set.of("farmer", "guard"), false, true,
-				false, false, false, false, false, false, Set.of(), Tier.VILLAGE, 0);
+				false, false, false, false, false, false, Set.of(), Tier.VILLAGE, 0, false);
 		assertTrue(GuideBook.needs(clear).isEmpty());
+	}
+
+	@Test void aBlueprintBookInHandChecksThatTask() {
+		GuideSignals held = new GuideSignals(false, false, Set.of(), Set.of(), false, false, false, false, false, false, false,
+				false, Set.of(), Tier.VILLAGE, 0, true);
+		assertTrue(GuideBook.advance(GuideProgress.EMPTY, held).has(GuideTask.BLUEPRINT_BOOK.id()));
+		assertFalse(GuideBook.advance(GuideProgress.EMPTY, GuideSignals.none()).has(GuideTask.BLUEPRINT_BOOK.id()));
 	}
 
 	@Test void anUnknownSavedIdIsDroppedAndARealOneRoundTrips() {

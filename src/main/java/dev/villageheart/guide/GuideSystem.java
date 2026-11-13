@@ -123,7 +123,18 @@ public final class GuideSystem implements VillageSystem {
 				village.treasury() > 0 || progress.has(GuideTask.EMERALDS.id()), field,
 				village.tierProgress().fedStreak() >= 1, wagesPaid, stocked,
 				!village.builds().isEmpty() || !defences.isEmpty() || buildGone || cursorDone,
-				!defences.isEmpty() || buildGone || cursorDone, golem, defences, village.tier(), shortfall);
+				!defences.isEmpty() || buildGone || cursorDone, golem, defences, village.tier(), shortfall,
+				progress.has(GuideTask.BLUEPRINT_BOOK.id()) || holdingBook(server));
+	}
+
+	private static boolean holdingBook(MinecraftServer server) {
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			var inventory = player.getInventory();
+			for (int i = 0; i < inventory.getContainerSize(); i++) {
+				if (inventory.getItem(i).is(dev.villageheart.item.ModItems.BLUEPRINT_BOOK)) return true;
+			}
+		}
+		return false;
 	}
 
 	private static long counted(MinecraftServer server, boolean tag, String bare) {

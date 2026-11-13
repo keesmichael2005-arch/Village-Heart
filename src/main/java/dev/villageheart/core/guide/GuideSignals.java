@@ -9,7 +9,7 @@ import java.util.Set;
  */
 public record GuideSignals(boolean heartOpen, boolean markerPlaced, Set<String> valid, Set<String> jobs, boolean emeralds,
 		boolean field, boolean fedDinner, boolean wagesPaid, boolean houseStocked, boolean buildStarted, boolean buildFinished,
-		boolean golem, Set<String> defences, Tier tier, int wageShort) {
+		boolean golem, Set<String> defences, Tier tier, int wageShort, boolean blueprintBook) {
 	public GuideSignals {
 		valid = Set.copyOf(valid);
 		jobs = Set.copyOf(jobs);
@@ -20,7 +20,7 @@ public record GuideSignals(boolean heartOpen, boolean markerPlaced, Set<String> 
 
 	public static GuideSignals none() {
 		return new GuideSignals(false, false, Set.of(), Set.of(), false, false, false, false, false, false, false, false, Set.of(),
-				Tier.HAMLET, 0);
+				Tier.HAMLET, 0, false);
 	}
 
 	public boolean valid(String typeId) { return valid.contains(typeId); }

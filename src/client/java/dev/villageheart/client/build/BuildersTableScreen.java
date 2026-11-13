@@ -4,7 +4,6 @@ import dev.villageheart.client.art.ModTextures;
 import dev.villageheart.build.BuildersTableMenu;
 import dev.villageheart.build.net.CancelBuildPayload;
 import dev.villageheart.build.net.TakeBlueprintPayload;
-import dev.villageheart.core.Balance;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.blueprint.BuildStatus;
@@ -107,7 +106,6 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		if (b == null) return t("select");
 		if (!mayStart()) return t("no_permission");
 		if (b.locked()) return t("locked", Blueprints.byId(b.id()).map(bp -> bp.tier().displayName()).orElse(dev.villageheart.core.Tier.VILLAGE.displayName()));
-		if (snap().builds().size() >= Balance.MAX_ACTIVE_BUILDS) return t("too_many");
 		return null;
 	}
 

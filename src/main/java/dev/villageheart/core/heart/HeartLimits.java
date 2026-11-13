@@ -9,7 +9,7 @@ public final class HeartLimits {
 	/** Rows of the Ranks tab. */
 	public static final int MAX_MEMBERS = 100;
 	public static final int MAX_REASONS = 4;
-	/** Builds shown on the Buildings tab (M20: one per active build, Balance.MAX_ACTIVE_BUILDS) and the missing-material lines of each. */
+	/** Builds shown on the Buildings tab and the Builder's Table. Placing a site is not capped. V draws the rest. */
 	public static final int MAX_BUILDS = 8;
 	public static final int MAX_BUILD_MISSING = 2;
 	public static final int MAX_STOCK_KINDS = 256;
