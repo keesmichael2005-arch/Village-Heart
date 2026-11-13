@@ -310,10 +310,21 @@ public final class Pockets {
 		return false;
 	}
 
-	/** Death or a zombie: the tool goes home. The cargo is left to drop. */
+	/**
+	 * Death or a zombie: the tool goes home when they were holding one. Whatever is still in the pocket is dropped. A villager's own
+	 * inventory is not death loot, so the cargo would otherwise vanish with them.
+	 */
 	public static void onDeath(ServerLevel level, Villager v) {
-		if (!ToolDay.onDeath(holdingTool(v)).toolToChest()) return;
-		returnTool(level.getServer(), v);
+		ToolDay.Death death = ToolDay.onDeath(holdingTool(v));
+		if (death.toolToChest()) returnTool(level.getServer(), v);
+		if (!death.dropCargo()) return;
+		var inv = v.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack stack = inv.getItem(i);
+			if (stack.isEmpty()) continue;
+			inv.setItem(i, ItemStack.EMPTY);
+			net.minecraft.world.Containers.dropItemStack(level, v.getX(), v.getY(), v.getZ(), stack);
+		}
 	}
 
 	/**
