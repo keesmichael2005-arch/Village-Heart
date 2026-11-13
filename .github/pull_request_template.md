@@ -15,3 +15,4 @@
 - [ ] `docs/DESIGN.md` / `docs/PLAYER_GUIDE.md` updated if behaviour or a number the player sees changed
 - [ ] No test weakened, skipped or deleted
 - [ ] Old saves still load (new save keys in RAW_B, optional)
+- [ ] Label set: `awaiting-approval` once verify is green, `approved` when Kees says he is done (the release thread merges `approved` PRs)

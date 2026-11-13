@@ -11,13 +11,37 @@ A handoff to an implementer is a prompt. It does not add another guide file.
 The first line of your prompt decides this.
 
 - **Implementer.** The prompt starts with `You are the implementer.` That prompt is your brief. Follow **Toolchain**, **Code layout**, **Definition of done**, and **Do not break**. Skip **Skills**, **Access**, and **Making a feature**.
-- **Parent.** Any other session. You talk to Kees. A feature follows **Making a feature**. You write the plan. You do not write the feature's mod code. A fix follows **Making a fix**, and you may write that code yourself.
+- **Release thread.** Kees opens a session and asks for a playtest build or a release ("make a release", "build the approved ones"). Follow **Making a release**. You merge PRs, you do not write mod code.
+- **Parent.** Any other session. You talk to Kees. A feature follows **Making a feature**. You write the plan. You do not write the feature's mod code. A fix follows **Making a fix**, and you may write that code yourself. A parent never merges its own PR (see **Labels and approval**).
+
+## Labels and approval
+
+Every PR into `dev` carries one of two labels. They are how Kees batches work into one playtest.
+
+| Label | Meaning | Who sets it |
+|---|---|---|
+| `awaiting-approval` | Verify is green and Kees has seen the proof (screenshots or test results), or work is still going on. Not part of the next playtest. | The parent thread, when it opens the PR (or when more work is sent into an approved PR). |
+| `approved` | Kees said he is done with this thread. No more changes are coming. The next release thread merges it. | The same parent thread, when Kees says he is happy or done. |
+
+```bash
+gh pr edit <n> --repo keesmichael2005-arch/Village-Heart --add-label awaiting-approval
+gh pr edit <n> --repo keesmichael2005-arch/Village-Heart --remove-label awaiting-approval --add-label approved
+```
+
+- Kees says it in the thread that opened the PR. Nobody else sets `approved`, and nobody sets it for him.
+- If Kees sends more work to a thread whose PR is `approved`, put it back to `awaiting-approval` first, and set `approved` again only when he says he is done again.
+- A PR with a red `verify` is not `approved`, whatever Kees said. Fix it first.
+- Opening a PR, getting it green, and labeling it `awaiting-approval` ends the thread's normal job. The PR stays open. Parents do not merge, and do not hand Kees a jar.
 
 ## Skills
 
 ### Fix
 
 Kees reports a bug or a balance tweak. Branch `fix/<name>` from `origin/dev` and follow **Making a fix**.
+
+### Release
+
+Kees wants to playtest, or to release, what has been approved. Follow **Making a release**.
 
 ### Feature
 
@@ -32,6 +56,13 @@ Kees wants a new feature, or brain-dumps one. You are the parent. Follow **Makin
 - Java 25 at `~/.jdk25` and `./gradlew --no-daemon`. Local check is `scripts/verify.sh --fast`.
 - One implementer, started by sending the prompt in **Making a feature**.
 - The `verify-reports` artifact from the GitHub `verify` workflow. That is where the client screenshots are. Download them and put the new pngs in the chat.
+- The PR labels `awaiting-approval` and `approved` on its own PR.
+
+**Release thread**
+
+- `gh` to list, merge (squash), and label PRs into `dev`, and to open the release PR from `dev` to `main`.
+- The `village-heart-jar` artifact of the `dev` and `main` runs.
+- Merging to `main` and tagging, only after Kees says the playtest is good.
 
 **Implementer**
 
@@ -44,7 +75,7 @@ Java 25 is at `~/.jdk25`. `scripts/verify.sh` installs it when it is missing. `s
 
 **Neither role**
 
-Push to `main`. Merge the PR. Install packages on Debbie. Start a second implementer. Add another copy of this guide.
+Push to `main`. Merge a PR (only the release thread merges, and only `approved` PRs). Install packages on Debbie. Start a second implementer. Add another copy of this guide.
 
 ## Making a fix
 
@@ -54,6 +85,7 @@ Push to `main`. Merge the PR. Install packages on Debbie. Start a second impleme
 4. Run `scripts/verify.sh --fast` while you work. Run the full `scripts/verify.sh` before you push. Both must exit 0.
 5. Add a line under `## Unreleased` in `CHANGELOG.md`. Update `docs/DESIGN.md` and `docs/PLAYER_GUIDE.md` if behaviour changed.
 6. Push the branch and open a PR into `dev`. Never push to `main`. `main` only gets released versions (see WORKFLOW.md "Releasing").
+7. Watch verify until it is green, then label the PR `awaiting-approval` and stop. Do not merge it. When Kees says he is done with it, switch the label to `approved` (see **Labels and approval**). A release thread merges it later.
 
 ## Making a feature
 
@@ -144,7 +176,24 @@ For each new stem, open the png, then put it in the chat as a markdown image wit
 
 That message is how Kees sees the picture. A green check on the PR is the test result. It is not the picture.
 
-If the frame is wrong, fix, push, and show the new run's png. When verify is green and the frames are in the chat, send him the PR link and stop. He playtests and merges.
+If the frame is wrong, fix, push, and show the new run's png. When verify is green and the frames are in the chat, label the PR `awaiting-approval`, send him the PR link, and stop.
+
+### 7. Approval
+
+Kees reads the proof and either sends changes or says he is done. If he sends changes, keep going in this thread, with the same review and verify loop, and show new frames. If he says he is happy, switch the label to `approved`, say so in one line, and stop. The PR stays open. Do not merge. Do not build or hand him a jar: the jar he plays comes from a release thread (below).
+
+## Making a release
+
+Kees collects approved PRs and plays them together. One release thread does the merge and the hand-off. It does not write mod code.
+
+1. **List the batch.** `gh pr list --repo keesmichael2005-arch/Village-Heart --base dev --label approved --state open --json number,title,headRefName,statusCheckRollup`. Show Kees the list. Leave out `awaiting-approval` PRs, and any `approved` PR whose last `verify` is red (name it and why).
+2. **Merge them into `dev`**, one at a time, lowest PR number first: `gh pr merge <n> --squash --delete-branch`. Before the next one, `git fetch`. A conflict in `CHANGELOG.md` (two lines under `## Unreleased`) you resolve yourself by keeping both lines. Any other conflict: stop, tell Kees which two PRs clash, and ask the owner thread (`awaiting-approval` again) to rebase on `dev`. Do not hand-merge code.
+3. **Wait for `dev` to go green.** Each merge to `dev` starts a `verify` run. A newer push cancels the older run, so the run on the last merge is the one that counts. It covers layers 1, 2 and 4 on the combined code. If it is red, find which PR caused it. Revert that merge, set the PR back to `awaiting-approval`, tell Kees, and re-run.
+4. **Hand over the jar.** Download the `village-heart-jar` artifact from that `dev` run: `gh run download <run-id> --repo keesmichael2005-arch/Village-Heart --name village-heart-jar --dir reports/jar-from-ci`. Give Kees the absolute path and the PR list, with each CHANGELOG line. He puts the jar in `.minecraft/mods` with Fabric API and plays.
+5. **Stay open while he plays.** When he asks what he is testing, answer from the PRs merged since the last tag: `gh pr list --repo keesmichael2005-arch/Village-Heart --base dev --state merged --label approved --search "merged:>=<date of the last vX.Y.Z tag>"`, plus the `## Unreleased` lines in `CHANGELOG.md`. A bug he finds is a new fix thread. It opens a PR, waits for approval, and rides the next playtest. It is not merged into this one.
+6. **Release only when he says the playtest is good.** Then follow `docs/WORKFLOW.md` "Releasing a version": version bump PR into `dev`, `CHANGELOG.md` heading, PR from `dev` to `main` once it is green, tag `vX.Y.Z`, GitHub release with the jar from the `main` run. Say what you did, and stop.
+
+Never merge to `main` before step 6, and never merge a PR that is not `approved`.
 
 ## Toolchain
 
