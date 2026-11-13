@@ -121,9 +121,9 @@ public final class HeartFacts {
 			Villager v = loaded.get(rec.villager());
 			if (v == null) v = Workers.findLoaded(server, rec.villager()).orElse(null);
 			WorkerStatus status = Workers.status(server, rec);
+			boolean striker = onStrike(server, rec);
 			if (v == null) {
 				// a striker is on strike wherever it stands; its paid flag comes from the payroll, so it is right while it is unloaded
-				boolean striker = status == WorkerStatus.ON_STRIKE;
 				villagers.add(new VillagerFact(rec.villager(), "", index++, rec.jobId(), "", rec.level(), 0, striker ? NeedsFlags.of(true, true, false) : NeedsFlags.UNKNOWN,
 						striker ? ActivityKind.ON_STRIKE : ActivityKind.AWAY, status == WorkerStatus.WORKPLACE_INVALID, false, false, false,
 						dev.villageheart.core.heart.GuardShiftView.of(state.guardShift(rec.villager()))));
@@ -133,7 +133,6 @@ public final class HeartFacts {
 			Optional<WorkerData> data = WorkerAttachments.get(v);
 			int level = data.map(WorkerData::level).orElse(1);
 			int xp = data.map(WorkerData::xp).orElse(0);
-			boolean striker = status == WorkerStatus.ON_STRIKE;
 			NeedsFlags needs = data.map(d -> NeedsFlags.of(d.needs().fed(), d.needs().housed(), d.needs().paid() && !striker))
 					.orElse(NeedsFlags.UNKNOWN);
 			ActivityKind activity = striker ? ActivityKind.ON_STRIKE : dev.villageheart.worker.job.AwayTrips.isAway(v) ? ActivityKind.AWAY_WORKING : switch (status) {
@@ -309,6 +308,12 @@ public final class HeartFacts {
 
 	private static String professionOf(Villager v) {
 		return v.getVillagerData().profession().unwrapKey().map(k -> k.identifier().toString()).orElse("");
+	}
+
+	/** On strike from the payroll, even when the workplace is also missing (status then reads workplace invalid). A merchant never strikes. */
+	private static boolean onStrike(MinecraftServer server, WorkerRecord rec) {
+		return dev.villageheart.economy.Wages.onStrike(server, rec.villager())
+				&& JobType.byId(rec.jobId()).map(dev.villageheart.core.economy.StrikeRules::mayStrike).orElse(true);
 	}
 
 	public static ActivityKind activityOf(Villager v) {

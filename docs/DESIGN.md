@@ -181,7 +181,18 @@ building behaves exactly as in vanilla.
     working. **Never dies of hunger.**
   - **Housed**: has a bed in a valid House or their own building. If not → work at ×0.75 and cannot have children.
   - **Paid**: wage paid at the last dawn. If not → **on strike** (no work) until the treasury can pay. Owed wages
-    are not carried over.
+    are not carried over. A striker wanders inside the claim during the work day, the same as a worker with no workstation,
+    and still goes home and sleeps. The row says "On strike", and that wins when the workplace is also missing.
+- **A missing workplace does not fire anyone.** Only firing, death, a zombie conversion, or breaking the Heart ends the job.
+  They keep the job, the level, and their pay. During the work day (ticks 1000–11000) they wander inside the claim: no walk to
+  the job block, no deposit trip. They still go home, eat dinner, and sleep. The row says "No workstation". The Overview danger
+  line says "1 worker has no workstation" or "N workers have no workstation", and it counts paid workers only. A building that
+  is still registered, including a red one, keeps its workers until it is valid again. A building that is gone releases them
+  onto the waiting list: in hiring order, each takes the first free job block of their own job, the same order a new hire would.
+  One free block and two waiting: the earlier hire gets it. The other stays paid and wandering, and keeps the old building
+  location on the record. A House is a home. A guard wanders only while already off duty and awake; a raid still calls them up;
+  they still sleep. A merchant never wage-strikes. With no Market they wander, stay paid, and sell again when a stall is free.
+  A tool craft in progress still refunds to Storage when its building is unregistered. The worker stays hired.
 - **Work speed** = tool × level × needs multipliers. All of this rate math is in `core/` and unit-tested.
 
 ### 4.1 Where tools come from: self-made wooden and stone tools (M19a)
@@ -301,7 +312,7 @@ There is no real tunnelling in v1 (post-v1 idea).
   counter), so a reload never re-rolls a haul. 4 redstone or lapis per hit, 1 gold, 1 diamond (DESIGN gave no counts). A wooden pickaxe uses the stone table,
   slower. What does not fit into the inventory stays pending and is delivered later (never dropped); the miner hands in everything but food
   as soon as it is up. A shaft that stops being valid (rails removed) brings the miner up at once with its progress reset; the Mine
-  then turns invalid ("Needs a linked Mineshaft") and its miners report "Workplace invalid" until it is fixed. Statuses: "Needs pickaxe",
+  then turns invalid ("Needs a linked Mineshaft") and its miners report "No workstation" until it is fixed. Statuses: "Needs pickaxe",
   "No valid Mineshaft", "Can't reach the Mineshaft", and "Away (mining)" on the Heart screen while it is down.
 
 ### 5.4 Hunter (Hunting Lodge + Hunting Ground, Fletching Table, *requires bow or sword*)
@@ -562,7 +573,7 @@ Rules as built (M22, `docs/plans/M22.md`):
     (after wages, with the pre- and post-wage treasury in `PayResult`).
   - **Pay rule.** Every registered worker, loaded or not (its level is mirrored in `WorkerRecord.level`), in hiring order; a worker whose wage fits what
     is left is paid, one that does not strikes **and the walk goes on** (a cheaper later worker can still be paid). Owed wages are never carried over.
-  - **Strike** = on today's unpaid list. A striker's work speed is 0 (all jobs, via `needs.paid`; deposit trips still run), its status is "On strike"
+  - **Strike** = on today's unpaid list. A striker's work speed is 0 (all jobs, via `needs.paid`). During the work day they wander inside the claim and do not deliver; they still go home and sleep. The row says "On strike"
     and it outranks hunger. **Every treasury increase** (deposit, the `treasury add` and `set` commands, a merchant's sale in M22) pays the strikers at
     their wage as charged at dawn, in hiring order, at once. **A hire is charged at once** (a fresh hire strikes when the treasury cannot pay), so
     firing at dusk and hiring again at dawn is no free day; a worker already paid today costs nothing to hire again the same day.

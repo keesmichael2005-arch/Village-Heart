@@ -416,6 +416,13 @@ public record VillageState(HeartLocation heart, UUID owner, String ownerName, lo
 		return withWorkersRebalanced(copy);
 	}
 
+	/** Replace the worker list, keeping this order as hiring order. A no-op when nothing moved. */
+	public VillageState withWorkers(List<WorkerRecord> next) {
+		Objects.requireNonNull(next, "workers");
+		if (next.equals(workers)) return this;
+		return withWorkersRebalanced(List.copyOf(next));
+	}
+
 	/** Remove the record of {@code villager}; a no-op when there is none. */
 	public VillageState withoutWorker(UUID villager) {
 		if (worker(villager).isEmpty()) return this;

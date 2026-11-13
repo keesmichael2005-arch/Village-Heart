@@ -116,6 +116,11 @@ class VillageGuardShiftsTest {
 		calls.put("withdrawTreasury", s -> s.withTreasury(5).withdrawTreasury(2));
 		calls.put("withTreasury", s -> s.withTreasury(9));
 		calls.put("withWorkerLevel", s -> s.withWorkerLevel(G1, 2));
+		calls.put("withWorkers", s -> {
+			var next = new java.util.ArrayList<>(s.workers());
+			next.add(new WorkerRecord(new UUID(8, 8), "farmer", BARRACKS, new HeartLocation(DIM, 31, 65, 1)));
+			return s.withWorkers(next);
+		});
 		calls.put("withTier", s -> s.withTier(Tier.VILLAGE));
 		calls.put("withBuilding", s -> s.withBuilding(new dev.villageheart.core.BuildingRecord("farm", BARRACKS)));
 		calls.put("withoutBuilding", s -> s.withoutBuilding(BARRACKS));
