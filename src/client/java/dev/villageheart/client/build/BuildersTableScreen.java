@@ -4,7 +4,6 @@ import dev.villageheart.client.art.ModTextures;
 import dev.villageheart.build.BuildersTableMenu;
 import dev.villageheart.build.net.CancelBuildPayload;
 import dev.villageheart.build.net.TakeBlueprintPayload;
-import dev.villageheart.core.Balance;
 import dev.villageheart.core.blueprint.Blueprint;
 import dev.villageheart.core.blueprint.Blueprints;
 import dev.villageheart.core.blueprint.BuildStatus;
@@ -47,11 +46,17 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 	static final int ROW_H = 16;
 	static final int BUILD_H = 13;
 	static final int FOOTER_H = 33;
+	/** Rows of the blueprint list that fit above the builds section. */
+	static final int LIST_ROWS = 7;
+	/** Material lines that fit above the Take button. */
+	static final int MATERIAL_ROWS = 6;
 	static final int WHITE = 0xFFFFFFFF, GREY = 0xFFAAAAAA, DARK_GREY = 0xFF808080, GREEN = 0xFF55FF55, RED = 0xFFFF5555, YELLOW = 0xFFFFD45A;
 
 	private final BuildersTableMenu menu;
 	private int selected;
 	private int scroll;
+	private int listScroll;
+	private int materialScroll;
 	private int seenVersion = -1;
 	private Button take;
 	private Button done;
@@ -101,7 +106,6 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		if (b == null) return t("select");
 		if (!mayStart()) return t("no_permission");
 		if (b.locked()) return t("locked", Blueprints.byId(b.id()).map(bp -> bp.tier().displayName()).orElse(dev.villageheart.core.Tier.VILLAGE.displayName()));
-		if (snap().builds().size() >= Balance.MAX_ACTIVE_BUILDS) return t("too_many");
 		return null;
 	}
 
@@ -157,8 +161,12 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 
 	private int maxScroll() { return Math.max(0, snap().builds().size() * BUILD_H - (buildsBottom() - buildsTop() - 12)); }
 
+	private int listTop() { return TOP + 12; }
+
+	private int listBottom() { return listTop() + LIST_ROWS * ROW_H; }
+
 	/** GUI coordinates of the middle of the blueprint row {@code i} (for tests). */
-	public int[] blueprintRowCentre(int i) { return new int[] {MARGIN + LIST_W / 2, TOP + 12 + i * ROW_H + ROW_H / 2}; }
+	public int[] blueprintRowCentre(int i) { return new int[] {MARGIN + LIST_W / 2, listTop() + (i - listScroll) * ROW_H + ROW_H / 2}; }
 
 	/** GUI coordinates of the middle of the Take button (for tests). */
 	public int[] takeButtonCentre() { return new int[] {take.getX() + take.getWidth() / 2, take.getY() + take.getHeight() / 2}; }
@@ -175,8 +183,10 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 		double mx = ev.x(), my = ev.y();
 		List<TableBlueprint> bps = snap().blueprints();
 		for (int i = 0; i < bps.size(); i++) {
-			int y = TOP + 12 + i * ROW_H;
+			int y = listTop() + (i - listScroll) * ROW_H;
+			if (y < listTop() || y + ROW_H > listBottom()) continue;
 			if (mx >= MARGIN && mx < MARGIN + LIST_W && my >= y && my < y + ROW_H - 1) {
+				if (selected != i) materialScroll = 0;
 				selected = i;
 				refreshTake();
 				return true;
@@ -199,6 +209,17 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 
 	@Override
 	public boolean mouseScrolled(double mx, double my, double sx, double sy) {
+		if (mx >= MARGIN && mx < MARGIN + LIST_W && my >= listTop() && my < listBottom()) {
+			int max = Math.max(0, snap().blueprints().size() - LIST_ROWS);
+			listScroll = Math.max(0, Math.min(max, listScroll - (int) Math.round(sy)));
+			return true;
+		}
+		TableBlueprint sel = selectedBlueprint();
+		if (sel != null && mx >= rightX() && my >= TOP + 40 && my < TOP + 100) {
+			int max = Math.max(0, sel.materials().size() - MATERIAL_ROWS);
+			materialScroll = Math.max(0, Math.min(max, materialScroll - (int) Math.round(sy)));
+			return true;
+		}
 		if (my >= buildsTop()) {
 			scroll = Math.max(0, Math.min(maxScroll(), scroll - (int) Math.round(sy * BUILD_H)));
 			return true;
@@ -241,9 +262,12 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 
 		// the blueprints
 		line(g, t("blueprints").getString(), MARGIN, TOP, LIST_W, GREY);
+		listScroll = Math.max(0, Math.min(listScroll, Math.max(0, s.blueprints().size() - LIST_ROWS)));
+		g.enableScissor(MARGIN, listTop(), MARGIN + LIST_W, listBottom());
 		for (int i = 0; i < s.blueprints().size(); i++) {
 			TableBlueprint b = s.blueprints().get(i);
-			int y = TOP + 12 + i * ROW_H;
+			int y = listTop() + (i - listScroll) * ROW_H;
+			if (y + ROW_H <= listTop() || y >= listBottom()) continue;
 			boolean hover = mx >= MARGIN && mx < MARGIN + LIST_W && my >= y && my < y + ROW_H - 1;
 			if (i == selected) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x66FFFFFF);
 			else if (hover) g.fill(MARGIN, y, MARGIN + LIST_W, y + ROW_H - 1, 0x33FFFFFF);
@@ -256,6 +280,7 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			line(g, name, MARGIN + 12, y + 4, LIST_W - 20 - iw, b.locked() ? DARK_GREY : WHITE);
 			g.drawString(font, info, MARGIN + LIST_W - 4 - iw, y + 4, b.locked() ? RED : GREY);
 		}
+		g.disableScissor();
 
 		// the selected blueprint
 		TableBlueprint sel = selectedBlueprint();
@@ -272,14 +297,19 @@ public class BuildersTableScreen extends Screen implements MenuAccess<BuildersTa
 			}
 			ModTextures.blit(g, ModTextures.TABLE_MATERIALS, rx, TOP + 26, 8);
 			line(g, t(!isLine ? "materials" : sel.id().equals("gate") ? "materials_gate" : "materials_wall").getString(), rx + 10, TOP + 28, rw - 10, GREY);
-			int y = TOP + 40;
+			materialScroll = Math.max(0, Math.min(materialScroll, Math.max(0, sel.materials().size() - MATERIAL_ROWS)));
+			g.enableScissor(rx, TOP + 40, rx + rw, TOP + 100);
+			int y = TOP + 40 - materialScroll * 10;
 			for (TableMaterial m : sel.materials()) {
-				boolean enough = m.have() >= m.needed();
-				int w = line(g, m.name(), rx + 4, y, rw - 70, WHITE);
-				String have = m.have() + " / " + m.needed();
-				g.drawString(font, have, rx + rw - font.width(have), y, enough ? GREEN : RED);
+				int row = y;
 				y += 10;
+				if (row + 10 <= TOP + 40 || row >= TOP + 100) continue;
+				boolean enough = m.have() >= m.needed();
+				line(g, m.name(), rx + 4, row, rw - 70, WHITE);
+				String have = m.have() + " / " + m.needed();
+				g.drawString(font, have, rx + rw - font.width(have), row, enough ? GREEN : RED);
 			}
+			g.disableScissor();
 			if (sel.id().equals("gate")) line(g, t("gate_note").getString(), rx, TOP + 88, rw, DARK_GREY);
 		}
 		take.setPosition(rx, TOP + 100);

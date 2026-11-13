@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:book",
+    "minecraft:paper",
+    "minecraft:paper"
+  ],
+  "result": {
+    "count": 1,
+    "id": "villageheart:blueprint_book"
+  }
+}

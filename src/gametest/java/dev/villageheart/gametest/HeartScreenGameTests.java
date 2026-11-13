@@ -133,7 +133,7 @@ public class HeartScreenGameTests {
 
 	// ---- T-L2-8 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:heart_refresh", structure = YARD, skyAccess = true, maxTicks = 700)
+	@GameTest(environment = "villageheart-gametest:heart_refresh", structure = YARD, skyAccess = true, maxTicks = 800)
 	public void refreshOnlyWhenChanged(GameTestHelper h) {
 		ServerPlayer[] p = new ServerPlayer[2];
 		List<Sent>[] sent = new List[1];
@@ -143,6 +143,8 @@ public class HeartScreenGameTests {
 			p[0] = player(h, "stew", Rank.STEWARD);
 			open(h, p[0]);
 		});
+		// Opening the Heart latches the guide once. Wait that snapshot out, then require silence.
+		seq = seq.thenIdle(Balance.HEART_REFRESH_TICKS * 2).thenExecute(() -> sent[0].clear());
 		seq = seq.thenExecuteFor(40, () -> h.assertTrue(snapshotsTo(sent[0], p[0]).isEmpty(), "nothing changed, nothing sent"));
 		seq = seq.thenExecute(() -> StockpileTestSupport.fill(h, chest2(), new ItemStack(Items.BREAD, 21)));
 		seq = awaitWithin(h, seq, Balance.HEART_REFRESH_TICKS + 1, "the bread change reaches the screen", () -> {

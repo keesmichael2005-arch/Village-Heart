@@ -149,11 +149,10 @@ class SiteRulesTest {
 	}
 
 	@Test
-	void ruleOrder5TooManyBuilds() {
-		SiteFacts f = facts(new Pos(10, 0, 30), new World(), List.of(), List.of(), 8, (x, z) -> OptionalInt.of(1));
-		assertEquals(Code.TOO_MANY, code(f));
-		assertEquals("Too many builds at once (max 8)", SiteRules.check(f).orElseThrow().english());
-		assertNull(code(facts(new Pos(10, 0, 30), new World(), List.of(), List.of(), 7, (x, z) -> OptionalInt.of(1))));
+	void ruleOrder5AnyNumberOfBuildsMayBePlaced() {
+		StandPoints.Standable stand = (x, z) -> OptionalInt.of(1);
+		assertNull(code(facts(new Pos(10, 0, 30), new World(), List.of(), List.of(), 8, stand)));
+		assertNull(code(facts(new Pos(10, 0, 30), new World(), List.of(), List.of(), 40, stand)));
 	}
 
 	@Test

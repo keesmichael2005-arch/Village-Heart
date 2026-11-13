@@ -47,7 +47,7 @@ class BlueprintsTest {
 		Set<String> ids = new HashSet<>();
 		for (Blueprint bp : Blueprints.all()) {
 			boolean defence = bp.kind() == Blueprint.Kind.DEFENCE;
-			assertEquals(bp == Blueprints.WATCHTOWER ? Tier.TOWN : Tier.VILLAGE, bp.tier());
+			assertEquals(bp.id().equals("watchtower") || bp.id().equals("smithy") ? Tier.TOWN : Tier.VILLAGE, bp.tier());
 			assertEquals(bp.mode() == PlacementMode.LINE, bp.id().equals("wall_segment") || bp.id().equals("gate"));
 			if (!defence) assertEquals(PlacementMode.FOOTPRINT, bp.mode());
 			assertTrue(ids.add(bp.id()));
@@ -67,7 +67,8 @@ class BlueprintsTest {
 				assertEquals(expected, lines(bp));
 			}
 		}
-		assertEquals(7, ids.size());
+		assertEquals(17, ids.size());
+		for (Blueprint bp : Blueprints.all()) assertTrue(bp.materials().lines().size() <= TableSnapshot.MAX_MATERIALS, bp.id());
 		assertTrue(Blueprints.byId("nope").isEmpty());
 		assertEquals("Needs 12 more planks".substring(0, 0) + "12 planks", Blueprints.SMALL_HOUSE.materials().lines().get(1).material().words(12));
 		assertEquals("1 door", Blueprints.SMALL_HOUSE.materials().lines().get(2).material().words(1));

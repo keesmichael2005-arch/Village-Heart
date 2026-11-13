@@ -43,7 +43,7 @@ Start with the rules package. Most behaviour changes, numbers included, belong t
 | Hunter (Hunting Lodge and Ground) | `hunt/` | `worker/hunt/` | Hunter |
 | Self-made wood and stone tools, tool wear | `gear/` | `worker/gear/` | SelfCraft* |
 | Merchant (Market) | `market/` (`PriceTable`) | `market/` | Market |
-| Builder and blueprints, walls, gates | `blueprint/`, `defence/` | `build/`, `build/net/`, `worker/build/`, `defence/` | Build, Defence, Gate |
+| Builder and blueprints, the Blueprint Book, walls, gates | `blueprint/` (`BlueprintCatalog`), `defence/` | `build/` (`BlueprintBookItem`), `build/net/`, `worker/build/`, `defence/` | Build, Defence, Gate |
 | Guards (shifts, alarm, rations, training) | `guard/` | `worker/guard/` | Guard |
 | Blacksmith, guard gear, iron golems | `smith/`, `gear/` | `worker/smith/`, `golem/` | Smith |
 | Raids: warnings, shelter, stuck raiders | `raid/` | `raid/`, `worker/shelter/` | Raid, RandomRaid, RaidLayout, ThreatShelter, ThreatWarning, ThreatStartMessage, StuckRaider |

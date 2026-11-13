@@ -6,6 +6,12 @@ A Fabric mod for **Minecraft 1.21.11** (Mojang mappings, Java 21 target). The pl
 
 A handoff to an implementer is a prompt. It does not add another guide file.
 
+## Branches
+
+Every pull request targets `dev`. `main` only receives a release. If a pull request targets any other branch, change its base to `dev`.
+
+If this chat opened on the wrong checkout (another feature branch, or a branch stacked on one), stop. Fetch `origin/dev`. The work belongs on `fix/<name>` or `feat/<name>`, and that branch must contain `origin/dev`. When it does not, merge `origin/dev` in. Then open the pull request against `dev`, or change its base to `dev`. Read the diff against `origin/dev` before you push, so `dev`'s code is in the branch.
+
 ## Role
 
 The first line of your prompt decides this.
@@ -28,7 +34,7 @@ Kees wants a new feature, or brain-dumps one. You are the parent. Follow **Makin
 **Parent**
 
 - This chat with Kees.
-- The repo, git, and `gh`. Pull requests target `dev`. `main` receives released versions only.
+- The repo, git, and `gh`. Pull requests target `dev`, including one that was opened against another feature branch. `main` receives released versions only. See **Branches**.
 - Java 25 at `~/.jdk25` and `./gradlew --no-daemon`. Local check is `scripts/verify.sh --fast`.
 - One implementer, started by sending the prompt in **Making a feature**.
 - The `verify-reports` artifact from the GitHub `verify` workflow. That is where the client screenshots are. Download them and put the new pngs in the chat.
@@ -53,7 +59,7 @@ Push to `main`. Merge the PR. Install packages on Debbie. Start a second impleme
 3. Write a test that shows the bug or the new behaviour, then make the change.
 4. Run `scripts/verify.sh --fast` while you work. Run the full `scripts/verify.sh` before you push. Both must exit 0.
 5. Add a line under `## Unreleased` in `CHANGELOG.md`. Update `docs/DESIGN.md` and `docs/PLAYER_GUIDE.md` if behaviour changed.
-6. Push the branch and open a PR into `dev`. Never push to `main`. `main` only gets released versions (see WORKFLOW.md "Releasing").
+6. Push the branch and open a PR into `dev`. Never into another feature branch, and never push to `main`. `main` only gets released versions (see WORKFLOW.md "Releasing"). If the PR already targets something else, change the base to `dev` after `origin/dev` is merged in.
 
 ## Making a feature
 
@@ -115,7 +121,7 @@ Before any push, read the diff against the approved plan and against **Do not br
 - `CHANGELOG.md` has an Unreleased line. DESIGN and PLAYER_GUIDE match when the behaviour changed.
 - The implementer reported `scripts/verify.sh --fast` exiting 0.
 
-A small miss (a changelog line, a wrong comment) you fix yourself. A behaviour change goes back to a new implementer with a new prompt that names the gap. Then push `feat/<name>` and open a PR into `dev`, using `.github/pull_request_template.md`.
+A small miss (a changelog line, a wrong comment) you fix yourself. A behaviour change goes back to a new implementer with a new prompt that names the gap. Then push `feat/<name>` and open a PR into `dev`, using `.github/pull_request_template.md`. Never into another feature branch. If the checkout or the PR base is wrong, follow **Branches**.
 
 ### 5. Stay until verify is green
 
@@ -175,3 +181,4 @@ If the frame is wrong, fix, push, and show the new run's png. When verify is gre
 - **Ordinal-coded enums are append-only.**
 - **No moving or killing mobs to make a test pass.** The stuck-raider flee rule is the only allowed removal.
 - **Owner decisions are binding:** they are in `docs/DESIGN.md` and in `docs/archive/build-phase/LOOP_STATE.md` (`decisions_by_human`). Examples: nobody attacks creepers; raids are balanced with the player defending; the merchant never strikes; builder pace is 3.5 s per block.
+- **Pull requests target `dev`.** A thread opened on another feature branch does not stay there. Follow **Branches**.

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_book": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:book"
+          }
+        ]
+      }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "villageheart:blueprint_book"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_book"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "villageheart:blueprint_book"
+    ]
+  }
+}

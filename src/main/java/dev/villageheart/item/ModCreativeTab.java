@@ -31,6 +31,7 @@ public final class ModCreativeTab {
 					output.accept(ModItems.BLANK_MARKER);
 					for (BuildingType t : BuildingType.values()) output.accept(MarkerBlocks.ITEMS.get(t));
 					for (JobBlockType t : JobBlockType.values()) output.accept(JobBlocks.ITEMS.get(t));
+					output.accept(ModItems.BLUEPRINT_BOOK);
 					for (var bp : dev.villageheart.core.blueprint.Blueprints.all()) output.accept(dev.villageheart.build.BlueprintItem.of(bp));
 				})
 				.build();
