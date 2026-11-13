@@ -64,6 +64,9 @@ public final class HuntTestSupport {
 
 	public static BlockPos chest() { return BuildingTestSupport.inside(LODGE, 4, 0, 3); }
 
+	/** A second chest for a second hunter. Not beside {@link #chest()}. */
+	public static BlockPos chest2() { return BuildingTestSupport.inside(LODGE, 0, 0, 3); }
+
 	public static BlockPos spawnSpot() { return BuildingTestSupport.inside(LODGE, 1, 0, 1); }
 
 	public static BlockPos spawnSpot2() { return BuildingTestSupport.inside(LODGE, 2, 0, 1); }
@@ -90,6 +93,7 @@ public final class HuntTestSupport {
 		h.setBlock(table(), Blocks.FLETCHING_TABLE);
 		if (secondTable) h.setBlock(table2(), Blocks.FLETCHING_TABLE);
 		h.setBlock(chest(), Blocks.CHEST);
+		if (secondTable) h.setBlock(chest2(), Blocks.CHEST);
 		h.setBlock(BuildingTestSupport.inside(LODGE, 2, 0, 3), Blocks.TORCH);
 	}
 
@@ -169,10 +173,39 @@ public final class HuntTestSupport {
 		Villager v = WorkerTestSupport.spawnVillager(h, spawnRel);
 		HireResult r = Workers.hire(h.getLevel(), v, JobType.HUNTER, Optional.empty());
 		h.assertTrue(r instanceof HireResult.Hired, "the hunter was hired: " + r);
+		// Tests pile every weapon into the first chest. Each hunter only opens their own, so a spare moves across.
+		moveSpareWeapon(h, v);
 		return v;
 	}
 
 	public static void putInChest(GameTestHelper h, int slot, ItemStack stack) { LumberTestSupport.putInChest(h, chest(), slot, stack); }
+
+	/** A spare sword or bow in the lodge chest moves into this hunter's chest when that chest is a different one and empty of weapons. */
+	private static void moveSpareWeapon(GameTestHelper h, Villager v) {
+		var data = v.getAttached(dev.villageheart.worker.WorkerAttachments.WORKER);
+		if (data == null || data.chest().isEmpty()) return;
+		BlockPos own = new BlockPos(data.chest().get().x(), data.chest().get().y(), data.chest().get().z());
+		BlockPos pile = h.absolutePos(chest());
+		if (own.equals(pile)) return;
+		var from = (net.minecraft.world.Container) h.getLevel().getBlockEntity(pile);
+		var to = (net.minecraft.world.Container) h.getLevel().getBlockEntity(own);
+		if (from == null || to == null) return;
+		for (int i = 0; i < to.getContainerSize(); i++) {
+			if (dev.villageheart.worker.job.CampTools.isTool(dev.villageheart.core.job.ToolKind.BOW_OR_SWORD, to.getItem(i))) return;
+		}
+		for (int i = 0; i < from.getContainerSize(); i++) {
+			var s = from.getItem(i);
+			if (!dev.villageheart.worker.job.CampTools.isTool(dev.villageheart.core.job.ToolKind.BOW_OR_SWORD, s)) continue;
+			for (int j = 0; j < to.getContainerSize(); j++) {
+				if (!to.getItem(j).isEmpty()) continue;
+				to.setItem(j, s.copy());
+				from.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+				from.setChanged();
+				to.setChanged();
+				return;
+			}
+		}
+	}
 
 	public static ItemStack chestSlot(GameTestHelper h, int slot) { return StockpileTestSupport.container(h, chest()).getItem(slot); }
 

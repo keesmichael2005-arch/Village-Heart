@@ -157,10 +157,10 @@ building behaves exactly as in vanilla.
   identity comes from the profession texture or held item, plus particles.
 - **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–11000 work, 11000–12000 go home
   and eat dinner, 12000+ sleep in a bed. Guards follow shifts instead (§5.6).
-- **Delivery**: a worker carries up to 1 stack in its inventory. When full, or at the end of the day,
-  it walks to the nearest Storage, deposits, and returns. Inputs (tools, seeds, raw food, ore) are fetched
-  the same way.
-- **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
+- **Delivery**: a worker carries goods in its eight inventory slots. A lumberjack, miner, hunter, or farmer keeps slot 0 for the tool, so goods use the other seven. When every cargo slot is taken, or at the end of the day, the worker walks to the nearest Storage, deposits, and returns. The tool is not deposited.
+- **Pocket**: right-click a hired villager for a read-only view of those eight slots, their name, job, level (the same XP bar as the Heart), what they are doing, and whether they are fed, housed, and paid. A guard's card also shows the sword and armour they are wearing. An unhired villager still opens the trade window. A miner underground or a hunter out on a trip still cannot be clicked.
+- **Own chest**: hiring pairs the job block with the nearest chest in that room that no other worker owns. The tool lives in the pocket during the work day. At the end of work the worker puts it back, then dumps cargo at Storage. In the morning they take it out again. A full chest leaves the tool in slot 0 overnight. On death, or if a zombie converts them, the tool goes back into that chest and the cargo drops. A room with two job blocks and one chest hires one worker. A double chest is one chest. A missing chest keeps the link and the worker shows "Needs a chest". Another villager never takes from that chest. The smith delivers a new tool into it.
+- **Tools**: a tool in the worker's own chest is the one they carry. A better tier works faster:
   vanilla mining speed / 2, anchored on stone (wood 2, stone 4, copper 5, iron 6, diamond 8, netherite 9, gold 12 in vanilla): wood ×1.0, stone ×2.0, copper ×2.5, iron ×3.0, diamond ×4.0, netherite ×4.5, gold ×6.0 *(`Balance.VANILLA_TOOL_SPEED`; the base work constants are scaled so a stone tool is as fast as before)*. Tools lose durability as they are used.
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
   The Farmer is the exception to both: its hoe is only a bonus (×1.25), and without one it works at ×1.0 (§5.2).
@@ -234,8 +234,8 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
   wide and 48 tall. The base rule is what protects log walls and cabins; a lone log post on soil under 3 or more natural leaves is the one
   documented false positive, and mangroves, trees on sand and trees merged with player logs are skipped. It fells top-down (base last)
   inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 2.0, copper
-  2.5, iron 3.0, gold 6.0, diamond 4.0, netherite 4.5 (wood 1.0; vanilla speed / 2, anchored on stone: 80 work units per log, so stone fells a log in 40 ticks, wood in 80, iron in 27), times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
-  out there, 1 durability per log (Unbreaking applies); several lumberjacks share the camp's axes best-first in hiring order. Without an
+  2.5, iron 3.0, gold 6.0, diamond 4.0, netherite 4.5 (wood 1.0; vanilla speed / 2, anchored on stone: 80 work units per log, so stone fells a log in 40 ticks, wood in 80, iron in 27), times level, times needs (`WorkSpeed`). **The axe is in the lumberjack's pocket during the work day** and wears
+  out there, 1 durability per log (Unbreaking applies); each lumberjack uses the axe in their own chest, and a second lumberjack does not take from the first. Without an
   axe the status is "Needs axe" (an unreadable chest is unknown, not missing); replanting and collecting still run. No new tree starts after
   day time 5000 (drops despawn after 6000 ticks); a fell in progress is saved with the village (`tree_tasks`) and any lumberjack of the camp
   finishes it. Drops (logs, saplings, sticks, apples) in the work area are collected. The base is replanted with the log's species (one sapling per

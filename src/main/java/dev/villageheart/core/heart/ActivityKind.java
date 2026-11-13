@@ -24,5 +24,7 @@ public enum ActivityKind {
 	/** M25: a worker heading indoors for a raid, or with nowhere to go. Appended. */
 	SHELTERING, NO_SHELTER,
 	/** M25: a builder repairing a wall or a gate. Appended. */
-	REPAIRING
+	REPAIRING,
+	/** The worker's own chest is missing. Appended. */
+	NEEDS_CHEST
 }

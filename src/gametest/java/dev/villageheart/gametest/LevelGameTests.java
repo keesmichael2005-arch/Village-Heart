@@ -442,6 +442,7 @@ public class LevelGameTests {
 		GameTestSequence seq = scene(h, true, false).thenExecute(() -> {
 			// five Chopping Blocks in the camp: 2 on the north wall already (x 0 and 4), the door cell at x 2 stays free
 			for (int[] c : new int[][] {{1, 0, 0}, {3, 0, 0}, {0, 0, 3}}) h.setBlock(BuildingTestSupport.inside(CAMP, c[0], c[1], c[2]), dev.villageheart.block.JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.CHOPPING_BLOCK));
+			for (int[] c : new int[][] {{1, 0, 2}, {3, 0, 2}, {0, 0, 1}}) h.setBlock(BuildingTestSupport.inside(CAMP, c[0], c[1], c[2]), net.minecraft.world.level.block.Blocks.CHEST);
 		}).thenIdle(BuildingTestSupport.bound(3, 8));
 		seq = seq.thenExecute(() -> {
 			owner[0] = LevelTestSupport.ownerRecorder(h);

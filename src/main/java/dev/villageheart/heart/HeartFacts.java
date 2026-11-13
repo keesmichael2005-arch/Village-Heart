@@ -158,6 +158,7 @@ public final class HeartFacts {
 				case MAKING_STONE_TOOL -> ActivityKind.MAKING_STONE_TOOL;
 				case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 				case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
+				case NEEDS_CHEST -> ActivityKind.NEEDS_CHEST;
 				default -> {
 					ActivityKind smith = dev.villageheart.worker.smith.SmithRuntime.activity(server, rec.villager());
 					if (smith != null) yield smith;

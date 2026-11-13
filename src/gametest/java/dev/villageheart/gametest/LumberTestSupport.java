@@ -72,7 +72,13 @@ public final class LumberTestSupport {
 	/** A second Chopping Block (a second lumberjack slot) at the other end of the north wall. */
 	public static BlockPos chop2() { return BuildingTestSupport.inside(CAMP, 4, 0, 0); }
 
-	public static void addSecondChop(GameTestHelper h) { h.setBlock(chop2(), JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK)); }
+	/** A second chest, so a second lumberjack has one of their own. Not beside {@link #chest()}. */
+	public static BlockPos chest2() { return BuildingTestSupport.inside(CAMP, 2, 0, 1); }
+
+	public static void addSecondChop(GameTestHelper h) {
+		h.setBlock(chop2(), JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+		h.setBlock(chest2(), Blocks.CHEST);
+	}
 
 	public static void buildStorage(GameTestHelper h) {
 		BuildingTestSupport.room(h, STORE, 5, 4);

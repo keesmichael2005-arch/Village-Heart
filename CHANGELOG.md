@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
+- Right-click a hired villager to see the eight things they are carrying, plus their name, job, level, and what they are doing. You can look, and you cannot take anything. Each worker has their own chest: the tool comes out in the morning and goes back at the end of work, and gathered goods go to Storage when those slots are full.
 
 ## 1.0.0
 

@@ -92,12 +92,11 @@ public class LumberjackGameTests {
 	@GameTest(environment = "villageheart-gametest:lumber_tools", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void campToolLease(GameTestHelper h) {
 		begin(h);
-		Villager[] v = new Villager[2];
+		Villager[] v = new Villager[1];
 		BlockPos doubleLeft = BuildingTestSupport.inside(CAMP, 3, 0, 3);
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			sweepStrayTrees(h, 48);
 			buildCamp(h);
-			addSecondChop(h);
 			placeMarkers(h, false);
 		});
 		seq = seq.thenWaitUntil(() -> assertValid(h, false));
@@ -106,26 +105,19 @@ public class LumberjackGameTests {
 			putInChest(h, chest(), 4, axe(ToolTier.STONE));
 			putInChest(h, chest(), 9, axe(ToolTier.IRON));
 			v[0] = hire(h, spawnSpot());
-			v[1] = hire(h, spawnSpot());
 		});
 		seq = seq.thenExecute(() -> {
 			var server = h.getLevel().getServer();
+			// The worker's own chest: the better axe is used, and it wears in that chest until morning takes it out.
 			CampTools.Result a = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b = CampTools.lease(server, v[1], ToolKind.AXE);
-			h.assertTrue(a instanceof CampTools.Held, "A holds a tool: " + a);
-			h.assertTrue(b instanceof CampTools.Held, "B holds a tool: " + b);
-			h.assertValueEqual(ToolTier.IRON, ((CampTools.Held) a).lease().tier(), "the first hired gets the iron axe");
-			h.assertValueEqual(ToolTier.STONE, ((CampTools.Held) b).lease().tier(), "the second gets the stone axe");
+			h.assertTrue(a instanceof CampTools.Held, "the lumberjack holds a tool: " + a);
+			h.assertValueEqual(ToolTier.IRON, ((CampTools.Held) a).lease().tier(), "the iron axe is used before the stone one");
 			CampTools.Held ha = (CampTools.Held) a;
 			h.assertTrue(CampTools.use(h.getLevel(), ha.lease(), 3), "the iron axe is used");
 			h.assertValueEqual(3, StockpileTestSupport.container(h, chest()).getItem(9).getDamageValue(), "the iron axe lost 3 durability");
-			// the player takes the iron axe out: A now gets the stone axe, B nothing
 			StockpileTestSupport.container(h, chest()).setItem(9, ItemStack.EMPTY);
 			CampTools.Result a2 = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b2 = CampTools.lease(server, v[1], ToolKind.AXE);
-			h.assertTrue(a2 instanceof CampTools.Held && ((CampTools.Held) a2).lease().tier() == ToolTier.STONE, "A now holds the stone axe: " + a2);
-			h.assertValueEqual(CampTools.Missing.NONE, b2, "B has no axe");
-			// an axe at 1 durability left breaks to empty on use
+			h.assertTrue(a2 instanceof CampTools.Held && ((CampTools.Held) a2).lease().tier() == ToolTier.STONE, "the stone axe is next: " + a2);
 			ItemStack frail = axe(ToolTier.STONE);
 			frail.setDamageValue(frail.getMaxDamage() - 1);
 			StockpileTestSupport.container(h, chest()).setItem(4, frail);
@@ -133,7 +125,7 @@ public class LumberjackGameTests {
 			h.assertTrue(CampTools.use(h.getLevel(), h2.lease(), 1), "used");
 			h.assertTrue(StockpileTestSupport.container(h, chest()).getItem(4).isEmpty(), "the broken axe is gone from the slot");
 			h.assertValueEqual(CampTools.Missing.NONE, CampTools.lease(server, v[0], ToolKind.AXE), "nothing left");
-			// a double chest: one axe in the left half, two lumberjacks, exactly one gets it
+			// a double chest is one chest: the axe in the other half is still this worker's
 			h.setBlock(doubleLeft, Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
 					net.minecraft.world.level.block.state.properties.ChestType.LEFT));
 			h.setBlock(chest(), Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
@@ -144,10 +136,7 @@ public class LumberjackGameTests {
 		seq.thenExecute(() -> {
 			var server = h.getLevel().getServer();
 			CampTools.Result a = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b = CampTools.lease(server, v[1], ToolKind.AXE);
-			int held = (a instanceof CampTools.Held ? 1 : 0) + (b instanceof CampTools.Held ? 1 : 0);
-			h.assertValueEqual(1, held, "an axe in a double chest is given out exactly once: " + a + " / " + b);
-			// a worker whose camp is not in the registry: the tool is unknown, not missing
+			h.assertTrue(a instanceof CampTools.Held, "an axe in the other half of the worker's double chest: " + a);
 			Villager stray = WorkerTestSupport.spawnVillager(h, spawnSpot());
 			WorkerTestSupport.hireDirect(h, stray, dev.villageheart.core.worker.JobType.LUMBERJACK, chop());
 			h.assertValueEqual(CampTools.Missing.UNKNOWN, CampTools.lease(server, stray, ToolKind.AXE), "unknown, so no 'Needs axe'");
@@ -946,7 +935,7 @@ public class LumberjackGameTests {
 				last[i] = logs[i].size();
 			}
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
-			putInChest(h, chest(), 1, axe(ToolTier.STONE));
+			putInChest(h, chest2(), 0, axe(ToolTier.STONE));
 			lightYard(h);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
@@ -962,8 +951,10 @@ public class LumberjackGameTests {
 			java.util.Set<java.util.UUID> all = new java.util.HashSet<>();
 			for (var b : breakers) all.addAll(b);
 			System.out.println("[m9] twoLumberjacks: " + all.size() + " different workers felled the 3 trees");
-			// one axe removed: only the first hired keeps one
-			StockpileTestSupport.container(h, chest()).setItem(1, ItemStack.EMPTY);
+			// the later hire's own chest loses its axe; the first keeps theirs
+			var second = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[1].getUUID()).orElseThrow();
+			var at = new BlockPos(second.chest().orElseThrow().x(), second.chest().orElseThrow().y(), second.chest().orElseThrow().z());
+			((net.minecraft.world.Container) h.getLevel().getBlockEntity(at)).clearContent();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "the later hired lumberjack needs an axe", () -> {
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, status(h, v[1]), "second lumberjack");
@@ -994,7 +985,7 @@ public class LumberjackGameTests {
 			lightYard(h);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new ItemStack(Items.OAK_LOG, 64));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "STORAGE_FULL is reported", () ->
 				h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.STORAGE_FULL, status(h, v[0]), "status"));

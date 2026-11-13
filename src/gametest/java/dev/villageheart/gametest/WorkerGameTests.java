@@ -1111,11 +1111,12 @@ public class WorkerGameTests {
 		begin(h);
 		Villager[] v = new Villager[1];
 		GameTestSequence seq = depositSetup(h, false, 3000, v).thenExecute(() -> {
-			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
+			// A farmer's slot 0 is the hoe. The other seven are the cargo: a full cargo dumps, one stack does not.
+			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
 			h.assertTrue(h.getLevel().getDayTime() < 11000, "mid-day");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the 64 cobblestone reach Storage", () -> {
-			h.assertValueEqual(64L, stored(h, "minecraft:cobblestone"), "cobblestone in Storage");
+		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the full cargo reaches Storage", () -> {
+			h.assertValueEqual(448L, stored(h, "minecraft:cobblestone"), "cobblestone in Storage");
 			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "cobblestone still carried");
 		});
 		seq.thenExecute(() -> {
@@ -1151,7 +1152,7 @@ public class WorkerGameTests {
 		begin(h);
 		Villager[] v = new Villager[1];
 		GameTestSequence seq = depositSetup(h, true, 3000, v).thenExecute(() -> {
-			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
+			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 120, "STORAGE_FULL is reported", () -> {
 			var rec = record(h, v[0]).orElseThrow();
@@ -1159,7 +1160,7 @@ public class WorkerGameTests {
 			h.assertValueEqual(dev.villageheart.core.stock.StorageAlert.FULL, dev.villageheart.stock.Stockpiles.alert(h.getLevel().getServer()), "village alert");
 		});
 		seq = seq.thenIdle(100).thenExecute(() -> {
-			h.assertValueEqual(64, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "the worker keeps what it carries");
+			h.assertValueEqual(448, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "the worker keeps what it carries");
 			h.assertValueEqual(0L, stored(h, "minecraft:cobblestone"), "nothing was stored");
 			VillageTestSupport.done(h);
 			end(h);

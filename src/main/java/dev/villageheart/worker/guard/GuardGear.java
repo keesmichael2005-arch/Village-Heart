@@ -111,11 +111,13 @@ public final class GuardGear {
 		return false;
 	}
 
-	/** The building's chests (empty when unreadable now). */
+	/** This guard's own chest only. Another guard's chest is never opened. */
 	static List<CampContainers.Chest> chests(MinecraftServer server, Villager g) {
-		WorkerData d = g.getAttached(WorkerAttachments.WORKER);
-		if (d == null) return List.of();
-		return CampContainers.of(server, d.building()).orElse(List.of());
+		List<CampContainers.Chest> out = new ArrayList<>();
+		for (var owned : dev.villageheart.worker.pocket.Pockets.ownChests(server, g)) {
+			out.add(new CampContainers.Chest(owned.pos(), owned.container()));
+		}
+		return out;
 	}
 
 	/** Everything this guard could take: unclaimed Barracks chest slots, then the stockpile minus what others reserved. Orders are unique indexes. */
