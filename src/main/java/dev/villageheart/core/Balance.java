@@ -41,12 +41,20 @@ public final class Balance {
 
 	/** Length of a Minecraft day in ticks. */
 	public static final int DAY_TICKS = 24000;
-	/** Worker day (DESIGN section 4, tunable): work from WORK_START to WORK_END, go home until SLEEP_START, then sleep. */
+	/**
+	 * Worker day (DESIGN section 4, tunable). Wake until {@link #WORK_START}, work until {@link #WORK_END}, meet at the bell until
+	 * {@link #HOME_START}, go home until {@link #SLEEP_START}, then sleep. Guards keep their own shifts.
+	 */
 	public static final int WORK_START = 1000;
-	public static final int WORK_END = 11000;
+	/** Work stops and the meeting starts. Late-day job deadlines ({@code *_DONE_BY}, last descent, last fetch) are counted from here. */
+	public static final int WORK_END = 9000;
+	public static final int MEET_START = WORK_END;
+	public static final int HOME_START = 11000;
 	public static final int SLEEP_START = 12000;
 	/** A worker carrying this many full stacks' worth walks to Storage. */
 	public static final int WORKER_CARRY_STACKS = 1;
+	/** Standing at a Storage chest, one carried item goes in every this many ticks (a quarter of a second). */
+	public static final int DEPOSIT_TICKS_PER_ITEM = 5;
 	/** The job-block reservation pass runs this often. */
 	public static final int RESERVATION_INTERVAL_TICKS = 20;
 	/** A worker counts as "at" its job block within this many blocks (3D). */
@@ -357,7 +365,7 @@ public final class Balance {
 	/** Durability a pickaxe loses per completed haul. */
 	public static final int MINER_WEAR_PER_HAUL = 10;
 	/** No new descent from this day time on (less than 600 work ticks are left). */
-	public static final int MINER_LAST_DESCENT = 10400;
+	public static final int MINER_LAST_DESCENT = WORK_END - 600;
 	/** After a shaft turned out unreachable the miner waits this long before it tries again. */
 	public static final int MINER_RETRY_TICKS = 600;
 	/** Underground steps in a row with an unreadable pickaxe chest (or an unknown depth with a haul due) before the miner comes up. */

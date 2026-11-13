@@ -155,11 +155,13 @@ building behaves exactly as in vanilla.
   profession again, but their old trades are not restored.
 - **Workers are vanilla villager entities** with mod data attached. Vanilla models only: job
   identity comes from the profession texture or held item, plus particles.
-- **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–11000 work, 11000–12000 go home
-  and eat dinner, 12000+ sleep in a bed. Guards follow shifts instead (§5.6).
-- **Delivery**: a worker carries up to 1 stack in its inventory. When full, or at the end of the day,
-  it walks to the nearest Storage, deposits, and returns. Inputs (tools, seeds, raw food, ore) are fetched
-  the same way.
+- **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–9000 work, 9000–11000 meet at the
+  bell, 11000–12000 go home and eat dinner, 12000+ sleep in a bed. A villager already asleep stays in bed through the meeting
+  and the walk home. Guards follow shifts instead (§5.6): a guard on duty does not attend, and a night guard sleeps through the
+  day and wakes at dusk for patrol.
+- **Delivery**: a worker carries up to 1 stack in its inventory. When full, or when work ends, it walks to a spot beside the
+  chest in the nearest Storage with room and puts one item in every 5 ticks (a quarter of a second). Fill order is unchanged:
+  partial stacks of that item, then the first empty slot. Inputs (tools, seeds, raw food, ore) are fetched the same way.
 - **Tools**: a tool placed in the building's chest is used by its worker. A better tier works faster:
   vanilla mining speed / 2, anchored on stone (wood 2, stone 4, copper 5, iron 6, diamond 8, netherite 9, gold 12 in vanilla): wood ×1.0, stone ×2.0, copper ×2.5, iron ×3.0, diamond ×4.0, netherite ×4.5, gold ×6.0 *(`Balance.VANILLA_TOOL_SPEED`; the base work constants are scaled so a stone tool is as fast as before)*. Tools lose durability as they are used.
   Some jobs can work without a tool at ×0.5; others cannot work at all without one (marked *requires tool* below).
@@ -521,7 +523,8 @@ Rules as built (M22, `docs/plans/M22.md`):
   - A double chest is two containers (each half has its own 27 slots); a half outside the room is not part of the stockpile.
   - Items are the same only with equal components (a renamed paper, an enchanted book or a damaged sword is a separate item).
   - *Nearest* Storage = nearest door (straight line) among those with space for that item; a deposit spills into the next
-    nearest. Fill order inside a Storage: partial stacks first, then empty slots, in container then slot order. What does not
+    nearest. Fill order inside a Storage: partial stacks first, then empty slots, in container then slot order. The worker
+    walks to a spot beside the container that order would write first, and puts one item in every 5 ticks. What does not
     fit is returned to the caller. Withdraw takes from the nearest Storage that has the item.
   - **Storage full** alert = no empty slot in any readable Storage, or a deposit that found no room within the last 10 s.
     It means "no empty slot", not per item: a partial stack can still take more of its item. *No Storage* alert when the

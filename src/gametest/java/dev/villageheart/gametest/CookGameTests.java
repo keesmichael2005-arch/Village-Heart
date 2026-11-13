@@ -510,11 +510,11 @@ public class CookGameTests {
 		scene(h).thenExecute(() -> {
 			putStore(h, Items.BEEF, 8);
 			putStore(h, Items.COAL, 1);
-			setDayTime(h, 9800);
+			setDayTime(h, 7800);
 			cook[0] = hire(h);
 		}).thenWaitUntil(() -> {
 			long t = Math.floorMod(h.getLevel().getDayTime(), 24000L);
-			h.assertTrue(t >= 10990 && t < 11500, "waiting for the end of the work day, at " + t);
+			h.assertTrue(t >= 9500 && t < 11000, "waiting until the meeting, at " + t);
 		}).thenExecute(() -> {
 			h.assertTrue(count(h, Items.COOKED_BEEF) >= 1 && count(h, Items.COOKED_BEEF) <= 3, "cooked " + count(h, Items.COOKED_BEEF));
 			h.assertTrue(carried(cook[0], Items.COOKED_BEEF) == 0 && carried(cook[0], Items.BEEF) == 0 && carried(cook[0], Items.COAL) == 0,

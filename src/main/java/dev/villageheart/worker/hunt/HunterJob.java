@@ -185,11 +185,12 @@ public final class HunterJob {
 		HeartLocation jb = data.jobBlock();
 		if (now < ws.idleBackoffUntil || !jb.dimension().equals(level.dimension().identifier().toString())) return;
 		BlockPos target = new BlockPos(jb.x(), jb.y(), jb.z());
-		if (WalkTo.distance(v, target) <= Balance.JOB_BLOCK_REACH) {
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, target)) {
 			ws.walk.release(v);
 			return;
 		}
-		if (!ws.walk.active() || !ws.walk.target().equals(target)) ws.walk.begin(target, Balance.JOB_BLOCK_REACH, now);
+		BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, target, v.position());
+		if (!ws.walk.active() || !ws.walk.target().equals(spot)) ws.walk.begin(spot, spot.equals(target) ? Balance.JOB_BLOCK_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			trace("{} @{} the walk to the fletching table failed: {}", v.getId(), now, ws.walk.reason());
 			ws.walk.clear();

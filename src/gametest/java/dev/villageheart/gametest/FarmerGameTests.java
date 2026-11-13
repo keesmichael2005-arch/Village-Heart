@@ -302,6 +302,7 @@ public class FarmerGameTests {
 			ticks[0] = h.getTick() - t0[0];
 			log("immatureAndOutsideUntouched: the five cells in the area were harvested after " + ticks[0] + " ticks (bound " + bound + ")");
 			h.assertTrue(ticks[0] <= bound, "took " + ticks[0] + ", bound " + bound);
+			h.getLevel().setDayTime(1000); // the watch is 8000 ticks; keep it inside the work phase (work ends at 9000)
 		});
 		// 24 000 ticks watched, sampled every 20 ticks; at tick 8000 the control cell ripens
 		int total = 24000;
@@ -309,7 +310,7 @@ public class FarmerGameTests {
 			final int step = k;
 			seq = seq.thenIdle(20).thenExecute(() -> {
 				for (int i = 0; i < 4; i++) {
-					if (step * 20 >= 8000 && i == 0) continue; // the control cell
+					if (step * 20 >= 6000 && i == 0) continue; // the control cell
 					if (ageAt(h, youngCells[i]) != young[i] || cropAt(h, youngCells[i]) != kinds[i]) problems.add("tick " + step * 20 + ": young " + kinds[i] + " changed to " + ageAt(h, youngCells[i]));
 				}
 				for (BlockPos p : new BlockPos[] {out25, diag}) {
@@ -317,13 +318,13 @@ public class FarmerGameTests {
 				}
 				if (ageAt(h, new BlockPos(high.getX(), 10, high.getZ())) != 7) problems.add("tick " + step * 20 + ": the cell at dy +9 changed");
 				if (carried(v[0], Items.BONE_MEAL) != 0 || stored(h, "minecraft:bone_meal") != 0) problems.add("tick " + step * 20 + ": bone meal appeared");
-				if (step * 20 == 8000) {
+				if (step * 20 == 6000) {
 					h.assertTrue(dev.villageheart.core.worker.DaySchedule.phaseAt(h.getLevel().getDayTime()) == dev.villageheart.core.worker.DayPhase.WORK,
 							"the control happens in the work phase: day time " + h.getLevel().getDayTime());
 					plantAt(h, youngCells[0].getX(), youngCells[0].getZ(), kinds[0], 7);
 					ticks[1] = h.getTick();
 				}
-				if (step * 20 > 8000 && step * 20 <= 8400 && ageAt(h, youngCells[0]) == 0 && ticks[1] > 0) {
+				if (step * 20 > 6000 && step * 20 <= 6400 && ageAt(h, youngCells[0]) == 0 && ticks[1] > 0) {
 					ticks[1] = -(h.getTick() - ticks[1]) - 1; // negative: harvested after this many ticks
 				}
 			});

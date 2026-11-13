@@ -153,12 +153,13 @@ For every job except the guard:
 | Day time | What they do |
 |---|---|
 | 0–1000 | Wake |
-| 1000–11000 | Work |
+| 1000–9000 | Work |
+| 9000–11000 | Meeting at the bell. Someone already in bed stays there. A guard on duty does not attend |
 | 11000 | Dinner, taken from Storage wherever they stand |
 | 11000–12000 | Walk home |
 | 12000 onward | Sleep in a bed |
 
-A worker carries up to one stack. When that is full, or at the end of the work day, they walk to the nearest Storage with room, deposit, and go back. Tools, seeds, raw food, and ore are fetched the same way.
+A worker carries up to one stack. When that is full, or when work ends, they walk up to the chest in the nearest Storage with room and put the goods in, one item every quarter of a second, then go on. Tools, seeds, raw food, and ore are fetched the same way. At a workstation they stand beside the block, not on top of it.
 
 ### Tools and levels
 
@@ -262,7 +263,7 @@ Needs a Market and a Market Stall. Prices and caps are in [The market](#the-mark
 
 ### Blacksmith
 
-Town tier. Needs a valid Smithy (blast furnace, anvil, chest). The blacksmith works only in work hours (day time 1000–11000) and picks up again the next morning.
+Town tier. Needs a valid Smithy (blast furnace, anvil, chest). The blacksmith works only in work hours (day time 1000–9000) and picks up again the next morning.
 
 - **Tools and armour, on demand.** The smith makes a tool or a piece of armour only when a worker is missing one or has a worn-out one. A working tool is never replaced or upgraded, and there are no spares. The tier is the best the stockpile can pay for (wood, stone, copper, iron, diamond). Guards get swords and armour the same way. Diamonds are kept back: five are always left in Storage. Crafting is slow: an iron tool takes 2400 ticks of work at speed 1, a diamond tool 4800. Raw iron, copper, and gold are smelted into ingots first, using fuel from Storage.
 - **Repairs.** Put worn gear in the Smithy chest. One ingot (or one leather) restores a quarter of the item's durability. Wood and stone tools are replaced, not repaired.
@@ -331,7 +332,7 @@ Babies count toward population and eat half a meal.
 
 ## The market
 
-A merchant stands at a Market Stall during work hours (day time 1000–11000) and sells **surplus** from Storage. About every **30 seconds** at level 1 (600 ticks of work; 480 at level 2, 400 at level 3) they sell one lot for **1 emerald**, straight into the treasury. The goods leave Storage in that same moment. Nothing is carried. A stall they cannot reach for 600 ticks of work shows "Can't reach its stall".
+A merchant stands at a Market Stall during work hours (day time 1000–9000) and sells **surplus** from Storage. About every **30 seconds** at level 1 (600 ticks of work; 480 at level 2, 400 at level 3) they sell one lot for **1 emerald**, straight into the treasury. The goods leave Storage in that same moment. Nothing is carried. A stall they cannot reach for 600 ticks of work shows "Can't reach its stall".
 
 Surplus for ordinary items is the count above **64**, and above anything a build or a cook has already reserved. Food is different: the village keeps **3 days** of nutrition (the same adults × 10 + children × 5 as the Overview), and anything above that may be sold. Food is not also held to the 64 reserve. With nobody to feed, the food reserve is 0.
 

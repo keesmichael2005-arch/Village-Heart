@@ -2,6 +2,7 @@ package dev.villageheart.core.hunt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.hunt.HunterPlanner.Action;
 import dev.villageheart.core.hunt.HunterPlanner.Decision;
 import dev.villageheart.core.hunt.HunterPlanner.PlanInputs;
@@ -75,22 +76,26 @@ class HunterPlannerTest {
 
 	@Test
 	void row8TheTripMustFitTheWorkDay() {
-		assertEquals(dec(Action.GO_OUT, StatusEffect.CLEAR), d(at(7700, 0)));
-		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.CLEAR), d(at(7701, 0)));
-		assertEquals(dec(Action.GO_OUT, StatusEffect.CLEAR), d(at(9200, 1500)));
-		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.CLEAR), d(at(9201, 1500)));
-		assertTrue(HunterPlanner.fitsNow(7700, 0, 1.0));
-		assertFalse(HunterPlanner.fitsNow(7701, 0, 1.0));
-		assertTrue(HunterPlanner.fitsNow(9200, 1500, 1.0));
-		assertFalse(HunterPlanner.fitsNow(9201, 1500, 1.0));
+		// WORK_END - trip - margin. A full trip is 3000 units; 1500 done leaves 1500; speed 1.25 needs 2400.
+		long full = Balance.WORK_END - 3000 - Balance.HUNTER_DEPART_MARGIN;
+		long half = Balance.WORK_END - 1500 - Balance.HUNTER_DEPART_MARGIN;
+		long fast = Balance.WORK_END - 2400 - Balance.HUNTER_DEPART_MARGIN;
+		assertEquals(dec(Action.GO_OUT, StatusEffect.CLEAR), d(at(full, 0)));
+		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.CLEAR), d(at(full + 1, 0)));
+		assertEquals(dec(Action.GO_OUT, StatusEffect.CLEAR), d(at(half, 1500)));
+		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.CLEAR), d(at(half + 1, 1500)));
+		assertTrue(HunterPlanner.fitsNow(full, 0, 1.0));
+		assertFalse(HunterPlanner.fitsNow(full + 1, 0, 1.0));
+		assertTrue(HunterPlanner.fitsNow(half, 1500, 1.0));
+		assertFalse(HunterPlanner.fitsNow(half + 1, 1500, 1.0));
 		assertFalse(HunterPlanner.fitsNow(1000, 0, 0.0));
 		assertFalse(HunterPlanner.fitsNow(999, 0, 1.0)); // not before the work phase
 		assertTrue(HunterPlanner.fitsNow(1000, 0, 1.0));
 		// the day time wraps: the same time one day later
-		assertTrue(HunterPlanner.fitsNow(24000 + 7700, 0, 1.0));
+		assertTrue(HunterPlanner.fitsNow(24000 + full, 0, 1.0));
 		// a faster hunter leaves later
-		assertTrue(HunterPlanner.fitsNow(8300, 0, 1.25));
-		assertFalse(HunterPlanner.fitsNow(8301, 0, 1.25));
+		assertTrue(HunterPlanner.fitsNow(fast, 0, 1.25));
+		assertFalse(HunterPlanner.fitsNow(fast + 1, 0, 1.25));
 		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.CLEAR), d(new PlanInputs(true, false, false, Lease.HELD, true, 1000, 0, 0, 1, 0, OptionalLong.empty(), 10)));
 	}
 

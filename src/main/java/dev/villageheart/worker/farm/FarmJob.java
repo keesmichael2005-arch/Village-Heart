@@ -492,7 +492,7 @@ public final class FarmJob {
 	private static void idle(ServerLevel level, Villager v, WorkerData data, WorkerState ws, long now) {
 		BlockPos jb = jobBlock(data);
 		if (now < ws.idleBackoffUntil || !data.jobBlock().dimension().equals(level.dimension().identifier().toString())) return;
-		if (WalkTo.distance(v, jb) <= Balance.JOB_BLOCK_REACH) {
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, jb)) {
 			ws.walk.release(v);
 			return;
 		}
@@ -510,7 +510,9 @@ public final class FarmJob {
 			}
 		}
 		ws.idleGoal = goal;
-		if (!ws.walk.active() || !ws.walk.target().equals(goal)) ws.walk.begin(goal, goal.equals(jb) ? Balance.JOB_BLOCK_REACH : 3.0, now);
+		BlockPos aim = goal.equals(jb) ? dev.villageheart.worker.job.WorkstationStand.spot(level, jb, v.position()) : goal;
+		double reach = !goal.equals(jb) ? 3.0 : aim.equals(jb) ? Balance.JOB_BLOCK_REACH : dev.villageheart.worker.job.WorkstationStand.REACH;
+		if (!ws.walk.active() || !ws.walk.target().equals(aim)) ws.walk.begin(aim, reach, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();
 			ws.idleBackoffUntil = now + 100;
@@ -728,7 +730,9 @@ public final class FarmJob {
 			ws.needsPlan = true;
 			return;
 		}
-		if (!walkTo(v, ws, jb, COMPOSTER_REACH, now)) return;
+		BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, jb, v.position());
+		if (!dev.villageheart.worker.job.WorkstationStand.at(v, jb)
+				&& !walkTo(v, ws, spot, spot.equals(jb) ? COMPOSTER_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now)) return;
 		v.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(jb));
 		BlockState state = comp.get();
 		int lvl = state.getValue(ComposterBlock.LEVEL);

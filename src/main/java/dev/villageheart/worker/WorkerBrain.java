@@ -8,6 +8,7 @@ import dev.villageheart.VillageHeart;
 import dev.villageheart.core.raid.RaidActivity;
 import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
+import dev.villageheart.core.worker.MeetingRules;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.needs.Housing;
@@ -97,6 +98,8 @@ public final class WorkerBrain {
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
 		if (shouldShelter(v, level)) return SHELTER;
+		DayPhase phase = DaySchedule.phaseAt(level.getDayTime());
+		if (MeetingRules.stayAsleep(phase, v.isSleeping())) return Activity.REST;
 		return activityFor(level.getDayTime());
 	}
 
@@ -116,6 +119,7 @@ public final class WorkerBrain {
 		return switch (phase) {
 			case WAKE -> Activity.IDLE;
 			case WORK -> Activity.WORK;
+			case MEET -> Activity.MEET;
 			case GO_HOME -> GO_HOME;
 			case SLEEP -> Activity.REST;
 		};
@@ -179,6 +183,12 @@ public final class WorkerBrain {
 				.add(look())
 				.add(p(99, new UpdateWorkerActivity()))
 				.build());
+
+		brain.addActivity(Activity.MEET, ImmutableList.of(
+				p(1, new DepositTrip()),
+				p(2, new MeetAtBell()),
+				look(),
+				p(99, new UpdateWorkerActivity())));
 
 		brain.addActivity(GO_HOME, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
 				.addAll(JobBehaviours.goHome(villager))

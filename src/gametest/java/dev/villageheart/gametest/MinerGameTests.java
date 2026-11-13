@@ -374,7 +374,7 @@ public class MinerGameTests {
 		GameTestSequence seq = scene(h, dy, false, SHAFT1).thenExecute(() -> {
 			putInChest(h, chest(dy), 0, pickaxe(ToolTier.STONE));
 			lightYard(h, dy);
-			h.getLevel().setDayTime(9800);
+			h.getLevel().setDayTime(7800);
 			v[0] = hire(h, dy);
 			tr.start();
 		});
@@ -385,9 +385,9 @@ public class MinerGameTests {
 			Descent d = tr.descents.get(0);
 			long underground = a.record().gameTime() - d.since();
 			System.out.println("[m16] minerComesUpAtDayEnd: down at day time " + d.dayTime() + ", up at day time " + a.dayTime() + ", " + underground + " underground ticks, progress " + a.progress());
-			h.assertTrue(d.dayTime() <= 10400, "it went down before the last descent time: " + d.dayTime());
+			h.assertTrue(d.dayTime() <= dev.villageheart.core.Balance.MINER_LAST_DESCENT, "it went down before the last descent time: " + d.dayTime());
 			h.assertValueEqual(SurfaceReason.DAY_END, a.record().reason(), "the reason");
-			h.assertTrue(a.dayTime() >= 11000 && a.dayTime() <= 11030, "up at 11000 + one step: " + a.dayTime());
+			h.assertTrue(a.dayTime() >= 9000 && a.dayTime() <= 9030, "up when the meeting starts: " + a.dayTime());
 			h.assertTrue(a.inventory().isEmpty(), "no haul");
 			h.assertTrue(Math.abs(a.progress() - underground * 2.0) <= 40, "progress = underground ticks x 2.0 (+-40), got " + a.progress() + " for " + underground);
 			h.assertValueEqual(0L, AwayTrips.state(v[0]).rolls(), "no haul rolled");

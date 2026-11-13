@@ -431,10 +431,14 @@ public final class SmithJob {
 	}
 
 	private static void idleAt(ServerLevel level, Villager v, SmithRuntime.State st, BlockPos furnace, long now) {
-		if (!st.walk.active() || !furnace.equals(st.walk.target())) st.walk.begin(furnace, REACH, CLOSEST, now);
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, furnace)) st.walk.release(v);
+		else {
+			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, furnace, v.position());
+			if (!st.walk.active() || !spot.equals(st.walk.target())) st.walk.begin(spot, spot.equals(furnace) ? REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
+		}
 		WalkTo.State ws = st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) st.walk.clear();
-		if (WalkTo.distance(v, furnace) <= REACH) v.getBrain().setMemory(MemoryModuleType.LAST_WORKED_AT_POI, now);
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, furnace)) v.getBrain().setMemory(MemoryModuleType.LAST_WORKED_AT_POI, now);
 	}
 
 	// ---- smelt -------------------------------------------------------------------------------------
@@ -1374,7 +1378,15 @@ public final class SmithJob {
 
 	private static boolean at(ServerLevel level, Villager v, SmithRuntime.State st, BlockPos pos, long now) {
 		if (pos == null) return false;
-		if (!st.walk.active() || st.walk.target() == null || !st.walk.target().equals(pos)) st.walk.begin(pos, REACH, CLOSEST, now);
+		boolean solid = !level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
+		if (solid && dev.villageheart.worker.job.WorkstationStand.at(v, pos)) {
+			st.walk.release(v);
+			return true;
+		}
+		BlockPos aim = solid ? dev.villageheart.worker.job.WorkstationStand.spot(level, pos, v.position()) : pos;
+		double reach = aim.equals(pos) ? REACH : dev.villageheart.worker.job.WorkstationStand.REACH;
+		if (!st.walk.active() || st.walk.target() == null || !st.walk.target().equals(aim)) st.walk.begin(aim, reach, aim.equals(pos) ? CLOSEST : reach, now);
+		if (solid && dev.villageheart.worker.job.WorkstationStand.at(v, pos)) return true;
 		WalkTo.State ws = st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) {
 			st.walk.clear();
