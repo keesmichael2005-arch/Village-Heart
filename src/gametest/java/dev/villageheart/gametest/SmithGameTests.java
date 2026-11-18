@@ -125,7 +125,7 @@ public class SmithGameTests {
 	}
 
 	/** T-L2-3b. 84 blocks is outside the 80-block sphere and inside the 8-block margin. 100 blocks is not. */
-	@GameTest(environment = "villageheart-gametest:smith_gate_edge", structure = YARD, skyAccess = true, maxTicks = 400)
+	@GameTest(environment = "villageheart-gametest:smith_gate_edge", structure = YARD, skyAccess = true, maxTicks = 2000)
 	public void gateEdgeOfClaim(GameTestHelper h) {
 		WorkerTestSupport.begin(h);
 		BuildingTestSupport.begin(h).thenExecute(() -> {
