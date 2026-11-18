@@ -610,6 +610,8 @@ public class FarmerGameTests {
 			inv.addItem(new ItemStack(Items.WHEAT_SEEDS, 50));
 			inv.addItem(new ItemStack(Items.BONE_MEAL, 5));
 			inv.addItem(new ItemStack(Items.BREAD, 2));
+			// A dump starts when every cargo slot is taken. One spare stack fills the last slot; dirt is handed in whole.
+			inv.addItem(new ItemStack(Items.DIRT, 1));
 			v[1].getInventory().addItem(new ItemStack(Items.BREAD, 5));
 			v[1].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
 			stat[0] = WorkStats.get("farmer", "seeds_composted");
@@ -640,6 +642,7 @@ public class FarmerGameTests {
 			v[0].getInventory().clearContent();
 			for (int i = 0; i < 3; i++) v[0].getInventory().addItem(new ItemStack(Items.WHEAT_SEEDS, 64));
 			v[0].getInventory().addItem(new ItemStack(Items.WHEAT_SEEDS, 8));
+			for (int i = 0; i < 3; i++) v[0].getInventory().addItem(new ItemStack(Items.DIRT, 1));
 		});
 		seq = seq.thenWaitUntil(() -> h.assertValueEqual(136L, stored(h, "minecraft:wheat_seeds"), "seeds in Storage [" + inventory(v[0]) + "] status " + status(h, v[0])));
 		seq.thenExecute(() -> {
@@ -674,7 +677,8 @@ public class FarmerGameTests {
 			cells[0] = field(h, 8, 14, 10, 16, CropKind.WHEAT, 7, false);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.WHEAT, 64));
+			// Cargo has to be full before a full Storage stops the harvest. Slot 0 stays free for the hoe.
+			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new ItemStack(Items.WHEAT, 64));
 			t0[0] = h.getTick();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the worker reports Storage full", () ->

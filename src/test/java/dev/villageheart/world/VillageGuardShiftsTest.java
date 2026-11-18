@@ -140,6 +140,7 @@ class VillageGuardShiftsTest {
 						new dev.villageheart.core.gear.OrderKey(BARRACKS, dev.villageheart.core.gear.GearNeed.AXE, 0), 0, java.util.List.of()),
 				BARRACKS)).withoutSmithCraft(BARRACKS));
 		calls.put("withGuardShifts", s -> s.withGuardShifts(s.guardShifts()));
+		calls.put("withWorkerChest", s -> s.withWorkerChest(G1, new HeartLocation(DIM, 31, 64, 4)));
 		calls.put("withTierProgress", s -> s.withTierProgress(new dev.villageheart.core.tier.TierProgress(2, 5L, 7))); // M14
 		calls.put("withDeaths", s -> s.withDeaths(dev.villageheart.core.death.DeathLog.EMPTY.append(
 				new dev.villageheart.core.death.DeathEntry(0, G1, "Ada", "guard", "minecraft:zombie", true, 10, 1, true, false, false))));

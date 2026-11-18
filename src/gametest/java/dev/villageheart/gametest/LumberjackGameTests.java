@@ -992,14 +992,14 @@ public class LumberjackGameTests {
 		seq = seq.thenIdle(1200);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(logs[0].size(), standing(h, logs[0]), "not a log fell while the load could not be handed in");
-			h.assertValueEqual(64, carried(v[0], Items.OAK_LOG), "the worker keeps what it carries");
+			h.assertValueEqual(448, carried(v[0], Items.OAK_LOG), "the worker keeps the seven full cargo stacks");
 			// room in one chest: the load goes in, then the tree falls
 			var c = StockpileTestSupport.container(h, storeChest1());
 			c.clearContent();
 			c.setChanged();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
-				h.assertTrue(stored(h, "minecraft:oak_log") >= 64, "logs in Storage: " + stored(h, "minecraft:oak_log")));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 448 logs reach Storage", () ->
+				h.assertTrue(stored(h, "minecraft:oak_log") >= 448, "logs in Storage: " + stored(h, "minecraft:oak_log")));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
 		seq.thenExecute(() -> {

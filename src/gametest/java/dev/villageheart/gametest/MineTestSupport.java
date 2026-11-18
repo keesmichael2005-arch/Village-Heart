@@ -137,7 +137,10 @@ public final class MineTestSupport {
 	public static void buildMine(GameTestHelper h, int dy, boolean secondStonecutter) {
 		BuildingTestSupport.room(h, MINE.above(dy), 5, 4);
 		h.setBlock(stonecutter(dy), Blocks.STONECUTTER);
-		if (secondStonecutter) h.setBlock(stonecutter2(dy), Blocks.STONECUTTER);
+		if (secondStonecutter) {
+			h.setBlock(stonecutter2(dy), Blocks.STONECUTTER);
+			h.setBlock(BuildingTestSupport.inside(MINE.above(dy), 0, 0, 3), Blocks.CHEST);
+		}
 		h.setBlock(chest(dy), Blocks.CHEST);
 		h.setBlock(BuildingTestSupport.inside(MINE.above(dy), 2, 0, 3), Blocks.TORCH);
 	}
