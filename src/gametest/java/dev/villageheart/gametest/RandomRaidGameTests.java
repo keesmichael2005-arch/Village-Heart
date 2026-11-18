@@ -341,7 +341,7 @@ public class RandomRaidGameTests {
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 0), Blocks.CHEST.defaultBlockState());
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 2), Blocks.CHEST.defaultBlockState());
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 0, 1, 0), Blocks.CHEST.defaultBlockState());
-			h.setBlock(BuildingTestSupport.inside(BARRACKS, 2, 1, 0), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 3, 1, 1), Blocks.CHEST.defaultBlockState());
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 4, 1, 0), Blocks.CHEST.defaultBlockState());
 			BuildingTestSupport.placeMarker(h, BuildingType.BARRACKS, marker[0], Direction.NORTH);
 		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, marker[0], dev.villageheart.block.MarkerStatus.VALID))

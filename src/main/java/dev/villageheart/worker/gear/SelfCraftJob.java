@@ -537,7 +537,20 @@ public final class SelfCraftJob {
 		st.lastPlan = Long.MIN_VALUE;
 		level.playSound(null, v.blockPosition(), SoundEvents.VILLAGER_WORK_TOOLSMITH, SoundSource.NEUTRAL, 0.8f, 1.0f);
 		level.sendParticles(ParticleTypes.HAPPY_VILLAGER, v.getX(), v.getY() + 1.0, v.getZ(), 6, 0.3, 0.3, 0.3, 0.0);
+		retireHeldWornTool(level, v, job, at);
 		moveUnassignedWornToStorage(level, v, data, job);
+	}
+
+	/** A worn tool in the pocket is the one the new tool replaces. It goes to Storage, the same as a worn tool left in the chest. */
+	private static void retireHeldWornTool(ServerLevel level, Villager v, JobType job, BlockPos at) {
+		if (!dev.villageheart.worker.pocket.Pockets.holdingTool(v)) return;
+		ItemStack held = v.getInventory().getItem(dev.villageheart.core.job.PocketRules.TOOL_SLOT);
+		if (!ToolStacks.worn(held, job)) return;
+		ItemStack moving = held.copy();
+		Stockpiles.deposit(level, at, moving);
+		if (!moving.isEmpty()) return;
+		v.getInventory().setItem(dev.villageheart.core.job.PocketRules.TOOL_SLOT, ItemStack.EMPTY);
+		WorkStats.add(job.id(), "tools_to_storage", 1);
 	}
 
 	/** What the committed raw inputs leave after the recipe: the committed stock minus what the recipe consumes. */
