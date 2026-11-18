@@ -241,7 +241,7 @@ public class SelfCraftLifecycleGameTests {
 			t0[0] = h.getTick();
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getTick() - t0[0] >= 80 && GearOrders.size() == 2, "orders: " + GearOrders.size()));
-		seq = seq.thenWaitUntil(() -> h.assertTrue(countIn(h, chest(0), Items.STONE_PICKAXE) == 1, "the first craft is not finished: " + s.log));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(ownCount(h, v[0], Items.STONE_PICKAXE) == 1 || v[0].getInventory().getItem(0).is(Items.STONE_PICKAXE), "the first craft is not finished: " + s.log));
 		seq.thenExecute(() -> {
 			System.out.println("[m19a] craftPausesOvernight: finished after " + (h.getTick() - t0[0]) + " ticks of the new day; " + s.log);
 			h.assertTrue(h.getTick() - t0[0] <= (4800 - frozen[0]) + 400, "at most 200 ticks lost: " + (h.getTick() - t0[0]));

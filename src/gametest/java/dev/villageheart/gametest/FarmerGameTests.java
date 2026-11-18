@@ -603,17 +603,19 @@ public class FarmerGameTests {
 			v[1] = WorkerTestSupport.spawnVillager(h, BuildingTestSupport.inside(camp2, 1, 0, 1));
 			var r = dev.villageheart.worker.Workers.hire(h.getLevel(), v[1], dev.villageheart.core.worker.JobType.LUMBERJACK, java.util.Optional.empty());
 			h.assertTrue(r instanceof dev.villageheart.worker.HireResult.Hired, "the lumberjack control was hired: " + r);
+			// Slot 0 stays free for the tool. The seven cargo slots are full, so the trip starts.
 			var inv = v[0].getInventory();
-			inv.addItem(new ItemStack(Items.WHEAT, 64));
-			inv.addItem(new ItemStack(Items.CARROT, 40));
-			inv.addItem(new ItemStack(Items.POTATO, 30));
-			inv.addItem(new ItemStack(Items.WHEAT_SEEDS, 50));
-			inv.addItem(new ItemStack(Items.BONE_MEAL, 5));
-			inv.addItem(new ItemStack(Items.BREAD, 2));
-			// A dump starts when every cargo slot is taken. One spare stack fills the last slot; dirt is handed in whole.
-			inv.addItem(new ItemStack(Items.DIRT, 1));
-			v[1].getInventory().addItem(new ItemStack(Items.BREAD, 5));
-			v[1].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			inv.setItem(1, new ItemStack(Items.WHEAT, 64));
+			inv.setItem(2, new ItemStack(Items.CARROT, 40));
+			inv.setItem(3, new ItemStack(Items.POTATO, 30));
+			inv.setItem(4, new ItemStack(Items.WHEAT_SEEDS, 50));
+			inv.setItem(5, new ItemStack(Items.BONE_MEAL, 5));
+			inv.setItem(6, new ItemStack(Items.BREAD, 2));
+			inv.setItem(7, new ItemStack(Items.DIRT, 1));
+			var logs = v[1].getInventory();
+			logs.setItem(1, new ItemStack(Items.BREAD, 5));
+			logs.setItem(2, new ItemStack(Items.OAK_LOG, 64));
+			for (int i = 3; i <= 7; i++) logs.setItem(i, new ItemStack(Items.STICK, 1));
 			stat[0] = WorkStats.get("farmer", "seeds_composted");
 			// the food table of the keep rule is vanilla's
 			for (var e : dev.villageheart.core.job.FoodKeep.POINTS.entrySet()) {
@@ -639,10 +641,15 @@ public class FarmerGameTests {
 			h.assertValueEqual(3, carried(v[1], Items.BREAD), "the lumberjack kept 3 bread (12 food points)");
 			h.assertValueEqual(0, carried(v[1], Items.OAK_LOG), "and handed in its logs");
 			// phase 2: 200 seeds, one stack stays
-			v[0].getInventory().clearContent();
-			for (int i = 0; i < 3; i++) v[0].getInventory().addItem(new ItemStack(Items.WHEAT_SEEDS, 64));
-			v[0].getInventory().addItem(new ItemStack(Items.WHEAT_SEEDS, 8));
-			for (int i = 0; i < 3; i++) v[0].getInventory().addItem(new ItemStack(Items.DIRT, 1));
+			var again = v[0].getInventory();
+			again.clearContent();
+			again.setItem(1, new ItemStack(Items.WHEAT_SEEDS, 64));
+			again.setItem(2, new ItemStack(Items.WHEAT_SEEDS, 64));
+			again.setItem(3, new ItemStack(Items.WHEAT_SEEDS, 64));
+			again.setItem(4, new ItemStack(Items.WHEAT_SEEDS, 8));
+			again.setItem(5, new ItemStack(Items.DIRT, 1));
+			again.setItem(6, new ItemStack(Items.COBBLESTONE, 1));
+			again.setItem(7, new ItemStack(Items.GRAVEL, 1));
 		});
 		seq = seq.thenWaitUntil(() -> h.assertValueEqual(136L, stored(h, "minecraft:wheat_seeds"), "seeds in Storage [" + inventory(v[0]) + "] status " + status(h, v[0])));
 		seq.thenExecute(() -> {

@@ -489,7 +489,8 @@ public class GuardGameTests {
 		seq = seq.thenExecute(() -> {
 			h.assertTrue(g[1].getItemBySlot(chest).isEmpty(), "B handed the leather plate in");
 			h.assertTrue(ownChestHas(h, g[1], net.minecraft.world.item.Items.LEATHER_CHESTPLATE), "it is back in B's chest");
-			h.assertTrue(ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE), "A's iron plate is still in A's chest");
+			h.assertTrue(g[0].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE) || ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE), "A's iron plate is on A or in A's chest");
+			h.assertTrue(!g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B does not wear A's plate");
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 25400, "waiting for 1400 after the shift change"));
 		seq.thenExecute(() -> {

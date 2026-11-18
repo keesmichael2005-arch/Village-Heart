@@ -1219,7 +1219,10 @@ public class LumberjackGameTests {
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			// The cargo slots are full, so getting out is what lets the 64 logs reach Storage.
+			var carried = v[0].getInventory();
+			carried.setItem(1, new ItemStack(Items.OAK_LOG, 64));
+			for (int i = 2; i <= 7; i++) carried.setItem(i, new ItemStack(Items.STICK, 1));
 			// a hollow 3x3x3 cube of NATURAL leaves around the spot, as left by a canopy the worker cut into. A log on top of the cube keeps them from
 			// decaying during the test (persistent leaves would be a player build, which the worker must not break)
 			h.setBlock(spot.offset(0, 3, 0), Blocks.OAK_LOG);
