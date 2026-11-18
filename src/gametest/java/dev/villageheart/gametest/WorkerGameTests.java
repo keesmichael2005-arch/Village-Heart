@@ -953,6 +953,7 @@ public class WorkerGameTests {
 		BlockPos chop = BuildingTestSupport.inside(ORIGIN_B, 0, 0, 0);
 		BlockPos storeChest = BuildingTestSupport.inside(store, 0, 0, 3);
 		BlockPos bedHead = BuildingTestSupport.inside(house, 0, 0, 1).south();
+		BlockPos bedHead2 = BuildingTestSupport.inside(house, 2, 0, 1).south();
 		Villager[] farmer = new Villager[1], striker = new Villager[1], guard = new Villager[1];
 		Vec3[] start = new Vec3[3];
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
@@ -970,7 +971,7 @@ public class WorkerGameTests {
 			h.setBlock(storeChest, Blocks.CHEST);
 			h.setBlock(BuildingTestSupport.inside(store, 4, 0, 3), Blocks.CHEST);
 			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker, Direction.NORTH);
-			house(h, house, 1);
+			house(h, house, 2);
 			BuildingTestSupport.placeMarker(h, BuildingType.HOUSE, houseMarker, Direction.NORTH);
 		});
 		seq = seq.thenWaitUntil(() -> {
@@ -1026,14 +1027,21 @@ public class WorkerGameTests {
 			// the work-day check already showed the logs were not delivered; clear them so going home is not a deposit trip
 			var inv = striker[0].getInventory();
 			for (int i = 0; i < inv.getContainerSize(); i++) inv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+			// A real village rehomes every 100 ticks. These tests leave that off, and a stroll leaves the 14-block bed search.
+			dev.villageheart.needs.NeedsOverride.forceDefaultNeeds = false;
 			h.getLevel().setDayTime(11000);
 		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "the striker is given a House bed", () ->
+				h.assertTrue(striker[0].getBrain().hasMemoryValue(MemoryModuleType.HOME), "HOME"));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the striker goes home", () ->
-				h.assertTrue(distance(h, striker[0], bedHead) <= 2.0, "distance " + distance(h, striker[0], bedHead)));
+				h.assertTrue(distance(h, striker[0], bedHead) <= 2.0 || distance(h, striker[0], bedHead2) <= 2.0,
+						"distance " + distance(h, striker[0], bedHead) + " / " + distance(h, striker[0], bedHead2)));
 		seq = seq.thenExecute(() -> h.getLevel().setDayTime(13000));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the striker is in bed", () -> h.assertTrue(striker[0].isSleeping(), "sleeping"));
 		seq.thenExecute(() -> {
-			h.assertValueEqual(java.util.Optional.of(h.absolutePos(bedHead)), striker[0].getSleepingPos(), "in the House bed");
+			var slept = striker[0].getSleepingPos();
+			h.assertTrue(slept.equals(java.util.Optional.of(h.absolutePos(bedHead))) || slept.equals(java.util.Optional.of(h.absolutePos(bedHead2))),
+					"in a House bed: " + slept);
 			NeedsTestHooks.disable();
 			VillageTestSupport.done(h);
 			end(h);
