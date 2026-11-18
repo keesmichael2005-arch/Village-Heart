@@ -316,7 +316,7 @@ public final class HeartFacts {
 	public static ActivityKind activityOf(Villager v) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) {
 			if (dev.villageheart.worker.guard.GuardCombat.engaged(v)) return ActivityKind.FIGHTING;
-			if (v.level() instanceof ServerLevel sl && WeatherShelter.guardWaits(sl.isRaining(),
+			if (v.level() instanceof ServerLevel sl && WeatherShelter.guardWaits(sl.getLevelData().isRaining(),
 					v.getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY),
 					v.isSleeping() || v.getBrain().isActive(Activity.REST))) return ActivityKind.OUT_OF_THE_RAIN;
 			// the training day: the status says so whether or not there is a Training Yard to spar at (M18 r3)

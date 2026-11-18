@@ -1291,17 +1291,18 @@ public class WorkerGameTests {
 			cells.addAll(FarmTestSupport.field(h, 16, 16, 18, 18, dev.villageheart.core.farm.CropKind.WHEAT, 7, false));
 			h.getLevel().setDayTime(2000);
 			rain(h.getLevel());
-			h.assertTrue(h.getLevel().isRaining(), "rain is falling");
+			h.assertTrue(h.getLevel().getLevelData().isRaining(), "rain is falling");
 			stat[0] = dev.villageheart.worker.job.WorkStats.get("farmer", "harvested");
 			v[0] = FarmTestSupport.hire(h, new BlockPos(11, 1, 2));
 			h.assertTrue(v[0].getBrain().isActive(WorkerBrain.RAIN), "hired into the rain: " + v[0].getBrain().getActiveNonCoreActivity());
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the farmer walks into the Farmhouse", () -> {
+			h.assertTrue(v[0] != null, "the farmer was hired");
 			h.assertTrue(insideRoom(h, v[0], FarmTestSupport.FARM), "inside, at " + VillageTestSupport.rel(h, v[0].blockPosition()));
 			h.assertTrue(distance(h, v[0], FarmTestSupport.composter()) <= 2.0, "beside the composter: " + distance(h, v[0], FarmTestSupport.composter()));
 		});
 		seq = seq.thenIdle(100).thenExecute(() -> {
-			h.assertTrue(h.getLevel().isRaining(), "still raining");
+			h.assertTrue(h.getLevel().getLevelData().isRaining(), "still raining");
 			h.assertTrue(h.getLevel().getDayTime() < 11000, "still work time: " + h.getLevel().getDayTime());
 			h.assertTrue(v[0].getBrain().isActive(WorkerBrain.RAIN), "still waiting");
 			h.assertFalse(v[0].getBrain().isActive(Activity.WORK), "not working");
@@ -1309,7 +1310,7 @@ public class WorkerGameTests {
 			for (BlockPos c : cells) h.assertValueEqual(7, h.getLevel().getBlockState(h.absolutePos(c)).getValue(net.minecraft.world.level.block.CropBlock.AGE), "wheat still ripe at " + c);
 			h.assertValueEqual(dev.villageheart.core.heart.ActivityKind.OUT_OF_THE_RAIN, dev.villageheart.heart.HeartFacts.activityOf(v[0]), "Villagers tab");
 			clearWeather(h.getLevel());
-			h.assertFalse(h.getLevel().isRaining(), "the weather cleared");
+			h.assertFalse(h.getLevel().getLevelData().isRaining(), "the weather cleared");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "back to work the moment it clears", () ->
 				h.assertTrue(v[0].getBrain().isActive(Activity.WORK), "WORK at " + h.getLevel().getDayTime()));
@@ -1330,7 +1331,7 @@ public class WorkerGameTests {
 		Villager[] g = new Villager[2];
 		java.util.Set<BlockPos> reached = new java.util.HashSet<>();
 		h.onEachTick(() -> {
-			if (g[0] == null || !h.getLevel().isRaining()) return;
+			if (g[0] == null || !h.getLevel().getLevelData().isRaining()) return;
 			dev.villageheart.worker.guard.GuardRuntime.lastArrival(g[0].getUUID()).ifPresent(reached::add);
 		});
 		GameTestSequence seq = GuardTestSupport.scene(h, 2).thenExecute(() -> {
@@ -1342,7 +1343,7 @@ public class WorkerGameTests {
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the night guard stays asleep in the rain", () ->
 				h.assertTrue(g[1].isSleeping(), "asleep at " + h.getLevel().getDayTime()));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the day guard reaches a patrol point in the rain", () -> {
-			h.assertTrue(h.getLevel().isRaining(), "still raining");
+			h.assertTrue(h.getLevel().getLevelData().isRaining(), "still raining");
 			h.assertTrue(g[0].getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY), "on duty in the rain");
 			h.assertTrue(!g[0].isSleeping(), "the day guard stays awake");
 			h.assertValueEqual(dev.villageheart.worker.guard.GuardRuntime.Mode.PATROL, dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID()), "patrolling");

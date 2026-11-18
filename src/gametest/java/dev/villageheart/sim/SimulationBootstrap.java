@@ -3,6 +3,7 @@ package dev.villageheart.sim;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.world.level.gamerules.GameRules;
 
 import java.nio.file.Path;
 
@@ -17,7 +18,16 @@ public final class SimulationBootstrap implements ModInitializer {
 	public void onInitialize() {
 		SimTickets.register(); // also used by the L2 test of the follow tickets
 		String request = System.getProperty(REQUEST_PROPERTY);
-		if (request == null) return;
+		if (request == null) {
+			// One world for the whole suite. Rain now stops hired work, so a weather cycle mid-suite
+			// would pause crafts and walks that the tests are timing. Stay clear unless a test asks.
+			ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+				var level = server.overworld();
+				level.getGameRules().set(GameRules.ADVANCE_WEATHER, false, server);
+				level.setWeatherParameters(0, 0, false, false);
+			});
+			return;
+		}
 		SimulationRun run = SimulationRun.start(Path.of(request));
 		ServerLifecycleEvents.SERVER_STARTED.register(run::onServerStarted);
 		ServerTickEvents.END_SERVER_TICK.register(run::onTick);
