@@ -67,7 +67,6 @@ final class MarkerClientTests {
 				var level = server.overworld();
 				List<BlockPos> spots = new ArrayList<>();
 				List<Identifier> expected = new ArrayList<>();
-				int columns = 8;
 				for (int i = 0; i < types.length; i++) {
 					spots.add(new BlockPos((i % columns) - 4, i < columns ? fy + 2 : fy + 1, 0));
 					expected.add(Identifier.fromNamespaceAndPath("villageheart", types[i].markerId()));
