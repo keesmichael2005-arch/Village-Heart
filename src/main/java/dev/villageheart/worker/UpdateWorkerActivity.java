@@ -5,6 +5,7 @@ import dev.villageheart.world.VillageTicker;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.schedule.Activity;
 
 /**
  * Keeps the worker's active activity equal to {@link WorkerBrain#activityFor}. Present in IDLE, WORK, go_home, REST and SHELTER
@@ -18,10 +19,15 @@ public final class UpdateWorkerActivity extends Behavior<Villager> {
 
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
-		if ((level.getGameTime() + villager.getId()) % 20 != 0) return false;
+		Activity want;
 		try (var t = VillageTicker.section()) {
-			return !villager.getBrain().isActive(WorkerBrain.activityFor(villager, level));
+			want = WorkerBrain.activityFor(villager, level);
 		}
+		if (villager.getBrain().isActive(want)) return false;
+		// Rain starts and clears at once. The day clock keeps the 20-tick stagger.
+		boolean rain = want == WorkerBrain.RAIN || villager.getBrain().isActive(WorkerBrain.RAIN);
+		if (!rain && (level.getGameTime() + villager.getId()) % 20 != 0) return false;
+		return true;
 	}
 
 	@Override

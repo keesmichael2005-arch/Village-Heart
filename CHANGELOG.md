@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
+
 Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
 
 ## 1.0.0

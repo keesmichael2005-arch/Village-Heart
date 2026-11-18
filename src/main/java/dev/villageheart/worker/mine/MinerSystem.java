@@ -67,7 +67,7 @@ public final class MinerSystem implements VillageSystem {
 		AwayTrips.repin(v);
 		Optional<WorkerData> data = WorkerAttachments.get(v);
 		boolean isMiner = data.isPresent() && data.get().job() == JobType.MINER && trip.jobId().equals(MinerJob.JOB);
-		boolean phaseWork = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.WORK;
+		boolean phaseWork = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.WORK && !dev.villageheart.worker.WorkWeather.waiting(level);
 		Optional<MineSites.ShaftSite> shaft = isMiner ? MineSites.validLinkedShaft(server, trip.site(), data.get().building()) : Optional.empty();
 		boolean slotHeld = isMiner && Workers.status(server, rec) != WorkerStatus.WORKPLACE_INVALID;
 		CampTools.Result lease = isMiner ? CampTools.lease(server, v, JobType.MINER.tool().orElseThrow().kind()) : CampTools.Missing.UNKNOWN;

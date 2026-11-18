@@ -47,12 +47,23 @@ public final class WorkerTestSupport {
 		dev.villageheart.gametest.raid.RaidStart.stopAll(level, h.absolutePos(BlockPos.ZERO), 160);
 		savedDayTime = level.getDayTime();
 		level.getGameRules().set(GameRules.ADVANCE_TIME, true, level.getServer());
+		clearWeather(level);
 	}
 
 	/** End of a test (also safe to call from {@code VillageTestSupport.reset}): villagers discarded, day time restored. */
 	public static void end(GameTestHelper h) {
 		discardSpawned(h.getLevel());
+		clearWeather(h.getLevel());
 		h.getLevel().setDayTime(savedDayTime);
+	}
+
+	/** Rain, snow, and thunder share this flag. A long rain time so a test is not cleared by the weather cycle. */
+	public static void rain(ServerLevel level) {
+		level.setWeatherParameters(0, 20000, true, false);
+	}
+
+	public static void clearWeather(ServerLevel level) {
+		level.setWeatherParameters(0, 0, false, false);
 	}
 
 	public static void discardSpawned(ServerLevel level) {

@@ -65,7 +65,7 @@ public final class HunterSystem implements VillageSystem {
 		AwayTrips.repin(v);
 		Optional<WorkerData> data = WorkerAttachments.get(v);
 		boolean isHunter = data.isPresent() && data.get().job() == JobType.HUNTER && trip.jobId().equals(HunterJob.JOB);
-		boolean phaseWork = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.WORK;
+		boolean phaseWork = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.WORK && !dev.villageheart.worker.WorkWeather.waiting(level);
 		Optional<HuntSites.GroundSite> ground = isHunter ? HuntSites.validLinkedGround(server, trip.site(), data.get().building()) : Optional.empty();
 		boolean slotHeld = isHunter && Workers.status(server, rec) != WorkerStatus.WORKPLACE_INVALID;
 		CampTools.Result lease = isHunter ? CampTools.lease(server, v, ToolKind.BOW_OR_SWORD, HuntGear::rank) : CampTools.Missing.UNKNOWN;
