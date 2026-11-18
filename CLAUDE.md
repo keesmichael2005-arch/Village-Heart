@@ -48,6 +48,13 @@ Kees wants a new feature, or brain-dumps one. You are the parent. Follow **Makin
 
 Java 25 is at `~/.jdk25`. `scripts/verify.sh` installs it when it is missing. `scripts/verify.sh --fast` is the local check. The Minecraft client that takes screenshots runs on the GitHub `verify` workflow (`.github/workflows/build.yml`), which sets up its own virtual display. Leave Debbie's packages as they are.
 
+Debbie is shared with every other project's agents (Kees, 2026-11-18). Builds and tests from all of them wait their turn in one queue, `debbie-run`, so the machine never overloads. Waiting is fine.
+
+- Every `./gradlew` build joins the queue by itself. `scripts/verify.sh --fast` runs as usual: each Gradle step waits for its turn, so a step can sit for a while. Give it a long tool timeout (2 hours). `bash /Users/keesbryant/misure-agents/scripts/debbie.sh status` shows the queue.
+- Lines starting `[debbie]` are the queue, in the console or in `reports/*.log`. "queued" and "waiting" are never failures.
+- **A `[debbie] machine:` verdict is binding.** "PASSED on the quiet re-run", "inconclusive" or "may be the machine" mean Debbie failed, not the code. Never change code, tests, timeouts or retries because of it. Only "failed again on a quiet machine" or "Debbie was fine during this run" is a real failure.
+- Run a simulation whole through the queue, so its timers start with its turn: `DEBBIE_JOB_MAX_MIN=0 ~/.local/bin/debbie-run scripts/simulate.sh <scenario> [days]`.
+
 **Neither role**
 
 Push to `main`. Merge the PR. Install packages on Debbie. Start a second implementer. Add another copy of this guide.
