@@ -149,7 +149,7 @@ public class SmithGameTests {
 				}
 			}
 			h.assertTrue(ready, "the far chunks are not ticking yet");
-		}).thenExecute(() -> {
+		}).thenIdle(20).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
 			BlockPos near = new BlockPos(heart.x() + 84, heart.y(), heart.z());
