@@ -57,11 +57,6 @@ public final class WorkerTestSupport {
 		h.getLevel().setDayTime(savedDayTime);
 	}
 
-	/** Rain, snow, and thunder share this flag. A long rain time so a test is not cleared by the weather cycle. */
-	public static void rain(ServerLevel level) {
-		level.setWeatherParameters(0, 20000, true, false);
-	}
-
 	public static void clearWeather(ServerLevel level) {
 		level.setWeatherParameters(0, 0, false, false);
 	}

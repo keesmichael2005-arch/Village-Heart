@@ -104,7 +104,7 @@ public final class WorkerBrain {
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
 		if (shouldShelter(v, level)) return SHELTER;
-		if (WorkWeather.waiting(level) && !Workers.tripRunning(v)) return RAIN;
+		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v)) return RAIN;
 		return activityFor(level.getDayTime());
 	}
 

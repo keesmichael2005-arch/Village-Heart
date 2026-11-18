@@ -22,6 +22,9 @@ public final class SimulationBootstrap implements ModInitializer {
 			// One world for the whole suite. Rain now stops hired work, so a weather cycle mid-suite
 			// would pause crafts and walks that the tests are timing. Stay clear unless a test asks.
 			ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+				// The client suite is its own world and sets the sky itself. Touching that startup
+				// left the integrated server stuck preparing spawn.
+				if (server.isSingleplayer()) return;
 				var level = server.overworld();
 				level.getGameRules().set(GameRules.ADVANCE_WEATHER, false, server);
 				level.setWeatherParameters(0, 0, false, false);

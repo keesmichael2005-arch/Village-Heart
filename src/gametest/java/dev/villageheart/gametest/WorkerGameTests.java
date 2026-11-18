@@ -1290,10 +1290,13 @@ public class WorkerGameTests {
 		GameTestSequence seq = FarmTestSupport.scene(h, 1, false).thenExecute(() -> {
 			cells.addAll(FarmTestSupport.field(h, 16, 16, 18, 18, dev.villageheart.core.farm.CropKind.WHEAT, 7, false));
 			h.getLevel().setDayTime(2000);
-			rain(h.getLevel());
-			h.assertTrue(h.getLevel().getLevelData().isRaining(), "rain is falling");
 			stat[0] = dev.villageheart.worker.job.WorkStats.get("farmer", "harvested");
 			v[0] = FarmTestSupport.hire(h, new BlockPos(11, 1, 2));
+			// The suite shares one sky. Mark this farmer only, or every other test stops work.
+			dev.villageheart.worker.WorkWeather.force(v[0], true);
+			v[0].getBrain().setActiveActivityIfPossible(WorkerBrain.activityFor(v[0], h.getLevel()));
+			h.assertFalse(h.getLevel().getLevelData().isRaining(), "the shared sky stays clear");
+			h.assertTrue(dev.villageheart.worker.WorkWeather.precipitating(h.getLevel(), v[0]), "this farmer is in the rain");
 			h.assertTrue(v[0].getBrain().isActive(WorkerBrain.RAIN), "hired into the rain: " + v[0].getBrain().getActiveNonCoreActivity());
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the farmer walks into the Farmhouse", () -> {
@@ -1302,15 +1305,15 @@ public class WorkerGameTests {
 			h.assertTrue(distance(h, v[0], FarmTestSupport.composter()) <= 2.0, "beside the composter: " + distance(h, v[0], FarmTestSupport.composter()));
 		});
 		seq = seq.thenIdle(100).thenExecute(() -> {
-			h.assertTrue(h.getLevel().getLevelData().isRaining(), "still raining");
+			h.assertTrue(dev.villageheart.worker.WorkWeather.precipitating(h.getLevel(), v[0]), "still raining");
 			h.assertTrue(h.getLevel().getDayTime() < 11000, "still work time: " + h.getLevel().getDayTime());
 			h.assertTrue(v[0].getBrain().isActive(WorkerBrain.RAIN), "still waiting");
 			h.assertFalse(v[0].getBrain().isActive(Activity.WORK), "not working");
 			h.assertValueEqual(stat[0], dev.villageheart.worker.job.WorkStats.get("farmer", "harvested"), "nothing harvested in the rain");
 			for (BlockPos c : cells) h.assertValueEqual(7, h.getLevel().getBlockState(h.absolutePos(c)).getValue(net.minecraft.world.level.block.CropBlock.AGE), "wheat still ripe at " + c);
 			h.assertValueEqual(dev.villageheart.core.heart.ActivityKind.OUT_OF_THE_RAIN, dev.villageheart.heart.HeartFacts.activityOf(v[0]), "Villagers tab");
-			clearWeather(h.getLevel());
-			h.assertFalse(h.getLevel().getLevelData().isRaining(), "the weather cleared");
+			dev.villageheart.worker.WorkWeather.force(v[0], false);
+			h.assertFalse(dev.villageheart.worker.WorkWeather.precipitating(h.getLevel(), v[0]), "the weather cleared");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "back to work the moment it clears", () ->
 				h.assertTrue(v[0].getBrain().isActive(Activity.WORK), "WORK at " + h.getLevel().getDayTime()));
@@ -1331,19 +1334,21 @@ public class WorkerGameTests {
 		Villager[] g = new Villager[2];
 		java.util.Set<BlockPos> reached = new java.util.HashSet<>();
 		h.onEachTick(() -> {
-			if (g[0] == null || !h.getLevel().getLevelData().isRaining()) return;
+			if (g[0] == null || !dev.villageheart.worker.WorkWeather.precipitating(h.getLevel(), g[0])) return;
 			dev.villageheart.worker.guard.GuardRuntime.lastArrival(g[0].getUUID()).ifPresent(reached::add);
 		});
 		GameTestSequence seq = GuardTestSupport.scene(h, 2).thenExecute(() -> {
 			GuardTestSupport.setTime(h, 6000);
-			rain(h.getLevel());
 			g[0] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot(), java.util.Optional.of(dev.villageheart.core.guard.Shift.DAY));
 			g[1] = GuardTestSupport.hireGuard(h, GuardTestSupport.spawnSpot().east(), java.util.Optional.of(dev.villageheart.core.guard.Shift.NIGHT));
+			dev.villageheart.worker.WorkWeather.force(g[0], true);
+			dev.villageheart.worker.WorkWeather.force(g[1], true);
+			h.assertFalse(h.getLevel().getLevelData().isRaining(), "the shared sky stays clear");
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "the night guard stays asleep in the rain", () ->
 				h.assertTrue(g[1].isSleeping(), "asleep at " + h.getLevel().getDayTime()));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the day guard reaches a patrol point in the rain", () -> {
-			h.assertTrue(h.getLevel().getLevelData().isRaining(), "still raining");
+			h.assertTrue(dev.villageheart.worker.WorkWeather.precipitating(h.getLevel(), g[0]), "still raining");
 			h.assertTrue(g[0].getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY), "on duty in the rain");
 			h.assertTrue(!g[0].isSleeping(), "the day guard stays awake");
 			h.assertValueEqual(dev.villageheart.worker.guard.GuardRuntime.Mode.PATROL, dev.villageheart.worker.guard.GuardRuntime.modeOf(g[0].getUUID()), "patrolling");
@@ -1354,6 +1359,8 @@ public class WorkerGameTests {
 			h.assertFalse(insideRoom(h, g[0], GuardTestSupport.BARRACKS), "outside the Barracks at " + VillageTestSupport.rel(h, g[0].blockPosition()));
 		});
 		seq.thenExecute(() -> {
+			dev.villageheart.worker.WorkWeather.force(g[0], false);
+			dev.villageheart.worker.WorkWeather.force(g[1], false);
 			VillageTestSupport.done(h);
 			end(h);
 		});
