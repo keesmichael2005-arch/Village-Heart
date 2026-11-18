@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-/** The 14 building marker blocks and their items. */
+/** The building marker blocks and their items, one per {@link BuildingType}. */
 public final class MarkerBlocks {
 	public static final Map<BuildingType, MarkerBlock> BLOCKS = new EnumMap<>(BuildingType.class);
 	public static final Map<BuildingType, BlockItem> ITEMS = new EnumMap<>(BuildingType.class);

@@ -24,5 +24,7 @@ public enum ActivityKind {
 	/** M25: a worker heading indoors for a raid, or with nowhere to go. Appended. */
 	SHELTERING, NO_SHELTER,
 	/** M25: a builder repairing a wall or a gate. Appended. */
-	REPAIRING
+	REPAIRING,
+	/** A lumberjack or hunter whose workplace has no flag yet. Appended. */
+	NEEDS_FLAG
 }

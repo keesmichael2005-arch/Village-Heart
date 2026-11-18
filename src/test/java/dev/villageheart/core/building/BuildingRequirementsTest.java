@@ -82,10 +82,9 @@ class BuildingRequirementsTest {
 				assertEquals(BuildingStatus.INVALID, v.status());
 			}
 
-			if (t == BuildingType.MINE || t == BuildingType.HUNTING_LODGE) {
+			if (t == BuildingType.MINE) {
 				Verdict v = BuildingRules.checkRoom(t, facts(r.floor(), minimal(r)), new CheckContext(Tier.TOWN, null, null, 0));
-				BuildingType site = t == BuildingType.MINE ? BuildingType.MINESHAFT : BuildingType.HUNTING_GROUND;
-				assertEquals(List.of(Reason.needsLinkedSite(site)), v.reasons(), t.toString());
+				assertEquals(List.of(Reason.needsLinkedSite(BuildingType.MINESHAFT)), v.reasons(), t.toString());
 			} else {
 				Verdict v = BuildingRules.checkRoom(t, facts(r.floor(), minimal(r)), new CheckContext(Tier.TOWN, null, null, 0));
 				assertEquals(BuildingStatus.VALID, v.status(), t + " needs no site");

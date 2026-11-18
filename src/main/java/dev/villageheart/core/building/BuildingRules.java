@@ -79,16 +79,13 @@ public final class BuildingRules {
 				if (f.lights() < 1) reasons.add(Reason.needsMore(1 - f.lights(), Thing.LIGHT));
 			}
 			case HUNTING_GROUND -> {
-				range = Balance.HUNTING_GROUND_LINK_RANGE;
 				if (f.insideHomeRoom()) reasons.add(Reason.insideHomeRoom());
-				if (f.natural() < Balance.HUNTING_GROUND_MIN_NATURAL) {
-					reasons.add(Reason.needsMore(Balance.HUNTING_GROUND_MIN_NATURAL - f.natural(), Thing.NATURAL));
-				}
 			}
 			case TRAINING_YARD -> {
 				int dummies = f.targets() + f.armorStands();
 				if (dummies < Balance.TRAINING_YARD_MIN_DUMMIES) reasons.add(Reason.needsMore(Balance.TRAINING_YARD_MIN_DUMMIES - dummies, Thing.DUMMY));
 			}
+			case CHOPPING_FLAG -> { }
 			default -> throw new IllegalArgumentException(t + " is not an outdoor site");
 		}
 		if (link == null) reasons.add(Reason.noParent(t.parent().orElseThrow(), range));

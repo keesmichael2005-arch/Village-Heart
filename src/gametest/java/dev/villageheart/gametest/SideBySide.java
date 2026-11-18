@@ -98,12 +98,14 @@ public final class SideBySide {
 		h.setBlock(storeChest2(k), Blocks.CHEST);
 		BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, campMarker(k), Direction.NORTH);
 		BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker(k), Direction.NORTH);
+		LumberTestSupport.placeFlag(h, chop(k).east(), Direction.EAST);
 	}
 
 	public static void assertValid(GameTestHelper h) {
 		for (int k = 0; k < LEVELS; k++) {
 			BuildingTestSupport.assertStatus(h, campMarker(k), MarkerStatus.VALID);
 			BuildingTestSupport.assertStatus(h, storeMarker(k), MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, chop(k).east(), MarkerStatus.VALID);
 		}
 	}
 

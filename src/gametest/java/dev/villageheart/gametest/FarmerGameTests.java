@@ -269,7 +269,7 @@ public class FarmerGameTests {
 		int[] young = {6, 6, 6, 2};
 		int[] ripe = {7, 7, 7, 3};
 		BlockPos[] youngCells = new BlockPos[4], ripeCells = new BlockPos[4];
-		BlockPos edge = new BlockPos(9, 0, 29), out25 = new BlockPos(9, 0, 30), diag = new BlockPos(26, 0, 22), high = new BlockPos(20, 10, 14);
+		BlockPos edge = new BlockPos(9, 0, 29), out25 = new BlockPos(9, 0, 31), diag = new BlockPos(26, 0, 22), high = new BlockPos(20, 10, 14);
 		List<String> problems = new ArrayList<>();
 		long[] t0 = new long[1];
 		long[] ticks = new long[2];
@@ -938,6 +938,30 @@ public class FarmerGameTests {
 				h.assertValueEqual(1L, carried(v[0], Items.WHEAT) + stored(h, "minecraft:wheat"), "wheat carried or stored; " + looseDescription(h, Items.WHEAT, v[0])));
 		seq.thenExecute(() -> {
 			h.assertValueEqual(0, loose(h, Items.WHEAT), "nothing is left lying; " + looseDescription(h, Items.WHEAT, v[0]));
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A crop that touches the seed disc and sits outside 24 blocks is harvested. A crop past a one-block gap is left. */
+	@GameTest(environment = "villageheart-gametest:farm_connected", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void connectedField(GameTestHelper h) {
+		begin(h);
+		BlockPos outside = new BlockPos(9, 0, 30);
+		BlockPos gapped = new BlockPos(11, 0, 31);
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = scene(h, 1, true).thenExecute(() -> {
+			emptyFarmland(h, 9, 29);
+			plantAt(h, 9, 30, CropKind.WHEAT, 7);
+			plantAt(h, 11, 31, CropKind.WHEAT, 7);
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 4000, "the connected crop outside the disc is harvested", () ->
+				h.assertTrue(ageAt(h, outside) >= 0 && ageAt(h, outside) < 7, "age at the outside crop is " + ageAt(h, outside)));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(7, ageAt(h, gapped), "the crop past a one-block gap is left ripe");
+			h.assertTrue(v[0].isAlive(), "the farmer is still there");
 			VillageTestSupport.done(h);
 			end(h);
 		});

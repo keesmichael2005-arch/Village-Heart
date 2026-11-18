@@ -269,6 +269,7 @@ public final class StarterActions {
 		for (int dd = dep - 2; dd >= 0; dd--) if (lat > 1) ring.add(new int[] {lat - 1, dd});
 		Set<Long> used = new HashSet<>();
 		List<BlockPos> chests = new ArrayList<>();
+		BlockPos chopAt = null;
 		for (Object c : (List<?>) a.fields().get("contents")) {
 			String what = (String) c;
 			if (what.equals("bed")) {
@@ -317,13 +318,27 @@ public final class StarterActions {
 			};
 			set(level, p, state);
 			if (chest) chests.add(p);
+			if ("chopping_block".equals(what)) chopAt = p;
 		}
 		if (a.fields().get("chest_items") instanceof Map<?, ?> items) fill(level, chests, items);
 
 		BlockState m = MarkerBlocks.BLOCKS.get(type).defaultBlockState().setValue(MarkerBlock.FACING, facing);
 		if (!m.canSurvive(level, marker)) throw new IllegalStateException("prefab " + type.id() + ": the marker has no wall at " + marker.toShortString());
 		set(level, marker, m);
+		if (type == BuildingType.LUMBER_CAMP && chopAt != null) placeChoppingFlag(level, chopAt);
 		VillageHeart.LOG.info("[sim] prefab {} at {} (marker {})", type.id(), o.toShortString(), marker.toShortString());
+	}
+
+	/** A chopping flag on the chopping block, so a simulated camp still cuts the grove around it. */
+	private static void placeChoppingFlag(ServerLevel level, BlockPos chopAt) {
+		for (Direction d : Direction.Plane.HORIZONTAL) {
+			BlockPos at = chopAt.relative(d);
+			BlockState flag = MarkerBlocks.BLOCKS.get(BuildingType.CHOPPING_FLAG).defaultBlockState().setValue(MarkerBlock.FACING, d);
+			if (level.getBlockState(at).canBeReplaced() && flag.canSurvive(level, at)) {
+				set(level, at, flag);
+				return;
+			}
+		}
 	}
 
 	private static long key(int[] c) { return ((long) c[0] << 32) | c[1]; }

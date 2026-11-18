@@ -82,7 +82,7 @@ public final class Balance {
 	public static final int MAX_TREE_LOGS = 192;
 	public static final int MAX_TREE_WIDTH = 17;
 	public static final int MAX_TREE_HEIGHT = 48;
-	/** Trees within this many blocks (xz) of the Chopping Block, and within +-LUMBER_DY in y. */
+	/** Trees within this many blocks (xz) of the chopping flag, and within +-LUMBER_DY in y. */
 	public static final int LUMBER_RADIUS = 32;
 	public static final int LUMBER_DY = 16;
 	/** The lumberjack stands within this many blocks of the tree base to chop (3D). */
@@ -319,8 +319,8 @@ public final class Balance {
 	public static final int FIELD_REFRESH_READS_PER_TICK = 512;
 	/** A complete field sweep is repeated after this many ticks (new farmland). */
 	public static final int FIELD_INDEX_TTL = 1200;
-	/** Farm cells beyond this many per Farmhouse are ignored (nearest first). */
-	public static final int MAX_FIELD_CELLS = 2048;
+	/** Farm cells beyond this many per Farmhouse are ignored (nearest to a composter first). */
+	public static final int MAX_FIELD_CELLS = 4096;
 	/** At most one stack of each seed is kept, so seeds can never fill the inventory. */
 	public static final int SEED_KEEP_MAX = 64;
 	/** With this many free inventory slots or fewer the farmer composts its surplus before it harvests more. */
@@ -409,9 +409,7 @@ public final class Balance {
 	public static final int HUNTER_UNKNOWN_LIMIT = 60;
 	/** A hunter farther than this from the ground marker walks to its fletching table first (WalkTo plans at most 48 blocks). */
 	public static final int HUNTER_FAR_FROM_GROUND = 40;
-	/** A Hunting Ground links only to a Hunting Lodge within this many blocks (an M5 rule change, M17). */
-	public static final int HUNTING_GROUND_LINK_RANGE = 40;
-	/** Arrived at the ground marker when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
+	/** Arrived at the hunting flag when this close; also when the pathfinder can get no nearer and the hunter is within HUNT_ENTRY_CLOSEST. */
 	public static final double HUNT_ENTRY_REACH = 3.0;
 	public static final double HUNT_ENTRY_CLOSEST = 6.0;
 	public static final int HUNT_MEAT_MIN = 2, HUNT_MEAT_MAX = 4;

@@ -32,6 +32,7 @@ import dev.villageheart.worker.job.WorkStats;
 import dev.villageheart.worker.job.WorkerStatuses;
 import java.util.Map;
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -71,9 +72,18 @@ public final class HunterSystem implements VillageSystem {
 		CampTools.Result lease = isHunter ? CampTools.lease(server, v, ToolKind.BOW_OR_SWORD, HuntGear::rank) : CampTools.Missing.UNKNOWN;
 		AwayCheck.Lease leaseState = HunterJob.leaseState(lease);
 		double mult = isHunter ? HuntPace.multiplier(lease instanceof CampTools.Held, data.get().level(), data.get().needs()) : 1.0;
+		double home = 0;
+		if (ground.isPresent() && data.isPresent()) {
+			BlockPos flag = ground.get().marker();
+			var lodge = data.get().building();
+			home = dev.villageheart.core.site.FlagDay.blocks(flag.getX(), flag.getY(), flag.getZ(), lodge.x(), lodge.y(), lodge.z());
+		}
+		boolean late = isHunter && phaseWork && dev.villageheart.core.site.FlagDay.stayWouldBeLate(level.getDayTime(), home, st.progress().units(), mult);
 		AwayCheck.Inputs in = new AwayCheck.Inputs(isHunter, phaseWork, ground.isPresent(), slotHeld, leaseState, mult, true,
 				st.progress(), st.unknownSteps());
-		AwayCheck.Outcome out = AwayCheck.check(in, Balance.HUNTER_TRIP_UNITS, Balance.HUNTER_STEP_TICKS, Balance.HUNTER_UNKNOWN_LIMIT);
+		AwayCheck.Outcome out = late
+				? new AwayCheck.Outcome(java.util.Optional.of(dev.villageheart.core.mine.SurfaceReason.DAY_END), false, st.progress(), st.unknownSteps())
+				: AwayCheck.check(in, Balance.HUNTER_TRIP_UNITS, Balance.HUNTER_STEP_TICKS, Balance.HUNTER_UNKNOWN_LIMIT);
 		if (out.stays()) {
 			WorkStats.add(HunterJob.JOB, "away_ticks", Balance.HUNTER_STEP_TICKS);
 			if (!out.progress().equals(st.progress()) || out.unknownSteps() != st.unknownSteps()) {
@@ -111,7 +121,7 @@ public final class HunterSystem implements VillageSystem {
 			HunterJob.trace("{} @{} came back: {}", v.getId(), now, reason);
 			switch (reason) {
 				case NO_TOOL -> WorkerStatuses.set(v.getUUID(), WorkerStatus.NEEDS_TOOL);
-				case SITE_INVALID -> WorkerStatuses.set(v.getUUID(), WorkerStatus.NO_WORK);
+				case SITE_INVALID -> WorkerStatuses.set(v.getUUID(), WorkerStatus.NEEDS_FLAG);
 				case STOPPED_WORKING -> VillageHeart.LOG.info("Hunter {} stopped hunting (chest unreadable or no work speed)", v.getUUID());
 				default -> { }
 			}

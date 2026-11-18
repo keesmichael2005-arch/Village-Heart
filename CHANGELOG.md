@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A farmer works the whole connected field, not only the circle around the composter. A lumberjack cuts inside a circle around a chopping flag, and a hunter walks to a hunting flag. Both flags can sit up to 128 blocks from the Heart, and a long walk sends that worker home before the work day ends.
+
 Fixes and changes since 1.0.0 go here (see `docs/WORKFLOW.md`).
 
 ## 1.0.0
