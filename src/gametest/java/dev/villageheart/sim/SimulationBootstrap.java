@@ -19,15 +19,18 @@ public final class SimulationBootstrap implements ModInitializer {
 		SimTickets.register(); // also used by the L2 test of the follow tickets
 		String request = System.getProperty(REQUEST_PROPERTY);
 		if (request == null) {
-			// One world for the whole suite. Rain now stops hired work, so a weather cycle mid-suite
-			// would pause crafts and walks that the tests are timing. Stay clear unless a test asks.
-			ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-				// The client suite is its own world and sets the sky itself. Touching that startup
-				// left the integrated server stuck preparing spawn.
+			// One world for the whole suite. Rain now stops hired work. A test environment that sets
+			// advance_weather puts the rule back to its default when the test ends, so a later test
+			// can be rained on. The headless server stays clear. The client world is singleplayer and
+			// sets its own sky for the rain frame.
+			ServerTickEvents.END_SERVER_TICK.register(server -> {
 				if (server.isSingleplayer()) return;
 				var level = server.overworld();
-				level.getGameRules().set(GameRules.ADVANCE_WEATHER, false, server);
-				level.setWeatherParameters(0, 0, false, false);
+				if (level == null) return;
+				if (level.getGameRules().get(GameRules.ADVANCE_WEATHER)) {
+					level.getGameRules().set(GameRules.ADVANCE_WEATHER, false, server);
+				}
+				if (level.getLevelData().isRaining()) level.setWeatherParameters(0, 0, false, false);
 			});
 			return;
 		}
