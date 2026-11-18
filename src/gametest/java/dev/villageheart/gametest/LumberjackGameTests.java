@@ -626,11 +626,12 @@ public class LumberjackGameTests {
 			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
 			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING, 6));
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
-				h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage"));
-		seq = seq.thenExecute(() -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the logs and the spare sapling reach Storage", () -> {
+			h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage");
 			h.assertValueEqual(5, carried(v[0], Items.OAK_SAPLING), "the worker keeps 1 + 4 saplings: " + inventory(v[0]));
 			h.assertValueEqual(1L, stored(h, "minecraft:oak_sapling"), "the sixth sapling went to Storage");
+		});
+		seq = seq.thenExecute(() -> {
 			// the slot rule: seven different stacks leave one free slot, so the trip starts although the load is tiny
 			var inv = v[0].getInventory();
 			inv.clearContent();

@@ -251,7 +251,10 @@ public final class WalkTo {
 		if (nav.isDone() && now >= nextPathAt) {
 			nextPathAt = now + REPATH_TICKS;
 			nav.setMaxVisitedNodesMultiplier(NODES);
-			Path path = nav.createPath(target, 1, RANGE);
+			// A reach under one block means the villager has to stand in the target cell (beside a workstation or a chest).
+			// Accuracy 1 ends the path a block early, and the walk then never arrives.
+			int accuracy = reach < 1.0 ? 0 : 1;
+			Path path = nav.createPath(target, accuracy, RANGE);
 			nav.setMaxVisitedNodesMultiplier(1.0F);
 			if (path != null && !path.canReach() && path.getNodeCount() <= 1 && d <= closest) {
 				nav.stop();

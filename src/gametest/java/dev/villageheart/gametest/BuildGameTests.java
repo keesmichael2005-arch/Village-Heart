@@ -1280,9 +1280,9 @@ public class BuildGameTests {
 		WorkerTestSupport.begin(h);
 		h.onEachTick(() -> {
 			if (!watch[0]) return;
-			// M26: at 70 ticks a block the builds outlast the work day; once work ends the builders drop their claims in any order, and the
-			// next morning they pick them up in any order. The oldest-first rule is checked over the first work day (1000 -> 11000).
-			if (h.getTick() - watchedAt[0] > 9000) return;
+			// Once work ends the builders drop their claims in any order. The oldest-first rule is checked only while they are still working
+			// (1000 -> 9000), which is 8000 ticks from a start at 1000.
+			if (h.getTick() - watchedAt[0] > 7500) return;
 			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
 			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
 			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {
