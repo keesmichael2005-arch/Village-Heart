@@ -612,25 +612,26 @@ public class LumberjackGameTests {
 					dev.villageheart.core.TreeTask.Stage.REPLANT, java.util.List.of(cellLoc), "minecraft:oak_sapling", h.getLevel().getGameTime(), box, box)));
 			h.getLevel().setDayTime(3000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING, 6));
+			// Slot 0 stays free for the axe. The other seven are full, so the trip starts: 64 logs, not one stack on its own.
+			var inv = v[0].getInventory();
+			inv.setItem(1, new ItemStack(Items.OAK_LOG, 64));
+			inv.setItem(2, new ItemStack(Items.OAK_SAPLING, 6));
+			for (int i = 3; i <= 7; i++) inv.setItem(i, new ItemStack(Items.STICK, 1));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
 				h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage"));
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(5, carried(v[0], Items.OAK_SAPLING), "the worker keeps 1 + 4 saplings: " + inventory(v[0]));
 			h.assertValueEqual(1L, stored(h, "minecraft:oak_sapling"), "the sixth sapling went to Storage");
-			// the slot rule: seven different stacks leave one free slot, so the trip starts although the load is tiny
+			// Every cargo slot is taken, so the trip starts even though each stack is small. Slot 0 stays free for the axe.
 			var inv = v[0].getInventory();
 			inv.clearContent();
-			inv.addItem(new ItemStack(Items.OAK_SAPLING, 5));
+			inv.setItem(1, new ItemStack(Items.OAK_SAPLING, 5));
 			net.minecraft.world.item.Item[] junk = {Items.DIRT, Items.COBBLESTONE, Items.GRAVEL, Items.SAND, Items.CLAY_BALL, Items.FLINT};
-			for (var item : junk) inv.addItem(new ItemStack(item, 1));
-			int used = 0;
-			for (int i = 0; i < inv.getContainerSize(); i++) if (!inv.getItem(i).isEmpty()) used++;
-			h.assertValueEqual(inv.getContainerSize() - 1, used, "one free slot: " + inventory(v[0]));
+			for (int i = 0; i < junk.length; i++) inv.setItem(2 + i, new ItemStack(junk[i], 1));
+			h.assertTrue(dev.villageheart.worker.pocket.Pockets.cargoFull(v[0]), "the cargo slots are full: " + inventory(v[0]));
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the junk reaches Storage although the load is light", () -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the junk reaches Storage although each stack is small", () -> {
 			h.assertValueEqual(1L, stored(h, "minecraft:flint"), "flint in Storage");
 			h.assertValueEqual(1L, stored(h, "minecraft:dirt"), "dirt in Storage");
 			h.assertTrue(carried(v[0], Items.OAK_SAPLING) >= 4, "the saplings stay with the worker: " + inventory(v[0]));

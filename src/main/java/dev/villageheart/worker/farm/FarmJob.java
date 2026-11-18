@@ -639,7 +639,7 @@ public final class FarmJob {
 			if (d.isEmpty()) continue;
 			if (d.is(product)) gainedProduct += d.getCount();
 			if (d.is(Items.WHEAT_SEEDS) || d.is(Items.BEETROOT_SEEDS)) gainedSeeds += d.getCount();
-			ItemStack rest = v.getInventory().addItem(d);
+			ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, d);
 			if (!rest.isEmpty()) Block.popResource(level, bp, rest);
 		}
 		if (held != null) CampTools.use(level, held.lease(), 1);
@@ -704,7 +704,7 @@ public final class FarmJob {
 					ItemStack s = ch.container().getItem(i);
 					if (!s.is(seed)) continue;
 					int n = Math.min(want, s.getCount());
-					ItemStack rest = v.getInventory().addItem(s.copyWithCount(n));
+					ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, s.copyWithCount(n));
 					int moved = n - rest.getCount();
 					s.shrink(moved);
 					want -= moved;
@@ -761,7 +761,7 @@ public final class FarmJob {
 			level.gameEvent(GameEvent.BLOCK_CHANGE, jb, GameEvent.Context.of(v, empty));
 			level.playSound(null, jb, SoundEvents.COMPOSTER_EMPTY, SoundSource.BLOCKS, 1.0F, 1.0F);
 			rt.tenths.remove(data.jobBlock());
-			ItemStack rest = v.getInventory().addItem(new ItemStack(Items.BONE_MEAL));
+			ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, new ItemStack(Items.BONE_MEAL));
 			if (!rest.isEmpty()) Block.popResource(level, jb.above(), rest);
 			WorkStats.add(JOB, "bone_meal_made", 1);
 			rt.log(now, v, "TAKE_BONE_MEAL", jb);

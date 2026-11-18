@@ -413,7 +413,7 @@ public final class SelfCraftJob {
 		ItemStack tool = Stockpiles.withdrawFirst(level, at, k -> storedKey(k, need, job), 1, me);
 		boolean placed = false;
 		if (!tool.isEmpty()) {
-			placed = placeInCamp(server, data.building(), tool);
+			placed = placeInCamp(server, v, data.building(), tool);
 			if (!placed) {
 				Stockpiles.deposit(level, at, tool); // the chest filled up meanwhile: back to Storage, once
 				if (!tool.isEmpty()) v.getInventory().addItem(tool);
@@ -511,7 +511,7 @@ public final class SelfCraftJob {
 		UUID me = v.getUUID();
 		BlockPos at = v.blockPosition();
 		ItemStack tool = new ItemStack(item(recipe.outputId()));
-		if (!placeInCamp(server, data.building(), tool)) {
+		if (!placeInCamp(server, v, data.building(), tool)) {
 			Stockpiles.deposit(level, at, tool);
 			if (!tool.isEmpty()) v.getInventory().addItem(tool);
 			WorkStats.add(job.id(), "tools_to_storage", 1);
@@ -591,20 +591,24 @@ public final class SelfCraftJob {
 		return ToolStacks.roleOf(k).orElse(null);
 	}
 
-	/** First empty slot of the camp's containers; false when there is none (or the chests cannot be read). */
-	private static boolean placeInCamp(MinecraftServer server, HeartLocation building, ItemStack tool) {
+	/** First empty slot of this worker's chest, then any camp chest. False when none has room (or the chests cannot be read). */
+	private static boolean placeInCamp(MinecraftServer server, Villager v, HeartLocation building, ItemStack tool) {
+		for (Container cont : dev.villageheart.worker.pocket.Pockets.ownContainers(server, v)) {
+			if (putInEmpty(cont, tool)) return true;
+		}
 		Optional<List<CampContainers.Chest>> chests = CampContainers.of(server, building);
 		if (chests.isEmpty()) return false;
-		for (CampContainers.Chest c : chests.get()) {
-			Container cont = c.container();
-			for (int i = 0; i < cont.getContainerSize(); i++) {
-				if (cont.getItem(i).isEmpty()) {
-					cont.setItem(i, tool.copy());
-					cont.setChanged();
-					tool.setCount(0);
-					return true;
-				}
-			}
+		for (CampContainers.Chest c : chests.get()) if (putInEmpty(c.container(), tool)) return true;
+		return false;
+	}
+
+	private static boolean putInEmpty(Container cont, ItemStack tool) {
+		for (int i = 0; i < cont.getContainerSize(); i++) {
+			if (!cont.getItem(i).isEmpty()) continue;
+			cont.setItem(i, tool.copy());
+			cont.setChanged();
+			tool.setCount(0);
+			return true;
 		}
 		return false;
 	}

@@ -413,6 +413,13 @@ public class GuardGameTests {
 		return false;
 	}
 
+	/** The chest block still holds the item after the worker record is gone. */
+	private static boolean chestAtHas(GameTestHelper h, BlockPos at, net.minecraft.world.item.Item item) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(at);
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) return true;
+		return false;
+	}
+
 	/** Gear handed in lands in that guard's chest, never a neighbour's. */
 	private static boolean ownChestHas(GameTestHelper h, Villager g, net.minecraft.world.item.Item item) {
 		var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g.getUUID()).orElseThrow().chest().orElseThrow();
@@ -509,14 +516,17 @@ public class GuardGameTests {
 				h.assertTrue(g[i].getMaxHealth() == 30.0, "level 2 health");
 			}
 		}).thenIdle(30);
+		BlockPos[] firedChest = new BlockPos[1];
 		seq = seq.thenExecute(() -> {
 			for (int i = 0; i < 3; i++) h.assertTrue(dev.villageheart.worker.guard.GuardSystem.bedOf(g[i].getUUID()).isPresent(), "bed " + i);
+			var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g[0].getUUID()).orElseThrow().chest().orElseThrow();
+			firedChest[0] = new BlockPos(owned.x(), owned.y(), owned.z());
 			dev.villageheart.worker.Workers.fire(h.getLevel(), g[0]);
 			h.assertTrue(g[0].getMaxHealth() == 20.0, "max health back to 20: " + g[0].getMaxHealth());
 			h.assertTrue(g[0].getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).getModifier(
 					net.minecraft.resources.Identifier.fromNamespaceAndPath("villageheart", "guard_health")) == null, "no modifier left");
 			h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty() && g[0].getMainHandItem().isEmpty(), "nothing worn");
-			h.assertTrue(ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE) && ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_SWORD), "both in the fired guard's chest");
+			h.assertTrue(chestAtHas(h, firedChest[0], net.minecraft.world.item.Items.IRON_CHESTPLATE) && chestAtHas(h, firedChest[0], net.minecraft.world.item.Items.IRON_SWORD), "both in the fired guard's chest");
 			h.assertTrue(g[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME).isEmpty(), "HOME erased");
 			h.assertTrue(freeTickets(h, bedHead(0)) == 0 && freeTickets(h, bedHead(1)) == 0 && freeTickets(h, bedHead(2)) == 0, "the bed tickets are still held");
 			g[1].kill(h.getLevel());
