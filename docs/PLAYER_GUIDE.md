@@ -162,7 +162,7 @@ A worker carries up to one stack. When that is full, or at the end of the work d
 
 ### Tools and levels
 
-Right-click a hired villager to see what they are carrying. The card shows their name, job, level, the same XP bar as the Heart, what they are doing, and whether they are fed, housed, and paid. The eight slots are look-only. A guard's card also shows the sword and armour they are wearing. An unhired villager still opens the trade window.
+Right-click a hired villager to see what they are carrying. It opens in the trading window: their name, job, level, and XP bar on the right, what they are doing, and whether they are fed, housed, and paid. The eight slots on the left are look-only. A guard's window also shows the sword and armour they are wearing. An unhired villager still opens their trades.
 
 Each worker has their own chest in the workplace, the nearest one nobody else owns. A lumberjack, miner, hunter, or farmer keeps the first slot for their tool. During the work day the tool is in that slot. At the end of work they put it back in their chest, take gathered goods to Storage, then go home. In the morning they take the tool out again. If the chest is full, the tool stays in their pocket overnight. If they die, the tool goes back into the chest and the rest drops. A room with two workplaces and one chest hires one worker. The other, in an old village that already had two, waits until you add a chest and shows "Needs a chest".
 

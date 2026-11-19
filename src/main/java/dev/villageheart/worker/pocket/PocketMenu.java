@@ -36,17 +36,26 @@ public class PocketMenu extends AbstractContainerMenu {
 		this.view = view;
 		SimpleContainer pocket = new SimpleContainer(PocketRules.SLOTS);
 		for (int i = 0; i < PocketRules.SLOTS; i++) pocket.setItem(i, i < view.pocket().size() ? view.pocket().get(i).copy() : ItemStack.EMPTY);
-		for (int i = 0; i < PocketRules.SLOTS; i++) {
-			int x = 8 + i * 18;
-			addSlot(new Locked(pocket, i, x, 78));
-		}
+		for (int i = 0; i < PocketRules.SLOTS; i++) addSlot(new Locked(pocket, i, pocketX(i), pocketY(i)));
 		if (view.guard()) {
 			SimpleContainer gear = new SimpleContainer(view.gear().size());
 			for (int i = 0; i < view.gear().size(); i++) gear.setItem(i, view.gear().get(i).copy());
-			int start = 8 + (PocketRules.SLOTS * 18 - view.gear().size() * 18) / 2;
-			for (int i = 0; i < view.gear().size(); i++) addSlot(new Locked(gear, i, start + i * 18, 108));
+			for (int i = 0; i < view.gear().size(); i++) addSlot(new Locked(gear, i, gearX(i), GEAR_Y));
 		}
+		// The player's own grid, in the same place as the trading window. The villager slots stay locked.
+		addStandardInventorySlots(inventory, PLAYER_X, PLAYER_Y);
 	}
+
+	/** Two columns in the trades list, where a trading window would list offers. */
+	public static int pocketX(int i) { return 25 + (i % 2) * 36; }
+
+	public static int pocketY(int i) { return 28 + (i / 2) * 24; }
+
+	public static int gearX(int i) { return 136 + i * 18; }
+
+	public static final int GEAR_Y = 56;
+	public static final int PLAYER_X = 108;
+	public static final int PLAYER_Y = 84;
 
 	public View view() { return view; }
 
@@ -55,9 +64,6 @@ public class PocketMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean stillValid(Player player) { return true; }
-
-	@Override
-	public void clicked(int slotId, int button, net.minecraft.world.inventory.ClickType type, Player player) {}
 
 	/** What the card shows. Built on the server and sent as the menu's opening data. */
 	public record View(String name, String jobId, String jobName, int level, int xp, int xpForNext, String activity,

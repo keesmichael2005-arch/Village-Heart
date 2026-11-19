@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Right-click a hired villager to see the eight things they are carrying, plus their name, job, level, and what they are doing. You can look, and you cannot take anything. Each worker has their own chest: the tool comes out in the morning and goes back at the end of work, and gathered goods go to Storage when those slots are full. The tool in that pocket is not a load, so they keep working while they hold it, and a worn tool is put in Storage when its replacement is made.
+- Right-click a hired villager to see the eight things they are carrying, in the trading window, plus their name, job, level, and what they are doing. You can look, and you cannot take anything. Each worker has their own chest: the tool comes out in the morning and goes back at the end of work, and gathered goods go to Storage when those slots are full. The tool in that pocket is not a load, so they keep working while they hold it, and a worn tool is put in Storage when its replacement is made.
 
 ## 1.0.0
 

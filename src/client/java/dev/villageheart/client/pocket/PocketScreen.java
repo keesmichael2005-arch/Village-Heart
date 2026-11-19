@@ -4,60 +4,78 @@ import dev.villageheart.core.job.PocketRules;
 import dev.villageheart.worker.pocket.PocketMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
-/** The read-only card for one hired villager. Nothing can be moved. */
+/**
+ * The hired villager's pocket, drawn in the villager trading frame. The trades list holds what they are carrying.
+ * The right side is who they are. Nothing of theirs can be moved.
+ */
 public class PocketScreen extends AbstractContainerScreen<PocketMenu> {
-	private static final int WHITE = 0xFFFFFFFF;
-	private static final int OFF = 0xFF404040;
+	private static final Identifier TEXTURE = Identifier.withDefaultNamespace("textures/gui/container/villager.png");
+	private static final Identifier XP_BG = Identifier.withDefaultNamespace("container/villager/experience_bar_background");
+	private static final Identifier XP_FILL = Identifier.withDefaultNamespace("container/villager/experience_bar_current");
+	private static final int TEXTURE_W = 512;
+	private static final int TEXTURE_H = 256;
+	private static final int TEXT = 0xFF404040;
+	private static final int OFF = 0xFF8B8B8B;
 
 	public PocketScreen(PocketMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title);
-		this.imageWidth = 8 + PocketRules.SLOTS * 18 + 8;
-		this.imageHeight = menu.view().guard() ? 136 : 110;
-		this.inventoryLabelY = this.imageHeight + 20;
+		this.imageWidth = 276;
+		this.imageHeight = 166;
+		this.inventoryLabelX = 107;
+		this.inventoryLabelY = this.imageHeight - 94;
 	}
 
 	@Override
 	protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
 		int x = this.leftPos, y = this.topPos;
-		g.fill(x, y, x + this.imageWidth, y + this.imageHeight, 0xFFC6C6C6);
-		g.fill(x + 3, y + 3, x + this.imageWidth - 3, y + this.imageHeight - 3, 0xFF8B8B8B);
+		g.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0.0F, 0.0F, this.imageWidth, this.imageHeight, TEXTURE_W, TEXTURE_H);
+		// The trading slots and arrow are part of the frame. This screen does not trade, so cover them.
+		g.fill(x + 108, y + 24, x + 268, y + 74, 0xFFC6C6C6);
+		for (int i = 0; i < PocketRules.SLOTS; i++) well(g, PocketMenu.pocketX(i), PocketMenu.pocketY(i));
 		PocketMenu.View v = this.menu.view();
-		wells(g, 8, 78, PocketRules.SLOTS);
-		if (v.guard()) wells(g, 8 + (PocketRules.SLOTS * 18 - v.gear().size() * 18) / 2, 108, v.gear().size());
-		g.drawString(this.font, v.name(), x + 8, y + 8, WHITE, false);
-		g.drawString(this.font, v.jobName() + " L" + v.level(), x + 8, y + 20, WHITE, false);
-		int bx = x + 8, by = y + 32;
-		g.fill(bx, by, bx + 40, by + 5, 0xFF404040);
-		int fill = v.xpForNext() <= 0 ? 40 : Math.max(0, Math.min(40, 40 * v.xp() / v.xpForNext()));
-		if (fill > 0) g.fill(bx, by, bx + fill, by + 5, 0xFF55CC55);
-		g.drawString(this.font, v.activity(), x + 8, y + 42, WHITE, false);
-		int nx = x + 8;
-		nx = word(g, "Fed", v.fed(), nx, y + 56);
-		nx = word(g, "Housed", v.housed(), nx + 8, y + 56);
-		word(g, "Paid", v.paid(), nx + 8, y + 56);
-		if (v.guard()) g.drawString(this.font, "Worn", x + 8, y + 96, WHITE, false);
-	}
-
-	/** An empty slot still has to read as a slot. The well is the 18×18 cell the item sits in. */
-	private void wells(GuiGraphics g, int left, int top, int count) {
-		int x = this.leftPos, y = this.topPos;
-		for (int i = 0; i < count; i++) {
-			int sx = x + left + i * 18 - 1, sy = y + top - 1;
-			g.fill(sx, sy, sx + 18, sy + 18, 0xFF373737);
-			g.fill(sx + 1, sy + 1, sx + 17, sy + 17, 0xFF555555);
+		if (v.guard()) {
+			for (int i = 0; i < v.gear().size(); i++) well(g, PocketMenu.gearX(i), PocketMenu.GEAR_Y);
 		}
+		int barX = x + 136, barY = y + 16;
+		g.blitSprite(RenderPipelines.GUI_TEXTURED, XP_BG, barX, barY, 102, 5);
+		int fill = v.xpForNext() <= 0 ? 102 : Math.max(0, Math.min(102, 102 * v.xp() / v.xpForNext()));
+		if (fill > 0) g.blitSprite(RenderPipelines.GUI_TEXTURED, XP_FILL, 102, 5, 0, 0, barX, barY, fill, 5);
 	}
 
-	private int word(GuiGraphics g, String text, boolean on, int x, int y) {
-		g.drawString(this.font, text, x, y, on ? WHITE : OFF, false);
-		return x + this.font.width(text);
+	private void well(GuiGraphics g, int sx, int sy) {
+		int x = this.leftPos + sx - 1, y = this.topPos + sy - 1;
+		g.fill(x, y, x + 18, y + 18, 0xFF373737);
+		g.fill(x + 1, y + 1, x + 17, y + 17, 0xFF555555);
 	}
 
 	@Override
-	protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {}
+	protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+		PocketMenu.View v = this.menu.view();
+		center(g, v.jobName(), 53, 6);
+		center(g, v.name(), 49 + this.imageWidth / 2, 6);
+		g.drawString(this.font, v.jobName() + " L" + v.level(), 136, 26, TEXT, false);
+		g.drawString(this.font, v.activity(), 136, 36, TEXT, false);
+		int nx = 136;
+		nx = word(g, "Fed", v.fed(), nx, 46);
+		nx = word(g, "Housed", v.housed(), nx + 6, 46);
+		nx = word(g, "Paid", v.paid(), nx + 6, 46);
+		if (v.guard()) g.drawString(this.font, "Worn", nx + 8, 46, TEXT, false);
+		g.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, TEXT, false);
+	}
+
+	private void center(GuiGraphics g, String text, int mid, int y) {
+		g.drawString(this.font, text, mid - this.font.width(text) / 2, y, TEXT, false);
+	}
+
+	private int word(GuiGraphics g, String text, boolean on, int x, int y) {
+		g.drawString(this.font, text, x, y, on ? TEXT : OFF, false);
+		return x + this.font.width(text);
+	}
 
 	@Override
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
