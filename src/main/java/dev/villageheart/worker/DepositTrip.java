@@ -126,6 +126,7 @@ public final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		if (Workers.shouldWander(level, villager)) return false; // the work-day stroll does not deliver
 		if (Workers.tripRunning(villager)) return false; // at most one trip per worker, whichever activity started it
 		// A trip already walking finishes. Rain does not start a new one: what is still carried waits for the usual deposit.
 		if (WorkWeather.waiting(level, villager)) return false;
@@ -161,6 +162,7 @@ public final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
+		if (Workers.shouldWander(level, villager)) return false;
 		return !delivered && !failed && gameTime - started < TIMEOUT && load(villager) > 0;
 	}
 

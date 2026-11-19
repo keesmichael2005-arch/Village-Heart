@@ -11,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 import dev.villageheart.core.worker.WeatherShelter;
 import dev.villageheart.core.worker.WorkGate;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.worker.Workers;
 import dev.villageheart.worker.WorkXp;
 import dev.villageheart.worker.WorkerAttachments;
 import dev.villageheart.core.room.Pos;
@@ -127,6 +128,10 @@ public final class GuardRuntime {
 			State s = state(guard);
 			WorkerData data = guard.getAttached(WorkerAttachments.WORKER);
 			if (data == null) return;
+			if (Workers.shouldWander(level, guard)) {
+				if (s.walk.active()) s.walk.release(guard); // once: a later stop would cancel the stroll every tick
+				return;
+			}
 			Optional<BlockPos> yard = trainingYard(level, data);
 			boolean canWork = WorkGate.mayWork(data.needs());
 			// a trainee keeps its starting sword and trains; nothing makes it hand gear in (M18 r3)

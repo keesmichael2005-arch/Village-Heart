@@ -40,6 +40,7 @@ public final class WorkerTestSupport {
 
 	/** Start of a test: drop earlier villagers, remember the day time, let time advance. */
 	public static void begin(GameTestHelper h) {
+		dev.villageheart.worker.guard.RaidCheck.setViewSourceForTest(null);
 		discardSpawned(h.getLevel());
 		FarmTestSupport.clearStrayFarmland(h, 40);
 		ServerLevel level = h.getLevel();
