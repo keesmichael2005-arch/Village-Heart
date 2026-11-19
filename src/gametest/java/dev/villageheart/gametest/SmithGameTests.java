@@ -149,7 +149,7 @@ public class SmithGameTests {
 				}
 			}
 			h.assertTrue(ready, "the far chunks are not ticking yet");
-		}).thenExecute(() -> {
+		}).thenIdle(20).thenExecute(() -> {
 			ServerLevel level = h.getLevel();
 			HeartLocation heart = VillageClaims.current(level.getServer()).orElseThrow().heart();
 			BlockPos near = new BlockPos(heart.x() + 84, heart.y(), heart.z());
@@ -973,6 +973,9 @@ public class SmithGameTests {
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
 			GearOrders.reset();
 			resetCamp(h);
+			// The axe may already be in the pocket. Clearing only the chests would leave them holding one, and no second order starts.
+			jacks[0].getInventory().clearContent();
+			jacks[1].getInventory().clearContent();
 			putStore(h, Items.IRON_INGOT, 6);
 			putStore(h, Items.STICK, 4);
 			// The first pair used the afternoon. The next morning is a full work day; stepping the clock backward

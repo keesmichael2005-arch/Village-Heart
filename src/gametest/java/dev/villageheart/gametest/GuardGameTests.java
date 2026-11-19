@@ -844,6 +844,8 @@ public class GuardGameTests {
 			lightYard(h);
 			victim[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(24, 0, 14));
 			z[0] = zombie(h, new BlockPos(25, 0, 14));
+			// Off shift they put the sword in their own chest. Put it back in the hand for the fight the bound measures.
+			for (Villager v : g) arm(v, net.minecraft.world.item.Items.IRON_SWORD);
 			installRecorders();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both guards awake and on duty", () -> {
