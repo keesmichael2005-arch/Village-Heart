@@ -65,6 +65,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			toastsClearedBeforeScreenshot(context);
 			return;
 		}
+		if ("rain-shelter".equals(System.getProperty("villageheart.l4.only"))) {
+			RainClientTests.rainShelter(context);
+			return;
+		}
 		if ("workstation".equals(System.getProperty("villageheart.l4.only"))) {
 			NoWorkstationClientTests.noWorkstation(context);
 			return;
@@ -92,6 +96,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		WorkerClientTests.workersAtJobBlocks(context);
 		LumberClientTests.lumberjackFelling(context);
 		FarmerClientTests.farmerField(context);
+		RainClientTests.rainShelter(context);
 		CookClientTests.cookAtSmoker(context);
 		CookClientTests.villagersTabNeedsFuel(context);
 		HeartScreenClientTests.heartTabs(context);

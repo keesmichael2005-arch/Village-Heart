@@ -134,6 +134,8 @@ public final class DepositTrip extends Behavior<Villager> {
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
 		if (Workers.shouldWander(level, villager)) return false; // the work-day stroll does not deliver
 		if (Workers.tripRunning(villager)) return false; // at most one trip per worker, whichever activity started it
+		// A trip already walking finishes. Rain does not start a new one: what is still carried waits for the usual deposit.
+		if (WorkWeather.waiting(level, villager)) return false;
 		if ((level.getGameTime() + villager.getId()) % 20 != 0 || level.getGameTime() < cooldownUntil) return false;
 		try (var t = VillageTicker.section()) {
 			if (load(villager) <= 0) {

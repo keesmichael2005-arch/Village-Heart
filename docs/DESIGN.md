@@ -159,6 +159,16 @@ building behaves exactly as in vanilla.
   bell, 11000–12000 go home and eat dinner, 12000+ sleep in a bed. A villager already asleep stays in bed through the meeting
   and the walk home. Guards follow shifts instead (§5.6): a guard on duty does not attend, and a night guard sleeps through the
   day and wakes at dusk for patrol.
+- **Rain and snow**: Minecraft rain, snow, and thunderstorms are one flag. During work time a hired worker stops,
+  walks to their workplace, and stands beside the workstation. They do not keep working: a farmer leaves the field,
+  a lumberjack the tree, a hunter the hunting ground, a miner the Mineshaft, and a builder the site. A drop-off
+  already on its way to Storage is finished first; anything still carried waits for the usual deposit (the stack
+  fills again once they are working, or work ends). The moment the weather clears during work time they go
+  straight back to work. The meeting, dinner, the walk home, and sleep stay on the clock. A guard on duty patrols and fights
+  in any weather; a raid or the alarm still calls them out. A guard who is asleep stays asleep. A trainee is not
+  on duty, so a trainee waits in the Barracks instead of sparring. A raid or a siege still sends everyone to
+  shelter; if it is still raining when the threat ends during work time, workers wait at the workplace. The
+  Villagers tab says "Out of the rain". No new sound and no chat line.
 - **Delivery**: a worker carries up to 1 stack in its inventory. When full, or when work ends, it walks to a spot beside the
   chest in the nearest Storage with room and puts one item in every 5 ticks (a quarter of a second). Fill order is unchanged:
   partial stacks of that item, then the first empty slot. Inputs (tools, seeds, raw food, ore) are fetched the same way.
@@ -729,7 +739,7 @@ builder's line is that. Recent deaths are at most three rows.
 - Blueprint footprint particles while placing.
 
 ## 11. Explicitly OUT of v1
-- Fire, weather events, crop blight, seasons
+- Fire, lightning strikes, crop blight, seasons
 - Real tunnel mining and minecart logistics (cosmetic minecart push may land late in v1)
 - Multiple villages per world, founding a village without a bell
 - Villager relationships, marriage, families, personalities
