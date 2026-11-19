@@ -162,6 +162,8 @@ For every job except the guard:
 
 A worker carries up to one stack. When that is full, or at the end of the work day, they walk to the nearest Storage with room, deposit, and go back. Tools, seeds, raw food, and ore are fetched the same way.
 
+While it is raining, snowing, or thundering, workers stop during work time and wait inside their workplace, beside the workstation. They do not keep working there. A drop-off that has already started is finished; anything still in their hands stays until the usual deposit. The moment the sky clears, if it is still work time, they go straight back to work. Dinner, the walk home, and sleep happen on time even in the rain. The Villagers tab says "Out of the rain".
+
 ### Tools and levels
 
 Right-click a hired villager to see what they are carrying. It opens in the trading window: their name, job, level, and XP bar on the right, what they are doing, and whether they are fed, housed, and paid. The eight slots on the left are look-only. A guard's window also shows the sword and armour they are wearing. An unhired villager still opens their trades.
@@ -445,7 +447,7 @@ A night-shift guard sleeps through the day. Each guard has their own Barracks be
 
 ### Training day
 
-A newly hired guard spends **one day training**. The Villagers tab says "Training". They spar at the Training Yard linked to their Barracks and gain 1 XP every 40 ticks. With no valid yard they stand at the Barracks and gain nothing. They are not on duty, and a raid or the alarm does not call them up. They qualify at dusk (day time 12000) and fight that night.
+A newly hired guard spends **one day training**. The Villagers tab says "Training". They spar at the Training Yard linked to their Barracks and gain 1 XP every 40 ticks. With no valid yard they stand at the Barracks and gain nothing. They are not on duty, and a raid or the alarm does not call them up. In the rain they wait in the Barracks instead of sparring. They qualify at dusk (day time 12000) and fight that night.
 
 After that day, awake off-shift time is spent sparring too, if a yard is valid. Kills inside the claim are 5 XP each.
 
@@ -487,7 +489,7 @@ Before a random raid or a siege, everyone within 96 blocks of the Heart gets omi
 
 ### Everyone shelters
 
-When a raid or a siege starts, the bell rings and every villager in the claim, hired or not, goes indoors: into their own House bed, a free House bed, or the nearest valid room. Hired workers go back to work when it is over. **Guards stay out and fight**, unless they are still training or wounded.
+When a raid or a siege starts, the bell rings and every villager in the claim, hired or not, goes indoors: into their own House bed, a free House bed, or the nearest valid room. Hired workers go back to work when it is over. If it is still raining during work time, they wait at the workplace instead. **Guards stay out and fight**, unless they are still training or wounded. A guard on duty keeps the shift in the rain.
 
 ### Raids
 

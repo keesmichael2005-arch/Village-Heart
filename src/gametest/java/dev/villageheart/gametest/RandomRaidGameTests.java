@@ -175,6 +175,8 @@ public class RandomRaidGameTests {
 		seq = seq.thenExecute(() -> {
 			listen();
 			withTreasury(h, 10);
+			// The 16-emerald figure is a Normal raid (5 waves). A Hard raid left by an earlier test pays 20.
+			h.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
 			raid[0] = dev.villageheart.gametest.raid.RaidStart.start(BuildingTestSupport.owner(), h.absolutePos(BuildingTestSupport.BELL), 1);
 			var id = h.getLevel().getRaids().getId(raid[0]);
 			h.assertTrue(id.isPresent(), "no id");

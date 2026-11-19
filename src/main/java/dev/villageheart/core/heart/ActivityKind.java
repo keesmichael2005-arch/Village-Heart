@@ -25,6 +25,8 @@ public enum ActivityKind {
 	SHELTERING, NO_SHELTER,
 	/** M25: a builder repairing a wall or a gate. Appended. */
 	REPAIRING,
+	/** Waiting at the workplace while it is precipitating during work time. Appended. */
+	OUT_OF_THE_RAIN,
 	/** The worker's own chest is missing. Appended. */
 	NEEDS_CHEST
 }

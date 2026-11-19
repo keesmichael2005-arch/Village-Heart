@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Right-click a hired villager to see the eight things they are carrying, in the trading window, plus their name, job, level, and what they are doing. You can look, and you cannot take anything. Each worker has their own chest: the tool comes out in the morning and goes back at the end of work, and gathered goods go to Storage when those slots are full. The tool in that pocket is not a load, so they keep working while they hold it, and a worn tool is put in Storage when its replacement is made.
+- Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
 - Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".
 - Client tests keep draining spawn chunks while a world loads, and they no longer log a line on every tick of that wait. A slow machine was sitting on the loading screen until the test gave up.
 - A Blueprint Book, crafted from a book and two paper, holds every plan. Pick one, place the footprint, and the book stays in your hand. You can place as many as you like. The builder finishes them when the blocks are in Storage. Press V to see the ones that are not built yet. The Guide asks you to craft the book after you hire a builder.

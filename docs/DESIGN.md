@@ -157,6 +157,16 @@ building behaves exactly as in vanilla.
   identity comes from the profession texture or held item, plus particles.
 - **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–11000 work, 11000–12000 go home
   and eat dinner, 12000+ sleep in a bed. Guards follow shifts instead (§5.6).
+- **Rain and snow**: Minecraft rain, snow, and thunderstorms are one flag. During work time a hired worker stops,
+  walks to their workplace, and stands beside the workstation. They do not keep working: a farmer leaves the field,
+  a lumberjack the tree, a hunter the hunting ground, a miner the Mineshaft, and a builder the site. A drop-off
+  already on its way to Storage is finished first; anything still carried waits for the usual deposit (the cargo
+  slots fill again once they are working, or the day ends). The moment the weather clears during work time they go
+  straight back to work. Dinner, the walk home, and sleep stay on the clock. A guard on duty patrols and fights
+  in any weather; a raid or the alarm still calls them out. A guard who is asleep stays asleep. A trainee is not
+  on duty, so a trainee waits in the Barracks instead of sparring. A raid or a siege still sends everyone to
+  shelter; if it is still raining when the threat ends during work time, workers wait at the workplace. The
+  Villagers tab says "Out of the rain". No new sound and no chat line.
 - **Delivery**: a worker carries goods in its eight inventory slots. A lumberjack, miner, hunter, or farmer keeps slot 0 for the tool, so goods use the other seven. When every cargo slot is taken, or at the end of the day, the worker walks to the nearest Storage, deposits, and returns. The tool is not deposited.
 - **Pocket**: right-click a hired villager for a read-only view of those eight slots, their name, job, level (the same XP bar as the Heart), what they are doing, and whether they are fed, housed, and paid. A guard's card also shows the sword and armour they are wearing. An unhired villager still opens the trade window. A miner underground or a hunter out on a trip still cannot be clicked.
 - **Own chest**: hiring pairs the job block with the nearest chest in that room that no other worker owns. The tool lives in the pocket during the work day. At the end of work the worker puts it back, then dumps cargo at Storage. In the morning they take it out again. A full chest leaves the tool in slot 0 overnight. On death, or if a zombie converts them, the tool goes back into that chest and the cargo drops. A room with two job blocks and one chest hires one worker. A double chest is one chest. A missing chest keeps the link and the worker shows "Needs a chest". Another villager never takes from that chest. The smith delivers a new tool into it.
@@ -726,7 +736,7 @@ builder's line is that. Recent deaths are at most three rows.
 - Blueprint footprint particles while placing.
 
 ## 11. Explicitly OUT of v1
-- Fire, weather events, crop blight, seasons
+- Fire, lightning strikes, crop blight, seasons
 - Real tunnel mining and minecart logistics (cosmetic minecart push may land late in v1)
 - Multiple villages per world, founding a village without a bell
 - Villager relationships, marriage, families, personalities
