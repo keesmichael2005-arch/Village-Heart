@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import dev.villageheart.world.VillageTicker;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.schedule.Activity;
 
@@ -33,7 +34,14 @@ public final class UpdateWorkerActivity extends Behavior<Villager> {
 	@Override
 	protected void start(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
-			villager.getBrain().setActiveActivityIfPossible(WorkerBrain.activityFor(villager, level));
+			Activity want = WorkerBrain.activityFor(villager, level);
+			// The rain stand's walk target is the workplace. Leaving it has to drop that target,
+			// or home time keeps them a workplace away from the bed.
+			if (villager.getBrain().isActive(WorkerBrain.RAIN) && want != WorkerBrain.RAIN) {
+				villager.getNavigation().stop();
+				villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			}
+			villager.getBrain().setActiveActivityIfPossible(want);
 		}
 	}
 }

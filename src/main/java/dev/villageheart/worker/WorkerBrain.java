@@ -104,7 +104,9 @@ public final class WorkerBrain {
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
 		if (shouldShelter(v, level)) return SHELTER;
-		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v)) return RAIN;
+		// Rain stands them at the workplace during work only. A striker or someone with no workplace is
+		// already wandering, and home time (11000) has to be the walk home, not that stand.
+		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v) && !Workers.shouldWander(level, v)) return RAIN;
 		return activityFor(level.getDayTime());
 	}
 
