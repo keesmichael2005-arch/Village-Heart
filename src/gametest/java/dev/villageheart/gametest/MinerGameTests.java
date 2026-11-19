@@ -271,7 +271,7 @@ public class MinerGameTests {
 					BuildingTestSupport.reasons(h, shaftMarker(dy, SHAFT1)), "the shaft's reasons");
 			var text = dev.villageheart.worker.job.WorkerStatusText.of(dev.villageheart.core.worker.WorkerStatus.WORKPLACE_INVALID, dev.villageheart.core.worker.JobType.MINER);
 			h.assertValueEqual("gui.villageheart.heart.activity.workplace_invalid", contents(text).getKey(), "text key");
-			h.assertValueEqual("Workplace invalid", contents(text).getFallback(), "text");
+			h.assertValueEqual("No workstation", contents(text).getFallback(), "text");
 			var snap = HeartTestSupport.snapshot(h, dev.villageheart.core.Rank.OWNER);
 			h.assertTrue(row(h, v[0]).workplaceInvalid(), "the Villagers tab row says workplace invalid");
 			var mineRow = snap.buildings().stream().filter(b -> b.typeId().equals("mine")).findFirst().orElseThrow();

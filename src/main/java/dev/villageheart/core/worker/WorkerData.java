@@ -28,6 +28,12 @@ public record WorkerData(String jobId, HeartLocation building, HeartLocation job
 	}
 
 	public WorkerData withNeeds(Needs n) { return new WorkerData(jobId, building, jobBlock, level, xp, n, chest); }
+
+	/** The same worker at another workplace. Job, level, XP and needs stay. A different building drops the chest link. */
+	public WorkerData withWorkplace(HeartLocation newBuilding, HeartLocation newJobBlock) {
+		Optional<HeartLocation> kept = newBuilding.equals(building) ? chest : Optional.empty();
+		return new WorkerData(jobId, newBuilding, newJobBlock, level, xp, needs, kept);
+	}
 	/** The same worker with a new level and XP (M15). */
 	public WorkerData withProgress(int newLevel, int newXp) { return new WorkerData(jobId, building, jobBlock, newLevel, newXp, needs, chest); }
 

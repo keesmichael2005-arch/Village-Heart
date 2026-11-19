@@ -35,4 +35,13 @@ public record WorkerRecord(UUID villager, String jobId, HeartLocation building, 
 	public WorkerRecord withChest(@Nullable HeartLocation c) {
 		return new WorkerRecord(villager, jobId, building, jobBlock, level, Optional.ofNullable(c));
 	}
+
+	/**
+	 * The same worker at another workplace. Job and level stay. A different building drops the chest link: that chest was in the
+	 * building that is gone, and the next village tick pairs a chest in the new one.
+	 */
+	public WorkerRecord withPlace(HeartLocation newBuilding, HeartLocation newJobBlock) {
+		Optional<HeartLocation> kept = newBuilding.equals(building) ? chest : Optional.empty();
+		return new WorkerRecord(villager, jobId, newBuilding, newJobBlock, level, kept);
+	}
 }
