@@ -81,6 +81,8 @@ final class TreasuryClientTests {
 				for (int x : new int[] {-2, 0, 2}) srv.runCommand("setblock " + x + " " + y + " 7 minecraft:composter");
 				srv.runCommand("setblock 0 " + y + " 10 minecraft:torch");
 				srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
+				srv.runCommand("setblock -2 " + y + " 9 minecraft:chest");
+				srv.runCommand("setblock 0 " + y + " 8 minecraft:chest");
 				HeartScreenClientTests.room(srv, 5, y, 5, 4, "house_marker");
 				for (int x : new int[] {6, 8, 10}) {
 					srv.runCommand("setblock " + x + " " + y + " 7 minecraft:red_bed[facing=south,part=foot]");

@@ -38,7 +38,8 @@ public final class WorkerCodecs {
 		return DataResult.success(Needs.of(r.hungryDays(), r.housed(), r.paid()));
 	}, n -> DataResult.success(new RawNeeds(n.fed(), n.hungryDays(), n.housed(), n.paid())));
 
-	private record Raw(String job, HeartLocation building, HeartLocation jobBlock, int level, int xp, Needs needs) {}
+	private record Raw(String job, HeartLocation building, HeartLocation jobBlock, int level, int xp, Needs needs,
+			java.util.Optional<HeartLocation> chest) {}
 
 	private static final Codec<Raw> RAW = RecordCodecBuilder.create(i -> i.group(
 			Codec.STRING.fieldOf("job").forGetter(Raw::job),
@@ -46,7 +47,8 @@ public final class WorkerCodecs {
 			VillageCodecs.HEART_LOCATION.fieldOf("job_block").forGetter(Raw::jobBlock),
 			Codec.INT.optionalFieldOf("level", 1).forGetter(Raw::level),
 			Codec.INT.optionalFieldOf("xp", 0).forGetter(Raw::xp),
-			NEEDS.optionalFieldOf("needs", Needs.DEFAULT).forGetter(Raw::needs)
+			NEEDS.optionalFieldOf("needs", Needs.DEFAULT).forGetter(Raw::needs),
+			VillageCodecs.HEART_LOCATION.optionalFieldOf("chest").forGetter(Raw::chest)
 	).apply(i, Raw::new));
 
 	public static final Codec<WorkerData> WORKER_DATA = RAW.flatXmap(r -> {
@@ -59,9 +61,9 @@ public final class WorkerCodecs {
 				warnedClamp = true;
 				LOG.warn("Worker save data had level {} / xp {}: clamped to {} / {}", r.level(), r.xp(), p.level(), p.xp());
 			}
-			return DataResult.success(new WorkerData(r.job(), r.building(), r.jobBlock(), p.level(), p.xp(), r.needs()));
+			return DataResult.success(new WorkerData(r.job(), r.building(), r.jobBlock(), p.level(), p.xp(), r.needs(), r.chest()));
 		} catch (IllegalArgumentException e) {
 			return DataResult.error(() -> "Invalid worker: " + e.getMessage());
 		}
-	}, w -> DataResult.success(new Raw(w.jobId(), w.building(), w.jobBlock(), w.level(), w.xp(), w.needs())));
+	}, w -> DataResult.success(new Raw(w.jobId(), w.building(), w.jobBlock(), w.level(), w.xp(), w.needs(), w.chest())));
 }

@@ -69,6 +69,7 @@ public final class TierTestSupport {
 			WorkerTestSupport.light(h, 0, 0, 31, 31);
 			WorkerTestSupport.farmhouse(h, FARM, 2);
 			h.setBlock(BuildingTestSupport.inside(FARM, 0, 0, 1), Blocks.COMPOSTER);
+			h.setBlock(BuildingTestSupport.inside(FARM, 4, 0, 1), Blocks.CHEST);
 			FarmTestSupport.buildStorage(h);
 			BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, FarmTestSupport.farmMarker(), Direction.NORTH);
 			BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, FarmTestSupport.storeMarker(), Direction.NORTH);

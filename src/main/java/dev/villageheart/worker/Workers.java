@@ -85,8 +85,10 @@ public final class Workers {
 		HireDecision decision = JobSlots.decide(jobSites.sites(server, job), v.workers(), v.tier(), villager.getUUID(), job, preferredBuilding);
 		if (decision instanceof HireDecision.Refused r) return new HireResult.Refused(r.reason());
 		HireDecision.Hired hired = (HireDecision.Hired) decision;
-		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock());
-		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock());
+		Optional<HeartLocation> chest = dev.villageheart.worker.pocket.Pockets.nearestFree(server, hired.site().building(), hired.jobBlock(), v.workers());
+		if (chest.isEmpty()) return new HireResult.Refused(HireRefusal.NO_FREE_SLOT);
+		WorkerData data = WorkerData.hired(job, hired.site().building(), hired.jobBlock()).withChest(chest.get());
+		WorkerRecord record = new WorkerRecord(villager.getUUID(), job.id(), data.building(), data.jobBlock()).withChest(chest.get());
 		VillageClaims.data(server).update(s -> s.withWorker(record));
 		// the first day is paid at once or the worker strikes from its first tick (M12), so the needs below already know
 		dev.villageheart.economy.Wages.onHired(server, record);
@@ -179,6 +181,8 @@ public final class Workers {
 		WorkerStatus trip = TRIP_STATUS.get(record.villager());
 		WorkerStatus slot = slotStatus(server, record);
 		if (slot != WorkerStatus.OK) return slot;
+		if (dev.villageheart.worker.pocket.Pockets.chestMissing(server, record)
+				|| dev.villageheart.worker.pocket.Pockets.waitingOnChest(server, record)) return WorkerStatus.NEEDS_CHEST;
 		if (dev.villageheart.economy.Wages.onStrike(server, record.villager())
 				&& dev.villageheart.core.worker.JobType.byId(record.jobId()).map(dev.villageheart.core.economy.StrikeRules::mayStrike).orElse(true)) return WorkerStatus.ON_STRIKE;
 		if (tooHungry(server, record)) return WorkerStatus.TOO_HUNGRY;

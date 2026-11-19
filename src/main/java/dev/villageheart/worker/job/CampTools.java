@@ -45,6 +45,11 @@ public final class CampTools {
 
 	record Ref(int container, int slot) {}
 
+	private static dev.villageheart.core.WorkerRecord recordOf(VillageState village, Villager villager) {
+		for (dev.villageheart.core.WorkerRecord w : village.workers()) if (w.villager().equals(villager.getUUID())) return w;
+		return null;
+	}
+
 	public static boolean isTool(ToolKind kind, ItemStack s) {
 		if (s.isEmpty()) return false;
 		return switch (kind) {
@@ -71,6 +76,34 @@ public final class CampTools {
 		Optional<WorkerData> data = WorkerAttachments.get(villager);
 		Optional<VillageState> village = VillageClaims.current(server);
 		if (data.isEmpty() || village.isEmpty()) return Missing.UNKNOWN;
+		if (dev.villageheart.worker.pocket.Pockets.holdingTool(villager)) {
+			ItemStack stack = villager.getInventory().getItem(dev.villageheart.core.job.PocketRules.TOOL_SLOT);
+			return new Held(new Lease(villager.getInventory(), dev.villageheart.core.job.PocketRules.TOOL_SLOT, stack, tierOf(stack)));
+		}
+		// A paired worker uses only their own chest. A worker with no link yet (a direct install, or a chest that cannot be read) keeps
+		// the shared camp scan so a building whose chunk is unloaded is still "unknown" rather than "no tool".
+		if (data.get().chest().isPresent()) {
+			List<dev.villageheart.worker.pocket.Pockets.Owned> own = dev.villageheart.worker.pocket.Pockets.ownChests(server, villager);
+			if (own.isEmpty()) {
+				dev.villageheart.core.WorkerRecord rec = recordOf(village.get(), villager);
+				return rec != null && dev.villageheart.worker.pocket.Pockets.chestMissing(server, rec) ? Missing.NONE : Missing.UNKNOWN;
+			}
+			List<ToolAllocation.Tool<Ref>> ownTools = new ArrayList<>();
+			for (int ci = 0; ci < own.size(); ci++) {
+				Container c = own.get(ci).container();
+				for (int si = 0; si < c.getContainerSize(); si++) {
+					ItemStack s = c.getItem(si);
+					if (isTool(kind, s)) ownTools.add(new ToolAllocation.Tool<>(new Ref(ci, si), tierOf(s), ci * 1000 + si, Math.max(0, s.getMaxDamage() - s.getDamageValue())));
+				}
+			}
+			Map<UUID, Ref> mineOnly = rank == null ? ToolAllocation.assign(ownTools, List.of(villager.getUUID()))
+					: ToolAllocation.assign(ownTools, List.of(villager.getUUID()), t -> rank.applyAsInt(own.get(t.ref().container()).container().getItem(t.ref().slot())));
+			Ref got = mineOnly.get(villager.getUUID());
+			if (got == null) return Missing.NONE;
+			Container c = own.get(got.container()).container();
+			ItemStack stack = c.getItem(got.slot());
+			return new Held(new Lease(c, got.slot(), stack, tierOf(stack)));
+		}
 		Optional<List<CampContainers.Chest>> chests = CampContainers.of(server, data.get().building());
 		if (chests.isEmpty()) return Missing.UNKNOWN;
 		List<ToolAllocation.Tool<Ref>> tools = new ArrayList<>();

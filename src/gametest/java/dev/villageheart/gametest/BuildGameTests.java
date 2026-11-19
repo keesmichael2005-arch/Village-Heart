@@ -1318,6 +1318,8 @@ public class BuildGameTests {
 		});
 		BuildTestSupport.layout(h, With.STANDARD).thenExecute(() -> {
 			h.setBlock(BuildingTestSupport.inside(BuildTestSupport.HUT, 4, 0, 0), JobBlocks.BLOCKS.get(dev.villageheart.core.building.JobBlockType.BUILDERS_TABLE));
+			// A second chest, not beside the hut's own, so the second builder has one.
+			h.setBlock(BuildingTestSupport.inside(BuildTestSupport.HUT, 0, 0, 3), Blocks.CHEST);
 		}).thenWaitUntil(() -> {
 			BuildingTestSupport.assertStatus(h, BuildTestSupport.hutMarker(), MarkerStatus.VALID);
 			h.assertTrue(BuildingTestSupport.verdict(h, BuildTestSupport.hutMarker()).orElseThrow().slots() == 2, "the Hut has two worker slots");

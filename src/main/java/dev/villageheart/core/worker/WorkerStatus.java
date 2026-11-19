@@ -33,5 +33,7 @@ public enum WorkerStatus {
 	/** The treasury is full: the merchant stops selling (M22). */
 	TREASURY_FULL,
 	/** A lumberjack or hunter whose camp has no flag yet. Appended. */
-	NEEDS_FLAG
+	NEEDS_FLAG,
+	/** The worker's own chest is missing or was never paired. Appended so older status numbers stay valid. */
+	NEEDS_CHEST
 }

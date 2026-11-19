@@ -193,6 +193,7 @@ public class ThreatShelterGameTests {
 				WorkerTestSupport.bed(h, BuildingTestSupport.inside(BARRACKS, i, 0, 2));
 			}
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 0), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 2), Blocks.CHEST.defaultBlockState());
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 1), Blocks.TORCH.defaultBlockState());
 			BuildingTestSupport.placeMarker(h, BuildingType.BARRACKS, marker[0], Direction.NORTH);
 			BuildingTestSupport.room(h, house, 5, 4);

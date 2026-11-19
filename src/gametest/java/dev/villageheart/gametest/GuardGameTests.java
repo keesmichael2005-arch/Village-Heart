@@ -413,6 +413,21 @@ public class GuardGameTests {
 		return false;
 	}
 
+	/** The chest block still holds the item after the worker record is gone. */
+	private static boolean chestAtHas(GameTestHelper h, BlockPos at, net.minecraft.world.item.Item item) {
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(at);
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) return true;
+		return false;
+	}
+
+	/** Gear handed in lands in that guard's chest, never a neighbour's. */
+	private static boolean ownChestHas(GameTestHelper h, Villager g, net.minecraft.world.item.Item item) {
+		var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g.getUUID()).orElseThrow().chest().orElseThrow();
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(new net.minecraft.core.BlockPos(owned.x(), owned.y(), owned.z()));
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) return true;
+		return false;
+	}
+
 	private static void wear(Villager g, net.minecraft.world.entity.EquipmentSlot slot, net.minecraft.world.item.Item item) {
 		g.setItemSlot(slot, new net.minecraft.world.item.ItemStack(item));
 		g.setGuaranteedDrop(slot);
@@ -442,7 +457,7 @@ public class GuardGameTests {
 		});
 	}
 
-	/** One chestplate serves two shifts: handed in at the end of a shift, worn by the next guard at its recheck (day to night and back). */
+	/** Each guard's armour stays in that guard's chest. The night guard never wears the day guard's plate. */
 	@GameTest(environment = "villageheart-gametest:guards_gear_shared", structure = YARD, skyAccess = true, maxTicks = 5200)
 	public void gearHandedInAndShared(GameTestHelper h) {
 		begin(h);
@@ -453,23 +468,34 @@ public class GuardGameTests {
 			g[0] = hireGuard(h, spawnSpot(), Optional.of(Shift.DAY));
 			g[1] = hireGuard(h, spawnSpot().east(), Optional.of(Shift.NIGHT));
 			wear(g[0], chest, net.minecraft.world.item.Items.IRON_CHESTPLATE);
+			var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g[1].getUUID()).orElseThrow().chest().orElseThrow();
+			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(new net.minecraft.core.BlockPos(owned.x(), owned.y(), owned.z()));
+			box.setItem(0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.LEATHER_CHESTPLATE));
+			box.setChanged();
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 12600, "waiting for 12600"));
 		seq = seq.thenExecute(() -> {
-			h.assertTrue(g[0].getItemBySlot(chest).isEmpty(), "A handed the chestplate in");
-			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE), "it is in the Barracks chest");
+			h.assertTrue(g[0].getItemBySlot(chest).isEmpty(), "A handed the iron chestplate in");
+			h.assertTrue(ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE), "the iron plate is in A's chest");
+			h.assertTrue(!g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B does not wear A's plate");
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 13400, "waiting for 13400"));
-		seq = seq.thenExecute(() -> h.assertTrue(g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B wears it: " + g[1].getItemBySlot(chest)));
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.LEATHER_CHESTPLATE), "B wears the leather plate from B's chest: " + g[1].getItemBySlot(chest));
+			h.assertTrue(ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE), "A's iron plate stayed in A's chest");
+		});
 		seq = seq.thenExecute(() -> setTime(h, 23800));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 24600, "waiting for 600 after the shift change"));
 		seq = seq.thenExecute(() -> {
-			h.assertTrue(g[1].getItemBySlot(chest).isEmpty(), "B handed it in");
-			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE), "back in the Barracks chest");
+			h.assertTrue(g[1].getItemBySlot(chest).isEmpty(), "B handed the leather plate in");
+			h.assertTrue(ownChestHas(h, g[1], net.minecraft.world.item.Items.LEATHER_CHESTPLATE), "it is back in B's chest");
+			h.assertTrue(g[0].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE) || ownChestHas(h, g[0], net.minecraft.world.item.Items.IRON_CHESTPLATE), "A's iron plate is on A or in A's chest");
+			h.assertTrue(!g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B does not wear A's plate");
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getLevel().getDayTime() >= 25400, "waiting for 1400 after the shift change"));
 		seq.thenExecute(() -> {
-			h.assertTrue(g[0].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "A wears it again: " + g[0].getItemBySlot(chest));
+			h.assertTrue(g[0].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "A wears the iron plate again: " + g[0].getItemBySlot(chest));
+			h.assertTrue(!g[1].getItemBySlot(chest).is(net.minecraft.world.item.Items.IRON_CHESTPLATE), "B still does not wear A's plate");
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -491,14 +517,17 @@ public class GuardGameTests {
 				h.assertTrue(g[i].getMaxHealth() == 30.0, "level 2 health");
 			}
 		}).thenIdle(30);
+		BlockPos[] firedChest = new BlockPos[1];
 		seq = seq.thenExecute(() -> {
 			for (int i = 0; i < 3; i++) h.assertTrue(dev.villageheart.worker.guard.GuardSystem.bedOf(g[i].getUUID()).isPresent(), "bed " + i);
+			var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(g[0].getUUID()).orElseThrow().chest().orElseThrow();
+			firedChest[0] = new BlockPos(owned.x(), owned.y(), owned.z());
 			dev.villageheart.worker.Workers.fire(h.getLevel(), g[0]);
 			h.assertTrue(g[0].getMaxHealth() == 20.0, "max health back to 20: " + g[0].getMaxHealth());
 			h.assertTrue(g[0].getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).getModifier(
 					net.minecraft.resources.Identifier.fromNamespaceAndPath("villageheart", "guard_health")) == null, "no modifier left");
 			h.assertTrue(g[0].getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty() && g[0].getMainHandItem().isEmpty(), "nothing worn");
-			h.assertTrue(chestHas(h, net.minecraft.world.item.Items.IRON_CHESTPLATE) && chestHas(h, net.minecraft.world.item.Items.IRON_SWORD), "both in the Barracks chest");
+			h.assertTrue(chestAtHas(h, firedChest[0], net.minecraft.world.item.Items.IRON_CHESTPLATE) && chestAtHas(h, firedChest[0], net.minecraft.world.item.Items.IRON_SWORD), "both in the fired guard's chest");
 			h.assertTrue(g[0].getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.HOME).isEmpty(), "HOME erased");
 			h.assertTrue(freeTickets(h, bedHead(0)) == 0 && freeTickets(h, bedHead(1)) == 0 && freeTickets(h, bedHead(2)) == 0, "the bed tickets are still held");
 			g[1].kill(h.getLevel());
@@ -815,6 +844,8 @@ public class GuardGameTests {
 			lightYard(h);
 			victim[0] = WorkerTestSupport.spawnVillager(h, new BlockPos(24, 0, 14));
 			z[0] = zombie(h, new BlockPos(25, 0, 14));
+			// Off shift they put the sword in their own chest. Put it back in the hand for the fight the bound measures.
+			for (Villager v : g) arm(v, net.minecraft.world.item.Items.IRON_SWORD);
 			installRecorders();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 300, "both guards awake and on duty", () -> {

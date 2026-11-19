@@ -345,7 +345,7 @@ public final class LumberJob {
 		trace("{} cut {} at {} ({} left)", v.getId(), state.getBlock(), bp, ws.remaining.size());
 		if (level.getGameRules().get(GameRules.BLOCK_DROPS)) {
 			for (ItemStack drop : Block.getDrops(state, level, bp, null, v, held.lease().stack())) {
-				ItemStack rest = v.getInventory().addItem(drop.copy());
+				ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, drop.copy());
 				if (!rest.isEmpty()) Block.popResource(level, bp, rest);
 			}
 		}
@@ -417,7 +417,7 @@ public final class LumberJob {
 		int n = ReplantRules.cuttings(stumpCells, saplingsNeeded(level.getServer(), data, item), available);
 		trace("{} cuttings {} x{} ({} on hand)", v.getId(), saplingId, n, available);
 		if (n <= 0) return;
-		ItemStack rest = v.getInventory().addItem(new ItemStack(item, n));
+		ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, new ItemStack(item, n));
 		if (!rest.isEmpty()) Block.popResource(level, at, rest);
 		WorkStats.add(JOB, "cuttings", n);
 	}
@@ -728,7 +728,7 @@ public final class LumberJob {
 						if (!s.is(item)) continue;
 						int n = Math.min(want, s.getCount());
 						ItemStack moving = s.copyWithCount(n);
-						ItemStack rest = v.getInventory().addItem(moving);
+						ItemStack rest = dev.villageheart.worker.pocket.Pockets.insertGoods(v, moving);
 						int moved = n - rest.getCount();
 						s.shrink(moved);
 						want -= moved;

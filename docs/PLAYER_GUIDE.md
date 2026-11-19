@@ -167,7 +167,11 @@ While it is raining, snowing, or thundering, workers stop during work time and w
 
 ### Tools and levels
 
-A tool in the **building's chest** is the one the worker uses. It stays in that chest and loses durability there. A better tier is faster. The multiplier is the vanilla tool speed divided by 2, so a stone tool is the baseline:
+Right-click a hired villager to see what they are carrying. It opens in the trading window: their name, job, level, and XP bar on the right, what they are doing, and whether they are fed, housed, and paid. The eight slots on the left are look-only. A guard's window also shows the sword and armour they are wearing. An unhired villager still opens their trades.
+
+Each worker has their own chest in the workplace, the nearest one nobody else owns. A lumberjack, miner, hunter, or farmer keeps the first slot for their tool. During the work day the tool is in that slot. At the end of work they put it back in their chest, take gathered goods to Storage, then go home. In the morning they take the tool out again. If the chest is full, the tool stays in their pocket overnight. If they die, the tool goes back into the chest and the rest drops. A room with two workplaces and one chest hires one worker. The other, in an old village that already had two, waits until you add a chest and shows "Needs a chest".
+
+A tool in **that worker's chest** is the one they carry. It loses durability while they work. A better tier is faster. The multiplier is the vanilla tool speed divided by 2, so a stone tool is the baseline:
 
 | Tool | Speed |
 |---|---|
@@ -207,7 +211,7 @@ At level 1 with a stone axe, one log takes about **2 seconds** (40 ticks). A woo
 
 ### Farmer
 
-Needs a Farmhouse and a composter. No tool is required. A hoe in the Farmhouse chest is ×1.25, any tier, and wears out one durability per harvest. Without a hoe nothing is reported and the work is full speed.
+Needs a Farmhouse and a composter. No tool is required. A hoe in that farmer's chest is ×1.25, any tier, and wears out one durability per harvest. Without a hoe nothing is reported and the work is full speed.
 
 They work the connected farmland. The seed is farmland within **24 blocks** horizontally of a composter and within 8 blocks of height. From there, farmland that shares a side is included, including a step of one block up or down. A two-block rise, a diagonal touch, or a one-block gap of path, fence, or water stops the field. Every farmer of that Farmhouse shares one field. They harvest ripe wheat, carrots, potatoes (age 7), and beetroots (age 3), and replant in the same moment. They do not till new ground, and they do not touch torchflowers, pitcher plants, stems, berries, or nether wart. Empty farmland in the field is planted with whichever of those four crops is most common next to it. Ties go wheat, then carrots, potatoes, beetroots.
 
@@ -229,7 +233,7 @@ A redstone or lapis hit is 4 of that item. Gold and diamond hits are 1. What doe
 
 ### Hunter
 
-Needs a Hunting Lodge, a fletching table, a hunting flag, and a **bow, crossbow, or sword**. The lodge is a valid room without a flag; the hunter waits, and the Villagers tab says "Needs a hunting flag". Spears, the mace, and the trident are not hunter weapons. A bow or crossbow is taken before any sword. The weapon stays in the Lodge chest and loses 5 durability per finished trip. The tier of the weapon does not change how often they hunt.
+Needs a Hunting Lodge, a fletching table, a hunting flag, and a **bow, crossbow, or sword**. The lodge is a valid room without a flag; the hunter waits, and the Villagers tab says "Needs a hunting flag". Spears, the mace, and the trident are not hunter weapons. A bow or crossbow is taken before any sword. The weapon is in that hunter's pocket during the day and loses 5 durability per finished trip. The tier of the weapon does not change how often they hunt.
 
 They walk to the hunting flag and are gone for **3 in-game hours** (3000 ticks at level 1, 2400 at level 2, 2000 at level 3), then return. A trip brings 2–4 raw meat (beef, pork, mutton, or chicken, weighted by the animals that spawn in the biomes around the flag), 1–2 leather, 1–2 feathers, and a 50% chance of a rabbit hide. With a bow or crossbow, one arrow from the chest (plain arrows first) adds one extra meat. With no arrow they still hunt, without the bonus. Infinity is not special-cased. No animals appear.
 
@@ -425,7 +429,7 @@ A guard is hired at a grindstone in a valid Barracks, by day only. From dusk to 
 
 ### Wooden sword, then whatever the village owns
 
-A new guard starts with a **wooden sword and no armour**, and with **20 health**, the same as any villager. They take better gear only from the Barracks chest and from Storage: leather, then copper, then chainmail and gold, then iron, then diamond, then netherite, and swords by their attack damage. Enchantments are not compared. They pick up better gear at the start of duty and again every 1200 ticks, and they hand it back when they go off shift. Armour does not show on the villager. The sword does. A guard who dies drops that gear. A converted guard drops it too.
+A new guard starts with a **wooden sword and no armour**, and with **20 health**, the same as any villager. They take better gear from their own Barracks chest and from Storage: leather, then copper, then chainmail and gold, then iron, then diamond, then netherite, and swords by their attack damage. Enchantments are not compared. They pick up better gear at the start of duty and again every 1200 ticks. A night guard hands the sword and armour back to their own chest at dawn, and a day guard at dusk. Armour does not show on the villager. The sword does. A guard who dies drops that gear. A converted guard drops it too.
 
 There are no archers. Guards do not use bows.
 

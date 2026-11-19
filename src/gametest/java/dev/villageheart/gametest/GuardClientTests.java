@@ -34,6 +34,7 @@ final class GuardClientTests {
 			srv.runCommand("setblock " + (-2 + i) + " " + y + " 8 minecraft:red_bed[facing=south,part=foot]");
 		}
 		srv.runCommand("setblock 1 " + y + " 7 minecraft:chest");
+		if (n >= 2) srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
 		srv.runCommand("setblock 1 " + y + " 10 minecraft:torch");
 	}
 

@@ -22,9 +22,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A worker carries what it holds (the villager inventory, minus what its job keeps and up to 12 food points for itself and breeding) to Storage: when the
- * load reaches {@link Balance#WORKER_CARRY_STACKS} stacks' worth (sum of count / max stack size), or when the day's work is over (go_home)
- * with anything carried. It walks to the door of the nearest Storage with space and hands the stacks to that Storage; whatever does not fit
+ * A worker carries what it holds (the villager inventory, minus what its job keeps and up to 12 food points for itself and breeding) to Storage when
+ * the cargo slots are full, or when the day's work is over (go_home) with anything carried. The tool slot is never handed in. It walks to the door
+ * of the nearest Storage with space and hands the stacks to that Storage; whatever does not fit
  * is kept. No Storage with space: status STORAGE_FULL (and the village's "Storage full" alert is asked for). A trip times out after 600
  * ticks (STORAGE_UNREACHABLE); after any failed trip the worker waits 200 ticks before trying again. Trip state is not saved: after a
  * reload the start condition is simply evaluated again.
@@ -82,6 +82,7 @@ public final class DepositTrip extends Behavior<Villager> {
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack s = inv.getItem(i);
 			if (s.isEmpty()) continue;
+			if (i == dev.villageheart.core.job.PocketRules.TOOL_SLOT && dev.villageheart.worker.pocket.Pockets.holdingTool(v)) continue;
 			int left = keepLeft.getOrDefault(s.getItem(), 0);
 			int keptHere = Math.min(left, s.getCount());
 			keepLeft.put(s.getItem(), left - keptHere);
@@ -97,23 +98,17 @@ public final class DepositTrip extends Behavior<Villager> {
 		return load;
 	}
 
-	private static int freeSlots(Villager v) {
-		int free = 0;
-		SimpleContainer inv = v.getInventory();
-		for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).isEmpty()) free++;
-		return free;
-	}
-
 	/**
-	 * The start condition without cooldowns: something to hand in, and either a full stack's worth (Balance.WORKER_CARRY_STACKS), at most
-	 * one free inventory slot, or the day's work is over. Jobs yield to a trip while this is true (a worker that cannot deposit stops
-	 * gathering, DESIGN section 6).
+	 * The start condition without cooldowns: something to hand in, and either every cargo slot is taken or the day's work is over. The tool
+	 * slot is not a cargo slot. Jobs yield to a trip while this is true (a worker that cannot deposit stops gathering).
 	 */
 	public static boolean wanted(ServerLevel level, Villager villager) {
+		dev.villageheart.worker.pocket.Pockets.settleToolSlot(villager);
 		double load = load(villager);
 		if (load <= 0) return false;
+		if (dev.villageheart.worker.pocket.Pockets.mustReturnTool(level, villager)) return false;
 		boolean homeTime = DaySchedule.phaseAt(level.getDayTime()) == DayPhase.GO_HOME;
-		return load >= Balance.WORKER_CARRY_STACKS || freeSlots(villager) <= 1 || homeTime || JobBehaviours.depositNow(villager);
+		return dev.villageheart.worker.pocket.Pockets.cargoFull(villager) || homeTime || JobBehaviours.depositNow(villager);
 	}
 
 	private static ItemStack firstCarried(Villager v) {

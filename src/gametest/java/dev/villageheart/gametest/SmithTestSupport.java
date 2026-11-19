@@ -123,6 +123,12 @@ public final class SmithTestSupport {
 
 	public static BlockPos campChest() { return BuildingTestSupport.inside(CAMP, 4, 0, 3); }
 
+	/** A second camp chest, not beside {@link #campChest()}. */
+	public static BlockPos campChest2() { return BuildingTestSupport.inside(CAMP, 0, 0, 3); }
+
+	/** A second smithy chest, not beside {@link #smithyChest()}. */
+	public static BlockPos smithyChest2() { return BuildingTestSupport.inside(SMITHY, 0, 0, 3); }
+
 	public static BlockPos campSpawn() { return BuildingTestSupport.inside(CAMP, 1, 0, 1); }
 
 	/** A valid Lumber Camp. The caller waits until the marker reads VALID. */

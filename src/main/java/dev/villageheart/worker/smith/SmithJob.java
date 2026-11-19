@@ -923,7 +923,8 @@ public final class SmithJob {
 			return;
 		}
 		HeartLocation dest = st.deliverTo != null ? st.deliverTo : st.order != null ? st.order.demand().destination() : key.building();
-		BlockPos chest = firstChest(level.getServer(), dest);
+		BlockPos chest = itemId == null ? null : dev.villageheart.worker.pocket.Pockets.deliveryChest(level.getServer(), dest, itemId);
+		if (chest == null) chest = firstChest(level.getServer(), dest);
 		if (chest == null) {
 			st.retryAt = now + 40;
 			st.mode = SmithRuntime.Mode.IDLE;

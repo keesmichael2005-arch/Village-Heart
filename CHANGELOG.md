@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A striking worker goes home to bed at the end of the day.
+- Right-click a hired villager to see the eight things they are carrying, in the trading window, plus their name, job, level, and what they are doing. You can look, and you cannot take anything. Each worker has their own chest: the tool comes out in the morning and goes back at the end of work, and gathered goods go to Storage when those slots are full. The tool in that pocket is not a load, so they keep working while they hold it, and a worn tool is put in Storage when its replacement is made.
 - A worker whose bed is farther than the short vanilla walk still gets home. Home time drops the rain stand's walk to the workplace and uses the long path to that worker's bed. A barracks bed is not the bed when a House bed is in reach, and they lie down at sleep time, not on the walk home.
 - A farmer works the whole connected field, not only the circle around the composter. A lumberjack cuts inside a circle around a chopping flag, and a hunter walks to a hunting flag. Both flags can sit up to 128 blocks from the Heart, and a long walk sends that worker home before the work day ends.
 - Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".

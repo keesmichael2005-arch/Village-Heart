@@ -19,6 +19,11 @@ public final class ModMenus {
 			Registry.register(BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "builders_table"),
 					new ExtendedScreenHandlerType<>(dev.villageheart.build.BuildersTableMenu::new, dev.villageheart.build.BuildersTableOpenData.STREAM_CODEC));
 
+	/** A hired villager's pocket. Read-only. */
+	public static final ExtendedScreenHandlerType<dev.villageheart.worker.pocket.PocketMenu, dev.villageheart.worker.pocket.PocketMenu.View> POCKET =
+			Registry.register(BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "pocket"),
+					new ExtendedScreenHandlerType<>(dev.villageheart.worker.pocket.PocketMenu::new, dev.villageheart.worker.pocket.PocketMenu.VIEW));
+
 	/** Touch the class during mod init so the menu type is registered before any client joins. */
 	public static void register() {}
 }
