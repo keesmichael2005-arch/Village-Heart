@@ -134,7 +134,7 @@ These have no room and no floor size. The marker goes on a post or a fence. The 
 |---|---|---|---|
 | Mineshaft | Village | rail / torch | The entrance is a player-dug hole. Connected air drops **at least 12 blocks** below the marker, with **at least 8 rails** and a light. The hole has to be under the post or next to it: near the surface the check only spreads one block around the marker. It links to the nearest Mine within **48 blocks**. |
 | Hunting Ground | Village | stick / feather | **At least 40** grass, leaf, or log blocks within 12 blocks, and the site is outside any House or Farmhouse. It links to a Hunting Lodge within **40 blocks**. |
-| Training Yard | Village | hay bale / wooden sword | **At least 2** armor stands or target blocks within 6 blocks. It links to the nearest Barracks. Optional. Guards gain sparring experience only here. |
+| Training Yard | Village | hay bale / wooden sword | **At least 2** armor stands or target blocks within 6 blocks. It links to the nearest Barracks. Optional. Guards gain sparring experience only here. The Barracks plan builds one: two targets inside a fence, the marker on the barracks wall. |
 
 The Mineshaft's deepest point picks the ore table in the miner section. A light set into the shaft wall counts. The fill stops at 4096 cells and at 16 blocks sideways.
 
@@ -370,9 +370,13 @@ Each sale is 2 XP. Unemployed villagers keep their vanilla trades. The Stockpile
 
 ## The builder and blueprints
 
-At Village tier, a Steward or the Owner uses the Builder's Table in a valid Builder's Hut. Anyone in the claim may open the table and read the list. Take and Cancel need Steward or Owner.
+At Village tier, craft a **Blueprint Book** from a book and two paper. It holds every plan. Use it to open the book. Buildings, Production, and Defence are on the left. The plans are tiles. Hover a tile to see its size and materials. Click one and the book closes with that plan armed.
 
-Taking a blueprint gives you a **Blueprint** item. Using it on the ground shows the footprint as particles: green if that site is allowed, red if it is not. The door faces you. Sneak-use rotates the plan by a quarter turn. Use it again inside the green outline to confirm.
+Using the armed book on the ground shows the footprint as particles: green if that site is allowed, red if it is not. The door faces you. Sneak-use rotates the plan by a quarter turn. Use it again inside the green outline to confirm. The book stays in your hand, so you can place the next plan straight away. Storage does not have to hold the blocks yet. The builder starts the site and pauses until the blocks arrive.
+
+Press **V** to show or hide the outlines of plans that are placed and not finished. The outline is blue. The Buildings tab lists eight of them; the outlines show the rest, up to 256 at once.
+
+The Builder's Table, in a valid Builder's Hut, still lists the builds and can cancel one. Anyone in the claim may open it. Cancel needs Steward or Owner. Taking a blueprint from the table still gives a single-use Blueprint item. The book is the one that stays.
 
 Wall Segment and Gate are a line, not a footprint. The first click sets the start (clicking grass or snow uses the block below). The second click sets the end. The line has to run straight along x or z, level with the start's ground, and be at most **32 blocks** including both ends. A gate is at least **5 blocks**. A diagonal, a line that is too long, or a gate that is too short keeps the start, so the next click is another try at the end. A good line is shown in green or red dust. Click the shown line to confirm. Any other click picks a new end. Sneak-click clears the start.
 
@@ -380,7 +384,6 @@ The site check refuses a plan that fails any of these, and the particles go red:
 
 - You are a Visitor or a Resident, the blueprint's tier is above the village, or the spot is in the wrong dimension or out of height
 - It is outside the 80-block claim
-- 8 builds are already going
 - The chunks are not loaded
 - It overlaps a marked building's room or marker, or another build's standing room
 - Water or lava is in it or next to it
@@ -393,13 +396,17 @@ Natural ground, which the builder may clear, is dirt, stone, sand, snow, plants,
 
 Dirt, stone, or sand you placed in the open, outside any marked room, can be cleared, because it looks like terrain. The same is true of a pumpkin or melon patch. Mark a room you want kept, or do not confirm a site on top of it. Drops from what is cleared go to Storage.
 
-The builder reserves every material for the build in Storage, fetches about a stack at a time, clears the top layer first, and places from the bottom, working from the ring around the site rather than from inside it. Pace is **one block per 3.5 seconds** at level 1, faster with level and with needs met. Torches, then water, then the marker go in last, so a finished house is complete the first time it is checked. If something is short, the build pauses and the Buildings tab names it, for example "Needs 12 more planks". It resumes on its own after the planks arrive. Cancelling keeps the blocks already placed and consumes the blueprint. Firing the builder sends what they are carrying back to Storage.
+The builder reserves every material for the build in Storage, fetches about a stack at a time, clears the top layer first, and places from the bottom, working from the ring around the site rather than from inside it. Pace is **one block per 3.5 seconds** at level 1, faster with level and with needs met. Torches, then water, then the marker go in last, so a finished house is complete the first time it is checked. If something is short, the build pauses and the Buildings tab names it, for example "Needs 12 more planks". It resumes on its own after the planks arrive. Cancelling keeps the blocks already placed. A blueprint taken from the table was used up when the site was confirmed. The Blueprint Book is not used up. Firing the builder sends what they are carrying back to Storage.
 
 | Blueprint | Tier | What you get |
 |---|---|---|
 | Small House | Village | A 5×5 floor inside the walls (the shell is 7×7). 49 cobblestone, 119 planks, a door, a bed, a torch, and the House marker. 172 placements. It can turn green as a House when it finishes. |
 | Storage Shed | Village | The same shell, with two chests and the Storage marker. |
 | Farm Plot | Village | 11×11. 80 farmland around one water source, 39 fences, and a fence gate. The water is placed from a bucket, and the bucket comes back. The farmland is already moist. |
+| Farmhouse, Lumber Camp, Kitchen, Builder's Hut, Mine, Hunting Lodge, Market | Village | A plains cottage: log corners, cobblestone, glass panes, and a stair roof, with that job's block and a chest already inside. A finished one can turn green as that building. |
+| Hunting Grove | Village | Oak trunks and a leaf canopy, with the Hunting Ground marker. Place it beside the lodge, not inside a house. |
+| Barracks | Village | A wider plains cottage, plus a fenced yard on the east side: two targets, and the Training Yard marker on the cottage wall. |
+| Smithy | Town | A slightly wider plains cottage, with a blast furnace, an anvil, and a chest. |
 | Wall Segment | Village | Cobblestone, 3 high, any straight length up to 32. 3 cobblestone per block of length. A wall of 20 is 60 cobblestone. |
 | Gate | Village | The same wall with a centred opening 3 wide: fence gates on the bottom, air above them, a cobblestone lintel. 3 cobblestone per block, minus 6, plus 3 fence gates. You can walk through when a gate is open. A closed gate is too tall to jump. |
 | Lamp Post | Village | 2 fences and a lantern on top. Stops monster spawns nearby. Details under gates and lamps. |
@@ -515,7 +522,8 @@ Right-click the claimed Heart.
 - **Buildings.** Every marker, with type, position, valid or invalid, the reasons, and slots in use. Builds in progress show the blueprint, the place, the percent, what is short, and the builder's name.
 - **Stockpile.** Totals across Storage, food nutrition, what the market sold today, and the reserve settings.
 - **Ranks.** Owner only. Others see the tab greyed out ("Only the Owner can manage ranks").
+- **Guide.** The list of steps from the first marker to a Town. Each building is craft the marker, then make the building count. The field comes after the Farmhouse. Crafting checks off when the item is in your inventory. The next three steps sit on the left under an underlined Tasks, numbered 1, 2, 3. H, shown beside that word, folds them up. Finishing a step plays the advancement sound. Click a step for the short list of what to do, and the recipe when it is a craft. After a builder is hired, the next craft is the Blueprint Book. Above the list, the village can ask for emeralds before dawn, a planted field, or a Training Yard. Guards gain no training experience without a yard. The Barracks plan builds that yard on the side of the barracks: two targets inside a fence.
 
-A Visitor receives the Overview only.
+A Visitor receives the Overview and the Guide.
 
 The stockpile is the chests and barrels inside valid Storage buildings: chest, trapped chest, and copper chest. Ender chests and shulker boxes are not part of it. A chest that also sits in another room, even in a shared wall, is not stockpile. Building chests that hold tools are not stockpile. Workers put goods in the nearest Storage with space. If every Storage is full, they keep the goods and stop gathering, and the Overview says so.

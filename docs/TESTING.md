@@ -492,8 +492,12 @@ with a wrapper that does not tick while a living player is inside `CLAIM_RADIUS`
 - **Layer 4: the world-load timeout.** Fabric's `ClientGameTestImpl.waitForWorldLoad` (every `worldBuilder().create()`) polls "a level exists and the loading screen is gone" for
   1200 client ticks (`TICKS_PER_MINUTE`), then throws `Timeout loading world`. The signal is the right one, the bound is a tick count for wall-clock work (the integrated server
   prepares its spawn area on worker threads; at load 10+ it sat at "Preparing spawn area: 16%" for 2 min). No API or system property changes it, so the gametest-only client mixin
-  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. A world that never loads still fails. It logs
-  `WORLD_LOAD_TIMEOUT_FIX installed`; `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
+  `dev.villageheart.gametest.mixin.WorldLoadTimeoutFix` (`@ModifyConstant`, required) raises it to 6000 ticks. The same method also
+  silences Fabric's per-poll "World loading finished" info line: a slow spawn was writing thousands of them, and the render
+  thread held the log lock instead of reading chunk packets. `SpawnChunkDrain` runs queued chunk tasks on the server thread
+  at the end of each `waitUntilNextTick`, so the flat world's spawn does not sit at "Preparing spawn area: 16%" until the
+  bound expires. A world that really never loads still fails. The timeout mixin logs `WORLD_LOAD_TIMEOUT_FIX installed`;
+  `verify.sh` fails if that line is missing. Written reason for the looser bound: the bound measured time, not progress.
 - **Tick budgets and async work.** A GameTest server ticks as fast as it can, so 2200 ticks are a few seconds. Anything that completes on another thread (chunk generation and
   promotion to entity-ticking, lighting) can take far more ticks than that under load. `forcedChunkGrowsWithoutPlayer` waited 454 ticks for a forced far chunk to start ticking
   in a full run (7-15 alone) and timed out at 2200 under load. It now generates the chunk and its ring synchronously (`getChunk(..., FULL, true)`) before forcing it: ticking starts in 1 tick.
@@ -510,3 +514,6 @@ with a wrapper that does not tick while a living player is inside `CLAIM_RADIUS`
   not arrived, then walks inside). Every caller (miner, hunter, lumberjack, farmer, builder, cook, deposit trip, self-craft) walks through `WalkTo`, so that test covers them by construction; the full L2 suite is green
   with the strict rule. Item pickups pass 0.8, which a villager never reaches (it stops at about 0.85): they take by their own `COLLECT_TAKE` distance and ignore ARRIVED, so they are unaffected.
 - A failing `craftPausesOvernight...` prints a 25-tick trace of the worker (position, decision, progress) in its message; a failing side-by-side run lists the ticks where logs and wear disagree.
+
+## Guide
+`GuideBookTest` checks the step order (Farmhouse before the field, a marker before its building), that an item in the inventory checks a craft step, and that a recipe grid is the shaped recipe. Layer 4 `GuideClientTests.tasksAndRecipe` (`guide_tasks.png`, `guide_detail.png`; `-Dvillageheart.l4.only=guide`) shows the next three tasks on the left and the Blank Marker recipe after a click, then checks the step off when the item is given.
