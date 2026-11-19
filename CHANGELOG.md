@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A blacksmith who has already started a tool keeps working through the meeting and the walk home, and two smiths at two furnaces each use their own anvil.
 - Hired villagers keep a villager's day. They work until late afternoon, meet at the bell, then go home. Someone already in bed stays there, and a guard on duty does not attend. They stand beside a workstation, and they walk up to the Storage chest and put goods away one item every quarter of a second. A cage of natural leaves still counts as boxed in, so they break out and finish that drop-off.
 - Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
 - Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".

@@ -107,6 +107,9 @@ public final class WorkerBrain {
 		if (shouldShelter(v, level)) return SHELTER;
 		DayPhase phase = DaySchedule.phaseAt(level.getDayTime());
 		if (MeetingRules.stayAsleep(phase, v.isSleeping())) return Activity.REST;
+		// A craft that has started keeps going through the meeting and the walk home until the tool is done.
+		if ((phase == DayPhase.MEET || phase == DayPhase.GO_HOME) && dev.villageheart.worker.smith.SmithJob.craftUnderway(v))
+			return Activity.WORK;
 		// Rain stands them at the workplace during work only. A drop-off already walking finishes first.
 		// A striker or someone with no workplace keeps wandering, and the meeting and the walk home stay on the clock.
 		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v) && !Workers.shouldWander(level, v)) return RAIN;

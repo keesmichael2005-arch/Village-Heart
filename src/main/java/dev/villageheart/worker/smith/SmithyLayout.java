@@ -53,12 +53,21 @@ public final class SmithyLayout {
 		for (Pos p : positions) {
 			BlockPos bp = new BlockPos(p.x(), p.y(), p.z());
 			double d = furnace.distSqr(bp);
-			if (d < bestD) {
+			// Equal distance: prefer the block on this furnace's column, then its row. Two furnaces
+			// three blocks apart otherwise share one anvil, and the second smith cannot craft until the first leaves.
+			if (d < bestD || (d == bestD && closerAxis(bp, furnace, best))) {
 				bestD = d;
 				best = bp;
 			}
 		}
 		return best;
+	}
+
+	private static boolean closerAxis(BlockPos candidate, BlockPos furnace, BlockPos current) {
+		int cdx = Math.abs(candidate.getX() - furnace.getX());
+		int bdx = Math.abs(current.getX() - furnace.getX());
+		if (cdx != bdx) return cdx < bdx;
+		return Math.abs(candidate.getZ() - furnace.getZ()) < Math.abs(current.getZ() - furnace.getZ());
 	}
 
 	/**

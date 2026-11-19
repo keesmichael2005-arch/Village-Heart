@@ -176,10 +176,23 @@ public final class SmithJob {
 		}
 	}
 
+	/** A fetch, craft, smelt or delivery that has already started. The meeting does not abandon it. */
+	public static boolean craftUnderway(Villager v) {
+		if (!(v.level() instanceof ServerLevel level)) return false;
+		SmithRuntime.State st = SmithRuntime.get(level.getServer()).workers.get(v.getUUID());
+		if (st == null) return false;
+		return switch (st.mode) {
+			case FETCH, SMELT, PREREQ, CRAFT, DELIVER -> true;
+			default -> false;
+		};
+	}
+
 	public static int keep(Villager v, net.minecraft.world.item.Item item) {
 		if (!(v.level() instanceof ServerLevel level)) return 0;
 		SmithRuntime.State st = SmithRuntime.get(level.getServer()).state(v.getUUID());
-		boolean home = DaySchedule.phaseAt(level.getDayTime()) != DayPhase.WORK;
+		DayPhase phase = DaySchedule.phaseAt(level.getDayTime());
+		// The meeting is not a hand-in for a craft that has started: the ingots stay until the tool is done.
+		boolean home = phase != DayPhase.WORK && !((phase == DayPhase.MEET || phase == DayPhase.GO_HOME) && craftUnderway(v));
 		String id = SmithCatalog.id(item);
 		return SmithKeep.keep(id, countAll(v, id), st.keep, st.returning, home, st.overnight.contains(id));
 	}
