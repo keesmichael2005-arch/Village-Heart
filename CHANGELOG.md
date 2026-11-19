@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- A worker whose bed is farther than the short vanilla walk still gets home. Home time drops the rain stand's walk to the workplace and uses the long path to the House bed.
+- A worker whose bed is farther than the short vanilla walk still gets home. Home time drops the rain stand's walk to the workplace and uses the long path to that worker's bed. A barracks bed is not the bed when a House bed is in reach, and they lie down at sleep time, not on the walk home.
 - A farmer works the whole connected field, not only the circle around the composter. A lumberjack cuts inside a circle around a chopping flag, and a hunter walks to a hunting flag. Both flags can sit up to 128 blocks from the Heart, and a long walk sends that worker home before the work day ends.
 - Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
 - Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".
