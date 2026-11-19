@@ -168,6 +168,7 @@ public final class WorkerBrain {
 				// No ReactToBell: a hired worker follows its day and the SHELTER activity. The bell rung when a raid or siege starts
 				// would otherwise send it into vanilla's HIDE after the raid, and with no bed in reach nothing ends that.
 				p(1, new MoveToTargetSink()),
+				p(9, new NearbyHome()),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14), WorkerBrain::bedIsFree)),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));
 
