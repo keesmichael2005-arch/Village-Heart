@@ -125,7 +125,7 @@ Each **job block** inside a building is one worker slot.
   within 12 blocks and it is outside the House and Farmhouse rooms. It links to the nearest Hunting Lodge.
 - **Training Yard** (marker: hay bale / wooden sword). Valid if there are **≥2 armor stands or target
   blocks** within 6 blocks. It links to the nearest Barracks. It is optional, but guards only gain XP
-  by sparring here.
+  by sparring here. The Barracks blueprint places this yard on the barracks wall, with two targets inside a fence.
 
 ### 3.4 Job blocks: vanilla first
 Vanilla workstations are reused where the job fits. Those inside a valid building are **reserved**: vanilla
@@ -437,9 +437,13 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Night.** Smelting, a committed craft and a golem build pause outside work hours `[1000, 11000)` and continue the next morning. Progress is saved every 200 ticks and when the smith stops. Stepping the day clock backward leaves the smith out of work; stepping it forward to the next morning does not.
 
 ### 5.8 Builder (Builder's Hut, Builder's Table)
-- At the Builder's Table, a Steward+ picks a **blueprint** and receives a **Blueprint item**. Using it on the
-  ground shows the footprint as particles. A second click (sneak to rotate) confirms the **build site**.
-  Wall Segments take two clicks (start and end, axis-aligned).
+- A Steward crafts one **Blueprint Book** (a book and two paper). Using it opens every plan, in three groups:
+  Buildings, Production (Farm Plot and Hunting Grove), and Defence. Choosing a plan closes the book and arms it.
+  Using it on the ground shows the footprint as particles. A second click (sneak to rotate) confirms the **build site**.
+  The book is not used up, and Storage does not have to hold the blocks. Any number of sites may be placed. The builder
+  finishes them as the blocks arrive. Wall Segments take two clicks (start and end, axis-aligned).
+  **V** draws a blue outline of placed plans that are not finished (up to 256 on screen). The Buildings tab still lists eight.
+- The Builder's Table still lists builds and can cancel one. Take still hands out a single-use Blueprint item.
 - The builder **reserves materials** in the stockpile, fetches them, clears natural blocks (dirt, stone,
   plants and leaves, with drops returned to the stockpile) and places blocks layer by layer. It will
   **never break player-placed blocks**: a site that overlaps a valid room or claimed building is refused.
@@ -451,6 +455,10 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 | Small House | Village | 5×5 room, 1 bed, door, torch, House marker included |
 | Storage Shed | Village | 5×5 room, 2 chests, Storage marker included |
 | Farm Plot | Village | 9×9 farmland around a water block, fenced, with a gate |
+| Farmhouse, Lumber Camp, Kitchen, Builder's Hut, Mine, Hunting Lodge, Market | Village | a plains cottage (log corners, cobblestone, glass, stair roof) with that job's block and a chest |
+| Hunting Grove | Village | oak trunks and a leaf canopy, with the Hunting Ground marker |
+| Barracks | Village | a wider plains cottage, plus a fenced yard with two targets and the Training Yard marker on the east wall |
+| Smithy | Town | a slightly wider plains cottage, with a blast furnace, an anvil, and a chest |
 | Wall Segment | Village | cobblestone, 3 high, any length up to 32 |
 | Gate | Village | wall section with a 3-wide fence-gate opening |
 | Lamp Post | Village | fence post + lantern. Stops mob spawns nearby |
@@ -461,7 +469,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 **Rules as built (M20)** (`docs/plans/M20.md`):
 - "5x5" means a 5x5 floor inside the walls (a 7x7 shell): a 5x5 outside gives 9 floor cells, under the House minimum of 12. Small House: 49 cobblestone, 119 planks, a door, a bed, a torch and the House marker (172 placements, the door and the bed one step each); Storage Shed: the same shell with two chests; Farm Plot: 11x11, 80 farmland (placed moist, moisture 7) around one water source (from a bucket, placed last, the bucket comes back), 39 fences and a gate.
 - A blueprint is data in `core.blueprint` (palette, layers, `base`, anchor, front), parsed once; rotation about the anchor in 90 degree steps (vanilla's position rule, `BlockState.rotate` for the states). An L1 test runs the real `RoomScanner` and `BuildingRules` over both houses in all four rotations.
-- At the Builder's Table (anyone in the claim may read it; Take and Cancel need Steward, `Permission.START_BLUEPRINT`) a Steward takes a Blueprint item. The first click shows the footprint (green dust when the server's site check passes, red when not; the door turns towards the player), a sneak-click turns it, a click inside the outline confirms. The check (`SiteRules`, twelve ordered refusals): rank, tier, dimension and height, inside the claim sphere, at most 8 builds, loaded, no overlap with any registered building's room (interior or shell, valid or not) or marker, no overlap with another build's stand ring, no water or lava in or next to it, no natural tree (fell it first), no block that is not natural, a place to stand within 7 blocks of every cell.
+- At the Builder's Table (anyone in the claim may read it; Take and Cancel need Steward, `Permission.START_BLUEPRINT`) a Steward takes a Blueprint item. The first click shows the footprint (green dust when the server's site check passes, red when not; the door turns towards the player), a sneak-click turns it, a click inside the outline confirms. The check (`SiteRules`, twelve ordered refusals): rank, tier, dimension and height, inside the claim sphere, loaded, no overlap with any registered building's room (interior or shell, valid or not) or marker, no overlap with another build's stand ring, no water or lava in or next to it, no natural tree (fell it first), no block that is not natural, a place to stand within 7 blocks of every cell.
 - "Natural" = in `#villageheart:builder_clearable` (dirt, stone, sand, snow, replaceable plants, flowers, saplings, leaves, coal/iron/copper ore, a few crops of the wild) and, for leaves, not persistent (a player placed it), with no fluid and no block entity. The builder never breaks anything else; it stops on such a block that appears later ("glass in the way at ...", retried every 5 s). Known gap: dirt, stone or sand a player placed outside any marked room cannot be told from terrain and may be cleared (its drops go to Storage). The same holds for a player's pumpkin or melon patch (both are in the tag as crops of the wild).
 - A natural cell is only cleared when nothing of a player rests on it: the site check (rule 11b, `SiteSupport`) refuses a site where a block outside the touched cells would lose its support (a torch, ladder, door, sign, rail or lantern on or against a cell the build clears, found by asking `canSurvive` with the cell as air) or a hanging entity (item frame, painting) is attached to one, naming the thing and its cell ("torch at (x, y, z) would fall: it rests on the site"). The builder asks the same before every clear step; a thing attached after the confirm stops the build with "torch in the way at (x, y, z)" and nothing is broken. Natural neighbours that pop or fall with the cell (flowers, sand) are not protected.
 - The builder reserves the whole build's materials (keyed by the build id, oldest build first, one wood type when possible, transient like all reservations), fetches about a stack at a time, clears (top layer first, drops to Storage), places layer by layer from the bottom in perimeter order, then torches, then water, then a check pass that puts back anything a player removed, and the marker last, so the room is complete when it is first checked. It works only from the ring of columns around the site, never from inside it. 1 action per second at level 1.
@@ -678,6 +686,11 @@ At every tier, tool workers make their own wooden and stone tools (§4.1); the S
   sum); the bar at the bottom reads `Keep: food [-] 3 days [+]   other items [-16] 64 each [+16]` (buttons for a Steward or Owner, the values for
   Residents). The buttons send the absolute new pair, so a double click cannot drift.
 - **Ranks** (Owner only): players and their ranks.
+- **Guide**: the path from a new claim to a Town, one small step at a time. A building is craft the marker, then make the
+  building count. The field comes after the Farmhouse. Craft steps check off when that item is in an inventory. While playing, the next
+  three tasks sit on the left under an underlined Tasks, numbered. H, beside that word, folds the list. Checking a step off plays the advancement sound. In the Heart, click a task for its steps
+  and, when it is a craft, the recipe. Three lines can sit above the list when the village is waiting on the player: emeralds before
+  dawn, a planted field for a hired farmer, and a Training Yard for a hired guard. A Visitor can read this tab.
 
 As built in M24: the fifth tab lists the Owner and every player the village has seen (online ones with a green dot), with their rank; the Owner picks a row, then
 `[Steward] [Resident] [Visitor]` or `[Transfer ownership]` (a second click on `[Confirm: give the village to X]` sends it; only a Steward or Resident can receive it).

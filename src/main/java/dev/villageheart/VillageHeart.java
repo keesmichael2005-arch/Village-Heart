@@ -64,6 +64,7 @@ public class VillageHeart implements ModInitializer {
 		dev.villageheart.world.VillageSystems.register("villageheart:threats", dev.villageheart.raid.ThreatScheduler.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:unhired_shelter", dev.villageheart.worker.shelter.UnhiredShelter.INSTANCE);
 		dev.villageheart.world.VillageSystems.register("villageheart:stuck_raiders", dev.villageheart.raid.StuckRaiderSystem.INSTANCE);
+		dev.villageheart.world.VillageSystems.register("villageheart:guide", dev.villageheart.guide.GuideSystem.INSTANCE);
 		dev.villageheart.raid.VillageThreats.install();
 		dev.villageheart.raid.RaiderKills.register();
 		LOG.info("Village Heart loaded");

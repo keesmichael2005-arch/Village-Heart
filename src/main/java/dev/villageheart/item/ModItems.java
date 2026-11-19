@@ -19,10 +19,16 @@ public final class ModItems {
 	private static final ResourceKey<Item> BLUEPRINT_KEY = ResourceKey.create(Registries.ITEM, BLUEPRINT_ID);
 	public static final Item BLUEPRINT = new dev.villageheart.build.BlueprintItem(new Item.Properties().setId(BLUEPRINT_KEY).stacksTo(1));
 
+	/** One item that holds every plan. It is not used up when a site is confirmed. */
+	public static final Identifier BLUEPRINT_BOOK_ID = Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "blueprint_book");
+	private static final ResourceKey<Item> BLUEPRINT_BOOK_KEY = ResourceKey.create(Registries.ITEM, BLUEPRINT_BOOK_ID);
+	public static final Item BLUEPRINT_BOOK = new dev.villageheart.build.BlueprintBookItem(new Item.Properties().setId(BLUEPRINT_BOOK_KEY).stacksTo(1));
+
 	private ModItems() {}
 
 	public static void register() {
 		Registry.register(BuiltInRegistries.ITEM, BLANK_MARKER_KEY, BLANK_MARKER);
 		Registry.register(BuiltInRegistries.ITEM, BLUEPRINT_KEY, BLUEPRINT);
+		Registry.register(BuiltInRegistries.ITEM, BLUEPRINT_BOOK_KEY, BLUEPRINT_BOOK);
 	}
 }

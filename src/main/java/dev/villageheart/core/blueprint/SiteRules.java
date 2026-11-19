@@ -144,10 +144,8 @@ public final class SiteRules {
 			return Optional.of(problem(Code.OUTSIDE, "Outside the village: %s blocks from the Heart (max " + Balance.CLAIM_RADIUS + ")", null,
 					Integer.toString(worst)));
 		}
-		// 5 limit
-		if (f.activeBuilds() >= Balance.MAX_ACTIVE_BUILDS) {
-			return Optional.of(problem(Code.TOO_MANY, "Too many builds at once (max " + Balance.MAX_ACTIVE_BUILDS + ")", null));
-		}
+		// 5. Any number of sites may be placed. The builder finishes them as the blocks arrive. activeBuilds is kept on the facts
+		// for callers that still pass it; it does not refuse a site. TOO_MANY stays in the enum so old text keys still resolve.
 		// 6 loaded
 		for (int y = min.y(); y <= max.y(); y++) for (int z = min.z(); z <= max.z(); z++) for (int x = min.x(); x <= max.x(); x++) {
 			if (f.view().cell(new Pos(x, y, z)) == SiteCell.UNLOADED) return Optional.of(problem(Code.NOT_LOADED, "Part of the site is not loaded", new Pos(x, y, z)));

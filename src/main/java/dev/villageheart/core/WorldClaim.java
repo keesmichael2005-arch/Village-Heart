@@ -30,6 +30,9 @@ public final class WorldClaim {
 	/** Population growth (M23): today's breeding licence, the last birth and the pairs that could not meet; belongs to the village. */
 	private dev.villageheart.core.growth.GrowthState growth = dev.villageheart.core.growth.GrowthState.EMPTY;
 
+	/** Guide tasks already earned. Belongs to the village, so a new claim starts with none. */
+	private dev.villageheart.core.guide.GuideProgress guide = dev.villageheart.core.guide.GuideProgress.EMPTY;
+
 	public WorldClaim() {}
 
 	public WorldClaim(Optional<VillageState> village) {
@@ -67,9 +70,21 @@ public final class WorldClaim {
 	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
 			java.util.OptionalLong lastDinnerDay, Optional<dev.villageheart.core.economy.Payroll> payroll, dev.villageheart.core.market.MarketState market,
 			dev.villageheart.core.growth.GrowthState growth) {
+		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay, payroll, market, growth,
+				dev.villageheart.core.guide.GuideProgress.EMPTY);
+	}
+
+	public WorldClaim(Optional<VillageState> village, Set<HeartLocation> reservedJobBlocks, Set<HeartLocation> pendingTicketReleases,
+			java.util.OptionalLong lastDinnerDay, Optional<dev.villageheart.core.economy.Payroll> payroll, dev.villageheart.core.market.MarketState market,
+			dev.villageheart.core.growth.GrowthState growth, dev.villageheart.core.guide.GuideProgress guide) {
 		this(village, reservedJobBlocks, pendingTicketReleases, lastDinnerDay, payroll, market);
 		this.growth = Objects.requireNonNull(growth, "growth");
+		this.guide = Objects.requireNonNull(guide, "guide");
 	}
+
+	public dev.villageheart.core.guide.GuideProgress guide() { return guide; }
+
+	public void setGuide(dev.villageheart.core.guide.GuideProgress g) { guide = Objects.requireNonNull(g, "guide"); }
 
 	public dev.villageheart.core.growth.GrowthState growth() { return growth; }
 
@@ -119,6 +134,7 @@ public final class WorldClaim {
 			payroll = null;
 			market = dev.villageheart.core.market.MarketState.initial();
 			growth = dev.villageheart.core.growth.GrowthState.EMPTY;
+			guide = dev.villageheart.core.guide.GuideProgress.EMPTY;
 		}
 		return r;
 	}
@@ -132,6 +148,7 @@ public final class WorldClaim {
 		payroll = null;
 		market = dev.villageheart.core.market.MarketState.initial();
 		growth = dev.villageheart.core.growth.GrowthState.EMPTY;
+		guide = dev.villageheart.core.guide.GuideProgress.EMPTY;
 		return Optional.of(released);
 	}
 
@@ -154,12 +171,13 @@ public final class WorldClaim {
 		payroll = null;
 		market = dev.villageheart.core.market.MarketState.initial();
 		growth = dev.villageheart.core.growth.GrowthState.EMPTY;
+		guide = dev.villageheart.core.guide.GuideProgress.EMPTY;
 	}
 
 	@Override public boolean equals(Object o) {
 		return o instanceof WorldClaim w && Objects.equals(village, w.village) && reservedJobBlocks.equals(w.reservedJobBlocks)
 				&& pendingTicketReleases.equals(w.pendingTicketReleases) && Objects.equals(lastDinnerDay, w.lastDinnerDay)
-				&& Objects.equals(payroll, w.payroll) && market.equals(w.market) && growth.equals(w.growth);
+				&& Objects.equals(payroll, w.payroll) && market.equals(w.market) && growth.equals(w.growth) && guide.equals(w.guide);
 	}
 
 	@Override public int hashCode() {

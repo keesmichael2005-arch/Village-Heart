@@ -2,7 +2,10 @@ package dev.villageheart.core.blueprint;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.Tier;
+import dev.villageheart.core.building.AreaCounter;
+import dev.villageheart.core.building.BuildingRequirements;
 import dev.villageheart.core.building.BuildingRules;
 import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.building.RoomFacts;
@@ -12,11 +15,14 @@ import dev.villageheart.core.room.Cell;
 import dev.villageheart.core.room.Pos;
 import dev.villageheart.core.room.RoomScan;
 import dev.villageheart.core.room.RoomScanner;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** T-L1-4 */
 class BlueprintRoomTest {
 	private static final BuildingRules.CheckContext CTX = new BuildingRules.CheckContext(Tier.VILLAGE, null, null, 0);
+	/** Town, with a linked outdoor site, so the Mine, the lodge, and the Smithy can pass. */
+	private static final BuildingRules.CheckContext LINKED = new BuildingRules.CheckContext(Tier.TOWN, null, new Pos(0, 64, 0), 1);
 
 	private static Pos marker(Blueprint bp, Placement p) {
 		for (int y = 0; y < bp.height(); y++) for (int z = 0; z < bp.depth(); z++) for (int x = 0; x < bp.width(); x++) {
@@ -92,5 +98,55 @@ class BlueprintRoomTest {
 			assertTrue(Math.abs(x - wx) <= 4 && Math.abs(z - wz) <= 4, "farmland (" + x + ", " + z + ") is too far from the water");
 		}
 		assertEquals(80, farmland);
+	}
+
+	private static Pos find(Blueprint bp, Placement p, char symbol) {
+		for (int y = 0; y < bp.height(); y++) for (int z = 0; z < bp.depth(); z++) for (int x = 0; x < bp.width(); x++) {
+			if (bp.entry(x, y, z).symbol() == symbol) return p.world(bp, x, y, z);
+		}
+		throw new AssertionError(bp.id() + " has no '" + symbol + "'");
+	}
+
+	@Test
+	void everyWorkplaceRoomIsValid() {
+		for (Blueprint bp : List.of(WorkplaceBlueprints.FARMHOUSE, WorkplaceBlueprints.LUMBER_CAMP, WorkplaceBlueprints.KITCHEN,
+				WorkplaceBlueprints.BUILDERS_HUT, WorkplaceBlueprints.MINE, WorkplaceBlueprints.HUNTING_LODGE, WorkplaceBlueprints.BARRACKS,
+				WorkplaceBlueprints.MARKET, WorkplaceBlueprints.SMITHY)) {
+			BuildingType type = BuildingType.byId(bp.buildsTypeId()).orElseThrow();
+			for (Rotation4 r : Rotation4.values()) {
+				Placement p = new Placement(new Pos(40, 70, -12), r);
+				RoomScan scan = RoomScanner.scanFromMarker(new BlueprintView(bp, p), marker(bp, p), p.front(bp));
+				assertTrue(scan.enclosed(), bp.id() + " " + r + " " + scan.problems());
+				assertTrue(scan.floorArea() >= BuildingRequirements.of(type).minFloor(), bp.id() + " floor " + scan.floorArea());
+				assertTrue(bp.materials().count("minecraft:oak_stairs") > 0, bp.id());
+				Verdict v = BuildingRules.checkRoom(type, RoomFacts.of(scan), LINKED);
+				assertTrue(v.reasons().isEmpty(), bp.id() + " " + r + " " + v.reasons());
+			}
+		}
+	}
+
+	@Test
+	void barracksYardIsOutsideTheRoomAndHasTwoTargets() {
+		Blueprint bp = WorkplaceBlueprints.BARRACKS;
+		for (Rotation4 r : Rotation4.values()) {
+			Placement p = new Placement(new Pos(10, 64, 10), r);
+			BlockView view = new BlueprintView(bp, p);
+			RoomScan scan = RoomScanner.scanFromMarker(view, marker(bp, p), p.front(bp));
+			Pos yard = find(bp, p, 'Y');
+			assertFalse(scan.occupies(yard), r + " yard is inside the barracks");
+			assertTrue(AreaCounter.count(view, yard, Balance.TRAINING_YARD_RADIUS, BuildingRequirements.TARGET).n()
+					>= Balance.TRAINING_YARD_MIN_DUMMIES, r.toString());
+		}
+	}
+
+	@Test
+	void huntingGroveHasEnoughLogsAndLeaves() {
+		Blueprint bp = WorkplaceBlueprints.HUNTING_GROVE;
+		for (Rotation4 r : Rotation4.values()) {
+			Placement p = new Placement(new Pos(0, 70, 0), r);
+			BlockView view = new BlueprintView(bp, p);
+			int n = AreaCounter.count(view, find(bp, p, 'M'), Balance.HUNTING_GROUND_RADIUS, BuildingRequirements.NATURAL).n();
+			assertTrue(n >= Balance.HUNTING_GROUND_MIN_NATURAL, r + " " + n);
+		}
 	}
 }
