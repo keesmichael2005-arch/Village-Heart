@@ -267,7 +267,7 @@ Needs a Market and a Market Stall. Prices and caps are in [The market](#the-mark
 
 ### Blacksmith
 
-Town tier. Needs a valid Smithy (blast furnace, anvil, chest). The blacksmith starts new work in work hours (day time 1000–9000). A job already started — fetching materials, smelting, crafting, or carrying the tool to the camp — keeps going through the meeting and the walk home, then picks up again the next morning.
+Town tier. Needs a valid Smithy (blast furnace, anvil, chest). The blacksmith works in work hours (day time 1000–9000) and picks a craft up again the next morning. Once the materials are in hand the craft is kept, and two blacksmiths at two furnaces work at the same time, each at their own anvil.
 
 - **Tools and armour, on demand.** The smith makes a tool or a piece of armour only when a worker is missing one or has a worn-out one. A working tool is never replaced or upgraded, and there are no spares. The tier is the best the stockpile can pay for (wood, stone, copper, iron, diamond). Guards get swords and armour the same way. Diamonds are kept back: five are always left in Storage. Crafting is slow: an iron tool takes 2400 ticks of work at speed 1, a diamond tool 4800. Raw iron, copper, and gold are smelted into ingots first, using fuel from Storage.
 - **Repairs.** Put worn gear in the Smithy chest. One ingot (or one leather) restores a quarter of the item's durability. Wood and stone tools are replaced, not repaired.

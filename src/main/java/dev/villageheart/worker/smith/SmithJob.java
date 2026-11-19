@@ -176,23 +176,10 @@ public final class SmithJob {
 		}
 	}
 
-	/** A fetch, craft, smelt or delivery that has already started. The meeting does not abandon it. */
-	public static boolean craftUnderway(Villager v) {
-		if (!(v.level() instanceof ServerLevel level)) return false;
-		SmithRuntime.State st = SmithRuntime.get(level.getServer()).workers.get(v.getUUID());
-		if (st == null) return false;
-		return switch (st.mode) {
-			case FETCH, SMELT, PREREQ, CRAFT, DELIVER -> true;
-			default -> false;
-		};
-	}
-
 	public static int keep(Villager v, net.minecraft.world.item.Item item) {
 		if (!(v.level() instanceof ServerLevel level)) return 0;
 		SmithRuntime.State st = SmithRuntime.get(level.getServer()).state(v.getUUID());
-		DayPhase phase = DaySchedule.phaseAt(level.getDayTime());
-		// The meeting is not a hand-in for a craft that has started: the ingots stay until the tool is done.
-		boolean home = phase != DayPhase.WORK && !((phase == DayPhase.MEET || phase == DayPhase.GO_HOME) && craftUnderway(v));
+		boolean home = DaySchedule.phaseAt(level.getDayTime()) != DayPhase.WORK;
 		String id = SmithCatalog.id(item);
 		return SmithKeep.keep(id, countAll(v, id), st.keep, st.returning, home, st.overnight.contains(id));
 	}
@@ -669,6 +656,15 @@ public final class SmithJob {
 			withdraw(level, v, st, st.fetchAnchor);
 			Stockpiles.reservations(level.getServer()).release(v.getUUID());
 			st.fetchAnchor = null;
+			st.walk.release(v);
+			// Commit where the materials were picked up. The walk back to the furnace stays uncommitted, the
+			// other smith is standing on that path, and the meeting then drops the fetch. A saved craft still pauses at dusk.
+			if (st.fetchToolId == null && !st.buildFetch && st.batch == null && st.order != null
+					&& SmithPlanner.readyToCommit(st.order.plan(), carried(v))
+					&& !holdsOffCommit(level, v, data, st, now)) {
+				commitCraft(level, v, data, st, now);
+				return;
+			}
 			st.walk.begin(furnace, REACH, CLOSEST, now);
 			return;
 		}
