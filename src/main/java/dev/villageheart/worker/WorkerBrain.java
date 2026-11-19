@@ -175,6 +175,7 @@ public final class WorkerBrain {
 				p(99, new UpdateWorkerActivity())));
 
 		brain.addActivity(Activity.WORK, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
+				.add(p(0, new ClaimStroll()))
 				.addAll(JobBehaviours.work(villager))
 				.add(look())
 				.add(p(99, new UpdateWorkerActivity()))

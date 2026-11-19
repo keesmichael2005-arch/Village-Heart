@@ -144,6 +144,8 @@ Hire on the Heart screen's Villagers tab. Pick an adult villager inside the clai
 
 A hired villager drops its old profession and **does not trade** while it works for you. Firing makes it unemployed. It can take a vanilla profession again. Its old trades are not given back.
 
+Breaking a workplace does not fire anyone. Only you firing them, their death, a zombie conversion, or breaking the Heart ends the job. They keep the job, the level, and their pay. During the work day they wander inside the claim. They do not walk to the job block and they do not deliver to Storage. They still go home, eat dinner, and sleep. The Villagers row says **No workstation**, and the Overview says "1 worker has no workstation" (or "N workers"). The Paid icon stays lit when the treasury can pay them. A building that is still there, even a red one, keeps its workers until it is valid again. When the building is gone, they take the next free job block of their own job, earliest hire first. A new valid workplace of that job puts them back to work. A House is a home, not a job.
+
 Workers are ordinary villagers. The job shows on the profession clothing, on what they hold, and with particles.
 
 ### The day
@@ -303,7 +305,7 @@ Wages are paid at **dawn**, once, while the Heart's chunk is loaded. There is no
 | 2 | 1 |
 | 3 | 2 |
 
-If the treasury is short, workers are paid in hiring order. A worker who cannot be paid **strikes for that day**, and the pay run continues, so a later worker with a smaller wage can still be paid. A striker's status is "On strike". They do no work. Deposit trips still happen. Any new emeralds (a deposit, or a merchant sale) pay today's strikers immediately, at the wage they were owed at dawn, in hiring order.
+If the treasury is short, workers are paid in hiring order. A worker who cannot be paid **strikes for that day**, and the pay run continues, so a later worker with a smaller wage can still be paid. A striker's row says **On strike**, and that wins even when the workplace is also missing. The emerald warning stays. During the work day they wander inside the claim the same way as a worker with no workstation: no work and no delivery. They still go home and sleep. A missing workplace does not take them off the payroll. Any new emeralds (a deposit, or a merchant sale) pay today's strikers immediately, at the wage they were owed at dawn, in hiring order.
 
 A villager you hire is charged at once. Hiring when the treasury is empty puts them on strike. Firing at dusk and hiring again at dawn is not a free day. Hiring someone who was already paid today costs nothing more that day.
 

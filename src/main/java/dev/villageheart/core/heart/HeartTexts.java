@@ -109,7 +109,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.other", "Busy");
 		EN.put(PREFIX + "activity.storage_full", "Storage full");
 		EN.put(PREFIX + "activity.storage_unreachable", "Storage unreachable");
-		EN.put(PREFIX + "activity.workplace_invalid", "Workplace invalid");
+		EN.put(PREFIX + "activity.workplace_invalid", "No workstation");
 		EN.put(PREFIX + "activity.needs_tool", "Needs tool");
 		EN.put(PREFIX + "activity.needs_tool.axe", "Needs axe");
 		EN.put(PREFIX + "activity.needs_tool.pickaxe", "Needs pickaxe");

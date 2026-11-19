@@ -22,4 +22,9 @@ public record WorkerRecord(UUID villager, String jobId, HeartLocation building, 
 	}
 
 	public WorkerRecord withLevel(int newLevel) { return new WorkerRecord(villager, jobId, building, jobBlock, newLevel); }
+
+	/** The same worker at another workplace. Job and level stay. */
+	public WorkerRecord withPlace(HeartLocation newBuilding, HeartLocation newJobBlock) {
+		return new WorkerRecord(villager, jobId, newBuilding, newJobBlock, level);
+	}
 }

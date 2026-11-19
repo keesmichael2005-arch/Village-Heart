@@ -303,7 +303,7 @@ class HeartSnapshotBuilderTest {
 		assertEquals(List.of(AlertCode.WORKPLACE_INVALID, AlertCode.STORAGE_FULL, AlertCode.INVALID_BUILDINGS),
 				o.alerts().stream().map(AlertLine::code).toList());
 		assertEquals("2 buildings need attention", o.alerts().get(2).text().english());
-		assertEquals("1 worker has no valid workplace", o.alerts().get(0).text().english());
+		assertEquals("1 worker has no workstation", o.alerts().get(0).text().english());
 		assertEquals(Severity.DANGER, o.alerts().get(0).severity());
 	}
 

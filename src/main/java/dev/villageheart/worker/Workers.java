@@ -195,6 +195,27 @@ public final class Workers {
 		return d != null && d.needs().hungryDays() >= 2;
 	}
 
+	/**
+	 * During the work day, a worker with no valid workplace and an unpaid striker wander inside the claim instead of working.
+	 * A guard wanders only while off duty and awake.
+	 */
+	public static boolean shouldWander(net.minecraft.server.level.ServerLevel level, Villager villager) {
+		MinecraftServer server = level.getServer();
+		Optional<VillageState> village = VillageClaims.current(server);
+		if (village.isEmpty()) return false;
+		Optional<WorkerRecord> rec = village.get().worker(villager.getUUID());
+		if (rec.isEmpty()) return false;
+		boolean workplaceValid = slotStatus(server, rec.get()) == WorkerStatus.OK;
+		boolean strike = dev.villageheart.economy.Wages.onStrike(server, rec.get().villager())
+				&& JobType.byId(rec.get().jobId()).map(dev.villageheart.core.economy.StrikeRules::mayStrike).orElse(true);
+		if (dev.villageheart.worker.guard.Guards.isGuard(villager)) {
+			boolean offAndAwake = dev.villageheart.worker.guard.Guards.phaseOf(villager, level) == dev.villageheart.core.guard.GuardPhase.OFF;
+			return dev.villageheart.core.worker.ClaimWander.guard(offAndAwake, workplaceValid, strike);
+		}
+		return dev.villageheart.core.worker.ClaimWander.duringWork(
+				dev.villageheart.core.worker.DaySchedule.phaseAt(level.getDayTime()), workplaceValid, strike);
+	}
+
 	private static WorkerStatus slotStatus(MinecraftServer server, WorkerRecord record) {
 		Optional<JobType> job = JobType.byId(record.jobId());
 		Optional<VillageState> village = VillageClaims.current(server);

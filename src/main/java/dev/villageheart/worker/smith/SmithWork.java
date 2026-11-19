@@ -5,6 +5,7 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.world.VillageTicker;
 import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.worker.Workers;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -24,11 +25,13 @@ public final class SmithWork extends Behavior<Villager> {
 	}
 
 	@Override
-	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) { return isSmith(villager); }
+	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		return isSmith(villager) && !Workers.shouldWander(level, villager);
+	}
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
-		return isSmith(villager) && villager.getBrain().isActive(Activity.WORK);
+		return isSmith(villager) && villager.getBrain().isActive(Activity.WORK) && !Workers.shouldWander(level, villager);
 	}
 
 	@Override
