@@ -11,7 +11,14 @@ import java.util.Objects;
  */
 public record HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow> villagers, int moreVillagers,
 		List<JobChoice> jobChoices, List<BuildingRow> buildings, int moreBuildings, Stock stock,
-		List<MemberRow> members, int moreMembers, List<BuildRow> builds) {
+		List<MemberRow> members, int moreMembers, List<BuildRow> builds, List<String> guideDone, List<String> guideNeeds) {
+	/** Without the guide (the shape before the guide tab). */
+	public HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow> villagers, int moreVillagers, List<JobChoice> jobChoices,
+			List<BuildingRow> buildings, int moreBuildings, Stock stock, List<MemberRow> members, int moreMembers, List<BuildRow> builds) {
+		this(viewerRank, overview, villagers, moreVillagers, jobChoices, buildings, moreBuildings, stock, members, moreMembers, builds,
+				List.of(), List.of());
+	}
+
 	/** Without builds (the shape before M20). */
 	public HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow> villagers, int moreVillagers, List<JobChoice> jobChoices,
 			List<BuildingRow> buildings, int moreBuildings, Stock stock, List<MemberRow> members, int moreMembers) {
@@ -27,5 +34,7 @@ public record HeartSnapshot(Rank viewerRank, Overview overview, List<VillagerRow
 		buildings = List.copyOf(buildings);
 		members = List.copyOf(members);
 		builds = List.copyOf(builds);
+		guideDone = List.copyOf(guideDone);
+		guideNeeds = List.copyOf(guideNeeds);
 	}
 }

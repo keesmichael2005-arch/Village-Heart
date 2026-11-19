@@ -120,6 +120,7 @@ class LangCoverageTest {
 			assertTrue(lang.containsKey(k), k);
 		}
 		assertEquals("Blank Marker", lang.get("item.villageheart.blank_marker"));
+		assertEquals("Blueprint Book", lang.get("item.villageheart.blueprint_book"));
 		assertEquals("Village Heart", lang.get("itemGroup.villageheart.main"));
 		for (String k : new String[] {"block.villageheart.village_heart", "message.villageheart.claim.claimed",
 				"message.villageheart.claim.no_bell_nearby", "message.villageheart.claim.already_have_village",

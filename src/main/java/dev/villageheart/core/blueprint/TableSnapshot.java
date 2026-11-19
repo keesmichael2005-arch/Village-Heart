@@ -12,8 +12,8 @@ import java.util.UUID;
  * ("have" is what a new build could still reserve), and the builds in progress. Records and lists only, so {@code equals} is the refresh dedupe.
  */
 public record TableSnapshot(Rank viewerRank, Tier tier, List<TableBlueprint> blueprints, List<TableBuild> builds) {
-	public static final int MAX_BLUEPRINTS = 16;
-	public static final int MAX_MATERIALS = 8;
+	public static final int MAX_BLUEPRINTS = 20;
+	public static final int MAX_MATERIALS = 16;
 
 	public TableSnapshot {
 		Objects.requireNonNull(viewerRank, "viewerRank");

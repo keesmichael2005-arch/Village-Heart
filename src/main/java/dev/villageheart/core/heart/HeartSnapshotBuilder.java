@@ -23,6 +23,10 @@ public final class HeartSnapshotBuilder {
 	private static final String ALERT = "gui.villageheart.heart.alert.";
 
 	public static HeartSnapshot build(VillageFacts f, Rank viewer) {
+		return build(f, viewer, List.of(), List.of());
+	}
+
+	public static HeartSnapshot build(VillageFacts f, Rank viewer, List<String> guideDone, List<String> guideNeeds) {
 		Stock stock = stock(f.stock());
 		boolean details = Permissions.allows(viewer, Permission.VIEW_DETAILS);
 		List<VillagerRow> villagers = List.of();
@@ -58,7 +62,7 @@ public final class HeartSnapshotBuilder {
 			moreMembers = all.size() - members.size();
 		}
 		return new HeartSnapshot(viewer, overview(f), villagers, moreVillagers, choices, buildings, moreBuildings, stock, members,
-				moreMembers, builds);
+				moreMembers, builds, guideDone, guideNeeds);
 	}
 
 	/** At most {@link HeartLimits#MAX_BUILDS} rows, each with at most {@link HeartLimits#MAX_BUILD_MISSING} missing lines and cut names. */

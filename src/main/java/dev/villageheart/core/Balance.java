@@ -216,7 +216,6 @@ public final class Balance {
 	public static final int BUILDER_FETCH_SLOTS = 4;
 	/** The build system re-works the reservations this often. */
 	public static final int BUILD_REFRESH_TICKS = 100;
-	public static final int MAX_ACTIVE_BUILDS = 8;
 	/** Ticks a player waits between two blueprints taken from a Builder's Table. */
 	public static final int BLUEPRINT_TAKE_COOLDOWN = 10;
 	public static final int BUILD_BLOCKED_RETRY_TICKS = 100;
