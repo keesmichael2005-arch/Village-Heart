@@ -656,19 +656,20 @@ public final class SmithJob {
 			withdraw(level, v, st, st.fetchAnchor);
 			Stockpiles.reservations(level.getServer()).release(v.getUUID());
 			st.fetchAnchor = null;
-			st.walk.release(v);
-			// Commit where the materials were picked up. The walk back to the furnace stays uncommitted, the
-			// other smith is standing on that path, and the meeting then drops the fetch. A saved craft still pauses at dusk.
-			if (st.fetchToolId == null && !st.buildFetch && st.batch == null && st.order != null
-					&& SmithPlanner.readyToCommit(st.order.plan(), carried(v))
-					&& !holdsOffCommit(level, v, data, st, now)) {
-				commitCraft(level, v, data, st, now);
-				return;
-			}
+			// Still uncommitted on the walk back, so a tool put in the camp chest can cancel the order.
 			st.walk.begin(furnace, REACH, CLOSEST, now);
 			return;
 		}
-		if (!at(level, v, st, furnace, now)) return;
+		if (!at(level, v, st, furnace, now)) {
+			// The other smith is standing on the way to this furnace. Save the craft here. The walk back of a
+			// clear path stays uncommitted, and a saved craft still pauses at dusk.
+			if (!st.walk.reason().isEmpty() && st.fetchToolId == null && !st.buildFetch && st.batch == null && st.order != null
+					&& SmithPlanner.readyToCommit(st.order.plan(), carried(v))
+					&& !holdsOffCommit(level, v, data, st, now)) {
+				commitCraft(level, v, data, st, now);
+			}
+			return;
+		}
 		if (st.fetchToolId != null) {
 			if (count(v, st.fetchToolId) < 1) {
 				abortFetch(level, v, st, now);

@@ -68,6 +68,7 @@ public final class WalkTo {
 		this.settled = null;
 		this.jamAnchor = null;
 		this.lastPath = null;
+		this.reason = "";
 	}
 
 	/** Keeps the stall statistics but points at a new spot (an item that rolled). */

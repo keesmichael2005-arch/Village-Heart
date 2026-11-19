@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Two blacksmiths at two furnaces each use their own anvil. A craft is saved once the materials are in hand, so the other smith standing at an anvil does not keep it from being committed, and the meeting does not drop it.
+- Two blacksmiths at two furnaces each use their own anvil. A craft stays uncommitted on the walk back, so a tool put in the camp chest still cancels an order that has not started. If the other smith is blocking the furnace, the craft is saved from where this one stands. Work still pauses at dusk.
 - Hired villagers keep a villager's day. They work until late afternoon, meet at the bell, then go home. Someone already in bed stays there, and a guard on duty does not attend. They stand beside a workstation, and they walk up to the Storage chest and put goods away one item every quarter of a second. A cage of natural leaves still counts as boxed in, so they break out and finish that drop-off.
 - Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
 - Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".
