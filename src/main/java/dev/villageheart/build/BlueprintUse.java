@@ -15,6 +15,7 @@ import dev.villageheart.core.blueprint.SiteRules.SiteProblem;
 import dev.villageheart.core.heart.TextLine;
 import dev.villageheart.core.room.Dir;
 import dev.villageheart.core.room.Pos;
+import dev.villageheart.item.ModItems;
 import dev.villageheart.world.VillageClaims;
 import java.util.List;
 import java.util.Optional;
@@ -140,14 +141,19 @@ public final class BlueprintUse {
 			return;
 		}
 		BuildJobs.start(level, line, site.ground(), rotation, new BlueprintParams(site.length()), player.getUUID());
-		stack.shrink(1);
-		stack.remove(ModComponents.BLUEPRINT_SITE);
+		spend(stack);
 		var name = BuildTexts.blueprintName(line);
 		player.sendSystemMessage(Component.translatable("build.villageheart.msg.site_set", Component.translatableWithFallback(name.key(), name.fallback()),
 				"(" + site.ground().getX() + ", " + site.ground().getY() + ", " + site.ground().getZ() + ")"));
 		if (village.workers().stream().noneMatch(w -> w.jobId().equals("builder"))) {
 			player.sendSystemMessage(Component.translatable("build.villageheart.msg.no_builder"));
 		}
+	}
+
+	/** A Blueprint Book stays in hand. A blueprint taken from the table is used up. Either way the confirmed site stops drawing. */
+	private static void spend(ItemStack stack) {
+		if (!stack.is(ModItems.BLUEPRINT_BOOK)) stack.shrink(1);
+		stack.remove(ModComponents.BLUEPRINT_SITE);
 	}
 
 	/** A click confirms when its ground is a column of the shown box with a y from one below the site's ground up to the box's top. */
@@ -176,8 +182,7 @@ public final class BlueprintUse {
 			return;
 		}
 		BuildJobs.start(level, bp, site.ground(), rotation, player.getUUID());
-		stack.shrink(1);
-		stack.remove(ModComponents.BLUEPRINT_SITE); // a stack that survives (creative) must not keep drawing the confirmed site
+		spend(stack); // a one-shot blueprint is used up; the book stays, without the confirmed site
 		var line = BuildTexts.blueprintName(bp);
 		player.sendSystemMessage(Component.translatable("build.villageheart.msg.site_set", Component.translatableWithFallback(line.key(), line.fallback()),
 				"(" + site.ground().getX() + ", " + site.ground().getY() + ", " + site.ground().getZ() + ")"));

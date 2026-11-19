@@ -9,7 +9,7 @@ public final class HeartLimits {
 	/** Rows of the Ranks tab. */
 	public static final int MAX_MEMBERS = 100;
 	public static final int MAX_REASONS = 4;
-	/** Builds shown on the Buildings tab (M20: one per active build, Balance.MAX_ACTIVE_BUILDS) and the missing-material lines of each. */
+	/** Builds shown on the Buildings tab and the Builder's Table. Placing a site is not capped. V draws the rest. */
 	public static final int MAX_BUILDS = 8;
 	public static final int MAX_BUILD_MISSING = 2;
 	public static final int MAX_STOCK_KINDS = 256;
@@ -20,6 +20,8 @@ public final class HeartLimits {
 	public static final int MAX_GOALS = 8;
 	/** Goal rows the Overview screen draws (a tier has at most this many goals; pinned against {@code TierGoals.maxGoals()}). */
 	public static final int MAX_GOAL_ROWS = 6;
+	/** Guide task ids and need ids on one snapshot. The book is shorter than this; the spare is for tasks added later. */
+	public static final int MAX_GUIDE = 64;
 	public static final int MAX_TEXT = 120;
 	public static final int MAX_NAME = 32;
 	public static final int MAX_KEY = 64;
