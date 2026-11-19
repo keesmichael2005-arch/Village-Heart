@@ -8,6 +8,7 @@ import dev.villageheart.core.guard.GearPlanner;
 import dev.villageheart.core.guard.GuardPlanner;
 import dev.villageheart.core.guard.PatrolRoute;
 import net.minecraft.world.item.ItemStack;
+import dev.villageheart.core.worker.WeatherShelter;
 import dev.villageheart.core.worker.WorkGate;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.worker.Workers;
@@ -137,12 +138,26 @@ public final class GuardRuntime {
 			boolean trainee = GuardAttachments.get(guard).training(level.getDayTime());
 			var off = GuardPlanner.off(new GuardPlanner.OffFacts(false, !trainee && GuardGear.wearsAnything(guard), yard.isPresent(), canWork));
 			if (off == GuardPlanner.OffMode.RETURN_GEAR) returnGear(level, guard, s, now);
+			else if (WeatherShelter.guardWaits(dev.villageheart.worker.WorkWeather.precipitating(level, guard), false, false)) waitAtWorkplace(level, guard, s, data, now);
 			else if (off == GuardPlanner.OffMode.SPAR) spar(level, guard, s, data, yard.get(), now);
 			else {
 				s.mode = Mode.PATROL;
 				s.walk.release(guard);
 			}
 		}
+	}
+
+	/** Off duty in the rain: stand at the Barracks workstation instead of sparring. Gear is handed in first. */
+	private static void waitAtWorkplace(ServerLevel level, Villager guard, State s, WorkerData data, long now) {
+		s.mode = Mode.PATROL;
+		var block = data.jobBlock();
+		if (!block.dimension().equals(level.dimension().identifier().toString())) {
+			s.walk.release(guard);
+			return;
+		}
+		BlockPos at = new BlockPos(block.x(), block.y(), block.z());
+		if (!s.walk.active() || !s.walk.target().equals(at)) s.walk.begin(at, 1.5, 2.0, now);
+		if (s.walk.tick(guard, now) == WalkTo.State.UNREACHABLE) s.walk.release(guard);
 	}
 
 	/** The valid Training Yard linked to the guard's Barracks (its marker), if any. */

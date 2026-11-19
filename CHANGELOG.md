@@ -4,6 +4,7 @@
 
 - A worker whose bed is farther than the short vanilla walk still gets home. The walk uses the same long path as a trip back from the trees.
 - A farmer works the whole connected field, not only the circle around the composter. A lumberjack cuts inside a circle around a chopping flag, and a hunter walks to a hunting flag. Both flags can sit up to 128 blocks from the Heart, and a long walk sends that worker home before the work day ends.
+- Hired workers wait inside their workplace while it rains, snows, or thunders during work time, and go straight back to work when it clears. Guards on duty stay out. The Villagers tab says "Out of the rain".
 - Breaking a workplace no longer fires the worker. They keep the job, the level, and their pay, and wander inside the claim until a workplace of their job is valid again. The Heart says "No workstation". An unpaid striker wanders the same way, and the row still says "On strike".
 - Client tests keep draining spawn chunks while a world loads, and they no longer log a line on every tick of that wait. A slow machine was sitting on the loading screen until the test gave up.
 - A Blueprint Book, crafted from a book and two paper, holds every plan. Pick one, place the footprint, and the book stays in your hand. You can place as many as you like. The builder finishes them when the blocks are in Storage. Press V to see the ones that are not built yet. The Guide asks you to craft the book after you hire a builder.
