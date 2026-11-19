@@ -615,6 +615,10 @@ public class FarmerGameTests {
 			inv.addItem(new ItemStack(Items.BREAD, 2));
 			v[1].getInventory().addItem(new ItemStack(Items.BREAD, 5));
 			v[1].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			// Neither worker has a tool. After the logs land they would make a wooden hoe and axe and take 3 logs
+			// (1 for the hoe, 2 for the axe). The tools are already in the chests, so the 64 logs stay in Storage.
+			LumberTestSupport.putInChest(h, chest(), 0, new ItemStack(Items.WOODEN_HOE));
+			LumberTestSupport.putInChest(h, BuildingTestSupport.inside(camp2, 4, 0, 3), 0, new ItemStack(Items.WOODEN_AXE));
 			stat[0] = WorkStats.get("farmer", "seeds_composted");
 			// the food table of the keep rule is vanilla's
 			for (var e : dev.villageheart.core.job.FoodKeep.POINTS.entrySet()) {
