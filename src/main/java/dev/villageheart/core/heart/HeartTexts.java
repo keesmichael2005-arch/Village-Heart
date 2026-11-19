@@ -154,6 +154,9 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.tool_no_space.bow_or_sword", "Needs sword (no room)");
 		EN.put(PREFIX + "activity.no_work", "Nothing to do");
 		EN.put(PREFIX + "activity.no_work.lumberjack", "No trees within 32 blocks");
+		EN.put(PREFIX + "activity.needs_flag", "Needs a flag");
+		EN.put(PREFIX + "activity.needs_flag.lumberjack", "Needs a chopping flag");
+		EN.put(PREFIX + "activity.needs_flag.hunter", "Needs a hunting flag");
 		EN.put(PREFIX + "activity.no_work.builder", "No blueprint to build");
 		EN.put(PREFIX + "buildings.builds", "Builds");
 		EN.put(PREFIX + "builds.builder", "Builder: %s");
@@ -209,8 +212,9 @@ public final class HeartTexts {
 		EN.put(PREFIX + "building.market", "Market");
 		EN.put(PREFIX + "building.smithy", "Smithy");
 		EN.put(PREFIX + "building.mineshaft", "Mineshaft");
-		EN.put(PREFIX + "building.hunting_ground", "Hunting Ground");
+		EN.put(PREFIX + "building.hunting_ground", "Hunting Flag");
 		EN.put(PREFIX + "building.training_yard", "Training Yard");
+		EN.put(PREFIX + "building.chopping_flag", "Chopping Flag");
 		EN.put(PREFIX + "tab.guide", "Guide");
 		EN.put(PREFIX + "guide.next", "Next: %s");
 		EN.put(PREFIX + "guide.done_title", "Guide");
@@ -252,7 +256,8 @@ public final class HeartTexts {
 			String specific = "activity." + name + "." + tool;
 			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity." + name);
 		}
-		if (activity == ActivityKind.NO_WORK || activity == ActivityKind.AWAY_WORKING || activity == ActivityKind.SITE_UNREACHABLE) {
+		if (activity == ActivityKind.NO_WORK || activity == ActivityKind.AWAY_WORKING || activity == ActivityKind.SITE_UNREACHABLE
+				|| activity == ActivityKind.NEEDS_FLAG) {
 			String specific = "activity." + name + "." + jobId;
 			return EN.containsKey(PREFIX + specific) ? PREFIX + specific : key("activity." + name);
 		}

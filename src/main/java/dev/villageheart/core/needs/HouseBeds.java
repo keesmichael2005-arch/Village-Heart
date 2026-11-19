@@ -41,4 +41,11 @@ public final class HouseBeds {
 
 	/** Every House bed, sorted. */
 	public List<Long> houseBeds() { return houseBeds; }
+
+	/** A bed of some building that is not a House, such as a Barracks bed. A loose bed is not one of these. */
+	public boolean otherBuildingBed(long packed) {
+		if (houseBedSet.contains(packed)) return false;
+		for (Set<Long> beds : bedsByBuilding.values()) if (beds.contains(packed)) return true;
+		return false;
+	}
 }

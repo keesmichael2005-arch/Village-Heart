@@ -1078,11 +1078,13 @@ public class LumberjackGameTests {
 			buildStorage(h);
 			bigRoom(h, bigOrigin);
 			placeMarkers(h, true);
+			placeDefaultFlag(h);
 			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.LUMBER_CAMP, bigMarker, net.minecraft.core.Direction.NORTH);
 		});
 		seq = seq.thenWaitUntil(() -> {
 			assertValid(h, true);
 			BuildingTestSupport.assertStatus(h, bigMarker, dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, flagPos(), dev.villageheart.block.MarkerStatus.VALID);
 		});
 		seq = seq.thenExecute(() -> {
 			// the room first: its oak grows inside it
@@ -1432,6 +1434,49 @@ public class LumberjackGameTests {
 			h.assertTrue(v[0].position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(hold[0])) <= 0.5,
 					"the hidden worker stays on its hold cell " + hold[0] + ", it is at " + v[0].position());
 			dev.villageheart.worker.job.AwayTrips.release(h.getLevel(), v[0]);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A camp with no flag cuts nothing. A tree inside the flag's circle is felled. A tree beside the camp, outside that circle, is left. */
+	@GameTest(environment = "villageheart-gametest:lumber_flag_circle", structure = YARD, skyAccess = true, maxTicks = 8000)
+	public void flagCircle(GameTestHelper h) {
+		begin(h);
+		BlockPos nearTree = new BlockPos(2, 0, 8);
+		BlockPos farTree = new BlockPos(26, 0, 26);
+		BlockPos flag = new BlockPos(28, 1, 28);
+		Set<BlockPos>[] nearLogs = new Set[1];
+		Set<BlockPos>[] farLogs = new Set[1];
+		Villager[] v = new Villager[1];
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			sweepStrayTrees(h, 48);
+			grass(h, 0, 0, 31, 31);
+			buildCamp(h);
+			buildStorage(h);
+			placeMarkers(h, true);
+		}).thenWaitUntil(() -> assertValid(h, true));
+		seq = seq.thenExecute(() -> {
+			nearLogs[0] = logsOf(h, growOak(h, nearTree, 3L));
+			farLogs[0] = logsOf(h, growOak(h, farTree, 4L));
+			putInChest(h, chest(), 0, axe(ToolTier.STONE));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h, spawnSpot());
+			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING, 4));
+		});
+		seq = seq.thenIdle(500);
+		seq = seq.thenExecute(() -> {
+			h.assertValueEqual(nearLogs[0].size(), standing(h, nearLogs[0]), "no flag: the tree beside the camp stands");
+			h.assertValueEqual(farLogs[0].size(), standing(h, farLogs[0]), "no flag: the far tree stands");
+			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NEEDS_FLAG, status(h, v[0]), "needs a chopping flag");
+			h.setBlock(flag.north(), Blocks.OAK_FENCE);
+			placeFlag(h, flag, net.minecraft.core.Direction.SOUTH);
+		});
+		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, flag, dev.villageheart.block.MarkerStatus.VALID));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 5000, "the tree inside the flag circle is felled", () ->
+				h.assertValueEqual(0, standing(h, farLogs[0]), "logs left inside the circle"));
+		seq.thenExecute(() -> {
+			h.assertValueEqual(nearLogs[0].size(), standing(h, nearLogs[0]), "the tree beside the camp, outside the circle, is left");
 			VillageTestSupport.done(h);
 			end(h);
 		});

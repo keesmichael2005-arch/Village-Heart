@@ -106,7 +106,7 @@ public final class FarmJob {
 		FarmRuntime rt = FarmRuntime.get(server);
 		WorkerState ws = rt.state(v.getUUID());
 		ws.lastTick = now;
-		rt.indexFor(data.jobBlock(), now);
+		field(level, data, rt, now);
 		rt.pump(level, now);
 		if (Workers.tripRunning(v)) {
 			// a deposit trip owns the walk. Whichever of the two ways it started (this planner's YIELD, or the trip behaviour's own
@@ -189,6 +189,24 @@ public final class FarmJob {
 	private static Pos pos(BlockPos p) { return new Pos(p.getX(), p.getY(), p.getZ()); }
 
 	private static BlockPos jobBlock(WorkerData data) { return new BlockPos(data.jobBlock().x(), data.jobBlock().y(), data.jobBlock().z()); }
+
+	/** The Farmhouse field: one index, seeded from every composter. */
+	private static FieldIndex field(ServerLevel level, WorkerData data, FarmRuntime rt, long now) {
+		return rt.indexFor(data.building(), composters(level, data), now);
+	}
+
+	private static List<Pos> composters(ServerLevel level, WorkerData data) {
+		List<Pos> found = new ArrayList<>();
+		for (var b : dev.villageheart.building.Buildings.all(level.getServer())) {
+			if (b.latestScan().isEmpty()) continue;
+			if (!dev.villageheart.world.VillageClaims.locate(b.level(), b.marker()).equals(data.building())) continue;
+			found.addAll(b.latestScan().get().positions(dev.villageheart.core.building.BuildingRequirements.COMPOSTER));
+			break;
+		}
+		if (found.isEmpty()) found.add(new Pos(data.jobBlock().x(), data.jobBlock().y(), data.jobBlock().z()));
+		found.sort(java.util.Comparator.naturalOrder());
+		return List.copyOf(found);
+	}
 
 	private static boolean loaded(ServerLevel level, BlockPos p) { return level.getChunkSource().getChunkNow(p.getX() >> 4, p.getZ() >> 4) != null; }
 
@@ -289,7 +307,7 @@ public final class FarmJob {
 		boolean deposit = valid && DepositTrip.wanted(level, v);
 		WorkerStatus trip = Workers.tripStatus(v.getUUID());
 		boolean blocked = trip == WorkerStatus.STORAGE_FULL || trip == WorkerStatus.STORAGE_UNREACHABLE;
-		FieldIndex idx = rt.indexFor(data.jobBlock(), now);
+		FieldIndex idx = field(level, data, rt, now);
 		BlockPos jb = jobBlock(data);
 		Pos jbp = pos(jb);
 		Optional<BlockState> comp = composter(level, jb);
@@ -550,7 +568,7 @@ public final class FarmJob {
 			return;
 		}
 		BlockPos bp = bp(cell);
-		FieldIndex idx = rt.indexFor(data.jobBlock(), now);
+		FieldIndex idx = field(level, data, rt, now);
 		FieldCell fc = idx.reread(new LevelFieldView(level), cell);
 		boolean ok = switch (ws.action) {
 			case HARVEST -> fc.isMature();

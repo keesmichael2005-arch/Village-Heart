@@ -264,7 +264,7 @@ public class MarkerGameTests {
 			if (holder.id().identifier().getNamespace().equals("villageheart")) actual.add(holder.id().identifier().getPath());
 		}
 		h.assertValueEqual(expected, actual, "villageheart recipe ids");
-		h.assertValueEqual(20, actual.size(), "recipe count");
+		h.assertValueEqual(expected.size(), actual.size(), "recipe count");
 		for (String ing : ingredients) {
 			if (ing.startsWith("#")) {
 				TagKey<Item> tag = TagKey.create(Registries.ITEM, Identifier.parse(ing.substring(1)));

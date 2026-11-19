@@ -46,7 +46,7 @@ class HunterPlannerTest {
 		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.NEEDS_TOOL), d(new PlanInputs(true, false, false, Lease.NONE, true, 1000, 0, 0, 1, 0, OptionalLong.empty(), 1)));
 		// no ground and no weapon: the weapon is asked for first
 		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.NEEDS_TOOL), d(new PlanInputs(true, false, false, Lease.NONE, false, 1000, 0, 0, 1, 0, OptionalLong.empty(), 1)));
-		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.NO_WORK), d(new PlanInputs(true, false, false, Lease.HELD, false, 1000, 0, 1, 1, 0, OptionalLong.empty(), 1)));
+		assertEquals(dec(Action.IDLE_AT_LODGE, StatusEffect.NEEDS_FLAG), d(new PlanInputs(true, false, false, Lease.HELD, false, 1000, 0, 1, 1, 0, OptionalLong.empty(), 1)));
 	}
 
 	@Test

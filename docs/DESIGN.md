@@ -30,7 +30,7 @@ for organising instead.
 - It must be placed within **16 blocks of a bell** (`ClaimRules.MAX_BELL_DISTANCE`).
 - **One claimed village per world.** A second Heart placed anywhere is refused with a message.
 - **Claim area**: a sphere of radius **80** around the Heart *(tunable)*. Buildings and work areas must be
-  inside it. Two outdoor sites, the **Mineshaft** and the **Hunting Ground**, may be up to **128** from the Heart.
+  inside it. Three outdoor sites, the **Mineshaft**, the **Hunting Flag** and the **Chopping Flag**, may be up to **128** from the Heart.
 - The placer becomes the **Owner**. Only the Owner can break the Heart. Breaking it releases the village:
   every job is cleared, villagers become ordinary vanilla villagers again, and the treasury drops as items.
   The Heart can then be placed again, at the same village or another one.
@@ -109,7 +109,7 @@ Each **job block** inside a building is one worker slot.
 | **Kitchen** | Hamlet | cobblestone / coal | 9 | smoker(s), chest, crafting table | Cook |
 | **Builder's Hut** | Village | brick (the item) / ladder | 9 | **Builder's Table**(s), chest | Builder |
 | **Mine** | Village | cobblestone / stone pickaxe ×1 + rail | 9 | stonecutter(s), chest, linked Mineshaft | Miner |
-| **Hunting Lodge** | Village | leather / arrow | 9 | fletching table(s), chest, linked Hunting Ground | Hunter |
+| **Hunting Lodge** | Village | leather / arrow | 9 | fletching table(s), chest | Hunter |
 | **Barracks** | Village | cobblestone / iron ingot | 16 | grindstone(s), 1 bed per guard slot, chest | Guard |
 | **Market** | Village | white wool / emerald | 9 | **Market Stall**(s), chest | Merchant |
 | **Smithy** | Town | iron ingot / smooth stone | 12 | blast furnace(s), anvil, chest | Blacksmith |
@@ -121,8 +121,8 @@ Each **job block** inside a building is one worker slot.
   The fill goes down from the marker cell through open air within 16 blocks sideways (at most 4096 cells); near the surface it only
   spreads one block around the marker, so the hole has to be right under (or next to) the post. A light source also counts when it is
   embedded in the shaft wall.
-- **Hunting Ground** (marker: stick / feather). Valid if there are **≥40 grass, leaf or log blocks**
-  within 12 blocks and it is outside the House and Farmhouse rooms. It links to the nearest Hunting Lodge.
+- **Hunting Flag** (block id `hunting_ground`, marker: stick / feather). Valid when it is outside any House or Farmhouse and linked to a Hunting Lodge. There is no grass quota and no distance limit from the lodge. The first flag links to the nearest lodge that has none; the link stays until the flag is picked up.
+- **Chopping Flag** (marker: logs in the corners, saplings on the edges, Hamlet). Links to the nearest Lumber Camp that has none, the same way. The camp cuts nothing until it has one. The circle is 32 blocks horizontally and 16 vertically of the flag.
 - **Training Yard** (marker: hay bale / wooden sword). Valid if there are **≥2 armor stands or target
   blocks** within 6 blocks. It links to the nearest Barracks. It is optional, but guards only gain XP
   by sparring here. The Barracks blueprint places this yard on the barracks wall, with two targets inside a fence.
@@ -245,7 +245,7 @@ world. Miners and hunters *go away and come back*: you see them walk to the site
 while, and come back carrying goods, which are produced from a table.
 
 ### 5.1 Lumberjack (Lumber Camp, Chopping Block, *requires axe*)
-Finds the nearest **natural tree** in the work area (within 32 blocks of the camp): a log column touching
+Finds the nearest **natural tree** in the work area (within 32 blocks of the chopping flag): a log column touching
 leaves. It walks there and fells the **whole tree**, all connected logs. Leaves decay as in vanilla.
 It collects the drops (logs, saplings, sticks, apples) and **replants a sapling** on the stump spot.
 Logs that the player placed are never touched: logs in valid rooms and logs without leaves contact are skipped.
@@ -256,7 +256,7 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
   2x2 footprint at its lowest y, with no log inside a valid building's room (interior or walls, any building type), at most 192 logs, 17
   wide and 48 tall. The base rule is what protects log walls and cabins; a lone log post on soil under 3 or more natural leaves is the one
   documented false positive, and mangroves, trees on sand and trees merged with player logs are skipped. It fells top-down (base last)
-  inside the work area (32 blocks horizontally, 16 vertically of the Chopping Block, nearest first) with a work clock: stone 2.0, copper
+  inside the work area (32 blocks horizontally, 16 vertically of the chopping flag, nearest first; a camp with no flag cuts nothing) with a work clock: stone 2.0, copper
   2.5, iron 3.0, gold 6.0, diamond 4.0, netherite 4.5 (wood 1.0; vanilla speed / 2, anchored on stone: 80 work units per log, so stone fells a log in 40 ticks, wood in 80, iron in 27), times level, times needs (`WorkSpeed`). **Tools stay in the camp chest** and wear
   out there, 1 durability per log (Unbreaking applies); several lumberjacks share the camp's axes best-first in hiring order. Without an
   axe the status is "Needs axe" (an unreadable chest is unknown, not missing); replanting and collecting still run. No new tree starts after
@@ -274,13 +274,12 @@ Pace: about 1 log per 2 s at level 1 with a stone axe *(tunable)*.
   A worker that cannot hand in its load (Storage full or unreachable) stops cutting. Saplings the open spots need, plus 4, are never handed in.
 
 ### 5.2 Farmer (Farmhouse, Composter)
-Works farmland within 24 blocks of the Farmhouse. It harvests **mature** wheat, carrots, potatoes and
+Works the connected farmland of the Farmhouse. The seed is farmland within 24 blocks of a composter; farmland that shares a side, including a step of one block, is included. It harvests **mature** wheat, carrots, potatoes and
 beetroots and replants from the yield. It composts surplus seeds into bone meal and uses the bone meal on
 young crops. It **does not make new fields** in v1: the player or a Builder's Farm Plot does that. No tool is needed (a hoe gives ×1.25).
 
-  Rules as built (M10): the work area is every farmland cell whose crop cell (the block above) lies within 24 blocks (horizontal, Euclidean,
-  inclusive) of the Farmhouse **composter** and within 8 blocks of it in height (the composter anchor and the height limit are additions to the
-  text above; a neighbour's field inside the area is worked too). Exactly four crops, matched by block id: wheat, carrots, potatoes (ripe at age
+  Rules as built: the seed is every farmland cell whose crop cell (the block above) lies within 24 blocks (horizontal, Euclidean,
+  inclusive) of a Farmhouse **composter** and within 8 blocks of it in height. From those cells, farmland that shares a side is included, including a step of one block up or down. A two-block rise, a diagonal, or a one-block gap stops the field. Every farmer of the Farmhouse shares one field, capped at 4096 cells nearest to a composter. Exactly four crops, matched by block id: wheat, carrots, potatoes (ripe at age
   7) and beetroots (ripe at 3); torchflowers, pitcher plants, stems, berries and nether wart are never touched. One unit of work is one atomic
   change of one cell: **harvest and replant happen in the same tick** (the seed comes out of the drops, so a full inventory cannot cost the
   replant; the rest of the yield goes to the inventory, what does not fit is dropped and collected later). Units cost 20 ticks (harvest, bone
@@ -327,13 +326,13 @@ There is no real tunnelling in v1 (post-v1 idea).
   then turns invalid ("Needs a linked Mineshaft") and its miners report "No workstation" until it is fixed. Statuses: "Needs pickaxe",
   "No valid Mineshaft", "Can't reach the Mineshaft", and "Away (mining)" on the Heart screen while it is down.
 
-### 5.4 Hunter (Hunting Lodge + Hunting Ground, Fletching Table, *requires bow or sword*)
-It walks to the Hunting Ground, is gone for **3 in-game hours** per trip, and returns with
+### 5.4 Hunter (Hunting Lodge + Hunting Flag, Fletching Table, *requires bow or sword*)
+It walks to the Hunting Flag, is gone for **3 in-game hours** per trip, and returns with
 2–4 raw meat (beef, pork, mutton or chicken, weighted by nearby biome), 1–2 leather, 1–2 feathers and 0–1 rabbit hide.
 With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus. There are 2 trips per day at level 1.
 
   Rules as built (M17): the hunter "goes away" with the miner's machinery (DESIGN 5.3): it stays a loaded entity, hidden (Invisible,
-  Invulnerable, Silent, NoAI) and re-pinned, but where it *stands* when it arrives near the Hunting Ground marker (within 3 blocks of it;
+  Invulnerable, Silent, NoAI) and re-pinned, but where it *stands* when it arrives near the Hunting Flag (within 3 blocks of it;
   there is no hole to hide in), on a free standable cell if another hunter already holds that one. **3 in-game hours** is *time away*: a
   trip costs 3000 work units at 1.0 per tick at level 1 (2400 ticks at level 2, 2000 at level 3), counted in 20-tick steps; the walk and
   the deposit trip are on top. The pace does not depend on the weapon's tier (a bow and a diamond sword give the same trips); the tier
@@ -343,18 +342,16 @@ With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus.
   start: a bow or crossbow takes 1 arrow (plain first, then any other item of the arrows tag) from the Lodge chest and brings 1 more meat;
   without an arrow it still hunts, with no bonus (Infinity is not modelled). **Trips per day**: 2 at level 1, 3 at levels 2 and 3 (a
   count saved with the hunter for the day, reset on any other day); a trip only starts if it can end 300 ticks before the work day ends
-  at 11000 (at level 1 the last start is at day time 7700), and the fit is checked again when it arrives. At day end it comes back without
+  at 11000 (at level 1, with no walk, the last start is at day time 7700). The walk to the flag and the walk back count as well, and the fit is checked again when it arrives. A hunter already out comes back with no haul when staying would make the return late. At day end it comes back without
   a yield and keeps its progress. The yield of a trip is drawn from a generator seeded by (world seed, villager UUID, trip counter), in a
   pinned order: base meat 2-4, leather 1-2, feathers 1-2, rabbit hide 0-1 (50 percent), then the kind of each piece of meat; the bow's
   extra piece is one more draw of the same stream, so with and without a bow the same trip is the same plus one meat. **Biome weighting**
   reads the vanilla creature spawn weights of the biomes at the marker and eight points 12 blocks around it (cow and mooshroom beef, pig
   porkchop, sheep mutton, chicken; where none of them spawns the vanilla farm-animal weights 8/10/12/10): a plains ground gives 8/10/12/10.
-  Leather, feathers and hide do not depend on the biome. **Which ground**: the nearest VALID Hunting Ground linked to the Lodge. **A rule
-  change from M5**: a Hunting Ground links only to a Hunting Lodge **within 40 blocks** (it was: anywhere in the village); one farther out
-  is invalid ("No Hunting Lodge within 40 blocks"). A hunter more than 40 blocks from the marker first walks to its fletching table. The
+  Leather, feathers and hide do not depend on the biome. **Which flag**: the Hunting Flag linked to the Lodge. There is no grass quota and no distance limit from the lodge. A hunter who is more than 40 blocks from a flag that itself sits within 40 blocks of the lodge first walks to the fletching table; a flag farther out is the walk. The
   yield goes into the villager's inventory and the hunter hands in every hunted item at once (raw meat is not a kept food). A hunter that
-  stands in a hidden hunter's way counts as arrived when it touches it near the ground. Statuses: "Needs bow or sword", "No valid Hunting
-  Ground", "Can't reach the Hunting Ground", and "Away (hunting)" on the Heart screen while it is out. If the ground's chunk is not
+  stands in a hidden hunter's way counts as arrived when it touches it near the flag. Statuses: "Needs bow or sword", "Needs a hunting flag",
+  "Can't reach the Hunting Ground", and "Away (hunting)" on the Heart screen while it is out. If the flag's chunk is not
   entity-ticking the hunter is not stepped (everything freezes, DESIGN 6). Known gap: a hunter hidden in the open has an invisible hitbox that can catch a player's
   crosshair (BACKLOG, before v1).
 
@@ -685,7 +682,7 @@ Rules as built (M23):
 | Tier | Reached when | Unlocks |
 |---|---|---|
 | **Hamlet** | Heart placed | House, Storage, Farmhouse, Lumber Camp, Kitchen. Job level cap 1 |
-| **Village** | population ≥6, ≥3 workers, valid Storage + Farmhouse + Kitchen, fed 3 days in a row | Builder's Hut, Mine + Mineshaft, Hunting Lodge + Hunting Ground, Barracks + Training Yard, Market. Blueprints except Watchtower. Level cap 2 |
+| **Village** | population ≥6, ≥3 workers, valid Storage + Farmhouse + Kitchen, fed 3 days in a row | Builder's Hut, Mine + Mineshaft, Hunting Lodge + Hunting Flag, Barracks + Training Yard, Market. Blueprints except Watchtower. Level cap 2 |
 | **Town** | population ≥12, ≥8 workers, ≥2 guards, fed 7 days in a row, treasury ≥32 at some dawn | Smithy (golems, gear), Watchtower. Level cap 3 |
 
 The tier never goes down in v1. The Overview tab shows each goal's progress.

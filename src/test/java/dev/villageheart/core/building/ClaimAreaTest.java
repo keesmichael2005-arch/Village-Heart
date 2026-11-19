@@ -28,8 +28,8 @@ class ClaimAreaTest {
 		assertNull(ClaimArea.check(HEART, at(56, 64, 56), BuildingType.HOUSE), "79.2");
 	}
 
-	@Test void outdoorExceptionIsOnlyForTwoSites() {
-		for (BuildingType t : new BuildingType[] {BuildingType.MINESHAFT, BuildingType.HUNTING_GROUND}) {
+	@Test void outdoorExceptionIsTheShaftAndTheTwoFlags() {
+		for (BuildingType t : new BuildingType[] {BuildingType.MINESHAFT, BuildingType.HUNTING_GROUND, BuildingType.CHOPPING_FLAG}) {
 			assertNull(ClaimArea.check(HEART, at(128, 64, 0), t), t.toString());
 			assertEquals("Outside the village: 129 blocks from the Heart (max 128)", ClaimArea.check(HEART, at(129, 64, 0), t).message());
 		}
