@@ -132,6 +132,7 @@ public final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		if (Workers.shouldWander(level, villager)) return false; // the work-day stroll does not deliver
 		if (Workers.tripRunning(villager)) return false; // at most one trip per worker, whichever activity started it
 		if ((level.getGameTime() + villager.getId()) % 20 != 0 || level.getGameTime() < cooldownUntil) return false;
 		try (var t = VillageTicker.section()) {
@@ -173,6 +174,7 @@ public final class DepositTrip extends Behavior<Villager> {
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
+		if (Workers.shouldWander(level, villager)) return false; // the work-day stroll does not deliver
 		if (delivered || failed) return false;
 		if (!arrived && gameTime - started >= WALK_TIMEOUT) return false;
 		return load(villager) > 0;

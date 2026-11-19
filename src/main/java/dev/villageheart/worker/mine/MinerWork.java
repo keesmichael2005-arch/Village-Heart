@@ -5,6 +5,7 @@ import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.world.VillageTicker;
 import dev.villageheart.worker.WorkerAttachments;
+import dev.villageheart.worker.Workers;
 import dev.villageheart.worker.job.AwayTrips;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
@@ -29,11 +30,14 @@ public final class MinerWork extends Behavior<Villager> {
 	}
 
 	@Override
-	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) { return isMiner(villager) && !AwayTrips.isAway(villager); }
+	protected boolean checkExtraStartConditions(ServerLevel level, Villager villager) {
+		return isMiner(villager) && !AwayTrips.isAway(villager) && !Workers.shouldWander(level, villager);
+	}
 
 	@Override
 	protected boolean canStillUse(ServerLevel level, Villager villager, long gameTime) {
-		return isMiner(villager) && villager.getBrain().isActive(Activity.WORK) && !AwayTrips.isAway(villager);
+		return isMiner(villager) && villager.getBrain().isActive(Activity.WORK) && !AwayTrips.isAway(villager)
+				&& !Workers.shouldWander(level, villager);
 	}
 
 	@Override
