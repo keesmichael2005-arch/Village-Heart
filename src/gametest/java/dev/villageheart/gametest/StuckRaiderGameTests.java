@@ -176,20 +176,26 @@ public class StuckRaiderGameTests {
 			BlockPos far = h.absolutePos(new BlockPos(3, 1, 30));
 			BuildingTestSupport.owner().teleportTo(far.getX() + 0.5, far.getY(), far.getZ() + 0.5);
 			raid[0] = start(h);
-			Raider pillager = h.spawn(EntityType.PILLAGER, new BlockPos(30, 1, 30));
+			// On the grass (y = -1). Spawning one block higher drops them, and a path search while they are
+			// in the air returns nothing and forgets the route, so the first sample can still be on the next block.
+			Raider pillager = h.spawn(EntityType.PILLAGER, new BlockPos(30, 0, 30));
 			raid[0].joinRaid(h.getLevel(), 1, pillager, pillager.blockPosition(), false);
 			raider[0] = pillager;
-			start[0] = Math.sqrt(pillager.blockPosition().distSqr(h.absolutePos(heart)));
+			start[0] = heartDistance(pillager, h.absolutePos(heart));
 		});
 		h.onEachTick(() -> {
 			if (raider[0] == null || raider[0].isRemoved()) return;
 			if (raid[0] != null && !raid[0].isStopped()) RaidStart.holdWaves(raid[0]);
+			if (!raider[0].onGround()) return;
 			BlockPos goal = h.absolutePos(new BlockPos(4, 1, 4));
 			double dx = goal.getX() + 0.5 - raider[0].getX(), dz = goal.getZ() + 0.5 - raider[0].getZ();
 			double len = Math.sqrt(dx * dx + dz * dz);
 			if (len < 1.5) return;
 			double step = Math.min(10.0, len);
-			raider[0].getNavigation().moveTo(raider[0].getX() + dx / len * step, goal.getY(), raider[0].getZ() + dz / len * step, 1.0);
+			double tx = raider[0].getX() + dx / len * step, tz = raider[0].getZ() + dz / len * step;
+			var path = raider[0].getNavigation().createPath(tx, goal.getY(), tz, 1);
+			// createPath returns null while the pillager cannot path, and moveTo(null) would drop the route.
+			if (path != null) raider[0].getNavigation().moveTo(path, 1.0);
 		});
 		double[] closest = {Double.MAX_VALUE};
 		for (int i = 0; i < 5; i++) {
@@ -197,7 +203,7 @@ public class StuckRaiderGameTests {
 				h.assertTrue(!raider[0].isRemoved(), "a walking raider was removed");
 				// The bell resonates for raiders within 48 blocks and makes them glow for 60 ticks: that is vanilla. The stuck rule is the counter.
 				h.assertValueEqual(0, StuckRaiderSystem.glowed, "a walking raider was made to glow, at " + VillageTestSupport.rel(h, raider[0].blockPosition()));
-				double now = Math.sqrt(raider[0].blockPosition().distSqr(h.absolutePos(heart)));
+				double now = heartDistance(raider[0], h.absolutePos(heart));
 				// The first step is about one block. Later samples have to keep that ground; the whole walk has to close 2.
 				h.assertTrue(now < start[0] && now <= closest[0] + 1.0e-6, "it is walking toward the Heart: " + now + " from " + start[0]
 						+ " closest " + closest[0] + " at " + VillageTestSupport.rel(h, raider[0].blockPosition()));
@@ -244,6 +250,12 @@ public class StuckRaiderGameTests {
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	/** Same distance the stuck rule uses: the raider's position to the heart block, not the block the raider happens to be standing in. */
+	private static double heartDistance(Raider raider, BlockPos heart) {
+		double dx = raider.getX() - heart.getX(), dy = raider.getY() - heart.getY(), dz = raider.getZ() - heart.getZ();
+		return Math.sqrt(dx * dx + dy * dy + dz * dz);
 	}
 
 	/** Threat lines go to the players near the Heart, and the claiming owner is placed wherever the test world spawns them. */

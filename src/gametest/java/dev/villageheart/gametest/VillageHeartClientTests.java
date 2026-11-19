@@ -65,6 +65,10 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 			toastsClearedBeforeScreenshot(context);
 			return;
 		}
+		if ("pocket".equals(System.getProperty("villageheart.l4.only"))) {
+			WorkerPocketClientTests.pocket(context);
+			return;
+		}
 		if ("flags".equals(System.getProperty("villageheart.l4.only"))) {
 			FlagClientTests.workFlags(context);
 			return;
@@ -99,6 +103,7 @@ public class VillageHeartClientTests implements FabricClientGameTest {
 		MarkerClientTests.markerItems(context);
 		MarkerClientTests.validationReport(context);
 		WorkerClientTests.workersAtJobBlocks(context);
+		WorkerPocketClientTests.pocket(context);
 		LumberClientTests.lumberjackFelling(context);
 		FarmerClientTests.farmerField(context);
 		RainClientTests.rainShelter(context);

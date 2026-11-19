@@ -508,6 +508,7 @@ public class SmithGameTests {
 			SelfCraftSwitch.reset();
 			SmithTestSupport.addLumberCamp(h);
 			h.setBlock(secondBlock, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+			h.setBlock(SmithTestSupport.campChest2(), Blocks.CHEST);
 		}).thenWaitUntil(() -> {
 			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
 			h.assertValueEqual(2, contents(h, SmithTestSupport.campMarker(), BuildingType.LUMBER_CAMP, BuildingRequirements.CHOPPING_BLOCK), "chopping blocks");
@@ -541,7 +542,7 @@ public class SmithGameTests {
 			h.assertTrue(SelfCraftTestSupport.record(h, jacks[1].getUUID()).isEmpty(), "lumberjack 2 started a self-craft");
 		}).thenWaitUntil(() -> {
 			h.assertTrue(sampler.finished(jacks[0].getUUID()), "the self-craft has not finished");
-			h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.STONE_AXE), "axes in the camp");
+			h.assertValueEqual(2, campCount(h, Items.STONE_AXE), "axes in the lumberjacks' chests");
 			h.assertValueEqual(0, GearOrders.size(), "an order is still open");
 		}).thenExecute(() -> {
 			int clock = sampler.clock(jacks[0].getUUID());
@@ -549,7 +550,7 @@ public class SmithGameTests {
 			h.assertValueEqual("minecraft:stone_axe", sampler.recipeOf(jacks[0].getUUID()), "lumberjack 1 made a stone axe");
 			h.assertFalse(jack2Crafted[0], "lumberjack 2 got a self-craft");
 			h.assertFalse(sampler.committed(jacks[1].getUUID()), "lumberjack 2 committed: " + sampler.log);
-			h.assertValueEqual(0, chestCount(h, SmithTestSupport.campChest(), Items.WOODEN_AXE), "a wooden axe");
+			h.assertValueEqual(0, campCount(h, Items.WOODEN_AXE), "a wooden axe");
 			h.assertValueEqual(0L, count(h, Items.COBBLESTONE), "cobble left");
 			h.assertValueEqual(0L, count(h, Items.STICK), "sticks left");
 			log("self-craft clock " + clock + " smith ordered at " + hiredAt[0]);
@@ -949,8 +950,10 @@ public class SmithGameTests {
 		scene(h).thenExecute(() -> {
 			h.setBlock(secondFurnace, Blocks.BLAST_FURNACE);
 			h.setBlock(secondAnvil, Blocks.ANVIL);
+			h.setBlock(SmithTestSupport.smithyChest2(), Blocks.CHEST);
 			SmithTestSupport.addLumberCamp(h);
 			h.setBlock(secondBlock, JobBlocks.BLOCKS.get(JobBlockType.CHOPPING_BLOCK));
+			h.setBlock(SmithTestSupport.campChest2(), Blocks.CHEST);
 		}).thenWaitUntil(() -> {
 			BuildingTestSupport.assertStatus(h, SmithTestSupport.campMarker(), dev.villageheart.block.MarkerStatus.VALID);
 			h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.BLAST_FURNACE), "furnaces");
@@ -967,13 +970,16 @@ public class SmithGameTests {
 			smiths[1] = hireEitherFurnace(h);
 			standAtFurnace(h, smiths[0]);
 			standAtFurnace(h, smiths[1]);
-		}).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes in the camp")
+		}).thenWaitUntil(() -> h.assertValueEqual(2, campCount(h, Items.IRON_AXE), "axes in the lumberjacks' chests")
 		).thenExecute(() -> {
 			h.assertValueEqual(1L, craftUnits(h, smiths[0]), "the first smith's axe");
 			h.assertValueEqual(1L, craftUnits(h, smiths[1]), "the second smith's axe");
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both lumberjacks lease an axe");
 			GearOrders.reset();
 			resetCamp(h);
+			// The axe may already be in the pocket. Clearing only the chests would leave them holding one, and no second order starts.
+			jacks[0].getInventory().clearContent();
+			jacks[1].getInventory().clearContent();
 			putStore(h, Items.IRON_INGOT, 6);
 			putStore(h, Items.STICK, 4);
 			// The first pair used the afternoon. The next morning is a full work day; stepping the clock backward
@@ -985,7 +991,7 @@ public class SmithGameTests {
 			standAtFurnace(h, smiths[1]);
 		}).thenWaitUntil(() -> h.assertTrue(craftAt(h, smiths[0]) && craftAt(h, smiths[1]), "both crafts committed")
 		).thenExecute(() -> h.assertTrue(Workers.fire(h.getLevel(), smiths[1]), "the second smith is fired")
-		).thenWaitUntil(() -> h.assertValueEqual(2, chestCount(h, SmithTestSupport.campChest(), Items.IRON_AXE), "axes after the adoption")
+		).thenWaitUntil(() -> h.assertValueEqual(2, campCount(h, Items.IRON_AXE), "axes after the adoption")
 		).thenExecute(() -> {
 			h.assertTrue(leasesAxe(h, jacks[0]) && leasesAxe(h, jacks[1]), "both still lease an axe");
 			VillageTestSupport.done(h);
@@ -1010,8 +1016,9 @@ public class SmithGameTests {
 	}
 
 	private static void resetCamp(GameTestHelper h) {
-		for (BlockPos rel : new BlockPos[] {SmithTestSupport.campChest(), SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2(), SmithTestSupport.smithyChest()}) {
+		for (BlockPos rel : new BlockPos[] {SmithTestSupport.campChest(), SmithTestSupport.campChest2(), SmithTestSupport.storeChest1(), SmithTestSupport.storeChest2(), SmithTestSupport.smithyChest()}) {
 			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(h.absolutePos(rel));
+			if (box == null) continue;
 			for (int i = 0; i < box.getContainerSize(); i++) box.setItem(i, ItemStack.EMPTY);
 			box.setChanged();
 		}
@@ -1990,6 +1997,7 @@ public class SmithGameTests {
 		scene(h).thenExecute(() -> {
 			h.setBlock(secondFurnace, Blocks.BLAST_FURNACE);
 			h.setBlock(secondAnvil, Blocks.ANVIL);
+			h.setBlock(SmithTestSupport.smithyChest2(), Blocks.CHEST);
 		}).thenWaitUntil(() -> h.assertValueEqual(2, contents(h, SmithTestSupport.smithyMarker(), BuildingType.SMITHY, BuildingRequirements.BLAST_FURNACE), "furnaces")
 		).thenExecute(() -> {
 			SmithTestSupport.sweepGolems(h.getLevel(), h.absolutePos(BlockPos.ZERO), Balance.CLAIM_RADIUS + 8);
@@ -2036,6 +2044,11 @@ public class SmithGameTests {
 			if (VillageClaims.locate(h.getLevel(), b.marker()).equals(want)) return b.latestScan().map(s -> s.count(key)).orElse(0);
 		}
 		return 0;
+	}
+
+	/** Axes land in each lumberjack's own chest, so both camp chests count. */
+	private static int campCount(GameTestHelper h, net.minecraft.world.item.Item item) {
+		return chestCount(h, SmithTestSupport.campChest(), item) + chestCount(h, SmithTestSupport.campChest2(), item);
 	}
 
 	private static int chestCount(GameTestHelper h, BlockPos rel, net.minecraft.world.item.Item item) {

@@ -288,11 +288,13 @@ public class WageGameTests {
 		@SuppressWarnings("unchecked") Set<BlockPos>[] logs = new Set[1];
 		int[] before = new int[1];
 		GameTestSequence seq = scene(h, 2, 0).thenExecute(() -> {
-			putInChest(h, chest(), 0, axe(ToolTier.STONE));
-			putInChest(h, chest(), 1, axe(ToolTier.STONE));
 			base[0] = growOak(h, new BlockPos(3, 0, 16), 30L);
 			logs[0] = logsOf(h, base[0]);
 			v[0] = hireLumberjack(h, 0);
+			var owned = VillageClaims.current(server(h)).orElseThrow().worker(v[0].getUUID()).orElseThrow().chest().orElseThrow();
+			var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(new BlockPos(owned.x(), owned.y(), owned.z()));
+			box.setItem(0, axe(ToolTier.STONE));
+			box.setChanged();
 			res[0] = HeartTestSupport.player(h, "res", Rank.RESIDENT);
 			wagesOn();
 		});

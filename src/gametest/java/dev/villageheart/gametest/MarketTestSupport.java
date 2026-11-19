@@ -63,6 +63,7 @@ public final class MarketTestSupport {
 			BuildingTestSupport.room(h, MARKET, 5, 4);
 			for (int i = 0; i < stalls; i++) h.setBlock(stall(i), JobBlocks.BLOCKS.get(JobBlockType.MARKET_STALL));
 			h.setBlock(marketChest(), Blocks.CHEST);
+			if (stalls >= 2) h.setBlock(BuildingTestSupport.inside(MARKET, 0, 0, 3), Blocks.CHEST);
 			h.setBlock(BuildingTestSupport.inside(MARKET, 2, 0, 3), Blocks.TORCH);
 			BuildingTestSupport.room(h, STORE, 5, 4);
 			h.setBlock(chest1(), Blocks.CHEST);

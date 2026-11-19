@@ -32,6 +32,7 @@ public final class WorkerStatusText {
 			case DAILY_LIMIT -> ActivityKind.DAILY_LIMIT;
 			case TREASURY_FULL -> ActivityKind.TREASURY_FULL;
 			case NEEDS_FLAG -> ActivityKind.NEEDS_FLAG;
+			case NEEDS_CHEST -> ActivityKind.NEEDS_CHEST;
 		};
 	}
 

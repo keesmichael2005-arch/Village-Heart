@@ -470,6 +470,7 @@ public class CookGameTests {
 		});
 		scene(h).thenExecute(() -> {
 			h.setBlock(smoker2(), net.minecraft.world.level.block.Blocks.SMOKER);
+			h.setBlock(BuildingTestSupport.inside(KITCHEN, 2, 0, 1), net.minecraft.world.level.block.Blocks.CHEST);
 			putStore(h, Items.BEEF, 12);
 			putStore(h, Items.COAL, 2);
 			setDayTime(h, 1000);

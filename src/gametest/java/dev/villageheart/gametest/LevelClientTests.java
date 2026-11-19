@@ -122,6 +122,7 @@ final class LevelClientTests {
 				srv.runCommand("setblock -2 " + y + " 7 villageheart:chopping_block[facing=south]");
 				srv.runCommand("setblock 2 " + y + " 7 villageheart:chopping_block[facing=south]");
 				srv.runCommand("setblock 2 " + y + " 10 minecraft:chest");
+				srv.runCommand("setblock -2 " + y + " 9 minecraft:chest");
 				srv.runCommand("setblock 0 " + y + " 10 minecraft:torch");
 				srv.runCommand("summon minecraft:villager -1 " + y + " 8 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(capped) + ",CustomName:\"Ada\"}");
 				srv.runCommand("summon minecraft:villager 1 " + y + " 8 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(fresh) + ",CustomName:\"Bram\"}");

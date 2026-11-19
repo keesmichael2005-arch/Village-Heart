@@ -601,12 +601,13 @@ public class HunterGameTests {
 		});
 		GameTestSequence seq = scene(h, true).thenExecute(() -> {
 			lightYard(h);
-			putInChest(h, 0, sword("stone"));
-			putInChest(h, 1, new ItemStack(Items.BOW));
-			putInChest(h, 2, new ItemStack(Items.ARROW, 2));
 			h.getLevel().setDayTime(1000);
 			v[0] = hireAt(h, spawnSpot());
 			v[1] = hireAt(h, spawnSpot2());
+			// The first hunter holds the bow. Each weapon goes in that hunter's chest; the other chest is never opened.
+			putOwn(h, v[0], 0, new ItemStack(Items.BOW));
+			putOwn(h, v[0], 1, new ItemStack(Items.ARROW, 2));
+			putOwn(h, v[1], 0, sword("stone"));
 			t1.start();
 			t2.start();
 		});
@@ -641,9 +642,10 @@ public class HunterGameTests {
 			h.assertTrue(away(t2, 0) >= 2975 && away(t2, 0) <= 3025, "the second was away 3000 +- 25, got " + away(t2, 0));
 			h.assertValueEqual(predictedTrip(h.getLevel(), v[0].getUUID(), 0, true), t1.ascents.get(0).inventory(), "the bow hunter's yield (with the arrow)");
 			h.assertValueEqual(predictedTrip(h.getLevel(), v[1].getUUID(), 0, false), t2.ascents.get(0).inventory(), "the sword hunter's yield (no arrow)");
-			h.assertValueEqual(1, inChest(h, Items.ARROW), "only the bow hunter took an arrow");
-			h.assertValueEqual(5, chestSlot(h, 1).getDamageValue(), "the bow wore 5");
-			h.assertValueEqual(5, chestSlot(h, 0).getDamageValue(), "the sword wore 5");
+			h.assertValueEqual(1, ownCount(h, v[0], Items.ARROW), "only the bow hunter took an arrow");
+			h.assertValueEqual(0, ownCount(h, v[1], Items.ARROW), "the sword hunter's chest has no arrow");
+			h.assertValueEqual(5, ownDamage(h, v[0], Items.BOW), "the bow wore 5");
+			h.assertValueEqual(5, ownDamage(h, v[1], Items.STONE_SWORD), "the sword wore 5");
 			VillageTestSupport.done(h);
 			end(h);
 		});
@@ -813,5 +815,29 @@ public class HunterGameTests {
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	private static net.minecraft.world.Container ownChest(GameTestHelper h, Villager v) {
+		var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v.getUUID()).orElseThrow().chest().orElseThrow();
+		return (net.minecraft.world.Container) h.getLevel().getBlockEntity(new BlockPos(owned.x(), owned.y(), owned.z()));
+	}
+
+	private static void putOwn(GameTestHelper h, Villager v, int slot, ItemStack stack) {
+		var box = ownChest(h, v);
+		box.setItem(slot, stack);
+		box.setChanged();
+	}
+
+	private static int ownCount(GameTestHelper h, Villager v, net.minecraft.world.item.Item item) {
+		var box = ownChest(h, v);
+		int n = 0;
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) n += box.getItem(i).getCount();
+		return n;
+	}
+
+	private static int ownDamage(GameTestHelper h, Villager v, net.minecraft.world.item.Item item) {
+		var box = ownChest(h, v);
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) return box.getItem(i).getDamageValue();
+		return -1;
 	}
 }

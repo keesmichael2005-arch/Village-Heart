@@ -20,6 +20,7 @@ public class VillageHeartClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		MenuScreens.register(ModMenus.HEART, HeartScreen::new);
+		MenuScreens.register(ModMenus.POCKET, dev.villageheart.client.pocket.PocketScreen::new);
 		GuideHud.register();
 		dev.villageheart.client.build.BlueprintPreview.register();
 		dev.villageheart.client.build.SchematicOverlay.register();

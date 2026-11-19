@@ -171,10 +171,12 @@ public final class WorkerBrain {
 				// No ReactToBell: a hired worker follows its day and the SHELTER activity. The bell rung when a raid or siege starts
 				// would otherwise send it into vanilla's HIDE after the raid, and with no bed in reach nothing ends that.
 				p(1, new MoveToTargetSink()),
+				p(9, new NearbyHome()),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14), WorkerBrain::bedIsFree)),
 				p(10, AcquirePoi.create(h -> h.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14)))));
 
 		brain.addActivity(Activity.IDLE, ImmutableList.of(
+				p(50, new dev.villageheart.worker.pocket.ToolErrand()),
 				p(2, new RunOne<>(ImmutableList.of(
 						Pair.of(InteractWith.of(EntityType.VILLAGER, 8, AgeableMob::canBreed, AgeableMob::canBreed, MemoryModuleType.BREED_TARGET, SPEED, 2), 1),
 						Pair.of(VillageBoundRandomStroll.create(SPEED), 1),
@@ -201,6 +203,7 @@ public final class WorkerBrain {
 				p(99, new UpdateWorkerActivity())));
 
 		brain.addActivity(GO_HOME, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
+				.add(p(0, new dev.villageheart.worker.pocket.ToolErrand()))
 				.addAll(JobBehaviours.goHome(villager))
 				.add(p(2, new GoHomeWalk()))
 				.add(p(3, ValidateNearbyPoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME)))

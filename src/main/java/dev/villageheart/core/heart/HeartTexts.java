@@ -186,6 +186,7 @@ public final class HeartTexts {
 		EN.put(PREFIX + "activity.no_shelter", "No shelter");
 		EN.put(PREFIX + "activity.repairing", "Repairing");
 		EN.put(PREFIX + "activity.out_of_the_rain", "Out of the rain");
+		EN.put(PREFIX + "activity.needs_chest", "Needs a chest");
 		EN.put(PREFIX + "rank.owner", "Owner");
 		EN.put(PREFIX + "rank.steward", "Steward");
 		EN.put(PREFIX + "rank.resident", "Resident");

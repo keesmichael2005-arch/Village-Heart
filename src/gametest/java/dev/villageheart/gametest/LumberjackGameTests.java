@@ -92,12 +92,11 @@ public class LumberjackGameTests {
 	@GameTest(environment = "villageheart-gametest:lumber_tools", structure = YARD, skyAccess = true, maxTicks = 900)
 	public void campToolLease(GameTestHelper h) {
 		begin(h);
-		Villager[] v = new Villager[2];
+		Villager[] v = new Villager[1];
 		BlockPos doubleLeft = BuildingTestSupport.inside(CAMP, 3, 0, 3);
 		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
 			sweepStrayTrees(h, 48);
 			buildCamp(h);
-			addSecondChop(h);
 			placeMarkers(h, false);
 		});
 		seq = seq.thenWaitUntil(() -> assertValid(h, false));
@@ -106,26 +105,19 @@ public class LumberjackGameTests {
 			putInChest(h, chest(), 4, axe(ToolTier.STONE));
 			putInChest(h, chest(), 9, axe(ToolTier.IRON));
 			v[0] = hire(h, spawnSpot());
-			v[1] = hire(h, spawnSpot());
 		});
 		seq = seq.thenExecute(() -> {
 			var server = h.getLevel().getServer();
+			// The worker's own chest: the better axe is used, and it wears in that chest until morning takes it out.
 			CampTools.Result a = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b = CampTools.lease(server, v[1], ToolKind.AXE);
-			h.assertTrue(a instanceof CampTools.Held, "A holds a tool: " + a);
-			h.assertTrue(b instanceof CampTools.Held, "B holds a tool: " + b);
-			h.assertValueEqual(ToolTier.IRON, ((CampTools.Held) a).lease().tier(), "the first hired gets the iron axe");
-			h.assertValueEqual(ToolTier.STONE, ((CampTools.Held) b).lease().tier(), "the second gets the stone axe");
+			h.assertTrue(a instanceof CampTools.Held, "the lumberjack holds a tool: " + a);
+			h.assertValueEqual(ToolTier.IRON, ((CampTools.Held) a).lease().tier(), "the iron axe is used before the stone one");
 			CampTools.Held ha = (CampTools.Held) a;
 			h.assertTrue(CampTools.use(h.getLevel(), ha.lease(), 3), "the iron axe is used");
 			h.assertValueEqual(3, StockpileTestSupport.container(h, chest()).getItem(9).getDamageValue(), "the iron axe lost 3 durability");
-			// the player takes the iron axe out: A now gets the stone axe, B nothing
 			StockpileTestSupport.container(h, chest()).setItem(9, ItemStack.EMPTY);
 			CampTools.Result a2 = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b2 = CampTools.lease(server, v[1], ToolKind.AXE);
-			h.assertTrue(a2 instanceof CampTools.Held && ((CampTools.Held) a2).lease().tier() == ToolTier.STONE, "A now holds the stone axe: " + a2);
-			h.assertValueEqual(CampTools.Missing.NONE, b2, "B has no axe");
-			// an axe at 1 durability left breaks to empty on use
+			h.assertTrue(a2 instanceof CampTools.Held && ((CampTools.Held) a2).lease().tier() == ToolTier.STONE, "the stone axe is next: " + a2);
 			ItemStack frail = axe(ToolTier.STONE);
 			frail.setDamageValue(frail.getMaxDamage() - 1);
 			StockpileTestSupport.container(h, chest()).setItem(4, frail);
@@ -133,7 +125,7 @@ public class LumberjackGameTests {
 			h.assertTrue(CampTools.use(h.getLevel(), h2.lease(), 1), "used");
 			h.assertTrue(StockpileTestSupport.container(h, chest()).getItem(4).isEmpty(), "the broken axe is gone from the slot");
 			h.assertValueEqual(CampTools.Missing.NONE, CampTools.lease(server, v[0], ToolKind.AXE), "nothing left");
-			// a double chest: one axe in the left half, two lumberjacks, exactly one gets it
+			// a double chest is one chest: the axe in the other half is still this worker's
 			h.setBlock(doubleLeft, Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
 					net.minecraft.world.level.block.state.properties.ChestType.LEFT));
 			h.setBlock(chest(), Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
@@ -144,10 +136,7 @@ public class LumberjackGameTests {
 		seq.thenExecute(() -> {
 			var server = h.getLevel().getServer();
 			CampTools.Result a = CampTools.lease(server, v[0], ToolKind.AXE);
-			CampTools.Result b = CampTools.lease(server, v[1], ToolKind.AXE);
-			int held = (a instanceof CampTools.Held ? 1 : 0) + (b instanceof CampTools.Held ? 1 : 0);
-			h.assertValueEqual(1, held, "an axe in a double chest is given out exactly once: " + a + " / " + b);
-			// a worker whose camp is not in the registry: the tool is unknown, not missing
+			h.assertTrue(a instanceof CampTools.Held, "an axe in the other half of the worker's double chest: " + a);
 			Villager stray = WorkerTestSupport.spawnVillager(h, spawnSpot());
 			WorkerTestSupport.hireDirect(h, stray, dev.villageheart.core.worker.JobType.LUMBERJACK, chop());
 			h.assertValueEqual(CampTools.Missing.UNKNOWN, CampTools.lease(server, stray, ToolKind.AXE), "unknown, so no 'Needs axe'");
@@ -623,8 +612,11 @@ public class LumberjackGameTests {
 					dev.villageheart.core.TreeTask.Stage.REPLANT, java.util.List.of(cellLoc), "minecraft:oak_sapling", h.getLevel().getGameTime(), box, box)));
 			h.getLevel().setDayTime(3000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_SAPLING, 6));
+			// Slot 0 stays free for the axe. The other seven are full, so the trip starts: 64 logs, not one stack on its own.
+			var inv = v[0].getInventory();
+			inv.setItem(1, new ItemStack(Items.OAK_LOG, 64));
+			inv.setItem(2, new ItemStack(Items.OAK_SAPLING, 6));
+			for (int i = 3; i <= 7; i++) inv.setItem(i, new ItemStack(Items.STICK, 1));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the logs and the spare sapling reach Storage", () -> {
 			h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage");
@@ -632,17 +624,15 @@ public class LumberjackGameTests {
 			h.assertValueEqual(1L, stored(h, "minecraft:oak_sapling"), "the sixth sapling went to Storage");
 		});
 		seq = seq.thenExecute(() -> {
-			// the slot rule: seven different stacks leave one free slot, so the trip starts although the load is tiny
+			// Every cargo slot is taken, so the trip starts even though each stack is small. Slot 0 stays free for the axe.
 			var inv = v[0].getInventory();
 			inv.clearContent();
-			inv.addItem(new ItemStack(Items.OAK_SAPLING, 5));
+			inv.setItem(1, new ItemStack(Items.OAK_SAPLING, 5));
 			net.minecraft.world.item.Item[] junk = {Items.DIRT, Items.COBBLESTONE, Items.GRAVEL, Items.SAND, Items.CLAY_BALL, Items.FLINT};
-			for (var item : junk) inv.addItem(new ItemStack(item, 1));
-			int used = 0;
-			for (int i = 0; i < inv.getContainerSize(); i++) if (!inv.getItem(i).isEmpty()) used++;
-			h.assertValueEqual(inv.getContainerSize() - 1, used, "one free slot: " + inventory(v[0]));
+			for (int i = 0; i < junk.length; i++) inv.setItem(2 + i, new ItemStack(junk[i], 1));
+			h.assertTrue(dev.villageheart.worker.pocket.Pockets.cargoFull(v[0]), "the cargo slots are full: " + inventory(v[0]));
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the junk reaches Storage although the load is light", () -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the junk reaches Storage although each stack is small", () -> {
 			h.assertValueEqual(1L, stored(h, "minecraft:flint"), "flint in Storage");
 			h.assertValueEqual(1L, stored(h, "minecraft:dirt"), "dirt in Storage");
 			h.assertTrue(carried(v[0], Items.OAK_SAPLING) >= 4, "the saplings stay with the worker: " + inventory(v[0]));
@@ -947,7 +937,7 @@ public class LumberjackGameTests {
 				last[i] = logs[i].size();
 			}
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
-			putInChest(h, chest(), 1, axe(ToolTier.STONE));
+			putInChest(h, chest2(), 0, axe(ToolTier.STONE));
 			lightYard(h);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
@@ -963,8 +953,10 @@ public class LumberjackGameTests {
 			java.util.Set<java.util.UUID> all = new java.util.HashSet<>();
 			for (var b : breakers) all.addAll(b);
 			System.out.println("[m9] twoLumberjacks: " + all.size() + " different workers felled the 3 trees");
-			// one axe removed: only the first hired keeps one
-			StockpileTestSupport.container(h, chest()).setItem(1, ItemStack.EMPTY);
+			// the later hire's own chest loses its axe; the first keeps theirs
+			var second = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[1].getUUID()).orElseThrow();
+			var at = new BlockPos(second.chest().orElseThrow().x(), second.chest().orElseThrow().y(), second.chest().orElseThrow().z());
+			((net.minecraft.world.Container) h.getLevel().getBlockEntity(at)).clearContent();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 100, "the later hired lumberjack needs an axe", () -> {
 			h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.NEEDS_TOOL, status(h, v[1]), "second lumberjack");
@@ -995,21 +987,21 @@ public class LumberjackGameTests {
 			lightYard(h);
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new ItemStack(Items.OAK_LOG, 64));
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, 200, "STORAGE_FULL is reported", () ->
 				h.assertValueEqual(dev.villageheart.core.worker.WorkerStatus.STORAGE_FULL, status(h, v[0]), "status"));
 		seq = seq.thenIdle(1200);
 		seq = seq.thenExecute(() -> {
 			h.assertValueEqual(logs[0].size(), standing(h, logs[0]), "not a log fell while the load could not be handed in");
-			h.assertValueEqual(64, carried(v[0], Items.OAK_LOG), "the worker keeps what it carries");
+			h.assertValueEqual(448, carried(v[0], Items.OAK_LOG), "the worker keeps the seven full cargo stacks");
 			// room in one chest: the load goes in, then the tree falls
 			var c = StockpileTestSupport.container(h, storeChest1());
 			c.clearContent();
 			c.setChanged();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
-				h.assertTrue(stored(h, "minecraft:oak_log") >= 64, "logs in Storage: " + stored(h, "minecraft:oak_log")));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 448 logs reach Storage", () ->
+				h.assertTrue(stored(h, "minecraft:oak_log") >= 448, "logs in Storage: " + stored(h, "minecraft:oak_log")));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
 		seq.thenExecute(() -> {
@@ -1230,7 +1222,10 @@ public class LumberjackGameTests {
 			putInChest(h, chest(), 0, axe(ToolTier.STONE));
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, spawnSpot());
-			v[0].getInventory().addItem(new ItemStack(Items.OAK_LOG, 64));
+			// The cargo slots are full, so getting out is what lets the 64 logs reach Storage.
+			var carried = v[0].getInventory();
+			carried.setItem(1, new ItemStack(Items.OAK_LOG, 64));
+			for (int i = 2; i <= 7; i++) carried.setItem(i, new ItemStack(Items.STICK, 1));
 			// a hollow 3x3x3 cube of NATURAL leaves around the spot, as left by a canopy the worker cut into. A log on top of the cube keeps them from
 			// decaying during the test (persistent leaves would be a player build, which the worker must not break)
 			h.setBlock(spot.offset(0, 3, 0), Blocks.OAK_LOG);

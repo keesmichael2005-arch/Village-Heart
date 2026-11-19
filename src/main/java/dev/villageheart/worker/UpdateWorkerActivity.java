@@ -35,9 +35,12 @@ public final class UpdateWorkerActivity extends Behavior<Villager> {
 	protected void start(ServerLevel level, Villager villager, long gameTime) {
 		try (var t = VillageTicker.section()) {
 			Activity want = WorkerBrain.activityFor(villager, level);
-			// The rain stand's walk target is the workplace. Leaving it has to drop that target,
-			// or home time keeps them a workplace away from the bed.
-			if (villager.getBrain().isActive(WorkerBrain.RAIN) && want != WorkerBrain.RAIN) {
+			// A walk target belongs to the activity that set it. The rain stand's is the workplace, and a
+			// striker's stroll picks somewhere in the claim. Either one still set at 11000 blocks the walk
+			// to the bed, and they stay a claim away from home.
+			boolean leavingRain = villager.getBrain().isActive(WorkerBrain.RAIN) && want != WorkerBrain.RAIN;
+			boolean goingHome = want == WorkerBrain.GO_HOME || want == Activity.REST;
+			if (leavingRain || goingHome) {
 				villager.getNavigation().stop();
 				villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			}

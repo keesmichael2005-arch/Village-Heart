@@ -63,6 +63,15 @@ public class SelfCraftLifecycleGameTests {
 
 	static Villager lumberjack2(GameTestHelper h) { return LumberTestSupport.hire(h, BuildingTestSupport.inside(LumberTestSupport.CAMP, 2, 0, 1)); }
 
+	/** How many of {@code item} sit in this worker's own chest. */
+	private static int ownCount(GameTestHelper h, Villager v, net.minecraft.world.item.Item item) {
+		var owned = VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v.getUUID()).orElseThrow().chest().orElseThrow();
+		var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(new BlockPos(owned.x(), owned.y(), owned.z()));
+		int n = 0;
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) n += box.getItem(i).getCount();
+		return n;
+	}
+
 	// ---- T-L2-5 ----------------------------------------------------------------------------------
 
 	/** The owner's clarification: wood first, then stone as the miner brings it in. */
@@ -232,7 +241,7 @@ public class SelfCraftLifecycleGameTests {
 			t0[0] = h.getTick();
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(h.getTick() - t0[0] >= 80 && GearOrders.size() == 2, "orders: " + GearOrders.size()));
-		seq = seq.thenWaitUntil(() -> h.assertTrue(countIn(h, chest(0), Items.STONE_PICKAXE) == 1, "the first craft is not finished: " + s.log));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(ownCount(h, v[0], Items.STONE_PICKAXE) == 1 || v[0].getInventory().getItem(0).is(Items.STONE_PICKAXE), "the first craft is not finished: " + s.log));
 		seq.thenExecute(() -> {
 			System.out.println("[m19a] craftPausesOvernight: finished after " + (h.getTick() - t0[0]) + " ticks of the new day; " + s.log);
 			h.assertTrue(h.getTick() - t0[0] <= (4800 - frozen[0]) + 400, "at most 200 ticks lost: " + (h.getTick() - t0[0]));
@@ -346,11 +355,14 @@ public class SelfCraftLifecycleGameTests {
 		});
 		GameTestSequence seq = lumberScene(h, true, items(new ItemStack(Items.OAK_PLANKS, 5), new ItemStack(Items.COBBLESTONE, 3)),
 				new BlockPos(2, 0, 8), new BlockPos(6, 0, 14), new BlockPos(12, 0, 16)).thenExecute(() -> {
-					add(h, LumberTestSupport.chest(), new ItemStack(Items.STONE_AXE));
 					v[0] = lumberjack(h);
 					v[1] = lumberjack2(h);
+					var owned = VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v[0].getUUID()).orElseThrow().chest().orElseThrow();
+					var box = (net.minecraft.world.Container) h.getLevel().getBlockEntity(new BlockPos(owned.x(), owned.y(), owned.z()));
+					box.setItem(0, new ItemStack(Items.STONE_AXE));
+					box.setChanged();
 				});
-		seq = seq.thenWaitUntil(() -> h.assertTrue(countIn(h, LumberTestSupport.chest(), Items.STONE_AXE) == 2, "the second axe is not made yet: " + s.log));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(ownCount(h, v[0], Items.STONE_AXE) + ownCount(h, v[1], Items.STONE_AXE) == 2, "the second axe is not made yet: " + s.log));
 		seq.thenExecute(() -> {
 			System.out.println("[m19a] twoLumberjacksOneAxe: " + s.log);
 			h.assertTrue(s.committed(v[1].getUUID()) && !s.committed(v[0].getUUID()), "only the second-hired crafted: " + s.log);
@@ -381,7 +393,7 @@ public class SelfCraftLifecycleGameTests {
 			h.assertTrue(st != null && st.progress >= 1, "the second craft has not started working");
 		});
 		seq = seq.thenExecute(() -> SelfCraftRuntime.get(h.getLevel().getServer()).peek(v[1].getUUID()).progress = 2395);
-		seq = seq.thenWaitUntil(() -> h.assertTrue(countIn(h, LumberTestSupport.chest(), Items.WOODEN_AXE) == 1, "the second axe is not finished: " + s.log));
+		seq = seq.thenWaitUntil(() -> h.assertTrue(ownCount(h, v[1], Items.WOODEN_AXE) == 1, "the second axe is not in that lumberjack's chest: " + s.log));
 		seq.thenExecute(() -> {
 			h.assertTrue(s.finished(v[1].getUUID()) && !s.finished(v[0].getUUID()), "the first is still crafting: " + s.log);
 			var r1 = CampTools.lease(h.getLevel().getServer(), v[0], ToolKind.AXE);

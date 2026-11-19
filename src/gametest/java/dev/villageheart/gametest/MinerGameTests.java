@@ -594,12 +594,13 @@ public class MinerGameTests {
 			t1.sample(h);
 		});
 		GameTestSequence seq = scene(h, dy, true, SHAFT1, SHAFT2).thenExecute(() -> {
-			putInChest(h, chest(dy), 0, pickaxe(ToolTier.STONE));
-			putInChest(h, chest(dy), 1, pickaxe(ToolTier.IRON));
 			lightYard(h, dy);
 			h.getLevel().setDayTime(1000);
 			v[0] = hireAt(h, spawnSpot(dy));
 			v[1] = hireAt(h, spawnSpot(dy).offset(1, 0, 1));
+			// The first miner keeps the iron pick, the second the stone one. Each pick lives in that miner's chest.
+			putOwn(h, v[0], 0, pickaxe(ToolTier.IRON));
+			putOwn(h, v[1], 0, pickaxe(ToolTier.STONE));
 			t0.start();
 			t1.start();
 		});
@@ -642,8 +643,8 @@ public class MinerGameTests {
 			h.assertValueEqual(SurfaceReason.HAUL, t1.ascents.get(1).record().reason(), "stone: reason");
 			h.assertTrue(Math.abs(iron - 1333) <= 25, "iron: 1333 +- 25, got " + iron);
 			h.assertTrue(Math.abs(stone - 2000) <= 25, "stone: 2000 +- 25, got " + stone);
-			h.assertValueEqual(10, chestSlot(h, chest(dy), 1).getDamageValue(), "the iron pickaxe wore by one haul");
-			h.assertValueEqual(10, chestSlot(h, chest(dy), 0).getDamageValue(), "the stone pickaxe wore by one haul");
+			h.assertValueEqual(10, ownDamage(h, v[0], net.minecraft.world.item.Items.IRON_PICKAXE), "the iron pickaxe wore by one haul");
+			h.assertValueEqual(10, ownDamage(h, v[1], net.minecraft.world.item.Items.STONE_PICKAXE), "the stone pickaxe wore by one haul");
 			clearHigh(h, dy);
 			VillageTestSupport.done(h);
 			end(h);
@@ -770,5 +771,22 @@ public class MinerGameTests {
 			VillageTestSupport.done(h);
 			end(h);
 		});
+	}
+
+	private static net.minecraft.world.Container ownChest(GameTestHelper h, Villager v) {
+		var owned = dev.villageheart.world.VillageClaims.current(h.getLevel().getServer()).orElseThrow().worker(v.getUUID()).orElseThrow().chest().orElseThrow();
+		return (net.minecraft.world.Container) h.getLevel().getBlockEntity(new BlockPos(owned.x(), owned.y(), owned.z()));
+	}
+
+	private static void putOwn(GameTestHelper h, Villager v, int slot, net.minecraft.world.item.ItemStack stack) {
+		var box = ownChest(h, v);
+		box.setItem(slot, stack);
+		box.setChanged();
+	}
+
+	private static int ownDamage(GameTestHelper h, Villager v, net.minecraft.world.item.Item item) {
+		var box = ownChest(h, v);
+		for (int i = 0; i < box.getContainerSize(); i++) if (box.getItem(i).is(item)) return box.getItem(i).getDamageValue();
+		return -1;
 	}
 }

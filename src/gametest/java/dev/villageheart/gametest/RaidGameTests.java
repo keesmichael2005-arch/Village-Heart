@@ -614,6 +614,10 @@ public class RaidGameTests {
 				WorkerTestSupport.bed(h, BuildingTestSupport.inside(BARRACKS, i, 0, 2));
 			}
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 0), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 2), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 0, 1, 0), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 3, 1, 1), Blocks.CHEST.defaultBlockState());
+			h.setBlock(BuildingTestSupport.inside(BARRACKS, 4, 1, 0), Blocks.CHEST.defaultBlockState());
 			h.setBlock(BuildingTestSupport.inside(BARRACKS, 5, 0, 1), Blocks.TORCH.defaultBlockState());
 			BuildingTestSupport.placeMarker(h, BuildingType.BARRACKS, marker[0], Direction.NORTH);
 		}).thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, marker[0], dev.villageheart.block.MarkerStatus.VALID));

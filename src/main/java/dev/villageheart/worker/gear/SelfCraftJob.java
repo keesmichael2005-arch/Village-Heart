@@ -413,7 +413,7 @@ public final class SelfCraftJob {
 		ItemStack tool = Stockpiles.withdrawFirst(level, at, k -> storedKey(k, need, job), 1, me);
 		boolean placed = false;
 		if (!tool.isEmpty()) {
-			placed = placeInCamp(server, data.building(), tool);
+			placed = placeInCamp(server, v, data.building(), tool);
 			if (!placed) {
 				Stockpiles.deposit(level, at, tool); // the chest filled up meanwhile: back to Storage, once
 				if (!tool.isEmpty()) v.getInventory().addItem(tool);
@@ -511,7 +511,7 @@ public final class SelfCraftJob {
 		UUID me = v.getUUID();
 		BlockPos at = v.blockPosition();
 		ItemStack tool = new ItemStack(item(recipe.outputId()));
-		if (!placeInCamp(server, data.building(), tool)) {
+		if (!placeInCamp(server, v, data.building(), tool)) {
 			Stockpiles.deposit(level, at, tool);
 			if (!tool.isEmpty()) v.getInventory().addItem(tool);
 			WorkStats.add(job.id(), "tools_to_storage", 1);
@@ -537,7 +537,20 @@ public final class SelfCraftJob {
 		st.lastPlan = Long.MIN_VALUE;
 		level.playSound(null, v.blockPosition(), SoundEvents.VILLAGER_WORK_TOOLSMITH, SoundSource.NEUTRAL, 0.8f, 1.0f);
 		level.sendParticles(ParticleTypes.HAPPY_VILLAGER, v.getX(), v.getY() + 1.0, v.getZ(), 6, 0.3, 0.3, 0.3, 0.0);
+		retireHeldWornTool(level, v, job, at);
 		moveUnassignedWornToStorage(level, v, data, job);
+	}
+
+	/** A worn tool in the pocket is the one the new tool replaces. It goes to Storage, the same as a worn tool left in the chest. */
+	private static void retireHeldWornTool(ServerLevel level, Villager v, JobType job, BlockPos at) {
+		if (!dev.villageheart.worker.pocket.Pockets.holdingTool(v)) return;
+		ItemStack held = v.getInventory().getItem(dev.villageheart.core.job.PocketRules.TOOL_SLOT);
+		if (!ToolStacks.worn(held, job)) return;
+		ItemStack moving = held.copy();
+		Stockpiles.deposit(level, at, moving);
+		if (!moving.isEmpty()) return;
+		v.getInventory().setItem(dev.villageheart.core.job.PocketRules.TOOL_SLOT, ItemStack.EMPTY);
+		WorkStats.add(job.id(), "tools_to_storage", 1);
 	}
 
 	/** What the committed raw inputs leave after the recipe: the committed stock minus what the recipe consumes. */
@@ -578,20 +591,24 @@ public final class SelfCraftJob {
 		return ToolStacks.roleOf(k).orElse(null);
 	}
 
-	/** First empty slot of the camp's containers; false when there is none (or the chests cannot be read). */
-	private static boolean placeInCamp(MinecraftServer server, HeartLocation building, ItemStack tool) {
+	/** First empty slot of this worker's chest, then any camp chest. False when none has room (or the chests cannot be read). */
+	private static boolean placeInCamp(MinecraftServer server, Villager v, HeartLocation building, ItemStack tool) {
+		for (Container cont : dev.villageheart.worker.pocket.Pockets.ownContainers(server, v)) {
+			if (putInEmpty(cont, tool)) return true;
+		}
 		Optional<List<CampContainers.Chest>> chests = CampContainers.of(server, building);
 		if (chests.isEmpty()) return false;
-		for (CampContainers.Chest c : chests.get()) {
-			Container cont = c.container();
-			for (int i = 0; i < cont.getContainerSize(); i++) {
-				if (cont.getItem(i).isEmpty()) {
-					cont.setItem(i, tool.copy());
-					cont.setChanged();
-					tool.setCount(0);
-					return true;
-				}
-			}
+		for (CampContainers.Chest c : chests.get()) if (putInEmpty(c.container(), tool)) return true;
+		return false;
+	}
+
+	private static boolean putInEmpty(Container cont, ItemStack tool) {
+		for (int i = 0; i < cont.getContainerSize(); i++) {
+			if (!cont.getItem(i).isEmpty()) continue;
+			cont.setItem(i, tool.copy());
+			cont.setChanged();
+			tool.setCount(0);
+			return true;
 		}
 		return false;
 	}

@@ -66,6 +66,12 @@ public final class GuardTestSupport {
 			WorkerTestSupport.bed(h, bedFoot(i));
 		}
 		h.setBlock(chest(), Blocks.CHEST);
+		// One chest per guard. None sits beside another, so a double chest does not swallow a slot.
+		// Above the south-east corner. A chest on a grindstone hides that grindstone from the room scan, and the guard slot is gone.
+		if (guards >= 2) h.setBlock(BuildingTestSupport.inside(BARRACKS, 4, 1, 3), Blocks.CHEST);
+		if (guards >= 3) h.setBlock(BuildingTestSupport.inside(BARRACKS, 4, 0, 2), Blocks.CHEST);
+		// Above the walkway, off the door column. The cell over the grindstone in front of the door is the only air the room scan can enter through.
+		if (guards >= 4) h.setBlock(BuildingTestSupport.inside(BARRACKS, 1, 1, 1), Blocks.CHEST);
 		h.setBlock(BuildingTestSupport.inside(BARRACKS, 4, 0, 1), Blocks.TORCH);
 	}
 

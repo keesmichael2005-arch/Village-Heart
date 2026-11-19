@@ -106,6 +106,7 @@ public final class WorkerTestSupport {
 	public static BlockPos farmhouse(GameTestHelper h, BlockPos origin, int composters) {
 		BlockPos marker = BuildingTestSupport.room(h, origin, 5, 4);
 		h.setBlock(BuildingTestSupport.inside(origin, 4, 0, 3), Blocks.CHEST);
+		if (composters >= 2) h.setBlock(BuildingTestSupport.inside(origin, 0, 0, 2), Blocks.CHEST);
 		h.setBlock(BuildingTestSupport.inside(origin, 2, 0, 3), Blocks.TORCH);
 		if (composters >= 1) h.setBlock(BuildingTestSupport.inside(origin, 0, 0, 0), Blocks.COMPOSTER);
 		if (composters >= 2) h.setBlock(BuildingTestSupport.inside(origin, 4, 0, 0), Blocks.COMPOSTER);
