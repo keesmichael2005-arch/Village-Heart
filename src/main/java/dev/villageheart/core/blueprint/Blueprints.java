@@ -12,65 +12,8 @@ import java.util.Optional;
 public final class Blueprints {
 	private Blueprints() {}
 
-	private static final String PALETTE_COMMON = """
-			palette
-			. any
-			_ air
-			C minecraft:cobblestone <- minecraft:cobblestone "cobblestone" "cobblestone"
-			P minecraft:oak_planks <- #minecraft:planks "planks" "planks"
-			D minecraft:oak_door[facing=south,half=lower] <- #minecraft:wooden_doors "door" cell=solid +#door
-			d minecraft:oak_door[facing=south,half=upper] part=DOWN cell=solid
-			""";
-
 	private static String shell(String palette, String torchRow, String backRow, String marker) {
-		return PALETTE_COMMON + palette + """
-				layer 0
-				.......
-				CCCCCCC
-				CCCCCCC
-				CCCCCCC
-				CCCCCCC
-				CCCCCCC
-				CCCCCCC
-				CCCCCCC
-				layer 1
-				.......
-				PPPDPPP
-				P_____P
-				P_____P
-				P_____P
-				P_____P
-				""" + backRow + """
-				PPPPPPP
-				layer 2
-				.......
-				PPPdPPP
-				P_____P
-				P_____P
-				P_____P
-				P_____P
-				""" + torchRow + """
-				PPPPPPP
-				layer 3
-				""" + marker + """
-				PPPPPPP
-				P_____P
-				P_____P
-				P_____P
-				P_____P
-				P_____P
-				PPPPPPP
-				layer 4
-				.......
-				PPPPPPP
-				PPPPPPP
-				PPPPPPP
-				PPPPPPP
-				PPPPPPP
-				PPPPPPP
-				PPPPPPP
-				end
-				""";
+		return WorkplaceBlueprints.shell(palette, torchRow, backRow, marker);
 	}
 
 	private static final String SMALL_HOUSE_TEXT = """
@@ -172,7 +115,10 @@ public final class Blueprints {
 	public static final Blueprint WATCHTOWER = DefenceBlueprints.WATCHTOWER;
 
 	/** For a LINE blueprint the entry is the shortest instance: used for names, tier and the table, never for a site. */
-	private static final List<Blueprint> ALL = List.of(SMALL_HOUSE, STORAGE_SHED, FARM_PLOT, WALL_SEGMENT, GATE, LAMP_POST, WATCHTOWER);
+	private static final List<Blueprint> ALL = List.of(SMALL_HOUSE, STORAGE_SHED, FARM_PLOT,
+			WorkplaceBlueprints.FARMHOUSE, WorkplaceBlueprints.LUMBER_CAMP, WorkplaceBlueprints.KITCHEN, WorkplaceBlueprints.BUILDERS_HUT,
+			WorkplaceBlueprints.MINE, WorkplaceBlueprints.HUNTING_LODGE, WorkplaceBlueprints.HUNTING_GROVE, WorkplaceBlueprints.BARRACKS,
+			WorkplaceBlueprints.MARKET, WorkplaceBlueprints.SMITHY, WALL_SEGMENT, GATE, LAMP_POST, WATCHTOWER);
 
 	/** In menu order. */
 	public static List<Blueprint> all() { return ALL; }

@@ -287,11 +287,12 @@ public final class HeartCodecs {
 			});
 
 	private static final StreamCodec<ByteBuf, List<MemberRow>> MEMBERS = MEMBER_ROW.apply(ByteBufCodecs.list(HeartLimits.MAX_MEMBERS));
+	private static final StreamCodec<ByteBuf, List<String>> GUIDE_IDS = ID.apply(ByteBufCodecs.list(HeartLimits.MAX_GUIDE));
 
 	public static final StreamCodec<ByteBuf, HeartSnapshot> SNAPSHOT = codec(
 			buf -> new HeartSnapshot(RANK.decode(buf), OVERVIEW.decode(buf), VILLAGERS.decode(buf), INT.decode(buf),
 					JOB_CHOICES.decode(buf), BUILDINGS.decode(buf), INT.decode(buf), STOCK.decode(buf), MEMBERS.decode(buf),
-					INT.decode(buf), BUILDS.decode(buf)),
+					INT.decode(buf), BUILDS.decode(buf), GUIDE_IDS.decode(buf), GUIDE_IDS.decode(buf)),
 			(buf, s) -> {
 				RANK.encode(buf, s.viewerRank());
 				OVERVIEW.encode(buf, s.overview());
@@ -304,5 +305,7 @@ public final class HeartCodecs {
 				MEMBERS.encode(buf, s.members());
 				INT.encode(buf, s.moreMembers());
 				BUILDS.encode(buf, s.builds());
+				GUIDE_IDS.encode(buf, s.guideDone());
+				GUIDE_IDS.encode(buf, s.guideNeeds());
 			});
 }
