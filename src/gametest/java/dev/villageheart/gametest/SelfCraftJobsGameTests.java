@@ -98,7 +98,7 @@ public class SelfCraftJobsGameTests {
 	// ---- T-L2-14 ---------------------------------------------------------------------------------
 
 	/** A hunter with no weapon and two cobblestone plus a stick in Storage makes a stone sword, then goes hunting. */
-	@GameTest(environment = "villageheart-gametest:selfcraft_hunter", structure = YARD, skyAccess = true, maxTicks = 7000)
+	@GameTest(environment = "villageheart-gametest:selfcraft_hunter", structure = YARD, skyAccess = true, maxTicks = 9000)
 	public void hunterMakesSword(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];
@@ -123,8 +123,12 @@ public class SelfCraftJobsGameTests {
 			h.assertTrue(clock >= 4800 - 20 && clock <= 4800 + 100, "the stone time: " + clock);
 			h.assertTrue(words[0], "the row said Making a stone sword");
 			h.assertValueEqual(0L, stored(h, Items.COBBLESTONE) + stored(h, Items.STICK), "everything used");
+			// A full trip has to finish before WORK_END. The sword lands after that cutoff, so the hunt is the next morning.
+			long now = h.getLevel().getDayTime();
+			long day = Math.floorMod(now, 24000L);
+			h.getLevel().setDayTime(now - day + 24000L + 1000L);
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "the hunter goes hunting", () -> h.assertTrue(AwayTrips.isAway(v[0]), "not out yet"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "the hunter goes hunting the next morning", () -> h.assertTrue(AwayTrips.isAway(v[0]), "not out yet"));
 		seq.thenExecute(() -> {
 			VillageTestSupport.done(h);
 			end(h);
@@ -140,7 +144,8 @@ public class SelfCraftJobsGameTests {
 	}
 
 	/** The farmer makes its hoe only in idle time: never while a crop is ripe, and a craft in progress waits for the harvest. */
-	@GameTest(environment = "villageheart-gametest:selfcraft_farmer", structure = YARD, skyAccess = true, maxTicks = 10500)
+	// The second harvest uses the rest of the work morning, so the hoe finishes after the meeting, on the next work morning.
+	@GameTest(environment = "villageheart-gametest:selfcraft_farmer", structure = YARD, skyAccess = true, maxTicks = 34000)
 	public void farmerHoeOnlyWhenIdle(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];

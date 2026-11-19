@@ -1353,6 +1353,11 @@ public class LumberjackGameTests {
 			v[0] = hire(h, spawnSpot());
 		});
 		seq = seq.thenIdle(40).thenExecute(() -> {
+			// Hire stands them in the camp. Beside the chopping block, a 5x5x3 of logs plus the walls fills the 3-block rescue
+			// radius, so there is no free cell. The trunk has to grow in the open, where a cell within that radius exists.
+			BlockPos open = h.absolutePos(new BlockPos(24, 0, 24));
+			v[0].teleportTo(open.getX() + 0.5, open.getY(), open.getZ() + 0.5);
+			v[0].getNavigation().stop();
 			inside[0] = v[0].blockPosition();
 			// a solid 5x5x3 block of logs around and over the worker: vanilla can push it out of a single cell, not out of this
 			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = 0; dy <= 2; dy++) {

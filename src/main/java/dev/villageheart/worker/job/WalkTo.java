@@ -180,7 +180,11 @@ public final class WalkTo {
 			return State.ARRIVED;
 		}
 		settled = null;
-		if (d <= reach) { // never beyond: callers test "d <= reach" themselves before they work, a tolerance outside it left workers frozen
+		// A reach under one block means "stand in this cell". A chest or workstation pushes a 0.6-wide body off the
+		// cell centre, so the distance stays above the reach even though the feet are already in the cell. One cell
+		// short is a different block, and that still does not count.
+		boolean inTargetCell = reach < 1.0 && v.blockPosition().equals(target);
+		if (d <= reach || inTargetCell) { // never beyond: callers test "d <= reach" themselves before they work, a tolerance outside it left workers frozen
 			start = now;
 			anchorAt = now;
 			anchor = null;

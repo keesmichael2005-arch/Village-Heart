@@ -47,7 +47,9 @@ public final class LeafEscape {
 		for (Direction d : Direction.Plane.HORIZONTAL) for (int dy = 0; dy <= 1; dy++) {
 			BlockPos p = base.relative(d).above(dy);
 			BlockState s = level.getBlockState(p);
-			if (s.getCollisionShape(level, p).isEmpty()) return false;
+			// Leaves have an empty collision shape, but a path will not start inside them. A cage of natural leaves is still a cage.
+			// Persistent leaves are a player's build: they do not count, so a hedge is left alone.
+			if (!natural(s) && s.getCollisionShape(level, p).isEmpty()) return false;
 			if (natural(s)) leaves = true;
 		}
 		return leaves;
