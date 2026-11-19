@@ -74,7 +74,7 @@ final class BuildingValidator {
 			if (notLoaded != null) {
 				verdict = Verdict.deferred(Reason.notLoaded(notLoaded.message()));
 			} else {
-				int linked = type == BuildingType.MINE || type == BuildingType.HUNTING_LODGE ? validLinkedSites(village, record, type) : 0;
+				int linked = BuildingRequirements.of(type).requiredSite() == null ? 0 : validLinkedSites(village, record, type);
 				verdict = BuildingRules.checkRoom(type, RoomFacts.of(shared), new CheckContext(village.tier(), claimArea, null, linked));
 			}
 		} else {
@@ -94,18 +94,36 @@ final class BuildingValidator {
 			return Verdict.deferred(Reason.notLoaded(new RoomProblem(RoomProblem.Kind.NOT_LOADED, survey.notLoaded()).message()));
 		}
 		if (survey.depth() != null) rt.shaftDeepest.put(record.marker(), survey.depth());
+		Pos link = type == BuildingType.HUNTING_GROUND || type == BuildingType.CHOPPING_FLAG
+				? flagLink(village, rt, type, record)
+				: nearestParent(village, type, here, record);
+		return BuildingRules.checkSite(type, survey.facts(), new CheckContext(village.tier(), claimArea, link, 0));
+	}
+
+	/** A chopping flag or a hunting flag: nearest free camp, and a living link stays. */
+	private static Pos flagLink(VillageState village, BuildingRuntime rt, BuildingType type, BuildingRecord record) {
 		BuildingType parent = type.parent().orElseThrow();
-		int range = switch (type) {
-			case MINESHAFT -> Balance.MINESHAFT_LINK_RANGE;
-			case HUNTING_GROUND -> Balance.HUNTING_GROUND_LINK_RANGE;
-			default -> Integer.MAX_VALUE;
-		};
+		java.util.List<dev.villageheart.core.site.FlagLinks.Camp> camps = new ArrayList<>();
+		java.util.List<dev.villageheart.core.site.FlagLinks.Flag> flags = new ArrayList<>();
+		for (BuildingRecord b : village.buildings()) {
+			Pos at = new Pos(b.marker().x(), b.marker().y(), b.marker().z());
+			if (b.typeId().equals(parent.id())) camps.add(new dev.villageheart.core.site.FlagLinks.Camp(at));
+			else if (b.typeId().equals(type.id())) {
+				Pos saved = b.link() == null ? null : new Pos(b.link().x(), b.link().y(), b.link().z());
+				flags.add(new dev.villageheart.core.site.FlagLinks.Flag(at, saved, rt.orderOf(b.marker())));
+			}
+		}
+		return dev.villageheart.core.site.FlagLinks.assign(flags, camps).get(new Pos(record.marker().x(), record.marker().y(), record.marker().z()));
+	}
+
+	private static Pos nearestParent(VillageState village, BuildingType type, Pos here, BuildingRecord record) {
+		BuildingType parent = type.parent().orElseThrow();
+		int range = type == BuildingType.MINESHAFT ? Balance.MINESHAFT_LINK_RANGE : Integer.MAX_VALUE;
 		List<Links.Candidate> candidates = new ArrayList<>();
 		for (BuildingRecord b : village.buildings()) {
 			if (b.typeId().equals(parent.id())) candidates.add(new Links.Candidate(new Pos(b.marker().x(), b.marker().y(), b.marker().z()), b.marker().dimension()));
 		}
-		Pos link = Links.nearest(here, record.marker().dimension(), candidates, range);
-		return BuildingRules.checkSite(type, survey.facts(), new CheckContext(village.tier(), claimArea, link, 0));
+		return Links.nearest(here, record.marker().dimension(), candidates, range);
 	}
 
 	/** The cached raw scans of registered Houses and Farmhouses (the Hunting Ground may not sit inside them). */

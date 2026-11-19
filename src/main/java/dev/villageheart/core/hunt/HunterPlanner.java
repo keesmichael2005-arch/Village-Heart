@@ -19,7 +19,7 @@ public final class HunterPlanner {
 		GO_OUT
 	}
 
-	public enum StatusEffect { KEEP, CLEAR, NEEDS_TOOL, NO_WORK, SITE_UNREACHABLE }
+	public enum StatusEffect { KEEP, CLEAR, NEEDS_TOOL, NO_WORK, SITE_UNREACHABLE, NEEDS_FLAG }
 
 	public record Decision(Action action, StatusEffect status) {}
 
@@ -39,21 +39,29 @@ public final class HunterPlanner {
 	 */
 	public record PlanInputs(boolean hasSlot, boolean carriesYield, boolean pendingNotEmpty, AwayCheck.Lease lease, boolean groundValid,
 			long dayTime, double progressUnits, double multiplier, int level, int doneToday, OptionalLong sinceUnreachable,
-			double distanceToMarker) {}
+			double distanceToMarker, double blocksThere, double blocksHome) {
+		/** The walk clock is zero: a short walk leaves the day as it was, and a far hunter still stages at the lodge. */
+		public PlanInputs(boolean hasSlot, boolean carriesYield, boolean pendingNotEmpty, AwayCheck.Lease lease, boolean groundValid,
+				long dayTime, double progressUnits, double multiplier, int level, int doneToday, OptionalLong sinceUnreachable,
+				double distanceToMarker) {
+			this(hasSlot, carriesYield, pendingNotEmpty, lease, groundValid, dayTime, progressUnits, multiplier, level, doneToday,
+					sinceUnreachable, distanceToMarker, 0, 0);
+		}
+	}
 
 	public static int tripsPerDay(int level) {
 		int idx = Math.max(0, Math.min(Balance.HUNTER_TRIPS_PER_DAY.length - 1, level - 1));
 		return Balance.HUNTER_TRIPS_PER_DAY[idx];
 	}
 
-	/** The trip can end in the work phase with the margin (also the re-check just before the hunter vanishes). */
+	/** The trip can end in the work phase with the margin (also the re-check just before the hunter vanishes). A walk of zero. */
 	public static boolean fitsNow(long dayTime, double progressUnits, double multiplier) {
-		if (multiplier <= 0) return false;
-		long t = Math.floorMod(dayTime, (long) Balance.DAY_TICKS);
-		if (t < Balance.WORK_START) return false;
-		double left = Math.max(0, Balance.HUNTER_TRIP_UNITS - progressUnits);
-		long need = (long) Math.ceil(left / multiplier - 1e-9);
-		return t + need + Balance.HUNTER_DEPART_MARGIN <= Balance.WORK_END;
+		return fitsNow(dayTime, progressUnits, multiplier, 0, 0);
+	}
+
+	/** The walk there, the time away, and the walk back all have to fit. */
+	public static boolean fitsNow(long dayTime, double progressUnits, double multiplier, double blocksThere, double blocksHome) {
+		return dev.villageheart.core.site.FlagDay.newHunt(dayTime, blocksThere, blocksHome, progressUnits, multiplier);
 	}
 
 	public static Decision decide(PlanInputs in) {
@@ -61,13 +69,18 @@ public final class HunterPlanner {
 		if (in.carriesYield() || in.pendingNotEmpty()) return new Decision(Action.YIELD, StatusEffect.KEEP);
 		if (in.lease() == AwayCheck.Lease.UNKNOWN) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.KEEP);
 		if (in.lease() == AwayCheck.Lease.NONE) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.NEEDS_TOOL);
-		if (!in.groundValid()) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.NO_WORK);
+		if (!in.groundValid()) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.NEEDS_FLAG);
 		if (in.sinceUnreachable().isPresent() && in.sinceUnreachable().getAsLong() < Balance.HUNTER_RETRY_TICKS) {
 			return new Decision(Action.IDLE_AT_LODGE, StatusEffect.SITE_UNREACHABLE);
 		}
 		if (in.doneToday() >= tripsPerDay(in.level())) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.CLEAR);
-		if (!fitsNow(in.dayTime(), in.progressUnits(), in.multiplier())) return new Decision(Action.IDLE_AT_LODGE, StatusEffect.CLEAR);
-		if (in.distanceToMarker() > Balance.HUNTER_FAR_FROM_GROUND) return new Decision(Action.WALK_TO_LODGE, StatusEffect.CLEAR);
+		if (!fitsNow(in.dayTime(), in.progressUnits(), in.multiplier(), in.blocksThere(), in.blocksHome())) {
+			return new Decision(Action.IDLE_AT_LODGE, StatusEffect.CLEAR);
+		}
+		// A hunter far from a flag that sits by the lodge walks to the lodge first. A flag that is itself far is the walk.
+		if (in.distanceToMarker() > Balance.HUNTER_FAR_FROM_GROUND && in.blocksHome() <= Balance.HUNTER_FAR_FROM_GROUND) {
+			return new Decision(Action.WALK_TO_LODGE, StatusEffect.CLEAR);
+		}
 		return new Decision(Action.GO_OUT, StatusEffect.CLEAR);
 	}
 }

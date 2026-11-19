@@ -29,10 +29,18 @@ public final class LumberjackPlanner {
 	public enum Action { IDLE_AT_CAMP, YIELD, CONTINUE_FELL, REPLANT, COLLECT, FELL_TASK, FELL_NEW, SEARCH }
 
 	/** What the planner asks the status to do. Statuses are sticky: KEEP leaves whatever is set. */
-	public enum StatusChange { KEEP, CLEAR_ALL, CLEAR_NEEDS_TOOL, NEEDS_TOOL, NO_WORK }
+	public enum StatusChange { KEEP, CLEAR_ALL, CLEAR_NEEDS_TOOL, NEEDS_TOOL, NO_WORK, NEEDS_FLAG }
 
 	public record Snapshot(boolean campValid, boolean depositWanted, boolean fellInProgress, ToolState tool, boolean replantReady,
-			boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder, boolean cannotWork) {
+			boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder, boolean cannotWork,
+			boolean hasFlag, long newTreeBefore) {
+		/** A worker that can work, with a flag, on the old day limit. */
+		public Snapshot(boolean campValid, boolean depositWanted, boolean fellInProgress, ToolState tool, boolean replantReady,
+				boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder, boolean cannotWork) {
+			this(campValid, depositWanted, fellInProgress, tool, replantReady, collectAvailable, fellingTaskAvailable, dayTime, finder,
+					cannotWork, true, Balance.LUMBER_LAST_FELL);
+		}
+
 		/** A worker that can work. */
 		public Snapshot(boolean campValid, boolean depositWanted, boolean fellInProgress, ToolState tool, boolean replantReady,
 				boolean collectAvailable, boolean fellingTaskAvailable, long dayTime, FinderState finder) {
@@ -54,12 +62,16 @@ public final class LumberjackPlanner {
 		// worker that always had one to collect never started the next tree before the cutoff. Drops live 6000 ticks; the cutoff is
 		// early enough to collect them afterwards.
 		if (tool && s.fellingTaskAvailable()) return new Decision(Action.FELL_TASK, StatusChange.CLEAR_ALL);
-		if (tool && s.dayTime() < Balance.LUMBER_LAST_FELL && s.finder() == FinderState.HAS_TREE) {
+		if (!s.hasFlag()) {
+			if (s.collectAvailable()) return new Decision(Action.COLLECT, base);
+			return new Decision(Action.IDLE_AT_CAMP, StatusChange.NEEDS_FLAG);
+		}
+		if (tool && s.dayTime() < s.newTreeBefore() && s.finder() == FinderState.HAS_TREE) {
 			return new Decision(Action.FELL_NEW, StatusChange.CLEAR_ALL);
 		}
 		if (s.collectAvailable()) return new Decision(Action.COLLECT, base);
 		if (!tool) return new Decision(Action.IDLE_AT_CAMP, base);
-		if (s.finder() == FinderState.PAUSED && s.dayTime() < Balance.LUMBER_LAST_FELL) return new Decision(Action.SEARCH, base);
+		if (s.finder() == FinderState.PAUSED && s.dayTime() < s.newTreeBefore()) return new Decision(Action.SEARCH, base);
 		if (s.finder() == FinderState.EXHAUSTED) return new Decision(Action.IDLE_AT_CAMP, StatusChange.NO_WORK);
 		return new Decision(Action.IDLE_AT_CAMP, base);
 	}

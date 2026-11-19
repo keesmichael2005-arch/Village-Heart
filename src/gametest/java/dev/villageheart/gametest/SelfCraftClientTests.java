@@ -90,6 +90,15 @@ final class SelfCraftClientTests {
 				context.waitTicks(1);
 			}
 			if (!mine.equals("VALID") || !camp.equals("VALID")) throw new AssertionError("the Mine plaque is " + mine + ", the Lumber Camp plaque is " + camp);
+			srv.runCommand("setblock -16 " + (y + 1) + " 7 minecraft:oak_planks");
+			srv.runCommand("setblock -16 " + (y + 1) + " 8 villageheart:chopping_flag_marker[facing=south]");
+			BlockPos flag = new BlockPos(-16, y + 1, 8);
+			String flagState = "";
+			for (int i = 0; i < 200 && !flagState.equals("VALID"); i++) {
+				flagState = srv.computeOnServer(server -> HeartScreenClientTests.marker(server.overworld(), flag));
+				context.waitTicks(1);
+			}
+			if (!flagState.equals("VALID")) throw new AssertionError("the chopping flag is " + flagState);
 			srv.runCommand("summon minecraft:villager 0 " + y + " 8 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(miner) + ",CustomName:\"Mina\"}");
 			srv.runCommand("summon minecraft:villager -10 " + y + " 8 {PersistenceRequired:1b,UUID:" + HeartScreenClientTests.uuid(jack) + ",CustomName:\"Tom\"}");
 			String hired = srv.computeOnServer(server -> dev.villageheart.worker.Workers.hire(server.overworld(),

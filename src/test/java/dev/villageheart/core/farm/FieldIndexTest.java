@@ -44,13 +44,13 @@ class FieldIndexTest {
 		FieldIndex idx = new FieldIndex(JB);
 		sweepAll(idx, g, Integer.MAX_VALUE);
 		List<FieldIndex.Indexed> cells = idx.cells();
-		// 80 wheat + empty + beetroot + carrot + potato + the cell at 24 + the cell at dy +8
-		assertEquals(86, cells.size());
-		for (FieldIndex.Indexed i : cells) assertTrue(FieldArea.contains(JB, i.pos()), i.toString());
+		// 80 wheat + empty + beetroot + carrot + potato + the cell at 24 + the cell at dy +8,
+		// plus the cell that shares a side with the edge: (25, 64, 0)
+		assertEquals(87, cells.size());
 		List<Pos> poses = cells.stream().map(FieldIndex.Indexed::pos).collect(Collectors.toList());
-		assertFalse(poses.contains(new Pos(25, 64, 0)));
-		assertFalse(poses.contains(new Pos(17, 64, 17)));
-		assertFalse(poses.contains(new Pos(0, 73, 5)));
+		assertTrue(poses.contains(new Pos(25, 64, 0)), "farmland touching the disc is in the field");
+		assertFalse(poses.contains(new Pos(17, 64, 17)), "outside the disc and not connected");
+		assertFalse(poses.contains(new Pos(0, 73, 5)), "the cell directly above the seed does not share a side");
 		assertTrue(poses.contains(new Pos(24, 64, 0)));
 		assertTrue(poses.contains(new Pos(0, 72, 5)));
 		assertFalse(poses.contains(new Pos(14, 64, 8)), "a crop that is not on farmland (OTHER) is not indexed");

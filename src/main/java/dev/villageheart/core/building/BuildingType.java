@@ -24,8 +24,9 @@ public enum BuildingType {
 	MARKET("market", "Market", VILLAGE, ROOM, Ring.uniform("minecraft:white_wool", "minecraft:emerald"), null),
 	SMITHY("smithy", "Smithy", TOWN, ROOM, Ring.uniform("minecraft:iron_ingot", "minecraft:smooth_stone"), null),
 	MINESHAFT("mineshaft", "Mineshaft", VILLAGE, OUTDOOR_SITE, Ring.uniform("minecraft:rail", "minecraft:torch"), "mine"),
-	HUNTING_GROUND("hunting_ground", "Hunting Ground", VILLAGE, OUTDOOR_SITE, Ring.uniform("minecraft:stick", "minecraft:feather"), "hunting_lodge"),
-	TRAINING_YARD("training_yard", "Training Yard", VILLAGE, OUTDOOR_SITE, Ring.uniform("minecraft:hay_block", "minecraft:wooden_sword"), "barracks");
+	HUNTING_GROUND("hunting_ground", "Hunting Flag", VILLAGE, OUTDOOR_SITE, Ring.uniform("minecraft:stick", "minecraft:feather"), "hunting_lodge"),
+	TRAINING_YARD("training_yard", "Training Yard", VILLAGE, OUTDOOR_SITE, Ring.uniform("minecraft:hay_block", "minecraft:wooden_sword"), "barracks"),
+	CHOPPING_FLAG("chopping_flag", "Chopping Flag", HAMLET, OUTDOOR_SITE, Ring.uniform("#minecraft:logs", "#minecraft:saplings"), "lumber_camp");
 
 	private final String id;
 	private final String displayName;

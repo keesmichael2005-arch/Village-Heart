@@ -22,14 +22,15 @@ class BuildingTypeTest {
 		{"market", "Market", Tier.VILLAGE, BuildingKind.ROOM, "minecraft:white_wool", "minecraft:emerald", "minecraft:emerald", "minecraft:emerald", "minecraft:emerald", null},
 		{"smithy", "Smithy", Tier.TOWN, BuildingKind.ROOM, "minecraft:iron_ingot", "minecraft:smooth_stone", "minecraft:smooth_stone", "minecraft:smooth_stone", "minecraft:smooth_stone", null},
 		{"mineshaft", "Mineshaft", Tier.VILLAGE, BuildingKind.OUTDOOR_SITE, "minecraft:rail", "minecraft:torch", "minecraft:torch", "minecraft:torch", "minecraft:torch", "mine"},
-		{"hunting_ground", "Hunting Ground", Tier.VILLAGE, BuildingKind.OUTDOOR_SITE, "minecraft:stick", "minecraft:feather", "minecraft:feather", "minecraft:feather", "minecraft:feather", "hunting_lodge"},
+		{"hunting_ground", "Hunting Flag", Tier.VILLAGE, BuildingKind.OUTDOOR_SITE, "minecraft:stick", "minecraft:feather", "minecraft:feather", "minecraft:feather", "minecraft:feather", "hunting_lodge"},
 		{"training_yard", "Training Yard", Tier.VILLAGE, BuildingKind.OUTDOOR_SITE, "minecraft:hay_block", "minecraft:wooden_sword", "minecraft:wooden_sword", "minecraft:wooden_sword", "minecraft:wooden_sword", "barracks"},
+		{"chopping_flag", "Chopping Flag", Tier.HAMLET, BuildingKind.OUTDOOR_SITE, "#minecraft:logs", "#minecraft:saplings", "#minecraft:saplings", "#minecraft:saplings", "#minecraft:saplings", "lumber_camp"},
 	};
 
 	@Test
 	void matchesDesignTable() {
 		BuildingType[] all = BuildingType.values();
-		assertEquals(14, all.length);
+		assertEquals(15, all.length);
 		assertEquals(TABLE.length, all.length);
 		for (int i = 0; i < TABLE.length; i++) {
 			Object[] row = TABLE[i];
@@ -47,7 +48,7 @@ class BuildingTypeTest {
 			assertEquals(row[9] == null ? java.util.Optional.empty() : BuildingType.byId((String) row[9]), t.parent(), why);
 		}
 		assertEquals(11, java.util.Arrays.stream(all).filter(t -> t.kind() == BuildingKind.ROOM).count());
-		assertEquals(3, java.util.Arrays.stream(all).filter(t -> t.kind() == BuildingKind.OUTDOOR_SITE).count());
+		assertEquals(4, java.util.Arrays.stream(all).filter(t -> t.kind() == BuildingKind.OUTDOOR_SITE).count());
 	}
 
 	@Test

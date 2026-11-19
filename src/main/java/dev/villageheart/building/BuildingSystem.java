@@ -141,6 +141,7 @@ public final class BuildingSystem implements VillageSystem {
 			return null;
 		}
 		BuildingRecord record = new BuildingRecord(type.id(), loc);
+		rt.orderOf(loc);
 		VillageClaims.data(server).update(s -> s.withBuilding(record));
 		rt.schedule.prioritise(loc);
 		prioritiseDependents(rt, VillageClaims.current(server).orElseThrow(), type);
@@ -171,7 +172,10 @@ public final class BuildingSystem implements VillageSystem {
 		switch (changed) {
 			case MINE -> children.add(BuildingType.MINESHAFT);
 			case HUNTING_LODGE -> children.add(BuildingType.HUNTING_GROUND);
+			case LUMBER_CAMP -> children.add(BuildingType.CHOPPING_FLAG);
 			case BARRACKS -> children.add(BuildingType.TRAINING_YARD);
+			case HUNTING_GROUND -> children.add(BuildingType.HUNTING_GROUND); // a freed lodge is offered to a waiting flag
+			case CHOPPING_FLAG -> children.add(BuildingType.CHOPPING_FLAG);
 			case HOUSE, FARMHOUSE -> children.add(BuildingType.HUNTING_GROUND); // the home-room exclusion
 			default -> {}
 		}

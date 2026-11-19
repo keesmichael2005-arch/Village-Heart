@@ -433,9 +433,9 @@ public class BuildingGameTests {
 			h.assertValueEqual(loc(h, lodge), record(h, ground).orElseThrow().link(), "linked to the lodge");
 		});
 		seq = seq.thenExecute(() -> h.setBlock(leaf, Blocks.AIR));
-		seq = awaitWithin(h, seq, bound(2, 0), "39 leaves", () -> {
-			assertStatus(h, ground, MarkerStatus.INVALID);
-			h.assertValueEqual("Needs 1 more grass, leaf or log block", reasons(h, ground).get(0).message(), "message");
+		seq = awaitWithin(h, seq, bound(2, 0), "a missing leaf does not invalidate the flag", () -> {
+			assertStatus(h, ground, MarkerStatus.VALID);
+			h.assertValueEqual(loc(h, lodge), record(h, ground).orElseThrow().link(), "the link stays");
 		});
 		seq = seq.thenExecute(() -> {
 			room(h, houseOrigin, 5, 4);
