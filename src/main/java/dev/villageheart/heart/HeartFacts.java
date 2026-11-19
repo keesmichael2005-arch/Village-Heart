@@ -27,6 +27,7 @@ import dev.villageheart.core.worker.JobSlots;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.SiteView;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.core.worker.WeatherShelter;
 import dev.villageheart.core.worker.WorkerStatus;
 import dev.villageheart.stock.StackKey;
 import dev.villageheart.stock.Stockpiles;
@@ -48,6 +49,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -319,6 +321,9 @@ public final class HeartFacts {
 	public static ActivityKind activityOf(Villager v) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) {
 			if (dev.villageheart.worker.guard.GuardCombat.engaged(v)) return ActivityKind.FIGHTING;
+			if (v.level() instanceof ServerLevel sl && WeatherShelter.guardWaits(dev.villageheart.worker.WorkWeather.precipitating(sl, v),
+					v.getBrain().isActive(dev.villageheart.worker.guard.GuardActivities.DUTY),
+					v.isSleeping() || v.getBrain().isActive(Activity.REST))) return ActivityKind.OUT_OF_THE_RAIN;
 			// the training day: the status says so whether or not there is a Training Yard to spar at (M18 r3)
 			if (dev.villageheart.worker.guard.GuardAttachments.get(v).training(v.level().getDayTime()) && !dev.villageheart.worker.guard.GuardAttachments.get(v).wounded()) return ActivityKind.TRAINING;
 			var mode = dev.villageheart.worker.guard.GuardRuntime.modeOf(v.getUUID());
@@ -343,6 +348,7 @@ public final class HeartFacts {
 		if (a == Activity.REST) return v.isSleeping() ? ActivityKind.SLEEPING : ActivityKind.RESTING;
 		if (a == Activity.PANIC) return ActivityKind.PANICKING;
 		if (a == WorkerBrain.SHELTER) return dev.villageheart.worker.shelter.ShelterRuntime.hasTarget(v) ? ActivityKind.SHELTERING : ActivityKind.NO_SHELTER;
+		if (a == WorkerBrain.RAIN) return ActivityKind.OUT_OF_THE_RAIN;
 		if (a == Activity.HIDE || a == Activity.RAID || a == Activity.PRE_RAID) return ActivityKind.HIDING;
 		if (a == Activity.MEET) return ActivityKind.MEETING;
 		return ActivityKind.OTHER;

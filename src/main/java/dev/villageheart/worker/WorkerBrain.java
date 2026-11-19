@@ -76,6 +76,10 @@ public final class WorkerBrain {
 	public static final Activity SHELTER = Registry.register(BuiltInRegistries.ACTIVITY,
 			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "shelter"), new Activity("shelter"));
 
+	/** Beside the workstation while it is precipitating during work time. Not a guard activity. */
+	public static final Activity RAIN = Registry.register(BuiltInRegistries.ACTIVITY,
+			Identifier.fromNamespaceAndPath(VillageHeart.MOD_ID, "rain"), new Activity("rain"));
+
 	/** Brains installed by {@link #install}, so the worker system can notice a worker running a vanilla brain. */
 	private static final java.util.Map<Brain<?>, JobType> INSTALLED = new WeakHashMap<>();
 
@@ -93,10 +97,16 @@ public final class WorkerBrain {
 		return built != null && built == WorkerAttachments.get(v).map(WorkerData::job).orElse(null);
 	}
 
-	/** The activity this worker should be in now: a guard follows its shift (M18), every other job shelters or follows the day. */
+	/**
+	 * The activity this worker should be in now: a guard follows its shift (M18), every other job shelters or follows the day.
+	 * Precipitation during work time waits at the workplace, after a drop-off that is already walking, and after raid shelter.
+	 */
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
 		if (shouldShelter(v, level)) return SHELTER;
+		// Rain stands them at the workplace during work only. A striker or someone with no workplace is
+		// already wandering, and home time (11000) has to be the walk home, not that stand.
+		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v) && !Workers.shouldWander(level, v)) return RAIN;
 		return activityFor(level.getDayTime());
 	}
 
@@ -204,6 +214,10 @@ public final class WorkerBrain {
 		brain.addActivity(Activity.HIDE, VillagerGoalPackages.getHidePackage(profession, SPEED));
 		brain.addActivity(SHELTER, ImmutableList.of(
 				p(2, new ShelterBehaviour()),
+				p(99, new UpdateWorkerActivity())));
+		brain.addActivity(RAIN, ImmutableList.of(
+				p(2, new GoToJobBlock()),
+				look(),
 				p(99, new UpdateWorkerActivity())));
 		brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
 		brain.setDefaultActivity(Activity.IDLE);

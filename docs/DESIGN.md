@@ -157,6 +157,16 @@ building behaves exactly as in vanilla.
   identity comes from the profession texture or held item, plus particles.
 - **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–11000 work, 11000–12000 go home
   and eat dinner, 12000+ sleep in a bed. Guards follow shifts instead (§5.6).
+- **Rain and snow**: Minecraft rain, snow, and thunderstorms are one flag. During work time a hired worker stops,
+  walks to their workplace, and stands beside the workstation. They do not keep working: a farmer leaves the field,
+  a lumberjack the tree, a hunter the hunting ground, a miner the Mineshaft, and a builder the site. A drop-off
+  already on its way to Storage is finished first; anything still carried waits for the usual deposit (the stack
+  fills again once they are working, or the day ends). The moment the weather clears during work time they go
+  straight back to work. Dinner, the walk home, and sleep stay on the clock. A guard on duty patrols and fights
+  in any weather; a raid or the alarm still calls them out. A guard who is asleep stays asleep. A trainee is not
+  on duty, so a trainee waits in the Barracks instead of sparring. A raid or a siege still sends everyone to
+  shelter; if it is still raining when the threat ends during work time, workers wait at the workplace. The
+  Villagers tab says "Out of the rain". No new sound and no chat line.
 - **Delivery**: a worker carries up to 1 stack in its inventory. When full, or at the end of the day,
   it walks to the nearest Storage, deposits, and returns. Inputs (tools, seeds, raw food, ore) are fetched
   the same way.
@@ -726,7 +736,7 @@ builder's line is that. Recent deaths are at most three rows.
 - Blueprint footprint particles while placing.
 
 ## 11. Explicitly OUT of v1
-- Fire, weather events, crop blight, seasons
+- Fire, lightning strikes, crop blight, seasons
 - Real tunnel mining and minecart logistics (cosmetic minecart push may land late in v1)
 - Multiple villages per world, founding a village without a bell
 - Villager relationships, marriage, families, personalities
