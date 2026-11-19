@@ -1,18 +1,24 @@
 package dev.villageheart.worker;
 
 import dev.villageheart.VillageHeart;
+import dev.villageheart.core.BuildingRecord;
 import dev.villageheart.core.HeartLocation;
 import dev.villageheart.core.VillageState;
 import dev.villageheart.core.WorkerRecord;
 import dev.villageheart.core.worker.JobType;
+import dev.villageheart.core.worker.SiteView;
 import dev.villageheart.core.worker.WorkerData;
+import dev.villageheart.core.worker.WorkplaceRebind;
 import dev.villageheart.economy.Wages;
 import dev.villageheart.world.VillageClaims;
 import dev.villageheart.world.VillageSystem;
 import dev.villageheart.world.VillageTicker;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -30,7 +36,8 @@ import net.minecraft.world.entity.npc.villager.VillagerProfession;
 
 /**
  * Keeps the village registry and the villager entities consistent (DESIGN section 12). Every 20 ticks (a {@link VillageSystem}):
- * a record whose building was removed is fired; a worker whose brain is not the worker brain gets it back; a record without its
+ * a worker whose building is gone is rebound onto a free workplace of their job, or left hired and waiting; a worker whose
+ * brain is not the worker brain gets it back; a record without its
  * attachment gets it back. Entity events: a villager that loads (queued, handled at the end of the tick, with or without a claim) with the
  * attachment but no record is restored to vanilla; one that loads claiming a reserved job block loses the claim; a dead or converted worker
  * loses its record, and a zombie villager never keeps a mod profession.
@@ -93,12 +100,8 @@ public final class WorkerSystem implements VillageSystem {
 	public void tick(MinecraftServer server, VillageState village) {
 		if (server.getTickCount() % INTERVAL != 0) return;
 		JobSiteSource source = Workers.jobSites();
+		village = rebind(server, village, source);
 		for (WorkerRecord rec : List.copyOf(village.workers())) {
-			if (!source.isRegistered(server, rec.building())) {
-				VillageHeart.LOG.info("Worker {} fired: its building at {} no longer exists", rec.villager(), rec.building());
-				Workers.fireRecord(server, rec);
-				continue;
-			}
 			Villager v = findLoaded(server, rec.villager());
 			if (v == null || !(v.level() instanceof ServerLevel level)) continue;
 			dev.villageheart.worker.job.WorkerUnstick.rescue(level, v);
@@ -115,9 +118,35 @@ public final class WorkerSystem implements VillageSystem {
 				WorkXp.pass(level, v, village.tier());
 				// the wage bill of a worker that is away reads this mirror (M12); M15's paths write it at once, this repairs a lag or a direct write
 				WorkerData now = v.getAttached(WorkerAttachments.WORKER);
+				if (now != null && (!now.building().equals(rec.building()) || !now.jobBlock().equals(rec.jobBlock()))) {
+					now = now.withWorkplace(rec.building(), rec.jobBlock());
+					v.setAttached(WorkerAttachments.WORKER, now);
+				}
 				if (now != null && now.level() != rec.level()) Wages.mirrorLevel(server, rec.villager(), now.level());
 			}
 		}
+	}
+
+	/**
+	 * Move workers whose building record is gone onto a free workplace of their own job. A building that is still registered,
+	 * including a red one, is left alone. A worker with nowhere to go keeps the old location and stays hired.
+	 */
+	private static VillageState rebind(MinecraftServer server, VillageState village, JobSiteSource source) {
+		Set<HeartLocation> registered = new HashSet<>();
+		for (BuildingRecord b : village.buildings()) registered.add(b.marker());
+		Map<String, List<SiteView>> sites = new LinkedHashMap<>();
+		for (JobType job : JobType.values()) sites.put(job.id(), source.sites(server, job));
+		List<WorkerRecord> before = village.workers();
+		List<WorkerRecord> next = WorkplaceRebind.apply(before, registered, sites);
+		if (next.equals(before)) return village;
+		for (int i = 0; i < next.size(); i++) {
+			WorkerRecord now = next.get(i), was = before.get(i);
+			if (!now.building().equals(was.building()) || !now.jobBlock().equals(was.jobBlock())) {
+				VillageHeart.LOG.info("Worker {} moved from {} to {} at {}", now.villager(), was.building(), now.building(), now.jobBlock());
+			}
+		}
+		VillageClaims.data(server).update(s -> s.withWorkers(next));
+		return VillageClaims.current(server).orElse(village);
 	}
 
 	/** Entities that loaded this tick: orphan workers back to vanilla, vanilla claimants of reserved blocks evicted. */

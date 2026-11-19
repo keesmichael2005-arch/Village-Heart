@@ -20,6 +20,11 @@ public record WorkerData(String jobId, HeartLocation building, HeartLocation job
 	}
 
 	public WorkerData withNeeds(Needs n) { return new WorkerData(jobId, building, jobBlock, level, xp, n); }
+
+	/** The same worker at another workplace. Job, level, XP and needs stay. */
+	public WorkerData withWorkplace(HeartLocation newBuilding, HeartLocation newJobBlock) {
+		return new WorkerData(jobId, newBuilding, newJobBlock, level, xp, needs);
+	}
 	/** The same worker with a new level and XP (M15). */
 	public WorkerData withProgress(int newLevel, int newXp) { return new WorkerData(jobId, building, jobBlock, newLevel, newXp, needs); }
 

@@ -57,8 +57,7 @@ public final class WageSystem implements VillageSystem {
 
 	private static void runDawn(MinecraftServer server, VillageState village, long day, Payroll payroll) {
 		VillageSavedData data = VillageClaims.data(server);
-		List<Payee> payees = new ArrayList<>();
-		village.workers().forEach(w -> payees.add(Wages.payee(w)));
+		List<Payee> payees = new ArrayList<>(dev.villageheart.core.economy.WageRoster.of(village.workers()));
 		PayResult result = PayRun.run(day, village.treasury(), payees);
 		// one place, one tick: the treasury and the payroll are never saved apart
 		data.update(v -> v.withTreasury(result.treasuryAfter()));

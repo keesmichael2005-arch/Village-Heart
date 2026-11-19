@@ -51,6 +51,7 @@ public final class GuardBrain {
 				WorkerBrain.look()));
 
 		brain.addActivity(GuardActivities.OFF, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>of(
+				WorkerBrain.p(0, new dev.villageheart.worker.ClaimStroll()),
 				WorkerBrain.p(2, new GuardOffBehaviour()),
 				WorkerBrain.look()));
 
