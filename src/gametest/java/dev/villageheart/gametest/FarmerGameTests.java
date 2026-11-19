@@ -678,7 +678,7 @@ public class FarmerGameTests {
 
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:farm_full", structure = YARD, skyAccess = true, maxTicks = 8000)
+	@GameTest(environment = "villageheart-gametest:farm_full", structure = YARD, skyAccess = true, maxTicks = 12000)
 	public void storageFullStopsHarvest(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];
@@ -708,9 +708,9 @@ public class FarmerGameTests {
 			c.setChanged();
 			t0[0] = h.getTick();
 		});
-		// The 64 wheat they were holding goes into the freed chest first, one item every DEPOSIT_TICKS_PER_ITEM, and only then the harvest.
+		// The seven cargo stacks of wheat go into the freed chest first, one item every DEPOSIT_TICKS_PER_ITEM, and only then the harvest.
 		int bound = farmBound(9, dev.villageheart.core.Balance.FARM_TICKS_HARVEST, 12) + 300
-				+ 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM;
+				+ 7 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM;
 		seq = seq.thenWaitUntil(() -> {
 			for (BlockPos c : cells[0]) h.assertTrue(ageAt(h, c) == 0, "cell " + c + " harvested and replanted (age " + ageAt(h, c) + ")");
 		});
@@ -718,7 +718,7 @@ public class FarmerGameTests {
 			long took = h.getTick() - t0[0];
 			log("storageFullStopsHarvest: freed Storage, 9 cells harvested after " + took + " ticks (bound " + bound + ")");
 			h.assertTrue(took <= bound, "took " + took + ", bound " + bound);
-			h.assertTrue(stored(h, "minecraft:wheat") >= 64, "the 64 wheat went to Storage: " + stored(h, "minecraft:wheat"));
+			h.assertTrue(stored(h, "minecraft:wheat") >= 7L * 64, "the seven cargo stacks went to Storage: " + stored(h, "minecraft:wheat"));
 		});
 		// phase 2: the inventory is full of things the farmer keeps; the replant must not cost a seed
 		seq = seq.thenExecute(() -> {

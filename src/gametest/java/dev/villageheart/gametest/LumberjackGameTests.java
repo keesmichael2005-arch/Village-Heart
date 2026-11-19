@@ -972,7 +972,7 @@ public class LumberjackGameTests {
 	// ---- T-L2-14 ---------------------------------------------------------------------------------
 
 	/** A lumberjack that cannot hand in its load stops cutting; once there is room it delivers and goes on. */
-	@GameTest(environment = "villageheart-gametest:lumber_full", structure = YARD, skyAccess = true, maxTicks = 5000)
+	@GameTest(environment = "villageheart-gametest:lumber_full", structure = YARD, skyAccess = true, maxTicks = 8000)
 	public void storageFullStopsGathering(GameTestHelper h) {
 		begin(h);
 		BlockPos treeRel = new BlockPos(3, 0, 14);
@@ -1000,7 +1000,9 @@ public class LumberjackGameTests {
 			c.clearContent();
 			c.setChanged();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 448 logs reach Storage", () ->
+		// Seven full cargo stacks, one item every quarter second, plus the walk to the chest.
+		int deliver = 7 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM + 800;
+		seq = BuildingTestSupport.awaitWithin(h, seq, deliver, "the 448 logs reach Storage", () ->
 				h.assertTrue(stored(h, "minecraft:oak_log") >= 448, "logs in Storage: " + stored(h, "minecraft:oak_log")));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
