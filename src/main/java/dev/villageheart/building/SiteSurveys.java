@@ -36,9 +36,11 @@ final class SiteSurveys {
 				return new Survey(new SiteFacts(s.depth(), s.rails(), s.lights(), 0, 0, 0, false), s.notLoaded(), s.shaftDepth());
 			}
 			case HUNTING_GROUND -> {
-				AreaCount c = AreaCounter.count(view, here, Balance.HUNTING_GROUND_RADIUS, BuildingRequirements.NATURAL);
 				boolean inside = homeRooms.stream().anyMatch(r -> r.occupies(here));
-				return new Survey(new SiteFacts(0, 0, 0, c.n(), 0, 0, inside), c.notLoaded());
+				return new Survey(new SiteFacts(0, 0, 0, 0, 0, 0, inside), null);
+			}
+			case CHOPPING_FLAG -> {
+				return new Survey(new SiteFacts(0, 0, 0, 0, 0, 0, false), null);
 			}
 			case TRAINING_YARD -> {
 				AreaCount c = AreaCounter.count(view, here, Balance.TRAINING_YARD_RADIUS, BuildingRequirements.TARGET);

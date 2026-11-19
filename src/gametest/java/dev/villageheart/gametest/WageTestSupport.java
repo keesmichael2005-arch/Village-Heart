@@ -57,12 +57,14 @@ public final class WageTestSupport {
 			if (chops >= 2) LumberTestSupport.addSecondChop(h);
 			LumberTestSupport.buildStorage(h);
 			LumberTestSupport.placeMarkers(h, true);
+			LumberTestSupport.placeDefaultFlag(h);
 			if (composters > 0) {
 				WorkerTestSupport.farmhouse(h, FARM, composters);
 				BuildingTestSupport.placeMarker(h, BuildingType.FARMHOUSE, farmMarker(), Direction.NORTH);
 			}
 		}).thenWaitUntil(() -> {
 			LumberTestSupport.assertValid(h, true);
+			BuildingTestSupport.assertStatus(h, LumberTestSupport.flagPos(), dev.villageheart.block.MarkerStatus.VALID);
 			if (composters > 0) BuildingTestSupport.assertStatus(h, farmMarker(), dev.villageheart.block.MarkerStatus.VALID);
 		});
 	}

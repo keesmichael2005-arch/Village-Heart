@@ -6,13 +6,14 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The claim shape: a 3-D Euclidean sphere around the Heart, inclusive (DESIGN section 1). Only the marker position is
- * checked. The Mineshaft and the Hunting Ground may be farther out than the rest.
+ * checked. The Mineshaft, the Hunting Flag and the Chopping Flag may be farther out than the rest.
  */
 public final class ClaimArea {
 	private ClaimArea() {}
 
 	public static int maxDistance(BuildingType t) {
-		return t == BuildingType.MINESHAFT || t == BuildingType.HUNTING_GROUND ? Balance.OUTDOOR_SITE_RADIUS : Balance.CLAIM_RADIUS;
+		return t == BuildingType.MINESHAFT || t == BuildingType.HUNTING_GROUND || t == BuildingType.CHOPPING_FLAG
+				? Balance.OUTDOOR_SITE_RADIUS : Balance.CLAIM_RADIUS;
 	}
 
 	/** True when {@code marker} is in the claim sphere of radius {@code max} around {@code heart} (same dimension assumed). */

@@ -72,6 +72,23 @@ class NeedsRulesTest {
 		assertFalse(beds.housed(p(5, 64, 5), Optional.of(BARRACKS)));
 		assertEquals(List.of(p(1, 64, 1), p(1, 64, 3)), beds.houseBeds());
 		assertTrue(HouseBeds.empty().houseBeds().isEmpty());
+		assertTrue(beds.otherBuildingBed(p(9, 64, 9)));
+		assertFalse(beds.otherBuildingBed(p(1, 64, 1)));
+		assertFalse(beds.otherBuildingBed(p(5, 64, 5)));
+	}
+
+	@Test void homeTimeKeepsALooseBedAndSkipsABarracksBed() {
+		long loose = p(6, 1, 8);
+		long house = p(26, 1, 7);
+		long barracks = p(10, 1, 6);
+		long farHouse = p(200, 1, 7);
+		Pos here = new Pos(3, 1, 3);
+		assertEquals(Optional.of(loose), HomeBed.choose(Optional.of(loose), false, List.of(house, farHouse), here, 48));
+		assertEquals(Optional.of(house), HomeBed.choose(Optional.of(house), false, List.of(house, farHouse), here, 48));
+		assertEquals(Optional.of(house), HomeBed.choose(Optional.of(barracks), true, List.of(house, farHouse), here, 48));
+		assertEquals(Optional.of(barracks), HomeBed.choose(Optional.of(barracks), true, List.of(farHouse), here, 48));
+		assertEquals(Optional.of(house), HomeBed.choose(Optional.empty(), false, List.of(house, farHouse), here, 48));
+		assertTrue(HomeBed.choose(Optional.empty(), false, List.of(farHouse), here, 48).isEmpty());
 	}
 
 	// ---- Rehome ----

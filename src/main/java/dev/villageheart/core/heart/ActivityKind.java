@@ -27,6 +27,8 @@ public enum ActivityKind {
 	REPAIRING,
 	/** Waiting at the workplace while it is precipitating during work time. Appended. */
 	OUT_OF_THE_RAIN,
+	/** A lumberjack or hunter whose workplace has no flag yet. Appended. */
+	NEEDS_FLAG,
 	/** The worker's own chest is missing. Appended. */
 	NEEDS_CHEST
 }

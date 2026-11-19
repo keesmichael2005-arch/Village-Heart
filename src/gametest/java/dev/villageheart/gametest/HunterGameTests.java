@@ -4,9 +4,6 @@ import static dev.villageheart.gametest.HuntTestSupport.*;
 import static dev.villageheart.gametest.WorkerTestSupport.begin;
 import static dev.villageheart.gametest.WorkerTestSupport.end;
 
-import dev.villageheart.core.building.Reason;
-import dev.villageheart.core.building.Thing;
-import dev.villageheart.core.building.BuildingType;
 import dev.villageheart.core.heart.ActivityKind;
 import dev.villageheart.core.hunt.HunterPlanner;
 import dev.villageheart.core.mine.SurfaceReason;
@@ -272,8 +269,7 @@ public class HunterGameTests {
 		seq = awaitAway(h, seq, tr, v, 400, "the hunter goes out");
 		seq = seq.thenIdle(100);
 		seq = seq.thenExecute(() -> {
-			field(h, GROUND, false);
-			h.assertTrue(natural(h, GROUND) < 40, "the field is stone now: " + natural(h, GROUND) + " natural cells");
+			h.setBlock(GROUND, net.minecraft.world.level.block.Blocks.AIR);
 			t0[0] = h.getTick();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, BuildingTestSupport.bound(3, 1) + 40, "the hunter comes back", () -> h.assertTrue(!tr.ascents.isEmpty(), "still out"));
@@ -287,15 +283,15 @@ public class HunterGameTests {
 			h.assertValueEqual(0.0, AwayTrips.state(v[0]).progress().units(), "the progress belonged to the old ground: reset");
 			h.assertTrue(a.inventory().isEmpty(), "no yield: " + a.inventory());
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, BuildingTestSupport.bound(3, 2) + 40, "the Lodge and the worker say why", () -> {
-			h.assertValueEqual(WorkerStatus.WORKPLACE_INVALID, status(h, v[0]), "worker status");
-			h.assertValueEqual(List.of(Reason.needsLinkedSite(BuildingType.HUNTING_GROUND)), BuildingTestSupport.reasons(h, lodgeMarker()), "the Lodge's reasons");
-			h.assertValueEqual(List.of(Reason.needsMore(40 - natural(h, GROUND), Thing.NATURAL)), BuildingTestSupport.reasons(h, GROUND), "the ground's reasons");
+		seq = BuildingTestSupport.awaitWithin(h, seq, BuildingTestSupport.bound(3, 2) + 40, "the lodge stays valid and the hunter needs a flag", () -> {
+			h.assertValueEqual(WorkerStatus.NEEDS_FLAG, status(h, v[0]), "needs a hunting flag");
+			h.assertValueEqual(ActivityKind.NEEDS_FLAG, row(h, v[0]).activity(), "the Villagers tab");
+			BuildingTestSupport.assertStatus(h, lodgeMarker(), dev.villageheart.block.MarkerStatus.VALID);
 		});
 		seq = seq.thenIdle(2000);
 		seq = seq.thenExecute(() -> {
-			h.assertValueEqual(1, tr.descents.size(), "never out again while the ground is invalid");
-			field(h, GROUND, true);
+			h.assertValueEqual(1, tr.descents.size(), "never out again while the flag is gone");
+			placeGround(h, GROUND);
 			t0[0] = h.getTick();
 		});
 		seq = BuildingTestSupport.awaitWithin(h, seq, BuildingTestSupport.bound(3, 2) + 400, "the hunter goes out again", () -> h.assertTrue(tr.descents.size() >= 2, "second departure"));
@@ -758,6 +754,63 @@ public class HunterGameTests {
 			int walk = trace.indexOf(HunterPlanner.Action.WALK_TO_LODGE), out = trace.indexOf(HunterPlanner.Action.GO_OUT);
 			h.assertTrue(walk >= 0 && out > walk, "WALK_TO_LODGE comes before GO_OUT: " + trace);
 			saved.forEach((p, s) -> h.setBlock(p, s));
+			for (var c : forced) h.getLevel().setChunkForced(c.x, c.z, false);
+			VillageTestSupport.done(h);
+			end(h);
+		});
+	}
+
+	/** A lodge with no flag does not hunt. A flag 50 blocks out, with no grass quota, is where the hunter goes. */
+	@GameTest(environment = "villageheart-gametest:hunt_flag", structure = YARD, skyAccess = true, maxTicks = 6000)
+	public void huntingFlag(GameTestHelper h) {
+		begin(h);
+		Villager[] v = new Villager[1];
+		Tracker tr = new Tracker(() -> v[0]);
+		h.onEachTick(() -> tr.sample(h));
+		BlockPos flag = new BlockPos(61, 1, 3);
+		java.util.Set<net.minecraft.world.level.ChunkPos> forced = new java.util.LinkedHashSet<>();
+		BlockPos pathStart = h.absolutePos(new BlockPos(0, 0, 0));
+		BlockPos pathEnd = h.absolutePos(new BlockPos(70, 0, 12));
+		for (int cx = pathStart.getX() >> 4; cx <= pathEnd.getX() >> 4; cx++) {
+			for (int cz = pathStart.getZ() >> 4; cz <= pathEnd.getZ() >> 4; cz++) forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+		}
+		for (var c : forced) h.getLevel().setChunkForced(c.x, c.z, true);
+		GameTestSequence seq = BuildingTestSupport.begin(h).thenExecute(() -> {
+			LumberTestSupport.sweepStrayTrees(h, 48);
+			for (int x = 0; x <= 31; x++) for (int z = 0; z <= 31; z++) h.setBlock(new BlockPos(x, -1, z), net.minecraft.world.level.block.Blocks.STONE);
+			for (int x = 16; x <= 70; x++) for (int z = 0; z <= 8; z++) {
+				h.setBlock(new BlockPos(x, -1, z), net.minecraft.world.level.block.Blocks.STONE);
+				for (int y = 0; y <= 2; y++) h.setBlock(new BlockPos(x, y, z), net.minecraft.world.level.block.Blocks.AIR);
+			}
+			buildLodge(h, false);
+			buildStorage(h);
+			BuildingTestSupport.setTier(h, dev.villageheart.core.Tier.VILLAGE);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.HUNTING_LODGE, lodgeMarker(), net.minecraft.core.Direction.NORTH);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.STORAGE, storeMarker(), net.minecraft.core.Direction.NORTH);
+		}).thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, lodgeMarker(), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, storeMarker(), dev.villageheart.block.MarkerStatus.VALID);
+		});
+		seq = seq.thenExecute(() -> {
+			lightYard(h);
+			putInChest(h, 0, sword("stone"));
+			h.getLevel().setDayTime(1000);
+			v[0] = hire(h);
+			tr.start();
+		});
+		seq = seq.thenIdle(400);
+		seq = seq.thenExecute(() -> {
+			h.assertTrue(tr.descents.isEmpty(), "a lodge with no flag does not hunt");
+			h.assertValueEqual(ActivityKind.NEEDS_FLAG, row(h, v[0]).activity(), "needs a hunting flag");
+			h.setBlock(flag.north(), net.minecraft.world.level.block.Blocks.OAK_FENCE);
+			BuildingTestSupport.placeMarker(h, dev.villageheart.core.building.BuildingType.HUNTING_GROUND, flag, net.minecraft.core.Direction.SOUTH);
+		});
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, flag, dev.villageheart.block.MarkerStatus.VALID);
+			h.assertValueEqual(BuildingTestSupport.loc(h, lodgeMarker()), BuildingTestSupport.record(h, flag).orElseThrow().link(), "linked across 50 blocks");
+		});
+		seq = awaitAway(h, seq, tr, v, 2500, "the hunter walks to the flag 50 blocks out");
+		seq.thenExecute(() -> {
 			for (var c : forced) h.getLevel().setChunkForced(c.x, c.z, false);
 			VillageTestSupport.done(h);
 			end(h);

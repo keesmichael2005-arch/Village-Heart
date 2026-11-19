@@ -24,7 +24,7 @@ class ReasonTest {
 		check(seen, Reason.needsMore(2, Thing.CHEST), "Needs 2 more chests");
 		check(seen, Reason.needsMore(1, Thing.LIGHT), "Needs 1 more light source");
 		check(seen, Reason.needsLinkedSite(BuildingType.MINESHAFT), "Needs a linked Mineshaft");
-		check(seen, Reason.needsLinkedSite(BuildingType.HUNTING_GROUND), "Needs a linked Hunting Ground");
+		check(seen, Reason.needsLinkedSite(BuildingType.HUNTING_GROUND), "Needs a linked Hunting Flag");
 		check(seen, Reason.noParent(BuildingType.MINE, Balance.MINESHAFT_LINK_RANGE), "No Mine within 48 blocks");
 		check(seen, Reason.noParent(BuildingType.HUNTING_LODGE, Integer.MAX_VALUE), "No Hunting Lodge in the village");
 		check(seen, Reason.noParent(BuildingType.BARRACKS, Integer.MAX_VALUE), "No Barracks in the village");

@@ -247,6 +247,8 @@ public final class GuiArt {
 				"t.t.t.t.", "tttttttt", ".cCcCcCc", "tttttttt", "t.t.t.t.", "tttttttt", ".cCcCcCc", "........"});
 		put8(m, "heart/building_hunting_ground", new String[] {
 				"P.P.P...", "oPoPoPo.", ".oPoPo..", "..oPo...", "...o....", "........", "........", "........"});
+		put8(m, "heart/building_chopping_flag", new String[] {
+				"..GGGG..", "...GG...", "..BGG...", ".BBGG...", "..BGG...", "...GG...", "..GGGG..", "........"});
 		put8(m, "heart/building_training_yard", new String[] {
 				".oRRRRo.", ".oRGGRo.", ".oRGGRo.", ".oRRRRo.", "..oooo..", "...CC...", "...CC...", "........"});
 		// table

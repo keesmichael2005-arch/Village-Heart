@@ -137,8 +137,10 @@ public final class HunterJob {
 		double mult = HuntPace.multiplier(lease instanceof CampTools.Held, data.level(), data.needs());
 		OptionalLong since = ws.unreachableAt == Long.MIN_VALUE ? OptionalLong.empty() : OptionalLong.of(now - ws.unreachableAt);
 		double dist = ground.map(g -> WalkTo.distance(v, g.marker())).orElse(0.0);
+		double home = ground.map(g -> dev.villageheart.core.site.FlagDay.blocks(g.marker().getX(), g.marker().getY(), g.marker().getZ(),
+				data.building().x(), data.building().y(), data.building().z())).orElse(0.0);
 		PlanInputs in = new PlanInputs(hasSlot, HuntGear.carriesYield(v), !st.pending().isEmpty(), leaseState, ground.isPresent(),
-				Math.floorMod(level.getDayTime(), (long) Balance.DAY_TICKS), progress, mult, data.level(), done, since, dist);
+				Math.floorMod(level.getDayTime(), (long) Balance.DAY_TICKS), progress, mult, data.level(), done, since, dist, dist, home);
 		Decision d = HunterPlanner.decide(in);
 		if (ws.decision == null || !ws.decision.equals(d)) trace("{} @{} plan {} (lease {}, ground {}, done {}, dist {})", v.getId(), now, d, leaseState, ground.isPresent(), done, dist);
 		ws.decision = d;
@@ -149,6 +151,7 @@ public final class HunterJob {
 			case CLEAR -> WorkerStatuses.set(id, null);
 			case NEEDS_TOOL -> WorkerStatuses.set(id, WorkerStatus.NEEDS_TOOL);
 			case NO_WORK -> WorkerStatuses.set(id, WorkerStatus.NO_WORK);
+			case NEEDS_FLAG -> WorkerStatuses.set(id, WorkerStatus.NEEDS_FLAG);
 			case SITE_UNREACHABLE -> WorkerStatuses.set(id, WorkerStatus.SITE_UNREACHABLE);
 		}
 		// nothing to deliver, nothing to take: a full inventory of kept stuff must not hold a yield back for ever
@@ -317,7 +320,9 @@ public final class HunterJob {
 			ws.decision = null;
 			return;
 		}
-		if (!HunterPlanner.fitsNow(level.getDayTime(), as.progress().units(), mult)) {
+		double home = dev.villageheart.core.site.FlagDay.blocks(ground.marker().getX(), ground.marker().getY(), ground.marker().getZ(),
+				data.building().x(), data.building().y(), data.building().z());
+		if (!HunterPlanner.fitsNow(level.getDayTime(), as.progress().units(), mult, 0, home)) {
 			trace("{} @{} arrived too late for a trip (mult {})", v.getId(), now, mult);
 			ws.walk.release(v);
 			ws.decision = null;

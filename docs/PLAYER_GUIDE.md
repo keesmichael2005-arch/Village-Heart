@@ -16,7 +16,7 @@ E D E      E = emerald
 G E G      D = diamond
 ```
 
-Place it within **16 blocks of a village bell**. You become the Owner. The claim is a sphere of **80 blocks** around the Heart. Buildings and work have to sit inside that sphere. Two outdoor sites, the Mineshaft and the Hunting Ground, may be up to **128 blocks** from the Heart.
+Place it within **16 blocks of a village bell**. You become the Owner. The claim is a sphere of **80 blocks** around the Heart. Buildings and work have to sit inside that sphere. Three outdoor sites, the Mineshaft, the Hunting Flag, and the Chopping Flag, may be up to **128 blocks** from the Heart.
 
 One claimed village per world. A second Heart, anywhere, is refused and stays in your hand.
 
@@ -100,7 +100,7 @@ Each **job block** inside a valid building is one worker slot.
 | Kitchen | Hamlet | 9 | smoker, chest, crafting table | cobblestone / coal |
 | Builder's Hut | Village | 9 | Builder's Table, chest | brick / ladder |
 | Mine | Village | 9 | stonecutter, chest, a linked Mineshaft | cobblestone / stone pickaxe on top, rails on the other edges |
-| Hunting Lodge | Village | 9 | fletching table, chest, a linked Hunting Ground | leather / arrow |
+| Hunting Lodge | Village | 9 | fletching table, chest | leather / arrow |
 | Barracks | Village | 16 | grindstone, 1 bed per guard slot, chest | cobblestone / iron ingot |
 | Market | Village | 9 | Market Stall, chest | white wool / emerald |
 | Smithy | Town | 12 | blast furnace, anvil, chest | iron ingot / smooth stone |
@@ -128,12 +128,13 @@ A is any axe, L any log, P paper (Builder's Table) or any planks (Market Stall),
 
 ### Outdoor sites
 
-These have no room and no floor size. The marker goes on a post or a fence. The Mineshaft and the Hunting Ground may be up to 128 blocks from the Heart. The Training Yard uses the normal 80-block claim.
+These have no room and no floor size. The marker goes on a post or a fence. The Mineshaft, the Hunting Flag, and the Chopping Flag may be up to 128 blocks from the Heart. The Training Yard uses the normal 80-block claim.
 
 | Site | Tier | Marker corners / edges | Valid when |
 |---|---|---|---|
 | Mineshaft | Village | rail / torch | The entrance is a player-dug hole. Connected air drops **at least 12 blocks** below the marker, with **at least 8 rails** and a light. The hole has to be under the post or next to it: near the surface the check only spreads one block around the marker. It links to the nearest Mine within **48 blocks**. |
-| Hunting Ground | Village | stick / feather | **At least 40** grass, leaf, or log blocks within 12 blocks, and the site is outside any House or Farmhouse. It links to a Hunting Lodge within **40 blocks**. |
+| Hunting Flag | Village | stick / feather | Outside any House or Farmhouse. It links to the nearest Hunting Lodge that does not have one yet. There is no grass quota and no distance limit from the lodge. |
+| Chopping Flag | Hamlet | logs / saplings | Links to the nearest Lumber Camp that does not have one yet. The camp cuts nothing until the flag is placed. |
 | Training Yard | Village | hay bale / wooden sword | **At least 2** armor stands or target blocks within 6 blocks. It links to the nearest Barracks. Optional. Guards gain sparring experience only here. The Barracks plan builds one: two targets inside a fence, the marker on the barracks wall. |
 
 The Mineshaft's deepest point picks the ore table in the miner section. A light set into the shaft wall counts. The fill stops at 4096 cells and at 16 blocks sideways.
@@ -202,17 +203,17 @@ The Villagers tab says "Making a wooden axe" or "Making a stone pickaxe", "Needs
 
 ### Lumberjack
 
-Needs a Lumber Camp, a Chopping Block, and an **axe**. Without an axe the status is "Needs axe" and no tree is cut. Replanting still runs.
+Needs a Lumber Camp, a Chopping Block, a chopping flag, and an **axe**. Without an axe the status is "Needs axe" and no tree is cut. Without a flag the status is "Needs a chopping flag" and nothing is cut. Replanting still runs.
 
-They fell the nearest **natural tree** within 32 blocks horizontally and 16 blocks vertically of the Chopping Block: a column of natural logs touching leaves. The whole connected tree comes down, top first. Leaves decay as usual. Drops (logs, saplings, sticks, apples) are picked up, and a sapling of that wood is replanted on the stump. Logs you placed are left alone. Logs inside a valid building are left alone. A bare log post standing on soil under a few natural leaves can be mistaken for a tree.
+They fell the nearest **natural tree** within 32 blocks horizontally and 16 blocks vertically of the chopping flag: a column of natural logs touching leaves. The whole connected tree comes down, top first. Leaves decay as usual. Drops (logs, saplings, sticks, apples) are picked up, and a sapling of that wood is replanted on the stump. Logs you placed are left alone. Logs inside a valid building are left alone. A bare log post standing on soil under a few natural leaves can be mistaken for a tree. One camp has one flag. A second grove is a second camp.
 
-At level 1 with a stone axe, one log takes about **2 seconds** (40 ticks). A wooden axe takes about 4 seconds. An iron axe takes about 1.3 seconds. No new tree starts after day time 5000, because drops despawn. A tree already started is finished later, by any lumberjack of that camp. If Storage is full or out of reach, they stop cutting. Saplings the stumps still need, plus 4, are kept back from Storage.
+At level 1 with a stone axe, one log takes about **2 seconds** (40 ticks). A wooden axe takes about 4 seconds. An iron axe takes about 1.3 seconds. No new tree starts after day time 5000, because drops despawn, and a long walk home starts none earlier than that. A tree already started is finished, then they walk back. If Storage is full or out of reach, they stop cutting. Saplings the stumps still need, plus 4, are kept back from Storage.
 
 ### Farmer
 
 Needs a Farmhouse and a composter. No tool is required. A hoe in that farmer's chest is ×1.25, any tier, and wears out one durability per harvest. Without a hoe nothing is reported and the work is full speed.
 
-They work farmland whose crop is within **24 blocks** horizontally of the composter and within 8 blocks of height. They harvest ripe wheat, carrots, potatoes (age 7), and beetroots (age 3), and replant in the same moment. They do not till new ground, and they do not touch torchflowers, pitcher plants, stems, berries, or nether wart. Empty farmland inside the area is planted with whichever of those four crops is most common next to it. Ties go wheat, then carrots, potatoes, beetroots. A neighbour's field inside the 24 blocks is worked too.
+They work the connected farmland. The seed is farmland within **24 blocks** horizontally of a composter and within 8 blocks of height. From there, farmland that shares a side is included, including a step of one block up or down. A two-block rise, a diagonal touch, or a one-block gap of path, fence, or water stops the field. Every farmer of that Farmhouse shares one field. They harvest ripe wheat, carrots, potatoes (age 7), and beetroots (age 3), and replant in the same moment. They do not till new ground, and they do not touch torchflowers, pitcher plants, stems, berries, or nether wart. Empty farmland in the field is planted with whichever of those four crops is most common next to it. Ties go wheat, then carrots, potatoes, beetroots.
 
 Surplus wheat seeds and beetroot seeds (above 16 of a kind) are composted. Composting is steady: 21 seeds make one bone meal. Bone meal goes on the youngest crops, crops other than beetroot first. They keep one stack of each seed, 16 carrots, and 16 potatoes for replanting. The rest of the harvest goes to Storage. A full Storage stops the harvest. Planting, bone meal, and composting continue.
 
@@ -232,11 +233,11 @@ A redstone or lapis hit is 4 of that item. Gold and diamond hits are 1. What doe
 
 ### Hunter
 
-Needs a Hunting Lodge, a fletching table, a linked Hunting Ground within 40 blocks, and a **bow, crossbow, or sword**. Spears, the mace, and the trident are not hunter weapons. A bow or crossbow is taken before any sword. The weapon is in that hunter's pocket during the day and loses 5 durability per finished trip. The tier of the weapon does not change how often they hunt.
+Needs a Hunting Lodge, a fletching table, a hunting flag, and a **bow, crossbow, or sword**. The lodge is a valid room without a flag; the hunter waits, and the Villagers tab says "Needs a hunting flag". Spears, the mace, and the trident are not hunter weapons. A bow or crossbow is taken before any sword. The weapon is in that hunter's pocket during the day and loses 5 durability per finished trip. The tier of the weapon does not change how often they hunt.
 
-They walk to the Hunting Ground and are gone for **3 in-game hours** (3000 ticks at level 1, 2400 at level 2, 2000 at level 3), then return. A trip brings 2–4 raw meat (beef, pork, mutton, or chicken, weighted by the animals that spawn in the biomes around the marker), 1–2 leather, 1–2 feathers, and a 50% chance of a rabbit hide. With a bow or crossbow, one arrow from the chest (plain arrows first) adds one extra meat. With no arrow they still hunt, without the bonus. Infinity is not special-cased.
+They walk to the hunting flag and are gone for **3 in-game hours** (3000 ticks at level 1, 2400 at level 2, 2000 at level 3), then return. A trip brings 2–4 raw meat (beef, pork, mutton, or chicken, weighted by the animals that spawn in the biomes around the flag), 1–2 leather, 1–2 feathers, and a 50% chance of a rabbit hide. With a bow or crossbow, one arrow from the chest (plain arrows first) adds one extra meat. With no arrow they still hunt, without the bonus. Infinity is not special-cased. No animals appear.
 
-Level 1 takes **2 trips a day**. Levels 2 and 3 take **3**. A trip only starts if it can finish 300 ticks before work ends at 11000. At level 1 the last start is day time 7700.
+Level 1 takes **2 trips a day**. Levels 2 and 3 take **3**. A trip starts only when the walk there, the time away, and the walk back all finish 300 ticks before work ends at 11000. A short walk leaves the last start at day time 7700 for level 1. A hunter already out comes back with no haul when staying would make the return late.
 
 ### Cook
 
@@ -328,7 +329,7 @@ Population is the villagers loaded inside the claim, babies included, plus hired
 | Tier | Reached when | What it unlocks | Job level cap |
 |---|---|---|---|
 | Hamlet | Heart placed | House, Storage, Farmhouse, Lumber Camp, Kitchen | 1 |
-| Village | population at least 6, at least 3 workers, a valid Storage, Farmhouse, and Kitchen, and fed 3 days in a row | Builder's Hut, Mine and Mineshaft, Hunting Lodge and Hunting Ground, Barracks and Training Yard, Market, and every blueprint except the Watchtower | 2 |
+| Village | population at least 6, at least 3 workers, a valid Storage, Farmhouse, and Kitchen, and fed 3 days in a row | Builder's Hut, Mine and Mineshaft, Hunting Lodge and Hunting Flag, Barracks and Training Yard, Market, and every blueprint except the Watchtower | 2 |
 | Town | population at least 12, at least 8 workers, at least 2 guards, fed 7 days in a row, and treasury at least 32 at some dawn | Watchtower. The Smithy (blacksmith, gear, golems). | 3 |
 
 On the way up, everyone online at Resident or above gets a chat line and a sound, and every building is re-checked.
@@ -412,7 +413,7 @@ The builder reserves every material for the build in Storage, fetches about a st
 | Storage Shed | Village | The same shell, with two chests and the Storage marker. |
 | Farm Plot | Village | 11×11. 80 farmland around one water source, 39 fences, and a fence gate. The water is placed from a bucket, and the bucket comes back. The farmland is already moist. |
 | Farmhouse, Lumber Camp, Kitchen, Builder's Hut, Mine, Hunting Lodge, Market | Village | A plains cottage: log corners, cobblestone, glass panes, and a stair roof, with that job's block and a chest already inside. A finished one can turn green as that building. |
-| Hunting Grove | Village | Oak trunks and a leaf canopy, with the Hunting Ground marker. Place it beside the lodge, not inside a house. |
+| Hunting Grove | Village | Oak trunks and a leaf canopy, with the hunting flag. The flag can sit up to 128 blocks from the Heart, and not inside a house. |
 | Barracks | Village | A wider plains cottage, plus a fenced yard on the east side: two targets, and the Training Yard marker on the cottage wall. |
 | Smithy | Town | A slightly wider plains cottage, with a blast furnace, an anvil, and a chest. |
 | Wall Segment | Village | Cobblestone, 3 high, any straight length up to 32. 3 cobblestone per block of length. A wall of 20 is 60 cobblestone. |

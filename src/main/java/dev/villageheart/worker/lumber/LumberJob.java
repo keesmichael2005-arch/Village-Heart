@@ -106,7 +106,8 @@ public final class LumberJob {
 	private static void backgroundSearch(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
 		if (ws.action == Action.SEARCH) return; // run() just did it
 		LumberRuntime.CampState camp = rt.camps.get(data.building());
-		if (camp == null || camp.finder == null || camp.exhausted || level.getDayTime() % Balance.DAY_TICKS >= Balance.LUMBER_LAST_FELL) return;
+		if (camp == null || camp.finder == null || camp.exhausted) return;
+		if (level.getDayTime() % Balance.DAY_TICKS >= treeCutoff(level, data, camp)) return;
 		search(level, v, data, rt, now);
 	}
 
@@ -178,8 +179,10 @@ public final class LumberJob {
 		boolean task = valid && tool == ToolState.PRESENT && pickTask(level, v, data, rt, now) != null;
 		FinderState finder = valid ? finderState(level, v, data, rt, now) : FinderState.EXHAUSTED;
 		boolean fell = ws.tree != null;
+		boolean hasFlag = CampFlags.flag(server, data.building()).isPresent();
+		long cutoff = hasFlag ? treeCutoff(level, data, rt.camp(data.building())) : 0;
 		Snapshot snap = new Snapshot(valid, deposit, fell, tool, replant != null, item != null, task,
-				level.getDayTime() % Balance.DAY_TICKS, finder, data.needs().speed() <= 0);
+				level.getDayTime() % Balance.DAY_TICKS, finder, data.needs().speed() <= 0, hasFlag, cutoff);
 		Decision d = LumberjackPlanner.plan(snap);
 		applyStatus(v.getUUID(), d.status());
 		Action before = ws.action;
@@ -221,6 +224,7 @@ public final class LumberJob {
 			}
 			case NEEDS_TOOL -> WorkerStatuses.set(id, WorkerStatus.NEEDS_TOOL);
 			case NO_WORK -> WorkerStatuses.set(id, WorkerStatus.NO_WORK);
+			case NEEDS_FLAG -> WorkerStatuses.set(id, WorkerStatus.NEEDS_FLAG);
 			case KEEP -> { }
 		}
 	}
@@ -531,11 +535,31 @@ public final class LumberJob {
 
 	// ---- searching ---------------------------------------------------------------------------------
 
+	/** The earlier of day time 5000 and the walk home from the next tree, or from the far side of the flag. */
+	private static long treeCutoff(ServerLevel level, WorkerData data, CampState camp) {
+		BlockPos flag = CampFlags.flag(level.getServer(), data.building()).orElse(null);
+		if (flag == null) return 0;
+		BlockPos home = pos(data.jobBlock());
+		double blocks;
+		if (!camp.found.isEmpty()) {
+			Pos base = camp.found.peekFirst().base().get(0);
+			blocks = dev.villageheart.core.site.FlagDay.blocks(base.x(), base.y(), base.z(), home.getX(), home.getY(), home.getZ());
+		} else {
+			blocks = dev.villageheart.core.site.FlagDay.blocks(flag.getX(), flag.getY(), flag.getZ(), home.getX(), home.getY(), home.getZ())
+					+ Balance.LUMBER_RADIUS;
+		}
+		return dev.villageheart.core.site.FlagDay.treeCutoff(blocks);
+	}
+
 	private static FinderState finderState(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, long now) {
 		CampState camp = rt.camp(data.building());
-		BlockPos centre = pos(data.jobBlock());
-		if (camp.finder == null || (camp.exhausted && now - camp.sweepDoneAt >= Balance.TREE_INDEX_TTL)) {
-			camp.finder = new TreeFinder(new Pos(centre.getX(), centre.getY(), centre.getZ()), Balance.LUMBER_RADIUS, Balance.LUMBER_DY);
+		BlockPos centre = CampFlags.flag(level.getServer(), data.building()).orElse(null);
+		if (centre == null) return FinderState.EXHAUSTED;
+		Pos at = new Pos(centre.getX(), centre.getY(), centre.getZ());
+		boolean moved = camp.finderCentre == null || !camp.finderCentre.equals(at);
+		if (camp.finder == null || moved || (camp.exhausted && now - camp.sweepDoneAt >= Balance.TREE_INDEX_TTL)) {
+			camp.finder = new TreeFinder(at, Balance.LUMBER_RADIUS, Balance.LUMBER_DY);
+			camp.finderCentre = at;
 			camp.finderCreatedAt = now;
 			camp.exhausted = false;
 			camp.exhaustedUnknown = false;
@@ -771,11 +795,11 @@ public final class LumberJob {
 	}
 
 	/**
-	 * The nearest wanted drop in the work area (within {@link Balance#LUMBER_RADIUS} of the Chopping Block, whatever its distance from the
+	 * The nearest wanted drop in the work area (within {@link Balance#LUMBER_RADIUS} of the chopping flag, whatever its distance from the
 	 * worker: a lumberjack idling at the camp must still see the saplings that fall from a canopy 25 blocks away).
 	 */
 	private static ItemEntity findItem(ServerLevel level, Villager v, WorkerData data, LumberRuntime rt, WorkerState ws, long now) {
-		BlockPos camp = pos(data.jobBlock());
+		BlockPos camp = CampFlags.flag(level.getServer(), data.building()).orElse(pos(data.jobBlock()));
 		double r = Balance.LUMBER_RADIUS;
 		net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(camp).inflate(r, Balance.LUMBER_DY + 8, r);
 		ItemEntity best = null;

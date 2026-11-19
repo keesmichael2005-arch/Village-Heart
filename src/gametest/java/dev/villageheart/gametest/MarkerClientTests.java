@@ -40,9 +40,10 @@ final class MarkerClientTests {
 			srv.runCommand("effect give @a minecraft:night_vision infinite 0 true");
 			srv.runCommand("fill -4 " + y + " -1 4 " + (y + 3) + " -1 minecraft:stone_bricks");
 			BuildingType[] types = BuildingType.values();
+			int columns = 8;
 			for (int i = 0; i < types.length; i++) {
-				int x = (i % 7) - 3;
-				int my = i < 7 ? y + 2 : y + 1;
+				int x = (i % columns) - 4;
+				int my = i < columns ? y + 2 : y + 1;
 				srv.runCommand("setblock " + x + " " + my + " 0 villageheart:" + types[i].markerId() + "[facing=south]");
 			}
 			JobBlockType[] jobs = JobBlockType.values();
@@ -67,7 +68,7 @@ final class MarkerClientTests {
 				List<BlockPos> spots = new ArrayList<>();
 				List<Identifier> expected = new ArrayList<>();
 				for (int i = 0; i < types.length; i++) {
-					spots.add(new BlockPos((i % 7) - 3, i < 7 ? fy + 2 : fy + 1, 0));
+					spots.add(new BlockPos((i % columns) - 4, i < columns ? fy + 2 : fy + 1, 0));
 					expected.add(Identifier.fromNamespaceAndPath("villageheart", types[i].markerId()));
 				}
 				for (int i = 0; i < jobs.length; i++) {
@@ -82,7 +83,7 @@ final class MarkerClientTests {
 					if (!got.equals(expected.get(i))) bad.add(spots.get(i) + " expected " + expected.get(i) + " but found " + got);
 					else if (st.getValue(HorizontalDirectionalBlock.FACING) != Direction.SOUTH) bad.add(spots.get(i) + " facing " + st.getValue(HorizontalDirectionalBlock.FACING));
 				}
-				if (spots.size() != 18) bad.add("expected 18 spots, have " + spots.size());
+				if (spots.size() != 19) bad.add("expected 19 spots, have " + spots.size());
 				return bad;
 			});
 			if (!problems.isEmpty()) throw new AssertionError("marker wall not as expected: " + problems);

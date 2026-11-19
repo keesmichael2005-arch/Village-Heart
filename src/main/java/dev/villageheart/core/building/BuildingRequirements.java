@@ -50,7 +50,7 @@ public final class BuildingRequirements {
 		put(BuildingType.MINE, new Requirements(9, List.of(need(Thing.STONECUTTER, 1, STONECUTTER), need(Thing.CHEST, 1, CHEST)),
 				STONECUTTER, SlotRule.JOB_BLOCKS, BuildingType.MINESHAFT, DetailLine.WORKER_SLOTS));
 		put(BuildingType.HUNTING_LODGE, new Requirements(9, List.of(need(Thing.FLETCHING_TABLE, 1, FLETCHING_TABLE), need(Thing.CHEST, 1, CHEST)),
-				FLETCHING_TABLE, SlotRule.JOB_BLOCKS, BuildingType.HUNTING_GROUND, DetailLine.WORKER_SLOTS));
+				FLETCHING_TABLE, SlotRule.JOB_BLOCKS, null, DetailLine.WORKER_SLOTS));
 		// the only rule whose minimum scales with another count: one bed per guard slot (grindstone)
 		put(BuildingType.BARRACKS, new Requirements(16, List.of(need(Thing.GRINDSTONE, 1, GRINDSTONE),
 				new ContentRule(Thing.BED, Set.of(BED), 1, GRINDSTONE), need(Thing.CHEST, 1, CHEST)),

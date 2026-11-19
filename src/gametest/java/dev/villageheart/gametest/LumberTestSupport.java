@@ -86,6 +86,15 @@ public final class LumberTestSupport {
 		h.setBlock(storeChest2(), Blocks.CHEST);
 	}
 
+	/** The default chopping flag, on the east face of the Chopping Block, so the circle matches the old one. */
+	public static BlockPos flagPos() { return new BlockPos(10, 1, 5); }
+
+	public static void placeFlag(GameTestHelper h, BlockPos marker, Direction facing) {
+		BuildingTestSupport.placeMarker(h, BuildingType.CHOPPING_FLAG, marker, facing);
+	}
+
+	public static void placeDefaultFlag(GameTestHelper h) { placeFlag(h, flagPos(), Direction.EAST); }
+
 	public static void placeMarkers(GameTestHelper h, boolean storage) {
 		BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, campMarker(), Direction.NORTH);
 		if (storage) BuildingTestSupport.placeMarker(h, BuildingType.STORAGE, storeMarker(), Direction.NORTH);
@@ -119,7 +128,11 @@ public final class LumberTestSupport {
 			if (twoChops) addSecondChop(h);
 			if (storage) buildStorage(h);
 			placeMarkers(h, storage);
-		}).thenWaitUntil(() -> assertValid(h, storage));
+			placeDefaultFlag(h);
+		}).thenWaitUntil(() -> {
+			assertValid(h, storage);
+			BuildingTestSupport.assertStatus(h, flagPos(), dev.villageheart.block.MarkerStatus.VALID);
+		});
 	}
 
 	/** Torches on the grass every 4 blocks outside the two rooms, so a night test is not spawn-proofed by darkness. */

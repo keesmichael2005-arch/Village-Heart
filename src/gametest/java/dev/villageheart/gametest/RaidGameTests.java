@@ -387,8 +387,12 @@ public class RaidGameTests {
 			h.setBlock(BuildingTestSupport.inside(camp, 4, 0, 3), Blocks.CHEST);
 			h.setBlock(BuildingTestSupport.inside(camp, 2, 0, 3), Blocks.TORCH);
 			BuildingTestSupport.placeMarker(h, BuildingType.LUMBER_CAMP, BuildingTestSupport.markerPos(camp, 5), Direction.NORTH);
+			LumberTestSupport.placeFlag(h, BuildingTestSupport.inside(camp, 1, 0, 0), Direction.EAST);
 		});
-		seq = seq.thenWaitUntil(() -> BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(camp, 5), dev.villageheart.block.MarkerStatus.VALID));
+		seq = seq.thenWaitUntil(() -> {
+			BuildingTestSupport.assertStatus(h, BuildingTestSupport.markerPos(camp, 5), dev.villageheart.block.MarkerStatus.VALID);
+			BuildingTestSupport.assertStatus(h, BuildingTestSupport.inside(camp, 1, 0, 0), dev.villageheart.block.MarkerStatus.VALID);
+		});
 		seq = seq.thenExecute(() -> {
 			BlockPos base = LumberTestSupport.growOak(h, new BlockPos(28, 0, 14), 1L);
 			logs[0] = LumberTestSupport.logsOf(h, base);

@@ -35,16 +35,22 @@ class SiteRulesTest {
 	}
 
 	@Test void huntingGround() {
+		assertEquals(BuildingStatus.VALID, BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(0, false), LINKED).status(),
+				"the grass quota is gone");
 		assertEquals(BuildingStatus.VALID, BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, false), LINKED).status());
-		assertEquals(List.of("Needs 1 more grass, leaf or log block"),
-				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(39, false), LINKED)));
 		assertEquals(List.of("Must be outside House and Farmhouse rooms"),
 				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, true), LINKED)));
-		// M17: a Hunting Ground links only to a Lodge within 40 blocks (was: anywhere in the village)
-		assertEquals(List.of("No Hunting Lodge within 40 blocks"),
-				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, false), ALONE)));
-		assertEquals(List.of(Reason.noParent(BuildingType.HUNTING_LODGE, Balance.HUNTING_GROUND_LINK_RANGE)),
-				BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(40, false), ALONE).reasons());
+		assertEquals(List.of("No Hunting Lodge in the village"),
+				messages(BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(0, false), ALONE)));
+		assertEquals(List.of(Reason.noParent(BuildingType.HUNTING_LODGE, Integer.MAX_VALUE)),
+				BuildingRules.checkSite(BuildingType.HUNTING_GROUND, ground(0, false), ALONE).reasons());
+	}
+
+	@Test void choppingFlag() {
+		assertEquals(BuildingStatus.VALID, BuildingRules.checkSite(BuildingType.CHOPPING_FLAG, ground(0, false),
+				new CheckContext(Tier.HAMLET, null, PARENT, 0)).status());
+		assertEquals(List.of("No Lumber Camp in the village"),
+				messages(BuildingRules.checkSite(BuildingType.CHOPPING_FLAG, ground(0, false), new CheckContext(Tier.HAMLET, null, null, 0))));
 	}
 
 	@Test void trainingYard() {

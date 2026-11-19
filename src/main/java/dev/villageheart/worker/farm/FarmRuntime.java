@@ -35,7 +35,7 @@ public final class FarmRuntime {
 	/** Crop cell -> the worker that works it. */
 	final Map<Pos, UUID> claims = new HashMap<>();
 	final Map<UUID, WorkerState> workers = new HashMap<>();
-	/** Job block (composter) -> its field index. */
+	/** Farmhouse -> the one field its farmers share. */
 	final Map<HeartLocation, FieldIndex> indexes = new LinkedHashMap<>();
 	/** Composter -> tenths of a level left over by the deterministic composting rule. */
 	final Map<HeartLocation, Integer> tenths = new HashMap<>();
@@ -95,10 +95,18 @@ public final class FarmRuntime {
 	@Nullable
 	public FieldIndex index(HeartLocation jobBlock) { return indexes.get(jobBlock); }
 
-	/** The index of this composter (created on first use); marks it as used now so {@link #pump} keeps it fresh. */
-	FieldIndex indexFor(HeartLocation jobBlock, long now) {
-		indexUsedAt.put(jobBlock, now);
-		return indexes.computeIfAbsent(jobBlock, k -> new FieldIndex(new Pos(k.x(), k.y(), k.z())));
+	/**
+	 * The field of this Farmhouse (created on first use). Every composter is one seed disc. A change in the composter
+	 * list starts the sweep again. Marks it as used now so {@link #pump} keeps it fresh.
+	 */
+	FieldIndex indexFor(HeartLocation building, List<Pos> composters, long now) {
+		indexUsedAt.put(building, now);
+		FieldIndex idx = indexes.get(building);
+		if (idx == null || !idx.composters().equals(composters)) {
+			idx = new FieldIndex(composters);
+			indexes.put(building, idx);
+		}
+		return idx;
 	}
 
 	/** True when a claim of another worker is live: that worker ticked within the last 100 ticks. */

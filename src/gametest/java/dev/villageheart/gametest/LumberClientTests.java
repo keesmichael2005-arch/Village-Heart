@@ -148,6 +148,15 @@ final class LumberClientTests {
 				context.waitTicks(1);
 			}
 			if (!state.equals("VALID")) throw new AssertionError("the Lumber Camp plaque is " + state);
+			srv.runCommand("setblock 6 " + (y + 1) + " 7 minecraft:oak_planks");
+			srv.runCommand("setblock 6 " + (y + 1) + " 8 villageheart:chopping_flag_marker[facing=south]");
+			BlockPos flag = new BlockPos(6, y + 1, 8);
+			String flagState = "";
+			for (int i = 0; i < 200 && !flagState.equals("VALID"); i++) {
+				flagState = srv.computeOnServer(server -> HeartScreenClientTests.marker(server.overworld(), flag));
+				context.waitTicks(1);
+			}
+			if (!flagState.equals("VALID")) throw new AssertionError("the chopping flag is " + flagState);
 			String hired = srv.computeOnServer(server -> dev.villageheart.worker.Workers.hire(server.overworld(),
 					server.overworld().getEntity(worker), JobType.LUMBERJACK, java.util.Optional.empty()).toString());
 			if (!hired.startsWith("Hired")) throw new AssertionError("the hire failed: " + hired);

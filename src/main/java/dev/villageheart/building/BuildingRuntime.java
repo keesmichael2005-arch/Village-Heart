@@ -42,6 +42,9 @@ final class BuildingRuntime {
 	boolean primed;
 	/** Test hook: how many times onPlace noted a new marker. */
 	int placedNotes;
+	/** Registration order of markers (lower first). Not saved: after a restart, ties follow the saved list. */
+	private final Map<HeartLocation, Integer> registeredOrder = new HashMap<>();
+	private int nextOrder;
 
 	private List<BuildingRecord> sortedFor;
 	private SortedSet<HeartLocation> sorted = new TreeSet<>(VillageState.locationOrder());
@@ -62,12 +65,16 @@ final class BuildingRuntime {
 		return sorted;
 	}
 
+	/** The order this marker was first registered in this claim. Lower wins a tie between waiting flags. */
+	int orderOf(HeartLocation loc) { return registeredOrder.computeIfAbsent(loc, k -> nextOrder++); }
+
 	void forget(HeartLocation loc) {
 		rawScans.remove(loc);
 		lastEnclosed.remove(loc);
 		verdicts.remove(loc);
 		shaftDeepest.remove(loc);
 		sharedWith.remove(loc);
+		registeredOrder.remove(loc);
 		dev.villageheart.worker.hunt.HunterRuntime.dropWeights(loc);
 	}
 }

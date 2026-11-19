@@ -41,7 +41,6 @@ import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.SetClosestHomeAsWalkTarget;
 import net.minecraft.world.entity.ai.behavior.SetEntityLookTarget;
 import net.minecraft.world.entity.ai.behavior.SetLookAndInteract;
-import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory;
 import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromLookTarget;
 import net.minecraft.world.entity.ai.behavior.SleepInBed;
 import net.minecraft.world.entity.ai.behavior.Swim;
@@ -196,7 +195,7 @@ public final class WorkerBrain {
 		brain.addActivity(GO_HOME, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
 				.add(p(0, new dev.villageheart.worker.pocket.ToolErrand()))
 				.addAll(JobBehaviours.goHome(villager))
-				.add(p(2, SetWalkTargetFromBlockMemory.create(MemoryModuleType.HOME, SPEED, 1, 150, 1200)))
+				.add(p(2, new GoHomeWalk()))
 				.add(p(3, ValidateNearbyPoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME)))
 				.add(homeless())
 				.add(look())
@@ -204,7 +203,7 @@ public final class WorkerBrain {
 				.build());
 
 		brain.addActivity(Activity.REST, ImmutableList.of(
-				p(2, SetWalkTargetFromBlockMemory.create(MemoryModuleType.HOME, SPEED, 1, 150, 1200)),
+				p(2, new GoHomeWalk()),
 				p(3, ValidateNearbyPoi.create(h -> h.is(PoiTypes.HOME), MemoryModuleType.HOME)),
 				p(3, new SleepInBed()),
 				homeless(),

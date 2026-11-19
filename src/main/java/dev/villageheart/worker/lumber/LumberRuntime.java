@@ -96,6 +96,7 @@ public final class LumberRuntime {
 	/** Per camp: the tree search, the trees it found, the trees given up. */
 	static final class CampState {
 		TreeFinder finder;
+		dev.villageheart.core.room.Pos finderCentre;
 		long finderCreatedAt;
 		long sweepDoneAt;
 		boolean exhausted;
