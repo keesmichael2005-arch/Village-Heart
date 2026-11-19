@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
  * The right side is who they are. Nothing of theirs can be moved.
  */
 public class PocketScreen extends AbstractContainerScreen<PocketMenu> {
-	private static final Identifier TEXTURE = Identifier.withDefaultNamespace("textures/gui/container/villager.png");
+	private static final Identifier TEXTURE = Identifier.parse("minecraft:textures/gui/container/villager.png");
 	private static final Identifier XP_BG = Identifier.withDefaultNamespace("container/villager/experience_bar_background");
 	private static final Identifier XP_FILL = Identifier.withDefaultNamespace("container/villager/experience_bar_current");
 	private static final int TEXTURE_W = 512;

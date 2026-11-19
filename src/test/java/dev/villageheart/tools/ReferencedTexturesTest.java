@@ -54,6 +54,7 @@ class ReferencedTexturesTest {
 						String text = Files.readString(p);
 						Matcher m = JAVA_PNG.matcher(text);
 						while (m.find()) {
+							if (minecraftTexture(text, m.start())) continue;
 							String rel = "assets/villageheart/" + m.group();
 							if (!Files.isRegularFile(root.resolve(rel))) missing.add(p.getFileName() + " -> " + rel);
 						}
@@ -96,8 +97,9 @@ class ReferencedTexturesTest {
 			try (Stream<Path> files = Files.walk(src)) {
 				files.filter(p -> p.toString().endsWith(".java")).forEach(p -> {
 					try {
-						Matcher m = JAVA_PNG.matcher(Files.readString(p));
-						while (m.find()) referenced.add(m.group());
+						String text = Files.readString(p);
+						Matcher m = JAVA_PNG.matcher(text);
+						while (m.find()) if (!minecraftTexture(text, m.start())) referenced.add(m.group());
 					} catch (IOException e) {
 						throw new IllegalStateException(e);
 					}
@@ -120,6 +122,12 @@ class ReferencedTexturesTest {
 			});
 		}
 		assertTrue(orphans.isEmpty(), "textures nothing references:\n" + String.join("\n", orphans));
+	}
+
+	/** A {@code minecraft:} texture is the game's, not a file this jar has to contain. */
+	private static boolean minecraftTexture(String text, int start) {
+		String prefix = "minecraft:";
+		return start >= prefix.length() && text.regionMatches(start - prefix.length(), prefix, 0, prefix.length());
 	}
 
 	private static void collectJson(Path file, Set<String> referenced) {
