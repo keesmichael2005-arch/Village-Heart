@@ -234,7 +234,7 @@ Needs a Hunting Lodge, a fletching table, a hunting flag, and a **bow, crossbow,
 
 They walk to the hunting flag and are gone for **3 in-game hours** (3000 ticks at level 1, 2400 at level 2, 2000 at level 3), then return. A trip brings 2–4 raw meat (beef, pork, mutton, or chicken, weighted by the animals that spawn in the biomes around the flag), 1–2 leather, 1–2 feathers, and a 50% chance of a rabbit hide. With a bow or crossbow, one arrow from the chest (plain arrows first) adds one extra meat. With no arrow they still hunt, without the bonus. Infinity is not special-cased. No animals appear.
 
-Level 1 takes **2 trips a day**. Levels 2 and 3 take **3**. A trip starts only when the walk there, the time away, and the walk back all finish 300 ticks before work ends at 11000. A short walk leaves the last start at day time 7700 for level 1. A hunter already out comes back with no haul when staying would make the return late.
+Level 1 takes **2 trips a day**. Levels 2 and 3 take **3**. A trip starts only when the walk there, the time away, and the walk back all finish 300 ticks before work ends at 9000. A short walk leaves the last start at day time 5700 for level 1. A hunter already out comes back with no haul when staying would make the return late.
 
 ### Cook
 

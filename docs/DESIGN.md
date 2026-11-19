@@ -342,7 +342,7 @@ With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus.
   start: a bow or crossbow takes 1 arrow (plain first, then any other item of the arrows tag) from the Lodge chest and brings 1 more meat;
   without an arrow it still hunts, with no bonus (Infinity is not modelled). **Trips per day**: 2 at level 1, 3 at levels 2 and 3 (a
   count saved with the hunter for the day, reset on any other day); a trip only starts if it can end 300 ticks before the work day ends
-  at 11000 (at level 1, with no walk, the last start is at day time 7700). The walk to the flag and the walk back count as well, and the fit is checked again when it arrives. A hunter already out comes back with no haul when staying would make the return late. At day end it comes back without
+  at 9000 (at level 1, with no walk, the last start is at day time 5700). The walk to the flag and the walk back count as well, and the fit is checked again when it arrives. A hunter already out comes back with no haul when staying would make the return late. At day end it comes back without
   a yield and keeps its progress. The yield of a trip is drawn from a generator seeded by (world seed, villager UUID, trip counter), in a
   pinned order: base meat 2-4, leather 1-2, feathers 1-2, rabbit hide 0-1 (50 percent), then the kind of each piece of meat; the bow's
   extra piece is one more draw of the same stream, so with and without a bow the same trip is the same plus one meat. **Biome weighting**

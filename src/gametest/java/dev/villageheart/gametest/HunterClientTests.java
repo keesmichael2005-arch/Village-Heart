@@ -33,7 +33,9 @@ final class HunterClientTests {
 			sp.getClientWorld().waitForChunksRender();
 			var srv = sp.getServer();
 			int y = srv.computeOnServer(server -> server.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING, 0, 0));
-			srv.runCommand("time set noon");
+			// Noon is after the last departure: a full trip plus the walk home would pass the meeting at 9000,
+			// and the hunter would be brought back before the row can say Away.
+			srv.runCommand("time set 1000");
 			srv.runCommand("gamerule advance_time false");
 			srv.runCommand("weather clear");
 			srv.runCommand("difficulty peaceful");
