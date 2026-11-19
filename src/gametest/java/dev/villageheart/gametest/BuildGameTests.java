@@ -1032,7 +1032,10 @@ public class BuildGameTests {
 				.thenExecute(() -> {
 					long ticks = h.getTick() - t0[0];
 					System.out.println("[m20] farm plot finished after " + ticks + " ticks: " + log[0].places + " places, " + log[0].clears + " clears");
-					h.assertTrue(ticks < 2 * Balance.DAY_TICKS, "within two days (M26: a block takes 70 ticks, so one day is no longer enough): " + ticks);
+					// Two calendar days were enough when work ran 1000–11000 (10000 ticks). Work now ends at 9000, so the same
+					// places take 10000/(WORK_END-WORK_START) as much calendar time.
+					int budget = 2 * Balance.DAY_TICKS * 10_000 / (Balance.WORK_END - Balance.WORK_START);
+					h.assertTrue(ticks < budget, "within the two-day budget at the shorter work day: " + ticks + " bound " + budget);
 					h.assertTrue(log[0].insideBox == 0, "every action was taken from outside the box: " + log[0].firstInside);
 					checkFarm(h, bp, pl, 0);
 					BlockPos gate = BuildTestSupport.cell(h, bp, pl, 5, 1, 0);
@@ -1069,7 +1072,8 @@ public class BuildGameTests {
 	 * Review of M20 round 2: a farmland next to the water dries to dirt (a player trampled it) when the check pass starts. The builder replaces
 	 * it in ONE action, so the water cannot flow into the gap: the plot ends with 80 farmland and 1 water.
 	 */
-	@GameTest(environment = "villageheart-gametest:build_farm_check", structure = YARD, skyAccess = true, maxTicks = 40000)
+	// The check pass is near the end of the Farm Plot. With work ending at 9000 the plot takes about 56000 ticks, so this waits that long.
+	@GameTest(environment = "villageheart-gametest:build_farm_check", structure = YARD, skyAccess = true, maxTicks = 70000)
 	public void checkPassDoesNotFloodAFarmland(GameTestHelper h) {
 		Blueprint bp = Blueprints.FARM_PLOT;
 		Placement pl = BuildTestSupport.placement(h, BuildTestSupport.GROUND, Rotation4.CLOCKWISE_180);
@@ -1082,29 +1086,20 @@ public class BuildGameTests {
 			BuildTestSupport.hireBuilder(h);
 			h.getLevel().setDayTime(1000);
 			BuildTestSupport.confirmSite(h, bp, Rotation4.CLOCKWISE_180);
-		}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.cursor(h) >= firstCheck(h), "the check pass starts: " + BuildTestSupport.cursor(h)))
-				.thenExecute(() -> {
-					var steps = BuildJobs.steps(h.getLevel().getServer(), BuildTestSupport.builds(h).get(0));
-					int cursor = BuildTestSupport.cursor(h);
-					// among the farmland cells next to the water, the one whose check step is the last: it is still to come
-					int best = -1;
-					for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
-						BlockPos c = BuildTestSupport.cell(h, bp, pl, x, 0, z);
-						if (!h.getBlockState(c).is(Blocks.FARMLAND)) continue;
-						boolean nextToWater = false;
-						for (Direction d : Direction.Plane.HORIZONTAL) if (h.getBlockState(c.relative(d)).is(Blocks.WATER)) nextToWater = true;
-						if (!nextToWater) continue;
-						Pos abs = BuildTestSupport.abs(h, c);
-						for (int i = steps.size() - 1; i > cursor; i--) {
-							if (steps.get(i).kind() == dev.villageheart.core.blueprint.BuildPlan.Kind.CHECK && steps.get(i).pos().equals(abs)) {
-								if (i > best) { best = i; trampled[0] = c; }
-								break;
-							}
-						}
-					}
-					h.assertTrue(trampled[0] != null, "a farmland next to the water is still to be checked");
-					h.setBlock(trampled[0], Blocks.DIRT); // dried (or trampled)
-				}).thenWaitUntil(() -> h.assertTrue(BuildTestSupport.builds(h).isEmpty(), "the plot is finished")).thenIdle(200).thenExecute(() -> {
+		}).thenWaitUntil(() -> {
+			// A correct cell is skipped, up to 400 a plan, so the check pass is over in the tick it starts.
+			// Trample the water's neighbour once it is farmland. Dirt is solid, so the water cannot move in
+			// until the check replaces that one cell.
+			if (trampled[0] == null && !BuildTestSupport.builds(h).isEmpty()) {
+				BlockPos n = BuildTestSupport.cell(h, bp, pl, 4, 0, 5);
+				if (h.getBlockState(n).is(Blocks.FARMLAND)) {
+					h.setBlock(n, Blocks.DIRT);
+					trampled[0] = n;
+				}
+			}
+			h.assertTrue(trampled[0] != null && BuildTestSupport.builds(h).isEmpty(),
+					"trampled the water's neighbour and the plot finished: " + trampled[0]);
+		}).thenIdle(200).thenExecute(() -> {
 					int farmland = 0, water = 0;
 					for (int z = 1; z <= 9; z++) for (int x = 1; x <= 9; x++) {
 						BlockState st = h.getBlockState(BuildTestSupport.cell(h, bp, pl, x, 0, z));
@@ -1307,9 +1302,9 @@ public class BuildGameTests {
 		WorkerTestSupport.begin(h);
 		h.onEachTick(() -> {
 			if (!watch[0]) return;
-			// M26: at 70 ticks a block the builds outlast the work day; once work ends the builders drop their claims in any order, and the
-			// next morning they pick them up in any order. The oldest-first rule is checked over the first work day (1000 -> 11000).
-			if (h.getTick() - watchedAt[0] > 9000) return;
+			// Once work ends the builders drop their claims in any order. The oldest-first rule is checked only while they are still working
+			// (1000 -> 9000), which is 8000 ticks from a start at 1000.
+			if (h.getTick() - watchedAt[0] > 7500) return;
 			var claims = BuildRuntime.get(h.getLevel().getServer()).claims();
 			if (claims.size() == 2 && !claims.get(ids[0]).equals(claims.get(ids[1]))) distinct[0] = true;
 			if (claims.size() == 1 && claims.containsKey(ids[1]) && !claims.containsKey(ids[0]) && BuildTestSupport.builds(h).size() == 2) {

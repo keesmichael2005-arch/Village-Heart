@@ -155,19 +155,21 @@ building behaves exactly as in vanilla.
   profession again, but their old trades are not restored.
 - **Workers are vanilla villager entities** with mod data attached. Vanilla models only: job
   identity comes from the profession texture or held item, plus particles.
-- **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–11000 work, 11000–12000 go home
-  and eat dinner, 12000+ sleep in a bed. Guards follow shifts instead (§5.6).
+- **Day shape** *(tunable, ticks of the 24000-tick day)*: 0–1000 wake and eat, 1000–9000 work, 9000–11000 meet at the
+  bell, 11000–12000 go home and eat dinner, 12000+ sleep in a bed. A villager already asleep stays in bed through the meeting
+  and the walk home. Guards follow shifts instead (§5.6): a guard on duty does not attend, and a night guard sleeps through the
+  day and wakes at dusk for patrol.
 - **Rain and snow**: Minecraft rain, snow, and thunderstorms are one flag. During work time a hired worker stops,
   walks to their workplace, and stands beside the workstation. They do not keep working: a farmer leaves the field,
   a lumberjack the tree, a hunter the hunting ground, a miner the Mineshaft, and a builder the site. A drop-off
   already on its way to Storage is finished first; anything still carried waits for the usual deposit (the cargo
-  slots fill again once they are working, or the day ends). The moment the weather clears during work time they go
-  straight back to work. Dinner, the walk home, and sleep stay on the clock. A guard on duty patrols and fights
+  slots fill again once they are working, or work ends). The moment the weather clears during work time they go
+  straight back to work. The meeting, dinner, the walk home, and sleep stay on the clock. A guard on duty patrols and fights
   in any weather; a raid or the alarm still calls them out. A guard who is asleep stays asleep. A trainee is not
   on duty, so a trainee waits in the Barracks instead of sparring. A raid or a siege still sends everyone to
   shelter; if it is still raining when the threat ends during work time, workers wait at the workplace. The
   Villagers tab says "Out of the rain". No new sound and no chat line.
-- **Delivery**: a worker carries goods in its eight inventory slots. A lumberjack, miner, hunter, or farmer keeps slot 0 for the tool, so goods use the other seven. When every cargo slot is taken, or at the end of the day, the worker walks to the nearest Storage, deposits, and returns. The tool is not deposited.
+- **Delivery**: a worker carries goods in its eight inventory slots. A lumberjack, miner, hunter, or farmer keeps slot 0 for the tool, so goods use the other seven. When every cargo slot is taken, or when work ends at the meeting, the worker walks to a spot beside the chest in the nearest Storage with room and puts one item in every 5 ticks (a quarter of a second). The tool is not deposited. Fill order is unchanged: partial stacks of that item, then the first empty slot. Inputs (tools, seeds, raw food, ore) are fetched the same way.
 - **Pocket**: right-click a hired villager for a read-only view of those eight slots, their name, job, level (the same XP bar as the Heart), what they are doing, and whether they are fed, housed, and paid. A guard's card also shows the sword and armour they are wearing. An unhired villager still opens the trade window. A miner underground or a hunter out on a trip still cannot be clicked.
 - **Own chest**: hiring pairs the job block with the nearest chest in that room that no other worker owns. The tool lives in the pocket during the work day. At the end of work the worker puts it back, then dumps cargo at Storage. In the morning they take it out again. A full chest leaves the tool in slot 0 overnight. On death, or if a zombie converts them, the tool goes back into that chest and the cargo drops. A room with two job blocks and one chest hires one worker. A double chest is one chest. A missing chest keeps the link and the worker shows "Needs a chest". Another villager never takes from that chest. The smith delivers a new tool into it.
 - **Tools**: a tool in the worker's own chest is the one they carry. A better tier works faster:
@@ -194,7 +196,7 @@ building behaves exactly as in vanilla.
     are not carried over. A striker wanders inside the claim during the work day, the same as a worker with no workstation,
     and still goes home and sleeps. The row says "On strike", and that wins when the workplace is also missing.
 - **A missing workplace does not fire anyone.** Only firing, death, a zombie conversion, or breaking the Heart ends the job.
-  They keep the job, the level, and their pay. During the work day (ticks 1000–11000) they wander inside the claim: no walk to
+  They keep the job, the level, and their pay. During the work day (ticks 1000–9000) they wander inside the claim: no walk to
   the job block, no deposit trip. They still go home, eat dinner, and sleep. The row says "No workstation". The Overview danger
   line says "1 worker has no workstation" or "N workers have no workstation", and it counts paid workers only. A building that
   is still registered, including a red one, keeps its workers until it is valid again. A building that is gone releases them
@@ -340,7 +342,7 @@ With a bow, it uses arrows from the chest (1 per trip) and gets a +1 meat bonus.
   start: a bow or crossbow takes 1 arrow (plain first, then any other item of the arrows tag) from the Lodge chest and brings 1 more meat;
   without an arrow it still hunts, with no bonus (Infinity is not modelled). **Trips per day**: 2 at level 1, 3 at levels 2 and 3 (a
   count saved with the hunter for the day, reset on any other day); a trip only starts if it can end 300 ticks before the work day ends
-  at 11000 (at level 1, with no walk, the last start is at day time 7700). The walk to the flag and the walk back count as well, and the fit is checked again when it arrives. A hunter already out comes back with no haul when staying would make the return late. At day end it comes back without
+  at 9000 (at level 1, with no walk, the last start is at day time 5700). The walk to the flag and the walk back count as well, and the fit is checked again when it arrives. A hunter already out comes back with no haul when staying would make the return late. At day end it comes back without
   a yield and keeps its progress. The yield of a trip is drawn from a generator seeded by (world seed, villager UUID, trip counter), in a
   pinned order: base meat 2-4, leather 1-2, feathers 1-2, rabbit hide 0-1 (50 percent), then the kind of each piece of meat; the bow's
   extra piece is one more draw of the same stream, so with and without a bow the same trip is the same plus one meat. **Biome weighting**
@@ -452,7 +454,7 @@ Pace: 8 items per in-game hour at level 1. Cooking needs fuel (coal, charcoal or
 - **Delivery.** The finished tool goes to that camp's chest. If the walk gives up within 3 blocks (a coworker on the last cell), the smith still puts it in. A full chest sends the tool to Storage, the Villagers tab keeps "<building> chest is full" until the 1200-tick backoff ends, and then the smith tries again. An unknown camp (the building cannot be read) pauses a committed craft; it does not cancel it.
 - **Repair.** One ingot or one leather restores a quarter of the max durability, floored (`RepairRules`). A remainder smaller than that quarter costs nothing. Wood and stone are replaced, not repaired. The smith repairs in the Smithy chest, and fetches damaged gear from the Barracks and Storage.
 - **Golems.** 36 iron ingots and 1 carved pumpkin, 8000 work ticks, standing at the anvil. The new golem is player-created and waits on a 2×2 pad three to six blocks outside the door. The cap is `golems + builds < population / 5`, and every golem in the claim counts. Vanilla `spawnGolemIfNeeded` is cancelled inside the claim and 8 blocks past it, only when the villager would really have tried; a carved pumpkin, a spawn egg and a command still work. Below half health a golem walks to the Smithy and is healed 25 per ingot. Iron golems never keep a creeper as a target.
-- **Night.** Smelting, a committed craft and a golem build pause outside work hours `[1000, 11000)` and continue the next morning. Progress is saved every 200 ticks and when the smith stops. Stepping the day clock backward leaves the smith out of work; stepping it forward to the next morning does not.
+- **Night.** Smelting, a committed craft and a golem build pause outside work hours `[1000, 9000)` and continue the next morning. The walk back from Storage stays uncommitted, so a tool put in the camp chest cancels an order that has not started. If that walk cannot reach the furnace, the craft is saved from where the smith stands, and it still pauses at dusk. Two furnaces an equal distance from two anvils each take the anvil on their own column, so both smiths can craft at once. Progress is saved every 200 ticks and when the smith stops. Stepping the day clock backward leaves the smith out of work; stepping it forward to the next morning does not.
 
 ### 5.8 Builder (Builder's Hut, Builder's Table)
 - A Steward crafts one **Blueprint Book** (a book and two paper). Using it opens every plan, in three groups:
@@ -510,7 +512,7 @@ emeralds by level. Unemployed villagers keep their vanilla trades.
 
 Rules as built (M22, `docs/plans/M22.md`):
 - **At the stall, in work hours.** The merchant walks to its Market Stall like any worker and sells while it stands within 1.5 blocks of it in the WORK phase
-  (day time 1000-11000). About every 30 seconds (600 work units at level 1; 480 at level 2, 400 at level 3) it sells **one lot** for 1 emerald, which goes
+  (day time 1000-9000). About every 30 seconds (600 work units at level 1; 480 at level 2, 400 at level 3) it sells **one lot** for 1 emerald, which goes
   straight into the treasury (`Treasury.deposit`: it pays strikers at once). The goods are taken from the stockpile in the same tick as the sale (nearest
   Storage first); nothing is carried. A stall that is not reached for 600 WORK ticks shows "Can't reach its stall". An invalid Market, a strike or
   hunger stops it (the work clock is `needs.speed()`, and `WorkGate.mayWork` is checked too).
@@ -547,7 +549,8 @@ Rules as built (M22, `docs/plans/M22.md`):
   - A double chest is two containers (each half has its own 27 slots); a half outside the room is not part of the stockpile.
   - Items are the same only with equal components (a renamed paper, an enchanted book or a damaged sword is a separate item).
   - *Nearest* Storage = nearest door (straight line) among those with space for that item; a deposit spills into the next
-    nearest. Fill order inside a Storage: partial stacks first, then empty slots, in container then slot order. What does not
+    nearest. Fill order inside a Storage: partial stacks first, then empty slots, in container then slot order. The worker
+    walks to a spot beside the container that order would write first, and puts one item in every 5 ticks. What does not
     fit is returned to the caller. Withdraw takes from the nearest Storage that has the item.
   - **Storage full** alert = no empty slot in any readable Storage, or a deposit that found no room within the last 10 s.
     It means "no empty slot", not per item: a partial stack can still take more of its item. *No Storage* alert when the

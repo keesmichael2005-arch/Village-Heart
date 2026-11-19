@@ -79,6 +79,18 @@ class StockpileTest {
 
 	// ---- deposit routing -------------------------------------------------------------------------
 
+	@Test void oneItemGoesToThePartialStacksContainer() {
+		FakeInventory first = new FakeInventory().set(0, "dirt", 5);
+		FakeInventory second = new FakeInventory().set(3, "cobble", 60);
+		for (int i = 0; i < second.keys.length; i++) if (i != 3) second.set(i, "dirt", 64);
+		Stockpile<String> s = new Stockpile<>(List.of(site(1, 1, first, second)));
+		assertEquals(new Pos(101, 0, 0), s.containerFor(s.sites().get(0), "cobble").orElseThrow());
+		assertEquals(new Pos(100, 0, 0), s.containerFor(s.sites().get(0), "wheat").orElseThrow());
+		assertEquals(1, s.depositOne(s.sites().get(0), new Pos(101, 0, 0), "cobble"));
+		assertEquals(61, second.counts[3]);
+		assertEquals(0, s.depositOne(s.sites().get(0), new Pos(101, 0, 0), "wheat"));
+	}
+
 	@Test void fillOrderPartialsThenEmpties() {
 		FakeInventory first = new FakeInventory().set(0, "dirt", 5);
 		FakeInventory second = new FakeInventory().set(3, "cobble", 60);

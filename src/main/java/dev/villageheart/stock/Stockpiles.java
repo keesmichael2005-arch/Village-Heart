@@ -1,6 +1,7 @@
 package dev.villageheart.stock;
 
 import dev.villageheart.core.room.Pos;
+import dev.villageheart.core.stock.ContainerRef;
 import dev.villageheart.core.stock.Reservations;
 import dev.villageheart.core.stock.StockSnapshot;
 import dev.villageheart.core.stock.Stockpile;
@@ -114,6 +115,42 @@ public final class Stockpiles {
 		StackKey key = StackKey.of(stack);
 		StorageSites.Collected c = StorageSites.collect(server);
 		return key != null && c.level() == level && view(server, c).hasSpaceFor(key);
+	}
+
+	/**
+	 * The chest (or barrel) the nearest Storage with room would put {@code stack} into first. The worker stands beside this
+	 * block. Empty when nothing can take it.
+	 */
+	public static Optional<BlockPos> receivingChest(ServerLevel level, BlockPos from, ItemStack stack) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StackKey key = StackKey.of(stack);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (key == null || c.level() != level) return Optional.empty();
+		Stockpile<StackKey> sp = view(server, c);
+		return sp.nearestWithSpace(RoomScans.pos(from), key)
+				.flatMap(site -> sp.containerFor(site, key))
+				.map(RoomScans::blockPos);
+	}
+
+	/** Puts one item into the container at {@code chest}. Shrinks {@code stack} by what fitted (0 or 1). */
+	public static int depositOne(ServerLevel level, BlockPos chest, ItemStack stack) {
+		MinecraftServer server = level.getServer();
+		requireServerThread(server);
+		StackKey key = StackKey.of(stack);
+		StorageSites.Collected c = StorageSites.collect(server);
+		if (key == null || c.level() != level || stack.isEmpty()) return 0;
+		Pos at = RoomScans.pos(chest);
+		Stockpile<StackKey> sp = view(server, c);
+		for (StorageSite<StackKey> site : sp.sites()) {
+			boolean here = false;
+			for (ContainerRef<StackKey> box : site.containers()) if (box.pos().equals(at)) here = true;
+			if (!here) continue;
+			int stored = sp.depositOne(site, at, key);
+			stack.shrink(stored);
+			return stored;
+		}
+		return 0;
 	}
 
 	/** The anchor (door) of the nearest Storage with space for the stack: where a worker walks to. */

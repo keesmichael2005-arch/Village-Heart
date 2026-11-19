@@ -8,6 +8,7 @@ import dev.villageheart.VillageHeart;
 import dev.villageheart.core.raid.RaidActivity;
 import dev.villageheart.core.worker.DayPhase;
 import dev.villageheart.core.worker.DaySchedule;
+import dev.villageheart.core.worker.MeetingRules;
 import dev.villageheart.core.worker.JobType;
 import dev.villageheart.core.worker.WorkerData;
 import dev.villageheart.needs.Housing;
@@ -103,8 +104,10 @@ public final class WorkerBrain {
 	public static Activity activityFor(Villager v, ServerLevel level) {
 		if (dev.villageheart.worker.guard.Guards.isGuard(v)) return dev.villageheart.worker.guard.Guards.activityFor(v, level);
 		if (shouldShelter(v, level)) return SHELTER;
-		// Rain stands them at the workplace during work only. A striker or someone with no workplace is
-		// already wandering, and home time (11000) has to be the walk home, not that stand.
+		DayPhase phase = DaySchedule.phaseAt(level.getDayTime());
+		if (MeetingRules.stayAsleep(phase, v.isSleeping())) return Activity.REST;
+		// Rain stands them at the workplace during work only. A drop-off already walking finishes first.
+		// A striker or someone with no workplace keeps wandering, and the meeting and the walk home stay on the clock.
 		if (WorkWeather.waiting(level, v) && !Workers.tripRunning(v) && !Workers.shouldWander(level, v)) return RAIN;
 		return activityFor(level.getDayTime());
 	}
@@ -125,6 +128,7 @@ public final class WorkerBrain {
 		return switch (phase) {
 			case WAKE -> Activity.IDLE;
 			case WORK -> Activity.WORK;
+			case MEET -> Activity.MEET;
 			case GO_HOME -> GO_HOME;
 			case SLEEP -> Activity.REST;
 		};
@@ -191,6 +195,12 @@ public final class WorkerBrain {
 				.add(look())
 				.add(p(99, new UpdateWorkerActivity()))
 				.build());
+
+		brain.addActivity(Activity.MEET, ImmutableList.of(
+				p(1, new DepositTrip()),
+				p(2, new MeetAtBell()),
+				look(),
+				p(99, new UpdateWorkerActivity())));
 
 		brain.addActivity(GO_HOME, ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super Villager>>>builder()
 				.add(p(0, new dev.villageheart.worker.pocket.ToolErrand()))

@@ -618,11 +618,12 @@ public class LumberjackGameTests {
 			inv.setItem(2, new ItemStack(Items.OAK_SAPLING, 6));
 			for (int i = 3; i <= 7; i++) inv.setItem(i, new ItemStack(Items.STICK, 1));
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 64 logs reach Storage", () ->
-				h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage"));
-		seq = seq.thenExecute(() -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 900, "the logs and the spare sapling reach Storage", () -> {
+			h.assertValueEqual(64L, stored(h, "minecraft:oak_log"), "logs in Storage");
 			h.assertValueEqual(5, carried(v[0], Items.OAK_SAPLING), "the worker keeps 1 + 4 saplings: " + inventory(v[0]));
 			h.assertValueEqual(1L, stored(h, "minecraft:oak_sapling"), "the sixth sapling went to Storage");
+		});
+		seq = seq.thenExecute(() -> {
 			// Every cargo slot is taken, so the trip starts even though each stack is small. Slot 0 stays free for the axe.
 			var inv = v[0].getInventory();
 			inv.clearContent();
@@ -971,7 +972,7 @@ public class LumberjackGameTests {
 	// ---- T-L2-14 ---------------------------------------------------------------------------------
 
 	/** A lumberjack that cannot hand in its load stops cutting; once there is room it delivers and goes on. */
-	@GameTest(environment = "villageheart-gametest:lumber_full", structure = YARD, skyAccess = true, maxTicks = 5000)
+	@GameTest(environment = "villageheart-gametest:lumber_full", structure = YARD, skyAccess = true, maxTicks = 8000)
 	public void storageFullStopsGathering(GameTestHelper h) {
 		begin(h);
 		BlockPos treeRel = new BlockPos(3, 0, 14);
@@ -999,7 +1000,9 @@ public class LumberjackGameTests {
 			c.clearContent();
 			c.setChanged();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 700, "the 448 logs reach Storage", () ->
+		// Seven full cargo stacks, one item every quarter second, plus the walk to the chest.
+		int deliver = 7 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM + 800;
+		seq = BuildingTestSupport.awaitWithin(h, seq, deliver, "the 448 logs reach Storage", () ->
 				h.assertTrue(stored(h, "minecraft:oak_log") >= 448, "logs in Storage: " + stored(h, "minecraft:oak_log")));
 		seq = seq.thenWaitUntil(() -> h.assertTrue(standing(h, logs[0]) < logs[0].size(), "felling resumes; "
 				+ dev.villageheart.worker.lumber.LumberRuntime.get(h.getLevel().getServer()).describe(v[0].getUUID(), v[0])));
@@ -1349,6 +1352,11 @@ public class LumberjackGameTests {
 			v[0] = hire(h, spawnSpot());
 		});
 		seq = seq.thenIdle(40).thenExecute(() -> {
+			// Hire stands them in the camp. Beside the chopping block, a 5x5x3 of logs plus the walls fills the 3-block rescue
+			// radius, so there is no free cell. The trunk has to grow in the open, where a cell within that radius exists.
+			BlockPos open = h.absolutePos(new BlockPos(24, 0, 24));
+			v[0].teleportTo(open.getX() + 0.5, open.getY(), open.getZ() + 0.5);
+			v[0].getNavigation().stop();
 			inside[0] = v[0].blockPosition();
 			// a solid 5x5x3 block of logs around and over the worker: vanilla can push it out of a single cell, not out of this
 			for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int dy = 0; dy <= 2; dy++) {

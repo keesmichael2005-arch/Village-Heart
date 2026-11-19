@@ -53,6 +53,20 @@ public class MarketGameTests {
 
 	private static long soldBy(GameTestHelper h, Villager v) { return Markets.ledgerToday(h.getLevel()).soldBy(v.getUUID()); }
 
+	/**
+	 * A work morning is 8000 ticks and a sale is 400–600, so the daily caps (16, 20, 24) are no longer reachable by selling from zero.
+	 * Record {@code sales} on today's ledger and pay that many emeralds, then one real sale can still prove the merchant stops at the cap.
+	 */
+	private static void seedSales(GameTestHelper h, Villager v, int sales) {
+		var data = v.getAttached(dev.villageheart.worker.WorkerAttachments.WORKER);
+		h.assertTrue(data != null, "the merchant is hired");
+		var server = h.getLevel().getServer();
+		var market = Markets.state(server);
+		var ledger = market.ledger().forDay(Markets.today(h.getLevel())).record(v.getUUID(), data.jobBlock(), sales);
+		VillageClaims.data(server).setMarket(market.withLedger(ledger));
+		dev.villageheart.economy.Treasury.deposit(server, sales, null);
+	}
+
 	private static void toNextMorning(GameTestHelper h) {
 		long day = Math.floorDiv(h.getLevel().getDayTime(), 24000L);
 		h.getLevel().setDayTime((day + 1) * 24000L + 1000);
@@ -394,10 +408,9 @@ public class MarketGameTests {
 
 	@GameTest(environment = "villageheart-gametest:market_cap", structure = YARD, skyAccess = true, maxTicks = 30000)
 	public void dailyCapByLevel(GameTestHelper h) {
-		// M26: the caps are Balance values (tuned in M26 H1), not 8 and 12
-		// A level-1 merchant needs 600 ticks a sale and the day's work lasts 10000 ticks, so a level-1 cap of 16 is no longer reachable inside a
-		// work day (the unit test MarketRulesTest.capsByLevel proves the level-1 number). This test therefore proves the cap by level on levels 2 and 3
-		// (480 and 400 ticks a sale: 20 and 24 sales fit in 9600 ticks).
+		// M26: the caps are Balance values (tuned in M26 H1), not 8 and 12. MarketRulesTest.capsByLevel proves the numbers.
+		// A sale is 480 or 400 ticks and the work morning is 8000, so 20 and 24 sales do not fit. The ledger is seeded to one below the cap
+		// and the merchant's own last sale is what stops them.
 		final int C1 = dev.villageheart.core.Balance.merchantDailyCap(2), C2 = dev.villageheart.core.Balance.merchantDailyCap(3);
 		begin(h);
 		Villager[] v = new Villager[1];
@@ -406,6 +419,7 @@ public class MarketGameTests {
 			h.getLevel().setDayTime(1000);
 			v[0] = hire(h, 0);
 			LevelTestSupport.put(v[0], 2, 0);
+			seedSales(h, v[0], C1 - 1);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= C1, C1 + " sales: " + soldBy(h, v[0])));
 		seq = seq.thenIdle(100).thenExecute(() -> {
@@ -416,6 +430,7 @@ public class MarketGameTests {
 			// a new day at level 3
 			LevelTestSupport.put(v[0], 3, MarketTestSupport.data(v[0]).xp());
 			toNextMorning(h);
+			seedSales(h, v[0], C2 - 1);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= C2, C2 + " sales on the new day: " + soldBy(h, v[0])));
 		seq = seq.thenIdle(100).thenExecute(() -> {
@@ -440,6 +455,8 @@ public class MarketGameTests {
 			v[0] = hire(h, 0);
 			LevelTestSupport.put(v[0], 1, 0);
 			Markets.setReserves(h.getLevel().getServer(), new Reserves(5, 96)); // not Reserves.DEFAULT, so the round trip proves them
+			// Level 1 is 600 ticks a sale. Sixteen of those do not fit before the meeting, so the cap is one real sale away.
+			seedSales(h, v[0], dev.villageheart.core.Balance.merchantDailyCap(1) - 1);
 		});
 		seq = seq.thenWaitUntil(() -> h.assertTrue(soldBy(h, v[0]) >= dev.villageheart.core.Balance.merchantDailyCap(1), "cap sales"));
 		seq = seq.thenExecute(() -> {

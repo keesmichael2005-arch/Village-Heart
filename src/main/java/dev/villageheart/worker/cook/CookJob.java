@@ -488,10 +488,13 @@ public final class CookJob {
 
 	private static void idleTick(ServerLevel level, Villager v, CookState st, BlockPos smoker, long now) {
 		unlight(level, st);
-		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, SMOKER_REACH, CLOSEST, now);
-		WalkTo.State ws = st.walk.tick(v, now);
-		if (ws == WalkTo.State.UNREACHABLE) st.walk.clear();
-		if ((now + v.getId()) % 20 == 0 && WalkTo.distance(v, smoker) <= Balance.JOB_BLOCK_REACH + 1.0) {
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) st.walk.release(v);
+		else {
+			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, smoker, v.position());
+			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
+			if (st.walk.tick(v, now) == WalkTo.State.UNREACHABLE) st.walk.clear();
+		}
+		if ((now + v.getId()) % 20 == 0 && dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) {
 			v.getBrain().setMemory(MemoryModuleType.LAST_WORKED_AT_POI, now);
 		}
 	}
@@ -550,8 +553,12 @@ public final class CookJob {
 			finishBatch(level, v, st, false);
 			return;
 		}
-		if (!st.walk.active() || !st.walk.target().equals(smoker)) st.walk.begin(smoker, SMOKER_REACH, CLOSEST, now);
-		WalkTo.State ws = st.walk.tick(v, now);
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, smoker)) st.walk.release(v);
+		else {
+			BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, smoker, v.position());
+			if (!st.walk.active() || !st.walk.target().equals(spot)) st.walk.begin(spot, spot.equals(smoker) ? SMOKER_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
+		}
+		WalkTo.State ws = dev.villageheart.worker.job.WorkstationStand.at(v, smoker) ? WalkTo.State.ARRIVED : st.walk.tick(v, now);
 		if (ws == WalkTo.State.UNREACHABLE) {
 			trace("{} cannot reach its smoker: {}", v.getId(), st.walk.reason());
 			st.batch = null; // what it holds is handed in by the next trip

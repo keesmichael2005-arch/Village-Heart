@@ -203,7 +203,9 @@ public class FarmerGameTests {
 		return out;
 	}
 
-	@GameTest(environment = "villageheart-gametest:farm_bigfield", structure = YARD, skyAccess = true, maxTicks = 25000)
+	// The last partial stack is not a full stack, so it waits for the meeting. The field's last cells are cut the next morning,
+	// and that wheat is handed in at the next meeting, which is past one calendar day from the 1000 start.
+	@GameTest(environment = "villageheart-gametest:farm_bigfield", structure = YARD, skyAccess = true, maxTicks = 40000)
 	public void nineByNineWheatOneDay(GameTestHelper h) {
 		begin(h);
 		Watcher w = new Watcher();
@@ -302,6 +304,7 @@ public class FarmerGameTests {
 			ticks[0] = h.getTick() - t0[0];
 			log("immatureAndOutsideUntouched: the five cells in the area were harvested after " + ticks[0] + " ticks (bound " + bound + ")");
 			h.assertTrue(ticks[0] <= bound, "took " + ticks[0] + ", bound " + bound);
+			h.getLevel().setDayTime(1000); // the watch is 8000 ticks; keep it inside the work phase (work ends at 9000)
 		});
 		// 24 000 ticks watched, sampled every 20 ticks; at tick 8000 the control cell ripens
 		int total = 24000;
@@ -309,7 +312,7 @@ public class FarmerGameTests {
 			final int step = k;
 			seq = seq.thenIdle(20).thenExecute(() -> {
 				for (int i = 0; i < 4; i++) {
-					if (step * 20 >= 8000 && i == 0) continue; // the control cell
+					if (step * 20 >= 6000 && i == 0) continue; // the control cell
 					if (ageAt(h, youngCells[i]) != young[i] || cropAt(h, youngCells[i]) != kinds[i]) problems.add("tick " + step * 20 + ": young " + kinds[i] + " changed to " + ageAt(h, youngCells[i]));
 				}
 				for (BlockPos p : new BlockPos[] {out25, diag}) {
@@ -317,13 +320,13 @@ public class FarmerGameTests {
 				}
 				if (ageAt(h, new BlockPos(high.getX(), 10, high.getZ())) != 7) problems.add("tick " + step * 20 + ": the cell at dy +9 changed");
 				if (carried(v[0], Items.BONE_MEAL) != 0 || stored(h, "minecraft:bone_meal") != 0) problems.add("tick " + step * 20 + ": bone meal appeared");
-				if (step * 20 == 8000) {
+				if (step * 20 == 6000) {
 					h.assertTrue(dev.villageheart.core.worker.DaySchedule.phaseAt(h.getLevel().getDayTime()) == dev.villageheart.core.worker.DayPhase.WORK,
 							"the control happens in the work phase: day time " + h.getLevel().getDayTime());
 					plantAt(h, youngCells[0].getX(), youngCells[0].getZ(), kinds[0], 7);
 					ticks[1] = h.getTick();
 				}
-				if (step * 20 > 8000 && step * 20 <= 8400 && ageAt(h, youngCells[0]) == 0 && ticks[1] > 0) {
+				if (step * 20 > 6000 && step * 20 <= 6400 && ageAt(h, youngCells[0]) == 0 && ticks[1] > 0) {
 					ticks[1] = -(h.getTick() - ticks[1]) - 1; // negative: harvested after this many ticks
 				}
 			});
@@ -616,6 +619,10 @@ public class FarmerGameTests {
 			logs.setItem(1, new ItemStack(Items.BREAD, 5));
 			logs.setItem(2, new ItemStack(Items.OAK_LOG, 64));
 			for (int i = 3; i <= 7; i++) logs.setItem(i, new ItemStack(Items.STICK, 1));
+			// Neither worker has a tool. After the logs land they would make a wooden hoe and axe and take 3 logs
+			// (1 for the hoe, 2 for the axe). The tools are already in the chests, so the 64 logs stay in Storage.
+			LumberTestSupport.putInChest(h, chest(), 0, new ItemStack(Items.WOODEN_HOE));
+			LumberTestSupport.putInChest(h, BuildingTestSupport.inside(camp2, 4, 0, 3), 0, new ItemStack(Items.WOODEN_AXE));
 			stat[0] = WorkStats.get("farmer", "seeds_composted");
 			// the food table of the keep rule is vanilla's
 			for (var e : dev.villageheart.core.job.FoodKeep.POINTS.entrySet()) {
@@ -671,7 +678,7 @@ public class FarmerGameTests {
 
 	// ---- T-L2-10 ---------------------------------------------------------------------------------
 
-	@GameTest(environment = "villageheart-gametest:farm_full", structure = YARD, skyAccess = true, maxTicks = 8000)
+	@GameTest(environment = "villageheart-gametest:farm_full", structure = YARD, skyAccess = true, maxTicks = 12000)
 	public void storageFullStopsHarvest(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];
@@ -701,7 +708,9 @@ public class FarmerGameTests {
 			c.setChanged();
 			t0[0] = h.getTick();
 		});
-		int bound = farmBound(9, dev.villageheart.core.Balance.FARM_TICKS_HARVEST, 12) + 300;
+		// The seven cargo stacks of wheat go into the freed chest first, one item every DEPOSIT_TICKS_PER_ITEM, and only then the harvest.
+		int bound = farmBound(9, dev.villageheart.core.Balance.FARM_TICKS_HARVEST, 12) + 300
+				+ 7 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM;
 		seq = seq.thenWaitUntil(() -> {
 			for (BlockPos c : cells[0]) h.assertTrue(ageAt(h, c) == 0, "cell " + c + " harvested and replanted (age " + ageAt(h, c) + ")");
 		});
@@ -709,7 +718,7 @@ public class FarmerGameTests {
 			long took = h.getTick() - t0[0];
 			log("storageFullStopsHarvest: freed Storage, 9 cells harvested after " + took + " ticks (bound " + bound + ")");
 			h.assertTrue(took <= bound, "took " + took + ", bound " + bound);
-			h.assertTrue(stored(h, "minecraft:wheat") >= 64, "the 64 wheat went to Storage: " + stored(h, "minecraft:wheat"));
+			h.assertTrue(stored(h, "minecraft:wheat") >= 7L * 64, "the seven cargo stacks went to Storage: " + stored(h, "minecraft:wheat"));
 		});
 		// phase 2: the inventory is full of things the farmer keeps; the replant must not cost a seed
 		seq = seq.thenExecute(() -> {
@@ -905,13 +914,13 @@ public class FarmerGameTests {
 	// ---- extra: a deposit trip during a COLLECT -----------------------------------------------------
 
 	/** The trip's own start check runs first (its tick comes before the planner's), so the planner never says YIELD. */
-	@GameTest(environment = "villageheart-gametest:farm_trip_first", structure = YARD, skyAccess = true, maxTicks = 2500)
+	@GameTest(environment = "villageheart-gametest:farm_trip_first", structure = YARD, skyAccess = true, maxTicks = 7000)
 	public void collectSurvivesTripThatStartsFirst(GameTestHelper h) {
 		collectAcrossATrip(h, true);
 	}
 
 	/** The planner sees the wanted trip first and yields. */
-	@GameTest(environment = "villageheart-gametest:farm_trip_planner", structure = YARD, skyAccess = true, maxTicks = 2500)
+	@GameTest(environment = "villageheart-gametest:farm_trip_planner", structure = YARD, skyAccess = true, maxTicks = 7000)
 	public void collectSurvivesTripThatPlannerYieldsTo(GameTestHelper h) {
 		collectAcrossATrip(h, false);
 	}
@@ -945,7 +954,9 @@ public class FarmerGameTests {
 		seq = seq.thenIdle(450).thenExecute(() -> {
 			log("collectAcrossATrip(tripFirst=" + tripFirst + "): inventory filled at " + filledAt[0] + ", now " + h.getLevel().getGameTime() + " [" + inventory(v[0]) + "]");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 1500, "the wheat is collected after the trip", () ->
+		// Eight full stacks leave one item at a time. The wheat is still collected after that unload, not blacklisted.
+		int unload = 8 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM;
+		seq = BuildingTestSupport.awaitWithin(h, seq, unload + 800, "the wheat is collected after the trip", () ->
 				h.assertValueEqual(1L, carried(v[0], Items.WHEAT) + stored(h, "minecraft:wheat"), "wheat carried or stored; " + looseDescription(h, Items.WHEAT, v[0])));
 		seq.thenExecute(() -> {
 			h.assertValueEqual(0, loose(h, Items.WHEAT), "nothing is left lying; " + looseDescription(h, Items.WHEAT, v[0]));

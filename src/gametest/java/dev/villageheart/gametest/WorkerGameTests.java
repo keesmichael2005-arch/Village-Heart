@@ -225,8 +225,11 @@ public class WorkerGameTests {
 		seq = seq.thenIdle(25).thenExecute(() -> {
 			h.assertTrue(h.getLevel().getDayTime() > 2000, "time advanced: " + h.getLevel().getDayTime());
 			h.assertTrue(v[0].getBrain().isActive(Activity.WORK), "WORK at day time " + h.getLevel().getDayTime());
-			h.getLevel().setDayTime(11000);
+			h.getLevel().setDayTime(9500);
 		});
+		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "meeting at 9500",
+				() -> h.assertTrue(v[0].getBrain().isActive(Activity.MEET), "MEET active"));
+		seq = seq.thenExecute(() -> h.getLevel().setDayTime(11000));
 		seq = BuildingTestSupport.awaitWithin(h, seq, 40, "go_home at 11000",
 				() -> h.assertTrue(v[0].getBrain().isActive(WorkerBrain.GO_HOME), "go_home active"));
 		seq = seq.thenExecute(() -> h.getLevel().setDayTime(13000));
@@ -1292,7 +1295,7 @@ public class WorkerGameTests {
 			v[0].getInventory().addItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT, 20));
 			h.assertValueEqual(0L, stored(h, "minecraft:wheat"), "Storage starts without wheat");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the 20 wheat reach Storage", () -> {
+		seq = BuildingTestSupport.awaitWithin(h, seq, 800, "the 20 wheat reach Storage", () -> {
 			h.assertValueEqual(20L, stored(h, "minecraft:wheat"), "wheat in Storage");
 			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.WHEAT), "wheat still carried");
 		});
@@ -1303,7 +1306,7 @@ public class WorkerGameTests {
 	}
 
 	/** T-L2-13b (1): a full load is delivered in the middle of the day. */
-	@GameTest(environment = "villageheart-gametest:workers_deposit_full", structure = YARD, skyAccess = true, maxTicks = 1600)
+	@GameTest(environment = "villageheart-gametest:workers_deposit_full", structure = YARD, skyAccess = true, maxTicks = 5000)
 	public void depositTripWhenFull(GameTestHelper h) {
 		begin(h);
 		Villager[] v = new Villager[1];
@@ -1312,7 +1315,8 @@ public class WorkerGameTests {
 			for (int i = 1; i <= 7; i++) v[0].getInventory().setItem(i, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64));
 			h.assertTrue(h.getLevel().getDayTime() < 11000, "mid-day");
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 600, "the full cargo reaches Storage", () -> {
+		// Seven stacks, one item every quarter second, plus the walk to the chest.
+		seq = BuildingTestSupport.awaitWithin(h, seq, 7 * 64 * dev.villageheart.core.Balance.DEPOSIT_TICKS_PER_ITEM + 400, "the full cargo reaches Storage", () -> {
 			h.assertValueEqual(448L, stored(h, "minecraft:cobblestone"), "cobblestone in Storage");
 			h.assertValueEqual(0, v[0].getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE), "cobblestone still carried");
 		});

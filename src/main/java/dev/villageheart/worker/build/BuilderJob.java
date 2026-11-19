@@ -171,11 +171,12 @@ public final class BuilderJob {
 		WorkerStatuses.set(v.getUUID(), WorkerStatus.NO_WORK);
 		BlockPos jb = new BlockPos(data.jobBlock().x(), data.jobBlock().y(), data.jobBlock().z());
 		if (now < ws.idleBackoffUntil || !data.jobBlock().dimension().equals(level.dimension().identifier().toString())) return;
-		if (WalkTo.distance(v, jb) <= Balance.JOB_BLOCK_REACH) {
+		if (dev.villageheart.worker.job.WorkstationStand.at(v, jb)) {
 			ws.walk.clear();
 			return;
 		}
-		if (!ws.walk.active() || !ws.walk.target().equals(jb)) ws.walk.begin(jb, Balance.JOB_BLOCK_REACH, now);
+		BlockPos spot = dev.villageheart.worker.job.WorkstationStand.spot(level, jb, v.position());
+		if (!ws.walk.active() || !ws.walk.target().equals(spot)) ws.walk.begin(spot, spot.equals(jb) ? Balance.JOB_BLOCK_REACH : dev.villageheart.worker.job.WorkstationStand.REACH, now);
 		if (ws.walk.tick(v, now) == WalkTo.State.UNREACHABLE) {
 			ws.walk.clear();
 			ws.idleBackoffUntil = now + 100;

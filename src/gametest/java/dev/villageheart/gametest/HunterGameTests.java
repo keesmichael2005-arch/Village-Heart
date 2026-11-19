@@ -316,29 +316,29 @@ public class HunterGameTests {
 		GameTestSequence seq = scene(h, false).thenExecute(() -> {
 			lightYard(h);
 			putInChest(h, 0, sword("stone"));
-			// (a+) hired at 7300: the trip still fits
-			h.getLevel().setDayTime(7300);
+			// (a+) hired at 5200: a full trip still fits before the meeting at 9000
+			h.getLevel().setDayTime(5200);
 			v[0] = hire(h);
 			tr[0] = new Tracker(() -> v[0]);
 			tr[0].start();
 		});
-		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "(a+) a hunter hired at 7300 goes out", () -> h.assertTrue(tr[0].away(), "(a+) out"));
+		seq = BuildingTestSupport.awaitWithin(h, seq, 400, "(a+) a hunter hired at 5200 goes out", () -> h.assertTrue(tr[0].away(), "(a+) out"));
 		seq = seq.thenExecute(() -> {
 			long dt = h.getLevel().getDayTime() % 24000;
 			System.out.println("[m17] departureCutoffAndDailyCap: (a+) hidden at day time " + dt);
-			h.assertTrue(dt <= 7700, "hidden by 7700: " + dt);
+			h.assertTrue(dt <= 5700, "hidden by 5700: " + dt);
 			Workers.fire(h.getLevel(), v[0]);
 			WorkerTestSupport.discardSpawned(h.getLevel());
-			// (a-) hired at 7800: the trip would end after 11000 - 300
-			h.getLevel().setDayTime(7800);
+			// (a-) hired at 5800: the trip would end after the meeting starts
+			h.getLevel().setDayTime(5800);
 			v[0] = hire(h);
 			tr[0] = new Tracker(() -> v[0]);
 			tr[0].start();
 		});
 		seq = seq.thenWaitUntil(() -> {
-			h.assertFalse(tr[0].away(), "(a-) never out after 7700");
+			h.assertFalse(tr[0].away(), "(a-) never out after the last departure");
 			h.assertValueEqual(WorkerStatus.OK, status(h, v[0]), "(a-) no tool or work status");
-			h.assertTrue(h.getLevel().getDayTime() % 24000 >= 10900, "(a-) waiting for 10900, now " + h.getLevel().getDayTime() % 24000);
+			h.assertTrue(h.getLevel().getDayTime() % 24000 >= 8900, "(a-) waiting for the meeting, now " + h.getLevel().getDayTime() % 24000);
 		});
 		seq = seq.thenExecute(() -> {
 			h.assertTrue(tr[0].descents.isEmpty(), "(a-) it never went out");

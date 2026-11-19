@@ -197,16 +197,21 @@ public class StuckRaiderGameTests {
 			// createPath returns null while the pillager cannot path, and moveTo(null) would drop the route.
 			if (path != null) raider[0].getNavigation().moveTo(path, 1.0);
 		});
+		double[] closest = {Double.MAX_VALUE};
 		for (int i = 0; i < 5; i++) {
 			seq = seq.thenIdle(20).thenExecute(() -> {
 				h.assertTrue(!raider[0].isRemoved(), "a walking raider was removed");
 				// The bell resonates for raiders within 48 blocks and makes them glow for 60 ticks: that is vanilla. The stuck rule is the counter.
 				h.assertValueEqual(0, StuckRaiderSystem.glowed, "a walking raider was made to glow, at " + VillageTestSupport.rel(h, raider[0].blockPosition()));
 				double now = heartDistance(raider[0], h.absolutePos(heart));
-				h.assertTrue(now < start[0] - 2, "it is walking toward the Heart: " + now + " from " + start[0] + " at " + VillageTestSupport.rel(h, raider[0].blockPosition()));
+				// The first step is about one block. Later samples have to keep that ground; the whole walk has to close 2.
+				h.assertTrue(now < start[0] && now <= closest[0] + 1.0e-6, "it is walking toward the Heart: " + now + " from " + start[0]
+						+ " closest " + closest[0] + " at " + VillageTestSupport.rel(h, raider[0].blockPosition()));
+				closest[0] = now;
 			});
 		}
 		seq.thenExecute(() -> {
+			h.assertTrue(closest[0] < start[0] - 2, "the walk closed 2 blocks: " + closest[0] + " from " + start[0]);
 			h.assertValueEqual(0, StuckRaiderSystem.fled, "nobody fled");
 			h.assertValueEqual(0, StuckRaiderSystem.glowed, "nobody glowed");
 			raider[0].discard();

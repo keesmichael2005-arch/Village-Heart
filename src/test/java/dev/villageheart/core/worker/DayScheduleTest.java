@@ -12,7 +12,9 @@ class DayScheduleTest {
 		assertEquals(WAKE, DaySchedule.phaseAt(0));
 		assertEquals(WAKE, DaySchedule.phaseAt(999));
 		assertEquals(WORK, DaySchedule.phaseAt(1000));
-		assertEquals(WORK, DaySchedule.phaseAt(10999));
+		assertEquals(WORK, DaySchedule.phaseAt(8999));
+		assertEquals(MEET, DaySchedule.phaseAt(9000));
+		assertEquals(MEET, DaySchedule.phaseAt(10999));
 		assertEquals(GO_HOME, DaySchedule.phaseAt(11000));
 		assertEquals(GO_HOME, DaySchedule.phaseAt(11999));
 		assertEquals(SLEEP, DaySchedule.phaseAt(12000));
@@ -32,8 +34,10 @@ class DayScheduleTest {
 	void valuesComeFromBalance() {
 		assertEquals(WAKE, DaySchedule.phaseAt(Balance.WORK_START - 1));
 		assertEquals(WORK, DaySchedule.phaseAt(Balance.WORK_START));
-		assertEquals(WORK, DaySchedule.phaseAt(Balance.WORK_END - 1));
-		assertEquals(GO_HOME, DaySchedule.phaseAt(Balance.WORK_END));
+		assertEquals(WORK, DaySchedule.phaseAt(Balance.MEET_START - 1));
+		assertEquals(MEET, DaySchedule.phaseAt(Balance.MEET_START));
+		assertEquals(MEET, DaySchedule.phaseAt(Balance.HOME_START - 1));
+		assertEquals(GO_HOME, DaySchedule.phaseAt(Balance.HOME_START));
 		assertEquals(GO_HOME, DaySchedule.phaseAt(Balance.SLEEP_START - 1));
 		assertEquals(SLEEP, DaySchedule.phaseAt(Balance.SLEEP_START));
 		assertEquals(WAKE, DaySchedule.phaseAt(Balance.DAY_TICKS));

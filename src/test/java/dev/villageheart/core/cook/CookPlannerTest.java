@@ -147,8 +147,8 @@ class CookPlannerTest {
 
 	@Test
 	void theBatchStopsWhereTheTimeAllows() {
-		// day time 9800, walk 200: (10500 - 9800 - 200) / 125 = 4 units
-		B b = new B().stock("minecraft:beef", 8).stock("minecraft:coal", 1).at(9800);
+		// day time 7800, walk 200: (8500 - 7800 - 200) / 125 = 4 units, with work ending at 9000
+		B b = new B().stock("minecraft:beef", 8).stock("minecraft:coal", 1).at(7800);
 		Fetch f = (Fetch) b.decide(false);
 		assertEquals(4, f.units());
 		assertEquals(Map.of("minecraft:beef", 4), f.inputs());
@@ -156,7 +156,7 @@ class CookPlannerTest {
 
 	@Test
 	void hungerHalvesTheTimeBudget() {
-		B b = new B().stock("minecraft:beef", 8).stock("minecraft:coal", 1).at(9800);
+		B b = new B().stock("minecraft:beef", 8).stock("minecraft:coal", 1).at(7800);
 		b.speed = 0.5;
 		assertEquals(2, ((Fetch) b.decide(false)).units());
 	}

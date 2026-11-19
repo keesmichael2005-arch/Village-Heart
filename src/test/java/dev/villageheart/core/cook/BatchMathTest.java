@@ -2,6 +2,7 @@ package dev.villageheart.core.cook;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.cook.BatchMath.Run;
 import java.util.List;
 import java.util.Map;
@@ -69,12 +70,13 @@ class BatchMathTest {
 
 	@Test
 	void unitsByTimeNeverNegativeAndKeepsDinner() {
-		assertEquals(2, BatchMath.unitsByTime(10000, 1.0, 200)); // (10500 - 10000 - 200) / 125 = 2.4
-		assertEquals(0, BatchMath.unitsByTime(10300, 1.0, 200));
-		assertEquals(0, BatchMath.unitsByTime(10450, 1.0, 200), "never negative");
-		assertEquals(2, BatchMath.unitsByTime(Math.floorMod(82_000L, 24_000L), 1.0, 200), "day 3's 10000");
-		assertEquals(2, BatchMath.unitsByTime(9800, 1.0, 340));
-		assertEquals(1, BatchMath.unitsByTime(10000, 0.5, 200), "hungry: half the units");
+		int done = Balance.COOK_DONE_BY;
+		assertEquals(2, BatchMath.unitsByTime(done - 500, 1.0, 200)); // (done - (done-500) - 200) / 125 = 2.4
+		assertEquals(0, BatchMath.unitsByTime(done - 200, 1.0, 200));
+		assertEquals(0, BatchMath.unitsByTime(done - 50, 1.0, 200), "never negative");
+		assertEquals(2, BatchMath.unitsByTime(Math.floorMod(48_000L + (done - 500), 24_000L), 1.0, 200), "the same time on a later day");
+		assertEquals(2, BatchMath.unitsByTime(done - 700, 1.0, 340));
+		assertEquals(1, BatchMath.unitsByTime(done - 500, 0.5, 200), "hungry: half the units");
 		assertEquals(0, BatchMath.unitsByTime(1000, 0.0, 0), "speed 0 cooks nothing");
 	}
 

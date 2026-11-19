@@ -147,6 +147,48 @@ public final class Stockpile<K> {
 		return stored;
 	}
 
+	/**
+	 * The container {@link #fill} would write {@code key} into first: a partial stack of it, otherwise the first empty slot.
+	 * Empty when the site cannot take the key.
+	 */
+	public Optional<Pos> containerFor(StorageSite<K> site, K key) {
+		for (int pass = 0; pass < 2; pass++) {
+			for (ContainerRef<K> c : site.containers()) {
+				Inventory<K> inv = c.inventory();
+				for (int i = 0, n = inv.size(); i < n; i++) {
+					K k = inv.key(i);
+					boolean fits = pass == 0
+							? k != null && k.equals(key) && inv.count(i) < inv.limit(i, key)
+							: k == null && inv.limit(i, key) > 0;
+					if (fits) return Optional.of(c.pos());
+				}
+			}
+		}
+		return Optional.empty();
+	}
+
+	/** Puts one of {@code key} into {@code container} only, partial stack first. Returns 1, or 0 when that container cannot take it. */
+	public int depositOne(StorageSite<K> site, Pos container, K key) {
+		for (ContainerRef<K> c : site.containers()) {
+			if (!c.pos().equals(container)) continue;
+			Inventory<K> inv = c.inventory();
+			for (int pass = 0; pass < 2; pass++) {
+				for (int i = 0, n = inv.size(); i < n; i++) {
+					K k = inv.key(i);
+					boolean fits = pass == 0
+							? k != null && k.equals(key) && inv.count(i) < inv.limit(i, key)
+							: k == null && inv.limit(i, key) > 0;
+					if (!fits) continue;
+					inv.add(i, key, 1);
+					inv.changed();
+					return 1;
+				}
+			}
+			return 0;
+		}
+		return 0;
+	}
+
 	// ---- withdraw --------------------------------------------------------------------------------
 
 	/** Takes up to {@code n}, nearest first; never takes what others reserved. Returns how many were taken. */

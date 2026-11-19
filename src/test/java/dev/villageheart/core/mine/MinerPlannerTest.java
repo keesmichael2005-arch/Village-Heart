@@ -2,6 +2,7 @@ package dev.villageheart.core.mine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.villageheart.core.Balance;
 import dev.villageheart.core.mine.AwayCheck.Lease;
 import dev.villageheart.core.mine.MinerPlanner.Action;
 import dev.villageheart.core.mine.MinerPlanner.Decision;
@@ -63,8 +64,8 @@ class MinerPlannerTest {
 
 	@Test
 	void row6LastDescent() {
-		assertDecision(Action.GO_DOWN, StatusEffect.CLEAR, MinerPlanner.decide(edit(true, false, false, Lease.HELD, true, true, 10399, OptionalLong.empty(), 10)));
-		assertDecision(Action.IDLE_AT_MINE, StatusEffect.CLEAR, MinerPlanner.decide(edit(true, false, false, Lease.HELD, true, true, 10400, OptionalLong.empty(), 10)));
+		assertDecision(Action.GO_DOWN, StatusEffect.CLEAR, MinerPlanner.decide(edit(true, false, false, Lease.HELD, true, true, Balance.MINER_LAST_DESCENT - 1, OptionalLong.empty(), 10)));
+		assertDecision(Action.IDLE_AT_MINE, StatusEffect.CLEAR, MinerPlanner.decide(edit(true, false, false, Lease.HELD, true, true, Balance.MINER_LAST_DESCENT, OptionalLong.empty(), 10)));
 	}
 
 	@Test
