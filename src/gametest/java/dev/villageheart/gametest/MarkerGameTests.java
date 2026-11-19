@@ -84,6 +84,7 @@ public class MarkerGameTests {
 		expected.add(ModItems.BLANK_MARKER);
 		for (BuildingType t : BuildingType.values()) expected.add(MarkerBlocks.ITEMS.get(t));
 		for (JobBlockType t : JobBlockType.values()) expected.add(JobBlocks.ITEMS.get(t));
+		expected.add(ModItems.BLUEPRINT_BOOK);
 		for (int i = 0; i < dev.villageheart.core.blueprint.Blueprints.all().size(); i++) expected.add(ModItems.BLUEPRINT); // M20: one Blueprint per blueprint
 		List<Item> actual = new ArrayList<>();
 		for (ItemStack s : tab.getDisplayItems()) actual.add(s.getItem());
@@ -254,6 +255,7 @@ public class MarkerGameTests {
 		Set<String> expected = new TreeSet<>();
 		expected.add("village_heart");
 		expected.add("blank_marker");
+		expected.add("blueprint_book");
 		List<String> ingredients = new ArrayList<>(List.of("#minecraft:planks", "minecraft:item_frame"));
 		for (BuildingType t : BuildingType.values()) { expected.add(t.markerId()); ingredients.addAll(modIngredients(t.ring().recipe("villageheart:x", 1))); }
 		for (JobBlockType t : JobBlockType.values()) { expected.add(t.id()); ingredients.addAll(modIngredients(t.recipe())); }

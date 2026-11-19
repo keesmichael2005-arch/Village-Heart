@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** T-L1-12: build rows reach Residents and above only, at most 8, with at most 2 missing lines each. */
+/** T-L1-12: build rows reach Residents and above only, at most {@link HeartLimits#MAX_BUILDS}, with at most 2 missing lines each. */
 class HeartSnapshotBuildsTest {
 	private static TextLine line(String s) { return new TextLine("k", s); }
 

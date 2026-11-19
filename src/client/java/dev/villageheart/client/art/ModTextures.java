@@ -19,7 +19,7 @@ public final class ModTextures {
 	public static final Identifier TAB_BUILDINGS = sprite("textures/gui/sprites/heart/tab_buildings.png");
 	public static final Identifier TAB_STOCKPILE = sprite("textures/gui/sprites/heart/tab_stockpile.png");
 	public static final Identifier TAB_RANKS = sprite("textures/gui/sprites/heart/tab_ranks.png");
-	public static final Identifier[] TABS = {TAB_OVERVIEW, TAB_VILLAGERS, TAB_BUILDINGS, TAB_STOCKPILE, TAB_RANKS};
+	public static final Identifier[] TABS = {TAB_OVERVIEW, TAB_VILLAGERS, TAB_BUILDINGS, TAB_STOCKPILE, TAB_RANKS, TAB_OVERVIEW};
 
 	public static final Identifier TIER_HAMLET = sprite("textures/gui/sprites/heart/tier_hamlet.png");
 	public static final Identifier TIER_VILLAGE = sprite("textures/gui/sprites/heart/tier_village.png");
